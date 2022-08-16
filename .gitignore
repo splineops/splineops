@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# macOS
+.DS_Store
+
+# JetBrains
+.idea/
+
+# VS Code
+.vscode/
