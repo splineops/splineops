@@ -16,6 +16,9 @@ from bssp.bases.omoms2basis import OMOMS2Basis
 from bssp.bases.omoms3basis import OMOMS3Basis
 from bssp.bases.omoms4basis import OMOMS4Basis
 from bssp.bases.omoms5basis import OMOMS5Basis
+from bssp.bases.nearestneighborbasis import NearestNeighborBasis
+from bssp.bases.linearbasis import LinearBasis
+from bssp.bases.keysbasis import KeysBasis
 
 basis_map = {
     'bspline0': BSpline0Basis,
@@ -34,6 +37,9 @@ basis_map = {
     'omoms3': OMOMS3Basis,
     'omoms4': OMOMS4Basis,
     'omoms5': OMOMS5Basis,
+    'nearest': NearestNeighborBasis,
+    'linear': LinearBasis,
+    'keys': KeysBasis,
 }
 
 
