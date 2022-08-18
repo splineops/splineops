@@ -10,7 +10,12 @@ from bssp.bases.bspline6basis import BSpline6Basis
 from bssp.bases.bspline7basis import BSpline7Basis
 from bssp.bases.bspline8basis import BSpline8Basis
 from bssp.bases.bspline9basis import BSpline9Basis
-
+from bssp.bases.omoms0basis import OMOMS0Basis
+from bssp.bases.omoms1basis import OMOMS1Basis
+from bssp.bases.omoms2basis import OMOMS2Basis
+from bssp.bases.omoms3basis import OMOMS3Basis
+from bssp.bases.omoms4basis import OMOMS4Basis
+from bssp.bases.omoms5basis import OMOMS5Basis
 
 basis_map = {
     'bspline0': BSpline0Basis,
@@ -23,6 +28,12 @@ basis_map = {
     'bspline7': BSpline7Basis,
     'bspline8': BSpline8Basis,
     'bspline9': BSpline9Basis,
+    'omoms0': OMOMS0Basis,
+    'omoms1': OMOMS1Basis,
+    'omoms2': OMOMS2Basis,
+    'omoms3': OMOMS3Basis,
+    'omoms4': OMOMS4Basis,
+    'omoms5': OMOMS5Basis,
 }
 
 
