@@ -10,6 +10,8 @@ from bssp.interpolate.utils import _compute_coeffs_narrow_mirror_wg
 from bssp.interpolate.utils import _data_to_coeffs
 
 from bssp.bases.utils import asbasis
+from bssp.utils.interop import is_cupy_type
+
 TSplineBasis = Union[SplineBasis, str]
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
 
@@ -20,18 +22,16 @@ class TensorSpline:
 
     def __init__(
             self,
-            data: npt.ArrayLike,  # TODO: input, samples?
-            coords: Union[npt.ArrayLike, Sequence[npt.ArrayLike]],  # TODO: coordinates?
-            # basis: Union[SplineBasis, Sequence[SplineBasis]],  # TODO: str as well? str only? bases?
-            basis: TSplineBases,  # TODO: str as well? str only? bases?
-            mode: Union[str, Sequence[str]],  # TODO: modes?
+            data: npt.NDArray,
+            coords: Union[npt.NDArray, Sequence[npt.NDArray]],
+            basis: TSplineBases,
+            mode: Union[str, Sequence[str]],
             # TODO: extrapolate?
             # TODO: axis? axes?
             # TODO: optional reduction strategy (e.g., first or last)
     ):
 
         # Data
-        data = np.asarray(data)
         ndim = data.ndim
         self._ndim = ndim
 
@@ -40,10 +40,9 @@ class TensorSpline:
         # Coordinates
         #   1-D special case (either `array` or `(array,)`
         if ndim == 1 and len(coords) == len(data):
-            # Convert `array_like` to `(array_like,)`
+            # Convert `array` to `(array,)`
             coords = coords,
-        coords = tuple(np.asarray(c) for c in coords)
-        if not np.all([np.all(np.diff(c) > 0) for c in coords]):
+        if not all(bool(np.all(np.diff(c) > 0)) for c in coords):
             raise ValueError("Coordinates must be strictly ascending.")
         valid_data_shape = tuple([c.size for c in coords])
         if data.shape != valid_data_shape:
@@ -129,21 +128,28 @@ class TensorSpline:
         return self._bases
 
     # Methods
-    def __call__(self, coords: npt.ArrayLike, grid: bool = True) -> npt.NDArray:
+    def __call__(
+            self,
+            coords: Union[npt.NDArray, Sequence[npt.NDArray]],
+            grid: bool = True
+    ) -> npt.NDArray:
         return self.eval(coords=coords, grid=grid)
 
-    def eval(self, coords: npt.ArrayLike, grid: bool = True) -> npt.NDArray:
+    def eval(
+            self,
+            coords: Union[npt.NDArray, Sequence[npt.NDArray]],
+            grid: bool = True
+    ) -> npt.NDArray:
 
         # TODO(dperdios): check dtype and/or cast
         ndim = self._ndim
         if grid:
-            coords = tuple(np.asarray(c) for c in coords)
-            if not np.all([np.all(np.diff(c, axis=-1) > 0) for c in coords]):
+            if not all([bool(np.all(np.diff(c, axis=-1) > 0)) for c in coords]):
                 raise ValueError("Coordinates must be strictly ascending.")
             if len(coords) != ndim:
                 raise ValueError(f"Must be a sequence of {ndim}-D arrays.")
         else:
-            coords = np.asarray(coords)
+            # If not `grid`, an Array is expected
             if len(coords) != ndim:
                 raise ValueError(
                     f"Incompatible shape. Expected shape: ({ndim}, ...). ")
@@ -240,10 +246,10 @@ class TensorSpline:
         for indexes, weights, a in zip(indexes_seq, weights_seq, exp_axes):
             indexes_bc.append(np.expand_dims(indexes, axis=a))
             weights_bc.append(np.expand_dims(weights, axis=a))
-        # Note: explicit broadcasting is required to avoid the warning
-        #  VisibleDeprecationWarning: Creating an ndarray from ragged
-        #  nested sequences [...] is deprecated.
-        weights_tp = np.prod(np.broadcast_arrays(*weights_bc), axis=0)
+        # Note: for interop (CuPy), cannot use prod with a sequence of arrays.
+        #  Need explicit stacking before reduction. It is NumPy compatible.
+        weights_tp = np.prod(
+            np.stack(np.broadcast_arrays(*weights_bc), axis=0), axis=0)
 
         # Interpolation (convolution via reduction)
         axes_sum = tuple(range(ndim))  # first axes are the indexes
@@ -253,33 +259,27 @@ class TensorSpline:
 
     # TODO(dperdios): should this be a method of the SplineBasis?
     def _compute_support_indexes_1d(
-            self, basis: SplineBasis, ind: npt.ArrayLike) -> npt.NDArray:
+            self, basis: SplineBasis, ind: npt.NDArray) -> npt.NDArray:
 
         # Extract property
-        dtype = self._real_dtype
         int_dtype = self._int_dtype
 
         # Span and offset
         support = basis.support
         idx_offset = 0.5 if support & 1 else 0.0  # offset for even supports
-        idx_span = np.arange(support, dtype=int_dtype) - (support - 1) // 2
+        idx_span = np.arange(support, dtype=int_dtype, like=ind)
+        idx_span -= (support - 1) // 2
 
         # Floor rational indexes and convert to integers
-        ind = np.asarray(ind, dtype=dtype)
         # ind_fl = np.array(np.floor(ind + self._idx_offset), dtype=int_dtype)
-        ind_fl = np.array(np.floor(ind + idx_offset), dtype=int_dtype)
+        ind_fl = (np.floor(ind + idx_offset)).astype(dtype=int_dtype)
 
         # TODO(dperdios): check fastest axis for computations
         # First axis
-        # # idx = np.array([s + ind_fl for s in self._idx_span], dtype=int_dtype)
-        idx = np.array([s + ind_fl for s in idx_span], dtype=int_dtype)
-
-        # _ns = tuple([self.support] + ind_fl.ndim * [1])
-        # idx = ind_fl + self._idx_span.reshape(_ns)
-        # _ns = tuple([support] + ind_fl.ndim * [1])
-        # idx = ind_fl + np.reshape(idx_span, _ns)
+        _ns = tuple([support] + ind_fl.ndim * [1])
+        idx = ind_fl + np.reshape(idx_span, _ns)
         # # Last axis
-        # idx = ind_fl[..., np.newaxis] + self._idx_span
+        # idx = ind_fl[..., np.newaxis] + idx_span
 
         return idx
 
@@ -301,22 +301,46 @@ class TensorSpline:
 
             if poles is not None:
                 if mode == 'zero':  # Finite-support coefficients
+                    # CuPy compatibility
+                    # TODO(perdios): could use another solver
+                    # TODO(perdios): could use dedicated filters
+                    need_cupy_compat = is_cupy_type(data)
+
                     # Reshape for batch-processing
                     coeffs_shape = coeffs.shape
-                    coeffs_rs = np.reshape(coeffs, newshape=(-1, coeffs.shape[-1]))
+                    coeffs_ns = -1, coeffs.shape[-1]
+                    coeffs_rs = np.reshape(coeffs, newshape=coeffs_ns)
+
+                    # CuPy compatibility
+                    if need_cupy_compat:
+                        # Get as NumPy array
+                        coeffs_rs_cp = coeffs_rs
+                        coeffs_rs = coeffs_rs_cp.get()
 
                     # Prepare banded
                     m = (basis.support - 1) // 2
                     bk = basis(np.arange(-m, m + 1))
 
-                    # Reshape back to original shape
+                    # Compute coefficients (banded solver to be generic)
                     coeffs_rs = _compute_ck_zero_matrix_banded_v1(bk=bk, fk=coeffs_rs.T)
-                    coeffs = np.reshape(coeffs_rs.T, newshape=coeffs_shape)
                     # TODO(dperdios): the v2 only has an issue for
                     #  a single-sample signal.
                     #  Note: v2 is probably slightly faster as it does not need
                     #  to create the sub-matrices.
                     # coeffs = _compute_ck_zero_matrix_banded_v2(bk=bk, fk=data)
+                    #   Transpose back
+                    coeffs_rs = coeffs_rs.T
+
+                    # CuPy compatibility
+                    if need_cupy_compat:
+                        # Put back as CuPy array (reusing memory)
+                        coeffs_rs_cp[:] = np.asarray(
+                            coeffs_rs, like=coeffs_rs_cp)
+                        coeffs_rs = coeffs_rs_cp
+
+                    # Reshape back to original shape
+                    coeffs = np.reshape(coeffs_rs, newshape=coeffs_shape)
+
                 elif mode == 'mirror':  # Narrow mirroring
                     # coeffs = np.copy(data)
                     # TODO(dperdios): the batched version has an issue for

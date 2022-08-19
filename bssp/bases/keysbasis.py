@@ -18,10 +18,9 @@ class KeysBasis(SplineBasis):
 
     # Methods
     @staticmethod
-    def eval(x: npt.ArrayLike) -> npt.NDArray:
+    def eval(x: npt.NDArray) -> npt.NDArray:
 
         # Pre-computations
-        x = np.asarray(x)
         x_abs = np.abs(x)
         x_abs_2 = x_abs * x_abs
         x_abs_3 = x_abs_2 * x_abs

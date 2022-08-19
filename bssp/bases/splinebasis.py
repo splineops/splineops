@@ -40,11 +40,11 @@ class SplineBasis(metaclass=ABCMeta):
         return self._poles
 
     # Methods
-    def __call__(self, x: npt.ArrayLike) -> npt.NDArray:
+    def __call__(self, x: npt.NDArray) -> npt.NDArray:
         return self.eval(x=x)
 
     # Abstract methods
     @staticmethod
     @abstractmethod
-    def eval(x: npt.ArrayLike) -> npt.NDArray:
+    def eval(x: npt.NDArray) -> npt.NDArray:
         pass

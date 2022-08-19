@@ -17,10 +17,9 @@ class BSpline2Basis(SplineBasis):
 
     # Methods
     @staticmethod
-    def eval(x: npt.ArrayLike) -> npt.NDArray:
+    def eval(x: npt.NDArray) -> npt.NDArray:
 
         # Pre-computations
-        x = np.asarray(x)
         x_abs = np.abs(x)
 
         # Case 3/2 <= |x|
