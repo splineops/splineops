@@ -16,8 +16,6 @@ TSplineBasis = Union[SplineBasis, str]
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
 
 
-# TODO: Mother class?
-# TODO: TensorProductSpline, TensorSplineInterpolator, TSpline, NDSpline
 class TensorSpline:
 
     def __init__(
@@ -70,13 +68,6 @@ class TensorSpline:
         # DTypes
         # TODO(dperdios): coords dtype
         dtype = data.dtype
-        # if dtype.kind not in ('f', 'c'):
-        #     ValueError("Invalid dtype. Only supports float and complex-float")
-        # if dtype.kind == 'c':
-        #     real_dtype_str = f'f{dtype.itemsize // 2:d}'
-        #     real_dtype = np.dtype(real_dtype_str)
-        # else:
-        #     real_dtype = dtype
         real_dtype = data.real.dtype
         self._dtype = dtype
         self._real_dtype = real_dtype
@@ -85,23 +76,12 @@ class TensorSpline:
         self._int_dtype = int_dtype
 
         # Bases
-        # TODO(dperdios): check dtype between basis and data (can be complex)?
-        # TODO(dperdios): check it is a sequence
         if isinstance(basis, (SplineBasis, str)):
             basis = ndim * (basis,)
         bases = [asbasis(b) for b in basis]
         if len(bases) != ndim:
             raise ValueError(f"Length of the sequence must be {ndim}.")
         self._bases = tuple(bases)
-
-        # if isinstance(basis, SplineBasis):
-        #     basis = ndim * (basis,)
-        # if not (isinstance(basis, abc.Sequence)
-        #         and all(isinstance(b, SplineBasis) for b in basis)):
-        #     raise TypeError(f"Must be a sequence of `{SplineBasis.__name__}`.")
-        # if len(basis) != ndim:
-        #     raise ValueError(f"Length of the sequence must be {ndim}.")
-        # self._bases = tuple(basis)
 
         # Modes
         if isinstance(mode, str):
@@ -144,10 +124,11 @@ class TensorSpline:
         # TODO(dperdios): check dtype and/or cast
         ndim = self._ndim
         if grid:
+            if len(coords) != ndim:
+                raise ValueError(
+                    f"Must be a {ndim}-length sequence of 1-D arrays.")
             if not all([bool(np.all(np.diff(c, axis=-1) > 0)) for c in coords]):
                 raise ValueError("Coordinates must be strictly ascending.")
-            if len(coords) != ndim:
-                raise ValueError(f"Must be a sequence of {ndim}-D arrays.")
         else:
             # If not `grid`, an Array is expected
             if len(coords) != ndim:
@@ -350,6 +331,7 @@ class TensorSpline:
                     # _compute_coeffs_narrow_mirror_wg(data=coeffs, poles=poles)
                     _data_to_coeffs(data=coeffs, poles=poles, boundary=mode)
                 else:
-                    raise NotImplementedError("Unsupported signal extension mode.")
+                    raise NotImplementedError(
+                        "Unsupported signal extension mode.")
 
         return coeffs
