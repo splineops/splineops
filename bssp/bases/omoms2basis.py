@@ -27,6 +27,52 @@ class OMOMS2Basis(SplineBasis):
         #  Using the dtype of x may not be the smartest idea
         y = np.zeros_like(x)
 
+        # Note: Use of asymmetric strategy to minimize the support length
+        #  (similar to bspline0). The exact symmetric case is provided below.
+
+        # Case -3/2 < x < 1/2 or 1/2 <= x < 3/2
+        y = np.where(
+            np.logical_or(
+                np.logical_and(x < 3 / 2, x >= 1 / 2),
+                np.logical_and(x < -1 / 2, x >= -3 / 2),
+            ),
+            1 / 2 * (x_abs - 3) * x_abs + 137 / 120,
+            y
+        )
+
+        # Case -1/2 <= x < 1/2
+        y = np.where(
+            np.logical_and(x < 1 / 2, x >= -1 / 2),
+            43 / 60 - x_abs * x_abs,
+            y
+        )
+
+        return y
+
+
+class OMOMS2SymBasis(SplineBasis):
+
+    def __init__(self):
+
+        # Support and poles
+        support = 4
+        poles = (1 / 17 * (-43 + 2 * np.sqrt(390)),)
+
+        # Call super constructor
+        super(OMOMS2SymBasis, self).__init__(support=support, poles=poles)
+
+    # Methods
+    @staticmethod
+    def eval(x: npt.NDArray) -> npt.NDArray:
+
+        # Pre-computations
+        x_abs = np.abs(x)
+
+        # Case 3/2 < |x|
+        # TODO(dperdios): specified dtype? output allocated in base class?
+        #  Using the dtype of x may not be the smartest idea
+        y = np.zeros_like(x)
+
         # Case |x| == 3/2
         # 137 / 240 - (3 x) / 4 + x ^ 2 / 4
         # 1/240 (60 x^2 - 180 x + 137)

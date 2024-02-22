@@ -1,6 +1,6 @@
 from typing import Union
 from bssp.bases.splinebasis import SplineBasis
-from bssp.bases.bspline0basis import BSpline0Basis
+from bssp.bases.bspline0basis import BSpline0Basis, BSpline0SymBasis
 from bssp.bases.bspline1basis import BSpline1Basis
 from bssp.bases.bspline2basis import BSpline2Basis
 from bssp.bases.bspline3basis import BSpline3Basis
@@ -10,18 +10,20 @@ from bssp.bases.bspline6basis import BSpline6Basis
 from bssp.bases.bspline7basis import BSpline7Basis
 from bssp.bases.bspline8basis import BSpline8Basis
 from bssp.bases.bspline9basis import BSpline9Basis
-from bssp.bases.omoms0basis import OMOMS0Basis
+from bssp.bases.omoms0basis import OMOMS0Basis, OMOMS0SymBasis
 from bssp.bases.omoms1basis import OMOMS1Basis
-from bssp.bases.omoms2basis import OMOMS2Basis
+from bssp.bases.omoms2basis import OMOMS2Basis, OMOMS2SymBasis
 from bssp.bases.omoms3basis import OMOMS3Basis
-from bssp.bases.omoms4basis import OMOMS4Basis
+from bssp.bases.omoms4basis import OMOMS4Basis, OMOMS4SymBasis
 from bssp.bases.omoms5basis import OMOMS5Basis
 from bssp.bases.nearestneighborbasis import NearestNeighborBasis
+from bssp.bases.nearestneighborbasis import NearestNeighborSymBasis
 from bssp.bases.linearbasis import LinearBasis
 from bssp.bases.keysbasis import KeysBasis
 
 basis_map = {
     'bspline0': BSpline0Basis,
+    'bspline0-sym': BSpline0SymBasis,
     'bspline1': BSpline1Basis,
     'bspline2': BSpline2Basis,
     'bspline3': BSpline3Basis,
@@ -32,12 +34,16 @@ basis_map = {
     'bspline8': BSpline8Basis,
     'bspline9': BSpline9Basis,
     'omoms0': OMOMS0Basis,
+    'omoms0-sym': OMOMS0SymBasis,
     'omoms1': OMOMS1Basis,
     'omoms2': OMOMS2Basis,
+    'omoms2-sym': OMOMS2SymBasis,
     'omoms3': OMOMS3Basis,
     'omoms4': OMOMS4Basis,
+    'omoms4-sym': OMOMS4SymBasis,
     'omoms5': OMOMS5Basis,
     'nearest': NearestNeighborBasis,
+    'nearest-sym': NearestNeighborSymBasis,
     'linear': LinearBasis,
     'keys': KeysBasis,
 }
