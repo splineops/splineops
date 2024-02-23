@@ -25,8 +25,6 @@ class OMOMS3Basis(SplineBasis):
         x_abs_3 = x_abs_2 * x_abs
 
         # Case 2 <= |x|
-        # TODO(dperdios): specified dtype? output allocated in base class?
-        #  Using the dtype of x may not be the smartest idea
         y = np.zeros_like(x)
 
         # Case |x| < 2 (i.e. 1 <= |x| < 2)

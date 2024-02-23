@@ -21,17 +21,21 @@ class TensorSpline:
     def __init__(
             self,
             data: npt.NDArray,
+            # TODO(dperdios): samples?
             coords: Union[npt.NDArray, Sequence[npt.NDArray]],
+            # TODO(dperdios): coordinates?
             basis: TSplineBases,
+            # TODO(dperdios): bases?
             mode: Union[str, Sequence[str]],
-            # TODO: extrapolate?
-            # TODO: axis? axes?
-            # TODO: optional reduction strategy (e.g., first or last)
+            # TODO(dperdios): modes?
+            # TODO(dperdios): extrapolate? only at evaluation time?
+            # TODO(dperdios): axis? axes? probably complex
+            # TODO(dperdios): optional reduction strategy (e.g., first or last)
     ):
 
         # Data
         ndim = data.ndim
-        self._ndim = ndim
+        self._ndim = ndim  # TODO(dperdios): public property?
 
         # TODO(dperdios): optional coordinates?
         # TODO(dperdios): add some tests on the type of `coords`
@@ -49,7 +53,9 @@ class TensorSpline:
                 f"Expected shape: {valid_data_shape}"
             )
         self._coords = coords
+        # TODO(dperdios): convert to Python float?
         bounds = tuple([(c[0], c[-1]) for c in coords])
+        # TODO(dperdios): `bounds` as a public property?
         self._bounds = bounds
         lengths = valid_data_shape
         self._lengths = lengths
@@ -67,10 +73,12 @@ class TensorSpline:
 
         # DTypes
         # TODO(dperdios): coords dtype
+        # TODO(dperdios): data dtype must be float (for direct filtering)
         dtype = data.dtype
         real_dtype = data.real.dtype
         self._dtype = dtype
         self._real_dtype = real_dtype
+        # TODO(dperdios): integer always int64 or int32? any speed difference?
         int_dtype_str = f'i{real_dtype.itemsize}'
         int_dtype = np.dtype(int_dtype_str)
         self._int_dtype = int_dtype
@@ -84,6 +92,7 @@ class TensorSpline:
         self._bases = tuple(bases)
 
         # Modes
+        # TODO(dperdios): should we call it extension(s)? mode is quite popular
         if isinstance(mode, str):
             mode = ndim * (mode,)
         if not (isinstance(mode, abc.Sequence)
@@ -111,7 +120,8 @@ class TensorSpline:
     def __call__(
             self,
             coords: Union[npt.NDArray, Sequence[npt.NDArray]],
-            grid: bool = True
+            grid: bool = True,
+            # TODO(dperdios): extrapolate?
     ) -> npt.NDArray:
         return self.eval(coords=coords, grid=grid)
 
@@ -125,6 +135,8 @@ class TensorSpline:
         ndim = self._ndim
         if grid:
             if len(coords) != ndim:
+                # TODO(dperdios): Sequence of (..., n) arrays (batch dimensions
+                #   must be the same!)
                 raise ValueError(
                     f"Must be a {ndim}-length sequence of 1-D arrays.")
             if not all([bool(np.all(np.diff(c, axis=-1) > 0)) for c in coords]):
@@ -247,7 +259,7 @@ class TensorSpline:
 
         # Span and offset
         support = basis.support
-        idx_offset = 0.5 if support & 1 else 0.0  # offset for even supports
+        idx_offset = 0.5 if support & 1 else 0.0  # offset for odd support
         idx_span = np.arange(support, dtype=int_dtype, like=ind)
         idx_span -= (support - 1) // 2
 
@@ -274,7 +286,7 @@ class TensorSpline:
         #  shape
         for basis, mode in zip(self._bases, self._modes):
 
-            # Transpose data
+            # Roll data w.r.t. dimension
             coeffs = np.transpose(coeffs, axes=axes_roll)
 
             # Get poles
@@ -283,8 +295,9 @@ class TensorSpline:
             if poles is not None:
                 if mode == 'zero':  # Finite-support coefficients
                     # CuPy compatibility
-                    # TODO(perdios): could use another solver
-                    # TODO(perdios): could use dedicated filters
+                    # TODO(dperdios): could use a CuPy-compatible solver
+                    # TODO(dperdios): could use dedicated filters
+                    #  Note: this would depend on the degree of the bspline
                     need_cupy_compat = is_cupy_type(data)
 
                     # Reshape for batch-processing
@@ -324,6 +337,7 @@ class TensorSpline:
 
                 elif mode == 'mirror':  # Narrow mirroring
                     # coeffs = np.copy(data)
+                    # TODO(dperdios): wide mirroring too?
                     # TODO(dperdios): the batched version has an issue for
                     #  a single-sample signal (anti-causal init). There is also
                     #  an issue for the boundary condition with single-sample

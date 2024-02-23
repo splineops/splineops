@@ -22,8 +22,6 @@ class NearestNeighborBasis(SplineBasis):
         x_abs = np.abs(x)
 
         # Case 1/2 < |x|
-        # TODO(dperdios): specified dtype? output allocated in base class?
-        #  Using the dtype of x may not be the smartest idea
         y = np.zeros_like(x)
 
         # Case -1/2 <= x < 1/2
@@ -54,8 +52,6 @@ class NearestNeighborSymBasis(SplineBasis):
         x_abs = np.abs(x)
 
         # Case 1/2 < |x|
-        # TODO(dperdios): specified dtype? output allocated in base class?
-        #  Using the dtype of x may not be the smartest idea
         y = np.zeros_like(x)
 
         # Case |x| < 1/2 (i.e. 0 < |x| < 1/2)

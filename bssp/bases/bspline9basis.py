@@ -28,8 +28,6 @@ class BSpline9Basis(SplineBasis):
         x_abs = np.abs(x)
 
         # Case 5 <= |x|
-        # TODO(dperdios): specified dtype? output allocated in base class?
-        #  Using the dtype of x may not be the smartest idea
         y = np.zeros_like(x)
 
         # Case 4 <= |x| < 5

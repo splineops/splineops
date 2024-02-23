@@ -27,8 +27,6 @@ class BSpline6Basis(SplineBasis):
         x_abs = np.abs(x)
 
         # Case 7/2 <= |x|
-        # TODO(dperdios): specified dtype? output allocated in base class?
-        #  Using the dtype of x may not be the smartest idea
         y = np.zeros_like(x)
 
         # Case 5/2 <= |x| < 7/2
