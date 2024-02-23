@@ -113,7 +113,7 @@ class TensorSpline:
         return np.copy(self._coeffs)
 
     @property
-    def bases(self) -> Tuple[SplineBasis]:
+    def bases(self) -> Tuple[SplineBasis, ...]:
         return self._bases
 
     # Methods
@@ -171,13 +171,19 @@ class TensorSpline:
 
             # Indexes
             #   Compute rational indexes
-            fs = 1 / dx
-            rat_indexes = (coords - x_min) * fs
+            # TODO(dperdios): no difference in using `* fs` or `/ dx`
+            # fs = 1 / dx
+            # rat_indexes = (coords - x_min) * fs
+            rat_indexes = (coords - x_min) / dx
             #   Compute corresponding integer indexes (including support)
             indexes = self._compute_support_indexes_1d(basis=basis, ind=rat_indexes)
 
             # Evaluate basis function (interpolation weights)
-            shifted_idx = np.subtract(indexes, rat_indexes, dtype=real_dtype)
+            # indexes_shift = np.subtract(indexes, rat_indexes, dtype=real_dtype)
+            # shifted_idx = np.subtract(indexes, rat_indexes, dtype=real_dtype)
+            shifted_idx = np.subtract(
+                rat_indexes[np.newaxis], indexes, dtype=real_dtype)
+            # TODO(dperdios): casting rules, do we really want it?
             weights = basis(x=shifted_idx)
 
             # Signal extension
