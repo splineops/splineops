@@ -5,9 +5,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class NearestNeighborBasis(SplineBasis):
-
     def __init__(self):
-
         # Support (no poles)
         support = 1
 
@@ -17,7 +15,6 @@ class NearestNeighborBasis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
-
         # Pre-computations
         x_abs = np.abs(x)
 
@@ -35,9 +32,7 @@ class NearestNeighborBasis(SplineBasis):
 
 
 class NearestNeighborSymBasis(SplineBasis):
-
     def __init__(self):
-
         # Support (no poles)
         support = 1
 
@@ -47,7 +42,6 @@ class NearestNeighborSymBasis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
-
         # Pre-computations
         x_abs = np.abs(x)
 

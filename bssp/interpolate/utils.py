@@ -5,8 +5,8 @@ from typing import Optional
 
 
 def _compute_ck_zero_matrix_banded_v1(
-        bk: npt.ArrayLike, fk: npt.ArrayLike) -> npt.NDArray:
-
+    bk: npt.ArrayLike, fk: npt.ArrayLike
+) -> npt.NDArray:
     # Note: fk must be of shape (M,) or (M, K)
     fk = np.asarray(fk)
     dtype = fk.dtype
@@ -37,20 +37,25 @@ def _compute_ck_zero_matrix_banded_v1(
     #   Fill basis coefficients. Note: upper diagonal must be pre-padded for
     #   `scipy.linalg.solve_banded`.
     for a, b in zip(ab, np.flip(bk)):
-        a[m:m + n] = b
+        a[m : m + n] = b
 
     # Solve banded system
     # cc = scipy.linalg.solve_banded((m, m), ab, data_pad)
     ck = scipy.linalg.solve_banded(
-        l_and_u=(m, m), ab=ab, b=fk_pad,
-        overwrite_ab=True, overwrite_b=True, check_finite=False)
+        l_and_u=(m, m),
+        ab=ab,
+        b=fk_pad,
+        overwrite_ab=True,
+        overwrite_b=True,
+        check_finite=False,
+    )
 
     return np.copy(ck[m:-m])
 
 
 def _compute_ck_zero_matrix_banded_v2(
-        bk: npt.ArrayLike, fk: npt.ArrayLike) -> npt.NDArray:
-
+    bk: npt.ArrayLike, fk: npt.ArrayLike
+) -> npt.NDArray:
     # Note: fk must be of shape (M,) or (M, K)
     fk = np.asarray(fk)
     dtype = fk.dtype
@@ -71,10 +76,10 @@ def _compute_ck_zero_matrix_banded_v2(
     ab[m] = bk[m]
     #   Upper diagonals
     for ii, a, b in zip(reversed(range(m)), ab[:m], np.flip(bk)[:m]):
-        a[ii + 1:] = b
+        a[ii + 1 :] = b
     #   Lower diagonals
-    for ii, a, b in zip(range(m), ab[m + 1:], np.flip(bk)[m + 1:]):
-        a[:-(ii + 1)] = b
+    for ii, a, b in zip(range(m), ab[m + 1 :], np.flip(bk)[m + 1 :]):
+        a[: -(ii + 1)] = b
 
     # ab = np.ones(ab_shape, dtype=dtype)
     # ab *= np.expand_dims(np.flip(basis), axis=-1)
@@ -93,10 +98,9 @@ def _compute_ck_zero_matrix_banded_v2(
 
 
 def _compute_coeffs_narrow_mirror_wg(
-        data: np.ndarray,
-        poles: np.ndarray,
+    data: np.ndarray,
+    poles: np.ndarray,
 ) -> np.ndarray:
-
     # TODO: NOTE THIS ONE IS DOUBLE CHECKED
 
     DataLength = len(data)
@@ -127,7 +131,9 @@ def _compute_coeffs_narrow_mirror_wg(
             c[n] += z * c[n - 1]
 
         # Anti-causal initialization
-        c[DataLength - 1] = (z / (z * z - 1.0)) * (z * c[DataLength - 2] + c[DataLength - 1])
+        c[DataLength - 1] = (z / (z * z - 1.0)) * (
+            z * c[DataLength - 2] + c[DataLength - 1]
+        )
 
         # Anti-causal recursion
         for n in range(DataLength - 2, -1, -1):
@@ -137,10 +143,9 @@ def _compute_coeffs_narrow_mirror_wg(
 
 
 def _compute_coeffs_narrow_mirror_wog(
-        data: np.ndarray,
-        poles: np.ndarray,
+    data: np.ndarray,
+    poles: np.ndarray,
 ) -> np.ndarray:
-
     # TODO: NOTE THIS ONE IS NOT PROPERLY IMPLEMENTED (from Philipe's sheet)
 
     # Flatten data-view except last dimension (on which interpolation occurs)
@@ -155,19 +160,18 @@ def _compute_coeffs_narrow_mirror_wog(
         # Causal initialization
         c0 = 0
         for k in range(K - 1):
-            c0 += pole ** k * (
-                    data_it[:, k]
-                    + pole ** (K - 1) * data_it[:, K - 1 - k]
-            )
-        c0 /= (1 - pole ** (2 * K - 2))
+            c0 += pole**k * (data_it[:, k] + pole ** (K - 1) * data_it[:, K - 1 - k])
+        c0 /= 1 - pole ** (2 * K - 2)
 
         # Causal recursion
         for k in range(1, data_len):
             data_it[:, k] += pole * data_it[:, k - 1]
 
         # Anti-causal initialization
-        data_it[:, K - 1] = (1 - pole) ** 2 / (1 - pole ** 2) *(
-            pole * data_it[:, K - 2] + data_it[:, K - 1]
+        data_it[:, K - 1] = (
+            (1 - pole) ** 2
+            / (1 - pole**2)
+            * (pole * data_it[:, K - 2] + data_it[:, K - 1])
         )
 
         # Anti-causal recursion
@@ -175,18 +179,17 @@ def _compute_coeffs_narrow_mirror_wog(
         #     data_it[:, k] = pole * data_it[:, k + 1] + (1 - pole) ** 2 * data_it[:, k]
         for k in range(1, data_len):
             data_it[:, K - 1 - k] = (
-                pole * data_it[:, K - k]
-                + (1 - pole) ** 2 * data_it[:, K - 1 - k]
+                pole * data_it[:, K - k] + (1 - pole) ** 2 * data_it[:, K - 1 - k]
             )
 
         return data
 
 
 def _data_to_coeffs(
-        data: np.ndarray,   # N-D array with last dimension to filter
-        poles: np.ndarray,  # 1D array
-        boundary: str,
-        tol: Optional[float] = None
+    data: np.ndarray,  # N-D array with last dimension to filter
+    poles: np.ndarray,  # 1D array
+    boundary: str,
+    tol: Optional[float] = None,
 ) -> np.ndarray:
     """In-place pre-filtering"""
 
@@ -232,7 +235,7 @@ def _data_to_coeffs(
 
 
 def _init_causal_coeff(
-        data: np.ndarray, pole: float, boundary: str, tol: float
+    data: np.ndarray, pole: float, boundary: str, tol: float
 ) -> np.ndarray:
     """First coefficient of the causal filter"""
 
@@ -242,7 +245,7 @@ def _init_causal_coeff(
     if tol > 0:
         horizon = int(np.ceil(np.log(tol)) / np.log(np.abs(pole)))
 
-    if boundary.lower() == 'mirror':
+    if boundary.lower() == "mirror":
         zn = float(pole)  # copy to hold power (not sure float() is required)
         if horizon < data_len:
             # Approximation (accelerated loop)
@@ -261,8 +264,8 @@ def _init_causal_coeff(
                 c0 += (zn + z2n) * data[:, n]
                 zn *= pole
                 z2n *= iz
-            c0 /= (1 - zn ** 2)
-    elif boundary.lower() == 'zero':
+            c0 /= 1 - zn**2
+    elif boundary.lower() == "zero":
         # TODO(dperdios): not independent of pole number...
         # # zn = 1  # TODO: probably wrong
         # zn = pole
@@ -281,22 +284,22 @@ def _init_causal_coeff(
         #         c0 -= mul * zn * (data[:, n] - zN * data[:, -1 - n])
         #         zn *= pole
         # c0 *= (1 - pole * pole) / (1 - pole ** (2 * data_len + 2))
-        raise NotImplementedError('Unknown boundary condition')
+        raise NotImplementedError("Unknown boundary condition")
     else:
-        raise NotImplementedError('Unknown boundary condition')
+        raise NotImplementedError("Unknown boundary condition")
 
     return c0
 
 
 def _init_anticausal_coeff(data: np.ndarray, pole: float, boundary: str):
     """Last coefficient of the anticausal filter"""
-    if boundary.lower() == 'mirror':
+    if boundary.lower() == "mirror":
         cn = (pole / (pole * pole - 1)) * (pole * data[:, -2] + data[:, -1])  #  w/ gain
         return cn
-    elif boundary.lower() == 'zero':
+    elif boundary.lower() == "zero":
         # TODO(dperdios): not independent of pole number...
         # return -pole * data[:, -1]  # w/ gain
         # # return (1 - pole) ** 2 * data[:, -1]  # w/o gain
-        raise NotImplementedError('Unknown boundary condition')
+        raise NotImplementedError("Unknown boundary condition")
     else:
-        raise NotImplementedError('Unknown boundary condition')
+        raise NotImplementedError("Unknown boundary condition")

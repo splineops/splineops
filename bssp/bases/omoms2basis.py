@@ -5,9 +5,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class OMOMS2Basis(SplineBasis):
-
     def __init__(self):
-
         # Support and poles
         support = 3
         poles = (1 / 17 * (-43 + 2 * np.sqrt(390)),)
@@ -18,7 +16,6 @@ class OMOMS2Basis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
-
         # Pre-computations
         x_abs = np.abs(x)
 
@@ -35,23 +32,17 @@ class OMOMS2Basis(SplineBasis):
                 np.logical_and(x < -1 / 2, x >= -3 / 2),
             ),
             1 / 2 * (x_abs - 3) * x_abs + 137 / 120,
-            y
+            y,
         )
 
         # Case -1/2 <= x < 1/2
-        y = np.where(
-            np.logical_and(x < 1 / 2, x >= -1 / 2),
-            43 / 60 - x_abs * x_abs,
-            y
-        )
+        y = np.where(np.logical_and(x < 1 / 2, x >= -1 / 2), 43 / 60 - x_abs * x_abs, y)
 
         return y
 
 
 class OMOMS2SymBasis(SplineBasis):
-
     def __init__(self):
-
         # Support and poles
         support = 4
         poles = (1 / 17 * (-43 + 2 * np.sqrt(390)),)
@@ -62,7 +53,6 @@ class OMOMS2SymBasis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
-
         # Pre-computations
         x_abs = np.abs(x)
 
@@ -73,11 +63,7 @@ class OMOMS2SymBasis(SplineBasis):
         # 137 / 240 - (3 x) / 4 + x ^ 2 / 4
         # 1/240 (60 x^2 - 180 x + 137)
         # 1/4 (x - 3) x + 137/240
-        y = np.where(
-            x_abs == 3 / 2,
-            1 / 4 * (x_abs - 3) * x_abs + 137 / 240,
-            y
-        )
+        y = np.where(x_abs == 3 / 2, 1 / 4 * (x_abs - 3) * x_abs + 137 / 240, y)
 
         # Case 1/2 < |x| < 3/2
         # 137/120 - (3 x)/2 + x^2/2
@@ -85,7 +71,7 @@ class OMOMS2SymBasis(SplineBasis):
         y = np.where(
             np.logical_and(x_abs > 1 / 2, x_abs < 3 / 2),
             1 / 2 * (x_abs - 3) * x_abs + 137 / 120,
-            y
+            y,
         )
 
         # Case |x| == 1/2

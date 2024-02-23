@@ -5,14 +5,12 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class OMOMS5Basis(SplineBasis):
-
     def __init__(self):
-
         # Support and poles
         support = 6
         poles = (
             -0.47581271000843991544122436278663222058892748537659,
-            -0.070925718968685451773973269699832573209336542715216
+            -0.070925718968685451773973269699832573209336542715216,
         )
 
         # Call super constructor
@@ -21,7 +19,6 @@ class OMOMS5Basis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
-
         # Pre-computations
         x_abs = np.abs(x)
 
@@ -34,9 +31,13 @@ class OMOMS5Basis(SplineBasis):
         # -((x - 3) (2 (x - 6) x (33 (x - 6) x + 614) + 5707))/7920
         y = np.where(
             np.logical_and(x_abs >= 2, x_abs < 3),
-            -1 / 7920 * ((x_abs - 3) * (2 * (x_abs - 6) * x_abs * (
-                    33 * (x_abs - 6) * x_abs + 614) + 5707)),
-            y
+            -1
+            / 7920
+            * (
+                (x_abs - 3)
+                * (2 * (x_abs - 6) * x_abs * (33 * (x_abs - 6) * x_abs + 614) + 5707)
+            ),
+            y,
         )
 
         # Case 1 <= |x| < 2
@@ -46,9 +47,18 @@ class OMOMS5Basis(SplineBasis):
         # (5 x (2 x (x (33 (x - 9) x + 1010) - 1494) + 1351) + 2517)/7920
         y = np.where(
             np.logical_and(x_abs >= 1, x_abs < 2),
-            1 / 7920 * (5 * x_abs * (2 * x_abs * (x_abs * (
-                    33 * (x_abs - 9) * x_abs + 1010) - 1494) + 1351) + 2517),
-            y
+            1
+            / 7920
+            * (
+                5
+                * x_abs
+                * (
+                    2 * x_abs * (x_abs * (33 * (x_abs - 9) * x_abs + 1010) - 1494)
+                    + 1351
+                )
+                + 2517
+            ),
+            y,
         )
 
         # Case |x| < 1
@@ -57,9 +67,15 @@ class OMOMS5Basis(SplineBasis):
         # (2061 - 5 x (2 x (x (33 (x - 3) x + 20) + 162) + 1))/3960
         y = np.where(
             x_abs < 1,
-            1 / 3960 * (2061 - 5 * x_abs * (2 * x_abs * (
-                    x_abs * (33 * (x_abs - 3) * x_abs + 20) + 162) + 1)),
-            y
+            1
+            / 3960
+            * (
+                2061
+                - 5
+                * x_abs
+                * (2 * x_abs * (x_abs * (33 * (x_abs - 3) * x_abs + 20) + 162) + 1)
+            ),
+            y,
         )
 
         return y

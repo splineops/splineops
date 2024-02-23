@@ -5,14 +5,12 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class BSpline5Basis(SplineBasis):
-
     def __init__(self):
-
         # Support and poles
         support = 6
         poles = (
             np.sqrt(135 / 2 - np.sqrt(17745 / 4)) + np.sqrt(105 / 4) - 13 / 2,
-            np.sqrt(135 / 2 + np.sqrt(17745 / 4)) - np.sqrt(105 / 4) - 13 / 2
+            np.sqrt(135 / 2 + np.sqrt(17745 / 4)) - np.sqrt(105 / 4) - 13 / 2,
         )
 
         # Call super constructor
@@ -21,7 +19,6 @@ class BSpline5Basis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
-
         # Pre-computations
         x_abs = np.abs(x)
 
@@ -31,25 +28,33 @@ class BSpline5Basis(SplineBasis):
         # Case |x| < 3 (i.e. 2 <= |x| < 3)
         y = np.where(
             np.logical_and(x_abs >= 2, x_abs < 3),
-            1 / 120 * (243 + x_abs * (-405 + x_abs * (
-                    270 + x_abs * (-90 + x_abs * (15 - x_abs))))),
-            y
+            1
+            / 120
+            * (
+                243
+                + x_abs * (-405 + x_abs * (270 + x_abs * (-90 + x_abs * (15 - x_abs))))
+            ),
+            y,
         )
 
         # Case |x| < 2 (i.e. 1 <= |x| < 2)
         y = np.where(
             np.logical_and(x_abs >= 1, x_abs < 2),
-            1 / 120 * (51 + x_abs * (75 + x_abs * (
-                    -210 + x_abs * (150 + x_abs * (-45 + x_abs * 5))))),
-            y
+            1
+            / 120
+            * (
+                51
+                + x_abs
+                * (75 + x_abs * (-210 + x_abs * (150 + x_abs * (-45 + x_abs * 5))))
+            ),
+            y,
         )
 
         # Case |x| < 1 (i.e. 0 <= |x| < 1)
         y = np.where(
             x_abs < 1,
-            1 / 60 * (33 + x_abs * x_abs * (
-                    -30 + x_abs * x_abs * (15 - 5 * x_abs))),
-            y
+            1 / 60 * (33 + x_abs * x_abs * (-30 + x_abs * x_abs * (15 - 5 * x_abs))),
+            y,
         )
 
         return y

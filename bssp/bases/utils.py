@@ -22,48 +22,46 @@ from bssp.bases.linearbasis import LinearBasis
 from bssp.bases.keysbasis import KeysBasis
 
 basis_map = {
-    'bspline0': BSpline0Basis,
-    'bspline0-sym': BSpline0SymBasis,
-    'bspline1': BSpline1Basis,
-    'bspline2': BSpline2Basis,
-    'bspline3': BSpline3Basis,
-    'bspline4': BSpline4Basis,
-    'bspline5': BSpline5Basis,
-    'bspline6': BSpline6Basis,
-    'bspline7': BSpline7Basis,
-    'bspline8': BSpline8Basis,
-    'bspline9': BSpline9Basis,
-    'omoms0': OMOMS0Basis,
-    'omoms0-sym': OMOMS0SymBasis,
-    'omoms1': OMOMS1Basis,
-    'omoms2': OMOMS2Basis,
-    'omoms2-sym': OMOMS2SymBasis,
-    'omoms3': OMOMS3Basis,
-    'omoms4': OMOMS4Basis,
-    'omoms4-sym': OMOMS4SymBasis,
-    'omoms5': OMOMS5Basis,
-    'nearest': NearestNeighborBasis,
-    'nearest-sym': NearestNeighborSymBasis,
-    'linear': LinearBasis,
-    'keys': KeysBasis,
+    "bspline0": BSpline0Basis,
+    "bspline0-sym": BSpline0SymBasis,
+    "bspline1": BSpline1Basis,
+    "bspline2": BSpline2Basis,
+    "bspline3": BSpline3Basis,
+    "bspline4": BSpline4Basis,
+    "bspline5": BSpline5Basis,
+    "bspline6": BSpline6Basis,
+    "bspline7": BSpline7Basis,
+    "bspline8": BSpline8Basis,
+    "bspline9": BSpline9Basis,
+    "omoms0": OMOMS0Basis,
+    "omoms0-sym": OMOMS0SymBasis,
+    "omoms1": OMOMS1Basis,
+    "omoms2": OMOMS2Basis,
+    "omoms2-sym": OMOMS2SymBasis,
+    "omoms3": OMOMS3Basis,
+    "omoms4": OMOMS4Basis,
+    "omoms4-sym": OMOMS4SymBasis,
+    "omoms5": OMOMS5Basis,
+    "nearest": NearestNeighborBasis,
+    "nearest-sym": NearestNeighborSymBasis,
+    "linear": LinearBasis,
+    "keys": KeysBasis,
 }
 
 
 def create_basis(name: str) -> SplineBasis:
-
     # Check if valid basis name
     valid_names = basis_map.keys()
     if name not in valid_names:
-        valid_name_str = ', '.join([f"'{b}'" for b in valid_names])
+        valid_name_str = ", ".join([f"'{b}'" for b in valid_names])
         raise ValueError(
-            f"Unsupported basis '{name}'. "
-            f"Supported: {valid_name_str}.")
+            f"Unsupported basis '{name}'. " f"Supported: {valid_name_str}."
+        )
 
     return basis_map[name]()
 
 
 def asbasis(basis: Union[str, SplineBasis]) -> SplineBasis:
-
     if isinstance(basis, str):
         return create_basis(name=basis)
     elif isinstance(basis, SplineBasis):

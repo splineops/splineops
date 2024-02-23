@@ -5,9 +5,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class BSpline3Basis(SplineBasis):
-
     def __init__(self):
-
         # Support and poles
         support = 4
         poles = (np.sqrt(3) - 2,)
@@ -18,7 +16,6 @@ class BSpline3Basis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
-
         # Pre-computations
         x_abs = np.abs(x)
 
@@ -29,14 +26,10 @@ class BSpline3Basis(SplineBasis):
         y = np.where(
             np.logical_and(x_abs >= 1, x_abs < 2),
             1 / 6 * (2 - x_abs) * (2 - x_abs) * (2 - x_abs),
-            y
+            y,
         )
 
         # Case |x| < 1 (i.e. 0 <= |x| < 1)
-        y = np.where(
-            x_abs < 1,
-            2 / 3 - 1 / 2 * x_abs * x_abs * (2 - x_abs),
-            y
-        )
+        y = np.where(x_abs < 1, 2 / 3 - 1 / 2 * x_abs * x_abs * (2 - x_abs), y)
 
         return y

@@ -5,7 +5,6 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class BSpline8Basis(SplineBasis):
-
     def __init__(self):
         # Support and poles
         support = 9
@@ -13,7 +12,7 @@ class BSpline8Basis(SplineBasis):
             -0.57468690924876543053013930412874542429066157804125,
             -0.16303526929728093524055189686073705223476814550830,
             -0.023632294694844850023403919296361320612665920854629,
-            -0.00015382131064169091173935253018402160762964054070043
+            -0.00015382131064169091173935253018402160762964054070043,
         )
 
         # Call super constructor
@@ -34,7 +33,7 @@ class BSpline8Basis(SplineBasis):
         y = np.where(
             np.logical_and(x_abs >= 7 / 2, x_abs < 9 / 2),
             1 / 10321920 * (9 - 2 * x_abs) ** 8,
-            y
+            y,
         )
 
         # Case 5/2 <= |x| < 7/2
@@ -42,12 +41,16 @@ class BSpline8Basis(SplineBasis):
         # -((4 x (2 x (2 (x - 15) x + 171) - 879) + 3441) (8 x (x (2 (x - 12) x + 99) - 150) + 321))/1290240
         y = np.where(
             np.logical_and(x_abs >= 5 / 2, x_abs < 7 / 2),
-            -1 / 1290240 * (
-                    (4 * x_abs * (2 * x_abs * (2 * (x_abs - 15) * x_abs + 171)
-                                  - 879) + 3441)
-                    * (8 * x_abs * (x_abs * (2 * (x_abs - 12) * x_abs + 99)
-                                    - 150) + 321)),
-            y
+            -1
+            / 1290240
+            * (
+                (
+                    4 * x_abs * (2 * x_abs * (2 * (x_abs - 15) * x_abs + 171) - 879)
+                    + 3441
+                )
+                * (8 * x_abs * (x_abs * (2 * (x_abs - 12) * x_abs + 99) - 150) + 321)
+            ),
+            y,
         )
 
         # Case 3/2 <= |x| < 5/2
@@ -55,10 +58,34 @@ class BSpline8Basis(SplineBasis):
         # (56 x (2 x (2 x (x (4 x (2 x ((x - 18) x + 135) - 1071) + 9315) - 10143) + 8775) - 13113) + 1306503)/2580480
         y = np.where(
             np.logical_and(x_abs >= 3 / 2, x_abs < 5 / 2),
-            1 / 2580480 * (56 * x_abs * (2 * x_abs * (2 * x_abs * (x_abs * (
-                    4 * x_abs * (2 * x_abs* ((x_abs - 18) * x_abs + 135) - 1071)
-                    + 9315) - 10143) + 8775) - 13113) + 1306503),
-            y
+            1
+            / 2580480
+            * (
+                56
+                * x_abs
+                * (
+                    2
+                    * x_abs
+                    * (
+                        2
+                        * x_abs
+                        * (
+                            x_abs
+                            * (
+                                4
+                                * x_abs
+                                * (2 * x_abs * ((x_abs - 18) * x_abs + 135) - 1071)
+                                + 9315
+                            )
+                            - 10143
+                        )
+                        + 8775
+                    )
+                    - 13113
+                )
+                + 1306503
+            ),
+            y,
         )
 
         # Case 1/2 <= |x| < 3/2
@@ -66,11 +93,34 @@ class BSpline8Basis(SplineBasis):
         # (584361 - 28 x (4 x (x (2 x (2 x (4 x ((x - 9) x + 27) - 63) - 405) - 63) + 3267) - 9))/1290240
         y = np.where(
             np.logical_and(x_abs >= 1 / 2, x_abs < 3 / 2),
-            1 / 1290240 * (584361 - 28 * x_abs * (4 * x_abs * (
-                    x_abs * (2 * x_abs * (2 * x_abs * (
-                        4 * x_abs * ((x_abs - 9) * x_abs + 27)
-                        - 63) - 405) - 63) + 3267) - 9)),
-            y
+            1
+            / 1290240
+            * (
+                584361
+                - 28
+                * x_abs
+                * (
+                    4
+                    * x_abs
+                    * (
+                        x_abs
+                        * (
+                            2
+                            * x_abs
+                            * (
+                                2
+                                * x_abs
+                                * (4 * x_abs * ((x_abs - 9) * x_abs + 27) - 63)
+                                - 405
+                            )
+                            - 63
+                        )
+                        + 3267
+                    )
+                    - 9
+                )
+            ),
+            y,
         )
 
         # Case |x| < 1/2 (i.e., -(1/2) < x < 1/2)
@@ -78,10 +128,14 @@ class BSpline8Basis(SplineBasis):
         # ((16 x^6 - 144 x^4 + 774 x^2 - 2601) x^2)/9216 + 259723/573440
         y = np.where(
             x_abs < 1 / 2,
-            1 / 9216 * (
-                    (16 * x_abs ** 6 - 144 * x_abs ** 4 + 774 * x_abs ** 2
-                     - 2601) * x_abs ** 2) + 259723 / 573440,
-            y
+            1
+            / 9216
+            * (
+                (16 * x_abs**6 - 144 * x_abs**4 + 774 * x_abs**2 - 2601)
+                * x_abs**2
+            )
+            + 259723 / 573440,
+            y,
         )
 
         return y

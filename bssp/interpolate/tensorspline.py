@@ -17,22 +17,20 @@ TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
 
 
 class TensorSpline:
-
     def __init__(
-            self,
-            data: npt.NDArray,
-            # TODO(dperdios): samples?
-            coords: Union[npt.NDArray, Sequence[npt.NDArray]],
-            # TODO(dperdios): coordinates?
-            basis: TSplineBases,
-            # TODO(dperdios): bases?
-            mode: Union[str, Sequence[str]],
-            # TODO(dperdios): modes?
-            # TODO(dperdios): extrapolate? only at evaluation time?
-            # TODO(dperdios): axis? axes? probably complex
-            # TODO(dperdios): optional reduction strategy (e.g., first or last)
+        self,
+        data: npt.NDArray,
+        # TODO(dperdios): samples?
+        coords: Union[npt.NDArray, Sequence[npt.NDArray]],
+        # TODO(dperdios): coordinates?
+        basis: TSplineBases,
+        # TODO(dperdios): bases?
+        mode: Union[str, Sequence[str]],
+        # TODO(dperdios): modes?
+        # TODO(dperdios): extrapolate? only at evaluation time?
+        # TODO(dperdios): axis? axes? probably complex
+        # TODO(dperdios): optional reduction strategy (e.g., first or last)
     ):
-
         # Data
         ndim = data.ndim
         self._ndim = ndim  # TODO(dperdios): public property?
@@ -43,14 +41,13 @@ class TensorSpline:
         #   1-D special case (either `array` or `(array,)`
         if ndim == 1 and len(coords) == len(data):
             # Convert `array` to `(array,)`
-            coords = coords,
+            coords = (coords,)
         if not all(bool(np.all(np.diff(c) > 0)) for c in coords):
             raise ValueError("Coordinates must be strictly ascending.")
         valid_data_shape = tuple([c.size for c in coords])
         if data.shape != valid_data_shape:
             raise ValueError(
-                f"Incompatible data shape. "
-                f"Expected shape: {valid_data_shape}"
+                f"Incompatible data shape. " f"Expected shape: {valid_data_shape}"
             )
         self._coords = coords
         # TODO(dperdios): convert to Python float?
@@ -79,7 +76,7 @@ class TensorSpline:
         self._dtype = dtype
         self._real_dtype = real_dtype
         # TODO(dperdios): integer always int64 or int32? any speed difference?
-        int_dtype_str = f'i{real_dtype.itemsize}'
+        int_dtype_str = f"i{real_dtype.itemsize}"
         int_dtype = np.dtype(int_dtype_str)
         self._int_dtype = int_dtype
 
@@ -95,8 +92,9 @@ class TensorSpline:
         # TODO(dperdios): should we call it extension(s)? mode is quite popular
         if isinstance(mode, str):
             mode = ndim * (mode,)
-        if not (isinstance(mode, abc.Sequence)
-                and all(isinstance(m, str) for m in mode)):
+        if not (
+            isinstance(mode, abc.Sequence) and all(isinstance(m, str) for m in mode)
+        ):
             raise TypeError(f"Must be a sequence of `{str.__name__}`.")
         if len(mode) != ndim:
             raise ValueError(f"Length of the sequence must be {ndim}.")
@@ -118,34 +116,29 @@ class TensorSpline:
 
     # Methods
     def __call__(
-            self,
-            coords: Union[npt.NDArray, Sequence[npt.NDArray]],
-            grid: bool = True,
-            # TODO(dperdios): extrapolate?
+        self,
+        coords: Union[npt.NDArray, Sequence[npt.NDArray]],
+        grid: bool = True,
+        # TODO(dperdios): extrapolate?
     ) -> npt.NDArray:
         return self.eval(coords=coords, grid=grid)
 
     def eval(
-            self,
-            coords: Union[npt.NDArray, Sequence[npt.NDArray]],
-            grid: bool = True
+        self, coords: Union[npt.NDArray, Sequence[npt.NDArray]], grid: bool = True
     ) -> npt.NDArray:
-
         # TODO(dperdios): check dtype and/or cast
         ndim = self._ndim
         if grid:
             if len(coords) != ndim:
                 # TODO(dperdios): Sequence of (..., n) arrays (batch dimensions
                 #   must be the same!)
-                raise ValueError(
-                    f"Must be a {ndim}-length sequence of 1-D arrays.")
+                raise ValueError(f"Must be a {ndim}-length sequence of 1-D arrays.")
             if not all([bool(np.all(np.diff(c, axis=-1) > 0)) for c in coords]):
                 raise ValueError("Coordinates must be strictly ascending.")
         else:
             # If not `grid`, an Array is expected
             if len(coords) != ndim:
-                raise ValueError(
-                    f"Incompatible shape. Expected shape: ({ndim}, ...). ")
+                raise ValueError(f"Incompatible shape. Expected shape: ({ndim}, ...). ")
 
         # Get properties
         real_dtype = self._real_dtype
@@ -164,8 +157,7 @@ class TensorSpline:
         indexes_seq = []
         weights_seq = []
         for coords, basis, mode, data_lim, dx, data_len in zip(
-                coords_seq, basis_seq, mode_seq, bounds_seq, step_seq,
-                length_seq
+            coords_seq, basis_seq, mode_seq, bounds_seq, step_seq, length_seq
         ):
             x_min, x_max = data_lim
 
@@ -182,7 +174,8 @@ class TensorSpline:
             # indexes_shift = np.subtract(indexes, rat_indexes, dtype=real_dtype)
             # shifted_idx = np.subtract(indexes, rat_indexes, dtype=real_dtype)
             shifted_idx = np.subtract(
-                rat_indexes[np.newaxis], indexes, dtype=real_dtype)
+                rat_indexes[np.newaxis], indexes, dtype=real_dtype
+            )
             # TODO(dperdios): casting rules, do we really want it?
             weights = basis(x=shifted_idx)
 
@@ -193,11 +186,11 @@ class TensorSpline:
             bc_l = indexes < 0
             bc_r = indexes > data_len - 1
             bc_lr = np.logical_or(bc_l, bc_r)
-            if mode == 'zero':
+            if mode == "zero":
                 # Set dumb indexes and weights (zero outside support)
                 indexes[bc_lr] = 0  # dumb index
                 weights[bc_lr] = 0
-            elif mode == 'mirror':
+            elif mode == "mirror":
                 len_2 = 2 * data_len - 2
                 if data_len == 1:
                     ii = np.zeros_like(indexes)
@@ -231,10 +224,12 @@ class TensorSpline:
             exp_axis_coeffs_base = exp_axis_ind_base - ndim  # from end TODO: reverse?
             exp_axes = []
             for ii in range(ndim):
-                a = np.concatenate([
-                    np.delete(exp_axis_ind_base, ii),
-                    np.delete(exp_axis_coeffs_base, ii)
-                ])
+                a = np.concatenate(
+                    [
+                        np.delete(exp_axis_ind_base, ii),
+                        np.delete(exp_axis_coeffs_base, ii),
+                    ]
+                )
                 exp_axes.append(tuple(a))
         else:
             exp_axis_base = np.arange(ndim)
@@ -247,8 +242,7 @@ class TensorSpline:
             weights_bc.append(np.expand_dims(weights, axis=a))
         # Note: for interop (CuPy), cannot use prod with a sequence of arrays.
         #  Need explicit stacking before reduction. It is NumPy compatible.
-        weights_tp = np.prod(
-            np.stack(np.broadcast_arrays(*weights_bc), axis=0), axis=0)
+        weights_tp = np.prod(np.stack(np.broadcast_arrays(*weights_bc), axis=0), axis=0)
 
         # Interpolation (convolution via reduction)
         axes_sum = tuple(range(ndim))  # first axes are the indexes
@@ -258,8 +252,8 @@ class TensorSpline:
 
     # TODO(dperdios): should this be a method of the SplineBasis?
     def _compute_support_indexes_1d(
-            self, basis: SplineBasis, ind: npt.NDArray) -> npt.NDArray:
-
+        self, basis: SplineBasis, ind: npt.NDArray
+    ) -> npt.NDArray:
         # Extract property
         int_dtype = self._int_dtype
 
@@ -283,7 +277,6 @@ class TensorSpline:
         return idx
 
     def _compute_coefficients(self, data: npt.NDArray) -> npt.NDArray:
-
         coeffs = np.copy(data)
         axes = tuple(range(coeffs.ndim))
         axes_roll = tuple(np.roll(axes, shift=-1))
@@ -291,7 +284,6 @@ class TensorSpline:
         # TODO(dperdios): could do one less roll by starting with the initial
         #  shape
         for basis, mode in zip(self._bases, self._modes):
-
             # Roll data w.r.t. dimension
             coeffs = np.transpose(coeffs, axes=axes_roll)
 
@@ -299,7 +291,7 @@ class TensorSpline:
             poles = basis.poles
 
             if poles is not None:
-                if mode == 'zero':  # Finite-support coefficients
+                if mode == "zero":  # Finite-support coefficients
                     # CuPy compatibility
                     # TODO(dperdios): could use a CuPy-compatible solver
                     # TODO(dperdios): could use dedicated filters
@@ -334,14 +326,13 @@ class TensorSpline:
                     # CuPy compatibility
                     if need_cupy_compat:
                         # Put back as CuPy array (reusing memory)
-                        coeffs_rs_cp[:] = np.asarray(
-                            coeffs_rs, like=coeffs_rs_cp)
+                        coeffs_rs_cp[:] = np.asarray(coeffs_rs, like=coeffs_rs_cp)
                         coeffs_rs = coeffs_rs_cp
 
                     # Reshape back to original shape
                     coeffs = np.reshape(coeffs_rs, newshape=coeffs_shape)
 
-                elif mode == 'mirror':  # Narrow mirroring
+                elif mode == "mirror":  # Narrow mirroring
                     # coeffs = np.copy(data)
                     # TODO(dperdios): wide mirroring too?
                     # TODO(dperdios): the batched version has an issue for
@@ -351,7 +342,6 @@ class TensorSpline:
                     # _compute_coeffs_narrow_mirror_wg(data=coeffs, poles=poles)
                     _data_to_coeffs(data=coeffs, poles=poles, boundary=mode)
                 else:
-                    raise NotImplementedError(
-                        "Unsupported signal extension mode.")
+                    raise NotImplementedError("Unsupported signal extension mode.")
 
         return coeffs
