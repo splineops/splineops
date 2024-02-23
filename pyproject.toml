@@ -1,0 +1,66 @@
+# https://learn.scientific-python.org/development/guides/packaging-simple/
+
+[build-system]
+requires = [
+    "hatchling",
+    "hatch-vcs",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "bssp"
+description = "B-spline signal processing in N-D with support for GPU computing."
+readme = "README.md"
+license.file = "LICENSE"
+authors = [
+    { name = "Dimitris Perdios" },
+]
+dynamic = ["version"]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy >=1.26",
+    "scipy >=1.11",
+]
+classifiers = [
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Science/Research",
+    "Development Status :: 4 - Beta",
+#    "License :: OSI Approved :: BSD License",  # TODO(dperdios): BSD?
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+urls.download = "https://github.com/dperdios/bssp"  # TODO(dperdios): make public
+#urls.homepage = "https://"  # TODO(dperdios): need a homepage
+
+[project.optional-dependencies]
+#test = [
+#  "pytest >=6.0",
+#]
+visualization = [
+    "matplotlib >=3.8",
+]
+dev = [
+    "bssp[visualization]",
+    "black >=23.10",
+    "hatch >=1.9",
+    "cupy >=12.2",
+]
+
+# Hatch tool: dynamic version from git
+[tool.hatch.version]
+source = "vcs"
+
+# Hatch build
+[tool.hatch.build]
+exclude = [
+    "/doc",
+    "/tests",
+    "/examples",
+]
+#include = [
+#    "/src",
+#]
+packages = [
+    "bssp",
+]

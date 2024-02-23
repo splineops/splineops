@@ -1,3 +1,3 @@
-from bssp import _version
+import importlib.metadata
 
-__version__ = _version.__version__
+__version__ = importlib.metadata.version("bssp")
