@@ -6,6 +6,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 class OMOMS2Basis(SplineBasis):
     def __init__(self) -> None:
+
         # Support and poles
         support = 3
         poles = (1 / 17 * (-43 + 2 * np.sqrt(390)),)
@@ -16,6 +17,7 @@ class OMOMS2Basis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
+
         # Pre-computations
         x_abs = np.abs(x)
 
@@ -43,6 +45,7 @@ class OMOMS2Basis(SplineBasis):
 
 class OMOMS2SymBasis(SplineBasis):
     def __init__(self) -> None:
+
         # Support and poles
         support = 4
         poles = (1 / 17 * (-43 + 2 * np.sqrt(390)),)
@@ -53,6 +56,7 @@ class OMOMS2SymBasis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
+
         # Pre-computations
         x_abs = np.abs(x)
 

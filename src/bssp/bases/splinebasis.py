@@ -59,3 +59,5 @@ class SplineBasis(metaclass=ABCMeta):
     #     from bssp.bases.utils import create_spline_basis
     #     # Note: cannot import this before initializing SplineBasis
     #     return create_spline_basis(name=name)
+
+    # Methods

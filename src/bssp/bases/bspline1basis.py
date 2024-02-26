@@ -6,6 +6,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 class BSpline1Basis(SplineBasis):
     def __init__(self) -> None:
+
         # Support (no poles)
         support = 2
 
@@ -15,6 +16,7 @@ class BSpline1Basis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
+
         # Pre-computations
         x_abs = np.abs(x)
 

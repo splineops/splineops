@@ -71,6 +71,7 @@ class OMOMS4Basis(SplineBasis):
 
 class OMOMS4SymBasis(SplineBasis):
     def __init__(self) -> None:
+
         # Support and poles
         support = 6
         poles = (
@@ -84,6 +85,7 @@ class OMOMS4SymBasis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
+
         # Pre-computations
         x_abs = np.abs(x)
 

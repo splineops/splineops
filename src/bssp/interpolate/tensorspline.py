@@ -31,6 +31,7 @@ class TensorSpline:
         # TODO(dperdios): axis? axes? probably complex
         # TODO(dperdios): optional reduction strategy (e.g., first or last)
     ) -> None:
+
         # Data
         ndim = data.ndim
         self._ndim = ndim  # TODO(dperdios): public property?
@@ -126,6 +127,7 @@ class TensorSpline:
     def eval(
         self, coords: Union[npt.NDArray, Sequence[npt.NDArray]], grid: bool = True
     ) -> npt.NDArray:
+
         # TODO(dperdios): check dtype and/or cast
         ndim = self._ndim
         if grid:
@@ -254,6 +256,7 @@ class TensorSpline:
     def _compute_support_indexes_1d(
         self, basis: SplineBasis, ind: npt.NDArray
     ) -> npt.NDArray:
+
         # Extract property
         int_dtype = self._int_dtype
 
@@ -277,6 +280,8 @@ class TensorSpline:
         return idx
 
     def _compute_coefficients(self, data: npt.NDArray) -> npt.NDArray:
+
+        # Prepare data and axes
         coeffs = np.copy(data)
         axes = tuple(range(coeffs.ndim))
         axes_roll = tuple(np.roll(axes, shift=-1))

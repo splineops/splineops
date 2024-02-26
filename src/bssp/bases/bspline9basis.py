@@ -6,6 +6,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 class BSpline9Basis(SplineBasis):
     def __init__(self) -> None:
+
         # Support and poles
         support = 10
         poles = (
@@ -157,12 +158,7 @@ class BSpline9Basis(SplineBasis):
                 78095
                 - 21
                 * x_abs**2
-                * (
-                    3 * (x_abs - 5) * x_abs**6
-                    + 100 * x_abs**4
-                    - 570 * x_abs**2
-                    + 2100
-                )
+                * (3 * (x_abs - 5) * x_abs**6 + 100 * x_abs**4 - 570 * x_abs**2 + 2100)
             ),
             y,
         )

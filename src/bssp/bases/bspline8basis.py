@@ -6,6 +6,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 class BSpline8Basis(SplineBasis):
     def __init__(self) -> None:
+
         # Support and poles
         support = 9
         poles = (
@@ -21,6 +22,7 @@ class BSpline8Basis(SplineBasis):
     # Methods
     @staticmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
+
         # Pre-computations
         x_abs = np.abs(x)
 
@@ -130,10 +132,7 @@ class BSpline8Basis(SplineBasis):
             x_abs < 1 / 2,
             1
             / 9216
-            * (
-                (16 * x_abs**6 - 144 * x_abs**4 + 774 * x_abs**2 - 2601)
-                * x_abs**2
-            )
+            * ((16 * x_abs**6 - 144 * x_abs**4 + 774 * x_abs**2 - 2601) * x_abs**2)
             + 259723 / 573440,
             y,
         )
