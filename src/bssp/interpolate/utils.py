@@ -1,7 +1,9 @@
 import numpy as np
-import scipy.linalg
+
+# TODO(dperdios): use scipy-stubs (https://github.com/microsoft/python-type-stubs)
+import scipy  # type: ignore
 from numpy import typing as npt
-from typing import Optional
+from typing import Optional, Tuple
 
 
 def _compute_ck_zero_matrix_banded_v1(
@@ -19,8 +21,9 @@ def _compute_ck_zero_matrix_banded_v1(
 
     # Pad data
     # Note: always returns a newly created array (even for m=0)
+    pad_width: Tuple[Tuple[int, int], ...]
     if fk.ndim == 1:
-        pad_width = m, m
+        pad_width = ((m, m),)
     elif fk.ndim == 2:
         pad_width = (m, m), (0, 0)
     else:
@@ -182,7 +185,7 @@ def _compute_coeffs_narrow_mirror_wog(
                 pole * data_it[:, K - k] + (1 - pole) ** 2 * data_it[:, K - 1 - k]
             )
 
-        return data
+    return data
 
 
 def _data_to_coeffs(

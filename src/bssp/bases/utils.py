@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Mapping, Type
 from bssp.bases.splinebasis import SplineBasis
 from bssp.bases.bspline0basis import BSpline0Basis, BSpline0SymBasis
 from bssp.bases.bspline1basis import BSpline1Basis
@@ -21,7 +21,7 @@ from bssp.bases.nearestneighborbasis import NearestNeighborSymBasis
 from bssp.bases.linearbasis import LinearBasis
 from bssp.bases.keysbasis import KeysBasis
 
-basis_map = {
+basis_map: Mapping[str, Type[SplineBasis]] = {
     "bspline0": BSpline0Basis,
     "bspline0-sym": BSpline0SymBasis,
     "bspline1": BSpline1Basis,
@@ -58,7 +58,14 @@ def create_basis(name: str) -> SplineBasis:
             f"Unsupported basis '{name}'. " f"Supported: {valid_name_str}."
         )
 
-    return basis_map[name]()
+    basis = basis_map[name]()  # type: ignore
+    # TODO(dperdios): not easy go get this mapping to work with mypy.
+    #  The type annotation `basis_map: Mapping[str, Type[SplineBasis]]` helps
+    #  (as in https://stackoverflow.com/a/54243383) but the combination with
+    #  mandatory inputs (e.g., `support`) in the constructor may not be
+    #  straightforward.
+
+    return basis
 
 
 def asbasis(basis: Union[str, SplineBasis]) -> SplineBasis:

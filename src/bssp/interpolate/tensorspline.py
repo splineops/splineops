@@ -30,7 +30,7 @@ class TensorSpline:
         # TODO(dperdios): extrapolate? only at evaluation time?
         # TODO(dperdios): axis? axes? probably complex
         # TODO(dperdios): optional reduction strategy (e.g., first or last)
-    ):
+    ) -> None:
         # Data
         ndim = data.ndim
         self._ndim = ndim  # TODO(dperdios): public property?
@@ -38,8 +38,8 @@ class TensorSpline:
         # TODO(dperdios): optional coordinates?
         # TODO(dperdios): add some tests on the type of `coords`
         # Coordinates
-        #   1-D special case (either `array` or `(array,)`
-        if ndim == 1 and len(coords) == len(data):
+        #   1-D special case (either `array` or `(array,)`)
+        if isinstance(coords, np.ndarray) and ndim == 1 and len(coords) == len(data):
             # Convert `array` to `(array,)`
             coords = (coords,)
         if not all(bool(np.all(np.diff(c) > 0)) for c in coords):
@@ -56,15 +56,15 @@ class TensorSpline:
         self._bounds = bounds
         lengths = valid_data_shape
         self._lengths = lengths
-        steps = []
+        step_seq = []
         for b, l in zip(bounds, lengths):
             if l > 1:
                 step = (b[-1] - b[0]) / (l - 1)
             else:
                 # Special case for single-sample signal
                 step = 1
-            steps.append(step)
-        steps = tuple(steps)  # TODO: convert dtype? (can be promoted)
+            step_seq.append(step)
+        steps = tuple(step_seq)  # TODO: convert dtype? (can be promoted)
         self._steps = steps
         # TODO(dperdios): cast scalars to real_dtype?
 
@@ -193,13 +193,13 @@ class TensorSpline:
             elif mode == "mirror":
                 len_2 = 2 * data_len - 2
                 if data_len == 1:
-                    ii = np.zeros_like(indexes)
+                    idx = np.zeros_like(indexes)
                 else:
                     # Sawtooth
-                    ii = indexes / len_2 - np.floor(indexes / len_2 + 0.5)
-                    ii = np.round(len_2 * np.abs(ii))
+                    idx = indexes / len_2 - np.floor(indexes / len_2 + 0.5)
+                    idx = np.round(len_2 * np.abs(idx))
                     # ii = np.round(len_2 * np.abs(indexes / len_2 - np.floor(indexes / len_2 + 0.5)))
-                indexes[:] = ii
+                indexes[:] = idx
             else:
                 # TODO: generic handling of BC errors
                 raise NotImplementedError("Unsupported signal extension mode.")
@@ -306,8 +306,10 @@ class TensorSpline:
                     # CuPy compatibility
                     if need_cupy_compat:
                         # Get as NumPy array
+                        # TODO(dperdios): should be handled more properly than
+                        #  just silencing the CuPy type
                         coeffs_rs_cp = coeffs_rs
-                        coeffs_rs = coeffs_rs_cp.get()
+                        coeffs_rs = coeffs_rs_cp.get()  # type: ignore
 
                     # Prepare banded
                     m = (basis.support - 1) // 2

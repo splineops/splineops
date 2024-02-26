@@ -7,7 +7,7 @@ import numpy.typing as npt
 
 # TODO(dperdios): Naming BSplineBasis? What about OMOMS or others?
 class SplineBasis(metaclass=ABCMeta):
-    def __init__(self, support: int, poles: Optional[Sequence[Real]] = None):
+    def __init__(self, support: int, poles: Optional[Sequence[float]] = None) -> None:
         # Support
         # TODO(dperdios): should consider renaming it? Support is a measure of
         #  the smallest interval in which φ(x) ≠ 0. When implementing the sym

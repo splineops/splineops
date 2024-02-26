@@ -5,7 +5,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class BSpline1Basis(SplineBasis):
-    def __init__(self):
+    def __init__(self) -> None:
         # Support (no poles)
         support = 2
 

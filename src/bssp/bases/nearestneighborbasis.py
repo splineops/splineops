@@ -5,7 +5,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class NearestNeighborBasis(SplineBasis):
-    def __init__(self):
+    def __init__(self) -> None:
         # Support (no poles)
         support = 1
 
@@ -32,7 +32,7 @@ class NearestNeighborBasis(SplineBasis):
 
 
 class NearestNeighborSymBasis(SplineBasis):
-    def __init__(self):
+    def __init__(self) -> None:
         # Support (no poles)
         support = 1
 

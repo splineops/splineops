@@ -5,7 +5,7 @@ from bssp.bases.splinebasis import SplineBasis
 
 
 class OMOMS4Basis(SplineBasis):
-    def __init__(self):
+    def __init__(self) -> None:
         # Support and poles
         support = 5
         poles = (
@@ -70,7 +70,7 @@ class OMOMS4Basis(SplineBasis):
 
 
 class OMOMS4SymBasis(SplineBasis):
-    def __init__(self):
+    def __init__(self) -> None:
         # Support and poles
         support = 6
         poles = (
