@@ -62,5 +62,5 @@ exclude = [
 #    "/src",
 #]
 packages = [
-    "bssp",
+    "src/bssp",
 ]
