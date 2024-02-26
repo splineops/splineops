@@ -170,7 +170,7 @@ class TensorSpline:
             # rat_indexes = (coords - x_min) * fs
             rat_indexes = (coords - x_min) / dx
             #   Compute corresponding integer indexes (including support)
-            indexes = self._compute_support_indexes_1d(basis=basis, ind=rat_indexes)
+            indexes = basis.compute_support_indexes(x=rat_indexes)
 
             # Evaluate basis function (interpolation weights)
             # indexes_shift = np.subtract(indexes, rat_indexes, dtype=real_dtype)
@@ -251,33 +251,6 @@ class TensorSpline:
         data = np.sum(coeffs[tuple(indexes_bc)] * weights_tp, axis=axes_sum)
 
         return data
-
-    # TODO(dperdios): should this be a method of the SplineBasis?
-    def _compute_support_indexes_1d(
-        self, basis: SplineBasis, ind: npt.NDArray
-    ) -> npt.NDArray:
-
-        # Extract property
-        int_dtype = self._int_dtype
-
-        # Span and offset
-        support = basis.support
-        idx_offset = 0.5 if support & 1 else 0.0  # offset for odd support
-        idx_span = np.arange(support, dtype=int_dtype, like=ind)
-        idx_span -= (support - 1) // 2
-
-        # Floor rational indexes and convert to integers
-        # ind_fl = np.array(np.floor(ind + self._idx_offset), dtype=int_dtype)
-        ind_fl = (np.floor(ind + idx_offset)).astype(dtype=int_dtype)
-
-        # TODO(dperdios): check fastest axis for computations
-        # First axis
-        _ns = tuple([support] + ind_fl.ndim * [1])
-        idx = ind_fl + np.reshape(idx_span, _ns)
-        # # Last axis
-        # idx = ind_fl[..., np.newaxis] + idx_span
-
-        return idx
 
     def _compute_coefficients(self, data: npt.NDArray) -> npt.NDArray:
 

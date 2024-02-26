@@ -3,11 +3,13 @@ from typing import Sequence, Optional
 from numbers import Real
 from collections import abc
 import numpy.typing as npt
+import numpy as np
 
 
 # TODO(dperdios): Naming BSplineBasis? What about OMOMS or others?
 class SplineBasis(metaclass=ABCMeta):
     def __init__(self, support: int, poles: Optional[Sequence[float]] = None) -> None:
+
         # Support
         # TODO(dperdios): should consider renaming it? Support is a measure of
         #  the smallest interval in which φ(x) ≠ 0. When implementing the sym
@@ -61,3 +63,23 @@ class SplineBasis(metaclass=ABCMeta):
     #     return create_spline_basis(name=name)
 
     # Methods
+    def compute_support_indexes(self, x: npt.NDArray) -> npt.NDArray:
+
+        # Span and offset
+        support = self.support
+        idx_offset = 0.5 if support & 1 else 0.0  # offset for odd support
+        idx_span = np.arange(support, like=x)
+        idx_span -= (support - 1) // 2
+
+        # Floor rational indexes and convert to integers
+        # ind_fl = np.array(np.floor(ind + self._idx_offset), dtype=int_dtype)
+        ind_fl = np.array(np.floor(x + idx_offset), dtype=idx_span.dtype, like=idx_span)
+
+        # TODO(dperdios): check fastest axis for computations
+        # First axis
+        _ns = tuple([support] + ind_fl.ndim * [1])
+        idx = ind_fl + np.reshape(idx_span, _ns)
+        # # Last axis
+        # idx = ind_fl[..., np.newaxis] + idx_span
+
+        return idx
