@@ -1,19 +1,16 @@
 import numpy as np
 import numpy.typing as npt
-from typing import Optional, Sequence, Union, Tuple
-from collections import abc
+from typing import Sequence, Union, Tuple
 
 from bssp.bases.splinebasis import SplineBasis
-from bssp.interpolate.utils import _compute_ck_zero_matrix_banded_v1
-from bssp.interpolate.utils import _compute_ck_zero_matrix_banded_v2
-from bssp.interpolate.utils import _compute_coeffs_narrow_mirror_wg
-from bssp.interpolate.utils import _data_to_coeffs
-
 from bssp.bases.utils import asbasis
-from bssp.utils.interop import is_cupy_type
+from bssp.modes.extensionmode import ExtensionMode
+from bssp.modes.utils import asmode
 
 TSplineBasis = Union[SplineBasis, str]
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
+TExtensionMode = Union[ExtensionMode, str]
+TExtensionModes = Union[TExtensionMode, Sequence[TExtensionMode]]
 
 
 class TensorSpline:
@@ -25,7 +22,7 @@ class TensorSpline:
         # TODO(dperdios): coordinates?
         basis: TSplineBases,
         # TODO(dperdios): bases?
-        mode: Union[str, Sequence[str]],
+        mode: TExtensionModes,
         # TODO(dperdios): modes?
         # TODO(dperdios): extrapolate? only at evaluation time?
         # TODO(dperdios): axis? axes? probably complex
@@ -38,6 +35,7 @@ class TensorSpline:
 
         # TODO(dperdios): optional coordinates?
         # TODO(dperdios): add some tests on the type of `coords`
+        # TODO(dperdios): `coords` need to define a uniform grid
         # Coordinates
         #   1-D special case (either `array` or `(array,)`)
         if isinstance(coords, np.ndarray) and ndim == 1 and len(coords) == len(data):
@@ -77,6 +75,7 @@ class TensorSpline:
         self._dtype = dtype
         self._real_dtype = real_dtype
         # TODO(dperdios): integer always int64 or int32? any speed difference?
+        #  Note: may even be dangerous to use indexes of type int16 for instance
         int_dtype_str = f"i{real_dtype.itemsize}"
         int_dtype = np.dtype(int_dtype_str)
         self._int_dtype = int_dtype
@@ -90,16 +89,12 @@ class TensorSpline:
         self._bases = tuple(bases)
 
         # Modes
-        # TODO(dperdios): should we call it extension(s)? mode is quite popular
-        if isinstance(mode, str):
+        if isinstance(mode, (ExtensionMode, str)):
             mode = ndim * (mode,)
-        if not (
-            isinstance(mode, abc.Sequence) and all(isinstance(m, str) for m in mode)
-        ):
-            raise TypeError(f"Must be a sequence of `{str.__name__}`.")
-        if len(mode) != ndim:
+        modes = [asmode(m) for m in mode]
+        if len(modes) != ndim:
             raise ValueError(f"Length of the sequence must be {ndim}.")
-        self._modes = mode
+        self._modes = tuple(modes)
 
         # Compute coefficients
         coeffs = self._compute_coefficients(data=data)
@@ -161,6 +156,8 @@ class TensorSpline:
         for coords, basis, mode, data_lim, dx, data_len in zip(
             coords_seq, basis_seq, mode_seq, bounds_seq, step_seq, length_seq
         ):
+
+            # Data limits
             x_min, x_max = data_lim
 
             # Indexes
@@ -182,38 +179,16 @@ class TensorSpline:
             weights = basis(x=shifted_idx)
 
             # Signal extension
-            # valid = np.logical_and(coords >= x_min, coords <= x_max)
-            # bc_l = np.logical_and(valid, indexes < 0)
-            # bc_r = np.logical_and(valid, indexes >= data_len)  # TODO: >= or >?
-            bc_l = indexes < 0
-            bc_r = indexes > data_len - 1
-            bc_lr = np.logical_or(bc_l, bc_r)
-            if mode == "zero":
-                # Set dumb indexes and weights (zero outside support)
-                indexes[bc_lr] = 0  # dumb index
-                weights[bc_lr] = 0
-            elif mode == "mirror":
-                len_2 = 2 * data_len - 2
-                if data_len == 1:
-                    idx = np.zeros_like(indexes)
-                else:
-                    # Sawtooth
-                    idx = indexes / len_2 - np.floor(indexes / len_2 + 0.5)
-                    idx = np.round(len_2 * np.abs(idx))
-                    # ii = np.round(len_2 * np.abs(indexes / len_2 - np.floor(indexes / len_2 + 0.5)))
-                indexes[:] = idx
-            else:
-                # TODO: generic handling of BC errors
-                raise NotImplementedError("Unsupported signal extension mode.")
+            indexes_ext, weights_ext = mode.extend_signal(
+                indexes=indexes, weights=weights, length=data_len
+            )
+
+            # TODO(dperdios): Add extrapolate handling?
+            # weights[idx_extra] = cval ?? or within extend_signal?
 
             # Store
-            indexes_seq.append(indexes)
-            weights_seq.append(weights)
-
-            # TODO(dperdios): remove out of bounds values (e.g., for mirror)?
-            #  related to extrapolate
-            # indexes *= valid
-            # weights *= valid
+            indexes_seq.append(indexes_ext)
+            weights_seq.append(weights_ext)
 
         # Broadcast arrays for tensor product
         if grid:
@@ -247,6 +222,7 @@ class TensorSpline:
         weights_tp = np.prod(np.stack(np.broadcast_arrays(*weights_bc), axis=0), axis=0)
 
         # Interpolation (convolution via reduction)
+        # TODO(dperdios): might want to change the default reduction axis
         axes_sum = tuple(range(ndim))  # first axes are the indexes
         data = np.sum(coeffs[tuple(indexes_bc)] * weights_tp, axis=axes_sum)
 
@@ -255,6 +231,7 @@ class TensorSpline:
     def _compute_coefficients(self, data: npt.NDArray) -> npt.NDArray:
 
         # Prepare data and axes
+        # TODO(dperdios): there is probably too many copies along this process
         coeffs = np.copy(data)
         axes = tuple(range(coeffs.ndim))
         axes_roll = tuple(np.roll(axes, shift=-1))
@@ -262,66 +239,11 @@ class TensorSpline:
         # TODO(dperdios): could do one less roll by starting with the initial
         #  shape
         for basis, mode in zip(self._bases, self._modes):
+
             # Roll data w.r.t. dimension
             coeffs = np.transpose(coeffs, axes=axes_roll)
 
-            # Get poles
-            poles = basis.poles
-
-            if poles is not None:
-                if mode == "zero":  # Finite-support coefficients
-                    # CuPy compatibility
-                    # TODO(dperdios): could use a CuPy-compatible solver
-                    # TODO(dperdios): could use dedicated filters
-                    #  Note: this would depend on the degree of the bspline
-                    need_cupy_compat = is_cupy_type(data)
-
-                    # Reshape for batch-processing
-                    coeffs_shape = coeffs.shape
-                    coeffs_ns = -1, coeffs.shape[-1]
-                    coeffs_rs = np.reshape(coeffs, newshape=coeffs_ns)
-
-                    # CuPy compatibility
-                    if need_cupy_compat:
-                        # Get as NumPy array
-                        # TODO(dperdios): should be handled more properly than
-                        #  just silencing the CuPy type
-                        coeffs_rs_cp = coeffs_rs
-                        coeffs_rs = coeffs_rs_cp.get()  # type: ignore
-
-                    # Prepare banded
-                    m = (basis.support - 1) // 2
-                    bk = basis(np.arange(-m, m + 1))
-
-                    # Compute coefficients (banded solver to be generic)
-                    coeffs_rs = _compute_ck_zero_matrix_banded_v1(bk=bk, fk=coeffs_rs.T)
-                    # TODO(dperdios): the v2 only has an issue for
-                    #  a single-sample signal.
-                    #  Note: v2 is probably slightly faster as it does not need
-                    #  to create the sub-matrices.
-                    # coeffs = _compute_ck_zero_matrix_banded_v2(bk=bk, fk=data)
-                    #   Transpose back
-                    coeffs_rs = coeffs_rs.T
-
-                    # CuPy compatibility
-                    if need_cupy_compat:
-                        # Put back as CuPy array (reusing memory)
-                        coeffs_rs_cp[:] = np.asarray(coeffs_rs, like=coeffs_rs_cp)
-                        coeffs_rs = coeffs_rs_cp
-
-                    # Reshape back to original shape
-                    coeffs = np.reshape(coeffs_rs, newshape=coeffs_shape)
-
-                elif mode == "mirror":  # Narrow mirroring
-                    # coeffs = np.copy(data)
-                    # TODO(dperdios): wide mirroring too?
-                    # TODO(dperdios): the batched version has an issue for
-                    #  a single-sample signal (anti-causal init). There is also
-                    #  an issue for the boundary condition with single-sample
-                    #  signals for the mirror case.
-                    # _compute_coeffs_narrow_mirror_wg(data=coeffs, poles=poles)
-                    _data_to_coeffs(data=coeffs, poles=poles, boundary=mode)
-                else:
-                    raise NotImplementedError("Unsupported signal extension mode.")
+            # Compute coefficients w.r.t. extension `mode` and `basis`
+            coeffs = mode.compute_coefficients(data=coeffs, basis=basis)
 
         return coeffs
