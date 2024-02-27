@@ -43,8 +43,8 @@ dev = [
     "mypy >=1.8",
     "tox >=4.13",
     "hatch >=1.9",
-    "cupy >=12.2",
     "pytest >=6.0",
+    "cupy >=12.2",
 ]
 
 # Hatch tool: dynamic version from git

@@ -4,19 +4,51 @@
 
 B-spline signal processing in N-D with support for GPU computing.
 
-## Packaging
+## Formatting, type checking, and testing
+
+Formatting and type checking is performed using the following commands.
 
 ```shell
-hatch build -t wheel 
+tox -e format
+tox -e type
+```
+
+Testing with the following one.
+
+```shell
+tox
+```
+
+## Packaging
+
+Using `tox` (preferred)
+
+```shell
+tox -e build
+```
+
+Using `hatch`
+
+```shell
+hatch build -t wheel
 ```
 
 ## Dependencies (dev)
 
+Fastest way to install dependencies for dev.
+**TODO:** would probably be simpler to also use `tox` with `mamba`
+(using `tox-conda`).
+
 ```shell
-conda install -c conda-forge cupy numpy scipy matplotlib black hatch
-conda install -c conda-forge cupy cuda-version=12.2
+mamba install cupy numpy scipy black mypy tox hatch pytest
 ```
 
+If a specific CUDA version is required
+```shell
+mamba install cupy cuda-version=12.3
+```
+
+Other CuPy libraries
 [CuPy from Conda-Force](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge)
 
 ```shell
