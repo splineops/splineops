@@ -34,9 +34,6 @@ urls.download = "https://github.com/dperdios/bssp"  # TODO(dperdios): make publi
 #urls.homepage = "https://"  # TODO(dperdios): need a homepage
 
 [project.optional-dependencies]
-#test = [
-#  "pytest >=6.0",
-#]
 visualization = [
     "matplotlib >=3.8",
 ]
@@ -47,6 +44,7 @@ dev = [
     "tox >=4.13",
     "hatch >=1.9",
     "cupy >=12.2",
+    "pytest >=6.0",
 ]
 
 # Hatch tool: dynamic version from git
@@ -65,4 +63,15 @@ exclude = [
 #]
 packages = [
     "src/bssp",
+]
+
+# Tests: pytest config
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = ["error"]
+log_cli_level = "info"
+testpaths = [
+  "tests",
 ]
