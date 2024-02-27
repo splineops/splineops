@@ -7,13 +7,13 @@ from bssp.bases.splinebasis import SplineBasis
 class KeysBasis(SplineBasis):
     def __init__(self) -> None:
 
-        # Support (no poles)
+        # Support and degree (no poles)
         support = 4
-
-        # TODO(dperdios): degree = support - 2 only for a=-1/2
+        degree = 2
+        # TODO(dperdios): degree = 2 only for a=-1/2 (fixed for now)
 
         # Call super constructor
-        super(KeysBasis, self).__init__(support=support)
+        super(KeysBasis, self).__init__(support=support, degree=degree)
 
     # Methods
     @staticmethod

@@ -8,7 +8,9 @@ import numpy as np
 
 # TODO(dperdios): Naming BSplineBasis? What about OMOMS or others?
 class SplineBasis(metaclass=ABCMeta):
-    def __init__(self, support: int, poles: Optional[Sequence[float]] = None) -> None:
+    def __init__(
+        self, support: int, degree: int, poles: Optional[Sequence[float]] = None
+    ) -> None:
 
         # Support
         # TODO(dperdios): should consider renaming it? Support is a measure of
@@ -19,9 +21,10 @@ class SplineBasis(metaclass=ABCMeta):
         self._support = support
 
         # Degree
-        # TODO(dperdios): this is not always true (e.g., for Keys or bspline0sym)
         # TODO(dperdios): could be removed for now (as not used at all)
-        self._degree = support - 1
+        if not isinstance(degree, int):
+            raise ValueError("Must be an integer.")
+        self._degree = degree
 
         # Poles
         if poles is not None:

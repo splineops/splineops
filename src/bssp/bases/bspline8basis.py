@@ -7,8 +7,9 @@ from bssp.bases.splinebasis import SplineBasis
 class BSpline8Basis(SplineBasis):
     def __init__(self) -> None:
 
-        # Support and poles
+        # Support, degree and poles
         support = 9
+        degree = support - 1
         poles = (
             -0.57468690924876543053013930412874542429066157804125,
             -0.16303526929728093524055189686073705223476814550830,
@@ -17,7 +18,7 @@ class BSpline8Basis(SplineBasis):
         )
 
         # Call super constructor
-        super(BSpline8Basis, self).__init__(support=support, poles=poles)
+        super(BSpline8Basis, self).__init__(support=support, degree=degree, poles=poles)
 
     # Methods
     @staticmethod

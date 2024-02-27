@@ -7,15 +7,16 @@ from bssp.bases.splinebasis import SplineBasis
 class BSpline4Basis(SplineBasis):
     def __init__(self) -> None:
 
-        # Support and poles
+        # Support, degree and poles
         support = 5
+        degree = support - 1
         poles = (
             np.sqrt(664 - np.sqrt(438976)) + np.sqrt(304) - 19,
             np.sqrt(664 + np.sqrt(438976)) - np.sqrt(304) - 19,
         )
 
         # Call super constructor
-        super(BSpline4Basis, self).__init__(support=support, poles=poles)
+        super(BSpline4Basis, self).__init__(support=support, degree=degree, poles=poles)
 
     # Methods
     @staticmethod

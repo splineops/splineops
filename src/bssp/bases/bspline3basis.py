@@ -7,12 +7,13 @@ from bssp.bases.splinebasis import SplineBasis
 class BSpline3Basis(SplineBasis):
     def __init__(self) -> None:
 
-        # Support and poles
+        # Support, degree and poles
         support = 4
+        degree = support - 1
         poles = (np.sqrt(3) - 2,)
 
         # Call super constructor
-        super(BSpline3Basis, self).__init__(support=support, poles=poles)
+        super(BSpline3Basis, self).__init__(support=support, degree=degree, poles=poles)
 
     # Methods
     @staticmethod

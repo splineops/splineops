@@ -6,15 +6,17 @@ from bssp.bases.splinebasis import SplineBasis
 
 class OMOMS4Basis(SplineBasis):
     def __init__(self) -> None:
-        # Support and poles
+
+        # Support, degree and poles
         support = 5
+        degree = support - 1
         poles = (
             -0.41054918579562752416839060105906234069704122255321,
             -0.031684909102441435136285669435572248017432995194835,
         )
 
         # Call super constructor
-        super(OMOMS4Basis, self).__init__(support=support, poles=poles)
+        super(OMOMS4Basis, self).__init__(support=support, degree=degree, poles=poles)
 
     # Methods
     @staticmethod
@@ -72,15 +74,18 @@ class OMOMS4Basis(SplineBasis):
 class OMOMS4SymBasis(SplineBasis):
     def __init__(self) -> None:
 
-        # Support and poles
+        # Support, degree and poles
         support = 6
+        degree = support - 1
         poles = (
             -0.41054918579562752416839060105906234069704122255321,
             -0.031684909102441435136285669435572248017432995194835,
         )
 
         # Call super constructor
-        super(OMOMS4SymBasis, self).__init__(support=support, poles=poles)
+        super(OMOMS4SymBasis, self).__init__(
+            support=support, degree=degree, poles=poles
+        )
 
     # Methods
     @staticmethod
