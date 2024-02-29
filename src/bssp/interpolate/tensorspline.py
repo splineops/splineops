@@ -1,11 +1,12 @@
 import numpy as np
 import numpy.typing as npt
-from typing import Sequence, Union, Tuple
+from typing import Sequence, Union, Tuple, cast
 
 from bssp.bases.splinebasis import SplineBasis
 from bssp.bases.utils import asbasis
 from bssp.modes.extensionmode import ExtensionMode
 from bssp.modes.utils import asmode
+from bssp.utils.interop import is_ndarray
 
 TSplineBasis = Union[SplineBasis, str]
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
@@ -38,7 +39,9 @@ class TensorSpline:
         # TODO(dperdios): `coords` need to define a uniform grid
         # Coordinates
         #   1-D special case (either `array` or `(array,)`)
-        if isinstance(coords, np.ndarray) and ndim == 1 and len(coords) == len(data):
+        if is_ndarray(coords) and ndim == 1 and len(coords) == len(data):
+            # Note: we explicitly cast the type to NDarray
+            coords = cast(npt.NDArray, coords)
             # Convert `array` to `(array,)`
             coords = (coords,)
         if not all(bool(np.all(np.diff(c) > 0)) for c in coords):
@@ -123,19 +126,37 @@ class TensorSpline:
         self, coords: Union[npt.NDArray, Sequence[npt.NDArray]], grid: bool = True
     ) -> npt.NDArray:
 
-        # TODO(dperdios): check dtype and/or cast
+        # Check coordinates
         ndim = self._ndim
         if grid:
+            # Special 1-D case: "default" grid=True with a 1-D `coords` NDArray
+            if is_ndarray(coords):
+                # Note: we explicitly cast the type to NDarray
+                coords = cast(npt.NDArray, coords)
+                if ndim == 1 and coords.ndim == 1:
+                    coords = (coords,)
+            # N-D cases
             if len(coords) != ndim:
                 # TODO(dperdios): Sequence of (..., n) arrays (batch dimensions
                 #   must be the same!)
                 raise ValueError(f"Must be a {ndim}-length sequence of 1-D arrays.")
             if not all([bool(np.all(np.diff(c, axis=-1) > 0)) for c in coords]):
+                # TODO(dperdios): do they really need to be ascending?
                 raise ValueError("Coordinates must be strictly ascending.")
         else:
-            # If not `grid`, an Array is expected
-            if len(coords) != ndim:
-                raise ValueError(f"Incompatible shape. Expected shape: ({ndim}, ...). ")
+            # If not `grid`, a sequence of arrays is expected with a length
+            #  equal to the number of dimensions. Each array in the sequence
+            #  must be of the same shape.
+            coords_shapes = [c.shape for c in coords]
+            if len(coords) != ndim or len(set(coords_shapes)) != 1:
+                raise ValueError(
+                    f"Incompatible sequence of coordinates. "
+                    f"Must be a {ndim}-length sequence of same-shape N-D arrays. "
+                    f"Current sequence of array shapes: {coords_shapes}."
+                )
+
+        if not all(np.isrealobj(c) for c in coords):
+            raise ValueError("Must be an real numbers.")
 
         # Get properties
         real_dtype = self._real_dtype

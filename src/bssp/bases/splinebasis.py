@@ -50,6 +50,11 @@ class SplineBasis(metaclass=ABCMeta):
 
     # Methods
     def __call__(self, x: npt.NDArray) -> npt.NDArray:
+
+        # Check input
+        if not np.isrealobj(x):
+            raise ValueError("Must be an array of real numbers.")
+
         return self.eval(x=x)
 
     # Abstract methods
@@ -67,6 +72,10 @@ class SplineBasis(metaclass=ABCMeta):
 
     # Methods
     def compute_support_indexes(self, x: npt.NDArray) -> npt.NDArray:
+
+        # Check input
+        if not np.isrealobj(x):
+            raise ValueError("Must be an array of real numbers.")
 
         # Span and offset
         support = self.support
