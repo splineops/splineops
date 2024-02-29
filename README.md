@@ -19,6 +19,9 @@ Testing with the following one.
 tox
 ```
 
+*IMPORTANT:* Since not CI is implemented for now, make sure to run and pass/fix
+`tox -e format`, `tox -e type` and `tox`.
+
 ## Packaging
 
 Using `tox` (preferred)
@@ -33,14 +36,18 @@ Using `hatch`
 hatch build -t wheel
 ```
 
-## Dependencies (dev)
+## Development environment
 
-Fastest way to install dependencies for dev.
-**TODO:** would probably be simpler to also use `tox` with `mamba`
-(using `tox-conda`).
+Easiest way to install dev dependencies
 
 ```shell
-mamba install cupy numpy scipy black mypy tox hatch pytest
+mamba install cupy numpy scipy black mypy tox hatch pytest matplotlib
+```
+
+Install `bssp` in editable mode
+
+```shell
+pip install -e .
 ```
 
 If a specific CUDA version is required
@@ -48,9 +55,9 @@ If a specific CUDA version is required
 mamba install cupy cuda-version=12.3
 ```
 
-Other CuPy libraries
-[CuPy from Conda-Force](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge)
+Potential other CuPy libraries
+([CuPy from Conda-Forge](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge))
 
 ```shell
-conda install -c conda-forge cupy cutensor cudnn nccl
+mamba install cupy cutensor cudnn nccl
 ```
