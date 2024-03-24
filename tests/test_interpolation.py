@@ -24,7 +24,8 @@ def test_interpolate_cardinal_spline(
         # Note: this is not super robust but does the job
         pad_right = 100 * pad_right
     pad_right = int(np.ceil(pad_right) // 2 * 2 + 1)  # next odd
-    coords_1d = np.arange(-pad_right, pad_right + 1)
+    real_dtype = np.array([1], dtype=dtype).real.dtype
+    coords_1d = np.arange(-pad_right, pad_right + 1, dtype=real_dtype)
     coords = (coords_1d,)
     dirac_val = 1
     data = np.zeros(len(coords_1d), dtype=dtype)

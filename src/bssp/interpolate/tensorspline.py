@@ -31,6 +31,8 @@ class TensorSpline:
     ) -> None:
 
         # Data
+        if not is_ndarray(data):
+            raise TypeError("Must be an array.")
         ndim = data.ndim
         self._ndim = ndim  # TODO(dperdios): public property?
 
@@ -40,7 +42,7 @@ class TensorSpline:
         # Coordinates
         #   1-D special case (either `array` or `(array,)`)
         if is_ndarray(coords) and ndim == 1 and len(coords) == len(data):
-            # Note: we explicitly cast the type to NDarray
+            # Note: we explicitly cast the type to NDArray
             coords = cast(npt.NDArray, coords)
             # Convert `array` to `(array,)`
             coords = (coords,)
@@ -51,7 +53,11 @@ class TensorSpline:
             raise ValueError(
                 f"Incompatible data shape. " f"Expected shape: {valid_data_shape}"
             )
+        if not all(np.isrealobj(c) for c in coords):
+            raise ValueError("Must be sequence of real numbers.")
         self._coords = coords
+
+        # Pre-computation based on coordinates
         # TODO(dperdios): convert to Python float?
         bounds = tuple([(c[0], c[-1]) for c in coords])
         # TODO(dperdios): `bounds` as a public property?
@@ -71,17 +77,26 @@ class TensorSpline:
         # TODO(dperdios): cast scalars to real_dtype?
 
         # DTypes
-        # TODO(dperdios): coords dtype
-        # TODO(dperdios): data dtype must be float (for direct filtering)
         dtype = data.dtype
+        if not (
+            np.issubdtype(dtype, np.floating)
+            or np.issubdtype(dtype, np.complexfloating)
+        ):
+            raise ValueError("Data must be an array of floating point numbers.")
         real_dtype = data.real.dtype
+        coords_dtype_seq = tuple(c.dtype for c in coords)
+        if len(set(coords_dtype_seq)) != 1:
+            raise ValueError(
+                "Incompatible dtypes in sequence of coordinates. "
+                "Expected a consistent dtype. "
+                f"Received different dtypes: {tuple(d.name for d in coords_dtype_seq)}"
+            )
+        coords_dtype = coords_dtype_seq[0]
+        if coords_dtype.itemsize != real_dtype.itemsize:
+            # TODO(dperdios): maybe automatic cast in the future?
+            raise ValueError("Coordinates and data have different floating precisions.")
         self._dtype = dtype
         self._real_dtype = real_dtype
-        # TODO(dperdios): integer always int64 or int32? any speed difference?
-        #  Note: may even be dangerous to use indexes of type int16 for instance
-        int_dtype_str = f"i{real_dtype.itemsize}"
-        int_dtype = np.dtype(int_dtype_str)
-        self._int_dtype = int_dtype
 
         # Bases
         if isinstance(basis, (SplineBasis, str)):
@@ -112,6 +127,10 @@ class TensorSpline:
     @property
     def bases(self) -> Tuple[SplineBasis, ...]:
         return self._bases
+
+    @property
+    def modes(self) -> Tuple[ExtensionMode, ...]:
+        return self._modes
 
     # Methods
     def __call__(
@@ -154,9 +173,8 @@ class TensorSpline:
                     f"Must be a {ndim}-length sequence of same-shape N-D arrays. "
                     f"Current sequence of array shapes: {coords_shapes}."
                 )
-
         if not all(np.isrealobj(c) for c in coords):
-            raise ValueError("Must be an real numbers.")
+            raise ValueError("Must be a sequence of real numbers.")
 
         # Get properties
         real_dtype = self._real_dtype
@@ -189,6 +207,8 @@ class TensorSpline:
             rat_indexes = (coords - x_min) / dx
             #   Compute corresponding integer indexes (including support)
             indexes = basis.compute_support_indexes(x=rat_indexes)
+            # TODO(dperdios): specify dtype in compute_support_indexes? cast dtype here?
+            #  int32 faster than int64? probably not
 
             # Evaluate basis function (interpolation weights)
             # indexes_shift = np.subtract(indexes, rat_indexes, dtype=real_dtype)
