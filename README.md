@@ -19,7 +19,7 @@ Testing with the following one.
 tox
 ```
 
-*IMPORTANT:* Since not CI is implemented for now, make sure to run and pass/fix
+*IMPORTANT:* Since CI is not implemented, make sure to run, pass and/or fix
 `tox -e format`, `tox -e type` and `tox`.
 
 ## Packaging
