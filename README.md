@@ -4,6 +4,38 @@
 
 B-spline signal processing in N-D with support for GPU computing.
 
+## Installation
+
+Install minimal dependencies in a dedicated environment
+(shown here using [Mamba](https://mamba.readthedocs.io/en/latest/)).
+
+First activate you environment
+
+```shell
+mamba activate <env-name>
+```
+
+Minimal requirements:
+
+```shell
+mamba install numpy scipy
+```
+
+Simply install `bssp` from its wheel using `pip`.
+*IMPORTANT:*
+Not yet uploaded on pypi or anaconda/mamba.
+A wheel is needed and can be obtained from the source (see Packaging below).
+
+```shell
+pip install bssp
+```
+
+To run the examples, `matplotlib` will also be required.
+
+```shell
+mamba install matplotlib 
+```
+
 ## Formatting, type checking, and testing
 
 Formatting and type checking is performed using the following commands.
