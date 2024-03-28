@@ -18,13 +18,10 @@ class TensorSpline:
     def __init__(
         self,
         data: npt.NDArray,
-        # TODO(dperdios): samples?
-        coords: Union[npt.NDArray, Sequence[npt.NDArray]],
-        # TODO(dperdios): coordinates?
-        basis: TSplineBases,
-        # TODO(dperdios): bases?
-        mode: TExtensionModes,
-        # TODO(dperdios): modes?
+        # TODO(dperdios): naming convention, used `samples` instead of `data`?
+        coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
+        bases: TSplineBases,
+        modes: TExtensionModes,
         # TODO(dperdios): extrapolate? only at evaluation time?
         # TODO(dperdios): axis? axes? probably complex
         # TODO(dperdios): optional reduction strategy (e.g., first or last)
@@ -34,32 +31,32 @@ class TensorSpline:
         if not is_ndarray(data):
             raise TypeError("Must be an array.")
         ndim = data.ndim
-        self._ndim = ndim  # TODO(dperdios): public property?
+        self._ndim = ndim
 
-        # TODO(dperdios): optional coordinates?
-        # TODO(dperdios): add some tests on the type of `coords`
-        # TODO(dperdios): `coords` need to define a uniform grid
+        # TODO(dperdios): make `coordinates` optional?
+        # TODO(dperdios): `coordinates` need to define a uniform grid.
+        #  Note: this is not straightforward to control (numerical errors)
         # Coordinates
         #   1-D special case (either `array` or `(array,)`)
-        if is_ndarray(coords) and ndim == 1 and len(coords) == len(data):
+        if is_ndarray(coordinates) and ndim == 1 and len(coordinates) == len(data):
             # Note: we explicitly cast the type to NDArray
-            coords = cast(npt.NDArray, coords)
+            coordinates = cast(npt.NDArray, coordinates)
             # Convert `array` to `(array,)`
-            coords = (coords,)
-        if not all(bool(np.all(np.diff(c) > 0)) for c in coords):
+            coordinates = (coordinates,)
+        if not all(bool(np.all(np.diff(c) > 0)) for c in coordinates):
             raise ValueError("Coordinates must be strictly ascending.")
-        valid_data_shape = tuple([c.size for c in coords])
+        valid_data_shape = tuple([c.size for c in coordinates])
         if data.shape != valid_data_shape:
             raise ValueError(
                 f"Incompatible data shape. " f"Expected shape: {valid_data_shape}"
             )
-        if not all(np.isrealobj(c) for c in coords):
+        if not all(np.isrealobj(c) for c in coordinates):
             raise ValueError("Must be sequence of real numbers.")
-        self._coords = coords
+        # TODO(dperdios): useful to keep initial coordinates as property?
 
         # Pre-computation based on coordinates
         # TODO(dperdios): convert to Python float?
-        bounds = tuple([(c[0], c[-1]) for c in coords])
+        bounds = tuple([(c[0], c[-1]) for c in coordinates])
         # TODO(dperdios): `bounds` as a public property?
         self._bounds = bounds
         lengths = valid_data_shape
@@ -84,7 +81,7 @@ class TensorSpline:
         ):
             raise ValueError("Data must be an array of floating point numbers.")
         real_dtype = data.real.dtype
-        coords_dtype_seq = tuple(c.dtype for c in coords)
+        coords_dtype_seq = tuple(c.dtype for c in coordinates)
         if len(set(coords_dtype_seq)) != 1:
             raise ValueError(
                 "Incompatible dtypes in sequence of coordinates. "
@@ -99,30 +96,33 @@ class TensorSpline:
         self._real_dtype = real_dtype
 
         # Bases
-        if isinstance(basis, (SplineBasis, str)):
-            basis = ndim * (basis,)
-        bases = [asbasis(b) for b in basis]
+        if isinstance(bases, (SplineBasis, str)):
+            # Explicit type cast (special case)
+            bases = cast(str, bases)
+            bases = ndim * (bases,)
+        bases = tuple(asbasis(b) for b in bases)
         if len(bases) != ndim:
             raise ValueError(f"Length of the sequence must be {ndim}.")
-        self._bases = tuple(bases)
+        self._bases = bases
 
         # Modes
-        if isinstance(mode, (ExtensionMode, str)):
-            mode = ndim * (mode,)
-        modes = [asmode(m) for m in mode]
+        if isinstance(modes, (ExtensionMode, str)):
+            # Explicit type cast (special case)
+            modes = cast(str, modes)
+            modes = ndim * (modes,)
+        modes = tuple(asmode(m) for m in modes)
         if len(modes) != ndim:
             raise ValueError(f"Length of the sequence must be {ndim}.")
-        self._modes = tuple(modes)
+        self._modes = modes
 
         # Compute coefficients
-        coeffs = self._compute_coefficients(data=data)
-        self._coeffs = coeffs
+        coefficients = self._compute_coefficients(data=data)
+        self._coefficients = coefficients
 
     # Properties
-    # TODO(dperdios): useful properties?
     @property
-    def coeffs(self):
-        return np.copy(self._coeffs)
+    def coefficients(self) -> npt.NDArray:
+        return np.copy(self._coefficients)
 
     @property
     def bases(self) -> Tuple[SplineBasis, ...]:
@@ -132,48 +132,52 @@ class TensorSpline:
     def modes(self) -> Tuple[ExtensionMode, ...]:
         return self._modes
 
+    @property
+    def ndim(self):
+        return self._ndim
+
     # Methods
     def __call__(
         self,
-        coords: Union[npt.NDArray, Sequence[npt.NDArray]],
+        coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
         grid: bool = True,
         # TODO(dperdios): extrapolate?
     ) -> npt.NDArray:
-        return self.eval(coords=coords, grid=grid)
+        return self.eval(coordinates=coordinates, grid=grid)
 
     def eval(
-        self, coords: Union[npt.NDArray, Sequence[npt.NDArray]], grid: bool = True
+        self, coordinates: Union[npt.NDArray, Sequence[npt.NDArray]], grid: bool = True
     ) -> npt.NDArray:
 
         # Check coordinates
         ndim = self._ndim
         if grid:
             # Special 1-D case: "default" grid=True with a 1-D `coords` NDArray
-            if is_ndarray(coords):
-                # Note: we explicitly cast the type to NDarray
-                coords = cast(npt.NDArray, coords)
-                if ndim == 1 and coords.ndim == 1:
-                    coords = (coords,)
+            if is_ndarray(coordinates):
+                # Note: we explicitly cast the type to NDArray
+                coordinates = cast(npt.NDArray, coordinates)
+                if ndim == 1 and coordinates.ndim == 1:
+                    coordinates = (coordinates,)
             # N-D cases
-            if len(coords) != ndim:
+            if len(coordinates) != ndim:
                 # TODO(dperdios): Sequence of (..., n) arrays (batch dimensions
                 #   must be the same!)
                 raise ValueError(f"Must be a {ndim}-length sequence of 1-D arrays.")
-            if not all([bool(np.all(np.diff(c, axis=-1) > 0)) for c in coords]):
+            if not all([bool(np.all(np.diff(c, axis=-1) > 0)) for c in coordinates]):
                 # TODO(dperdios): do they really need to be ascending?
                 raise ValueError("Coordinates must be strictly ascending.")
         else:
             # If not `grid`, a sequence of arrays is expected with a length
             #  equal to the number of dimensions. Each array in the sequence
             #  must be of the same shape.
-            coords_shapes = [c.shape for c in coords]
-            if len(coords) != ndim or len(set(coords_shapes)) != 1:
+            coords_shapes = [c.shape for c in coordinates]
+            if len(coordinates) != ndim or len(set(coords_shapes)) != 1:
                 raise ValueError(
                     f"Incompatible sequence of coordinates. "
                     f"Must be a {ndim}-length sequence of same-shape N-D arrays. "
                     f"Current sequence of array shapes: {coords_shapes}."
                 )
-        if not all(np.isrealobj(c) for c in coords):
+        if not all(np.isrealobj(c) for c in coordinates):
             raise ValueError("Must be a sequence of real numbers.")
 
         # Get properties
@@ -183,11 +187,11 @@ class TensorSpline:
         step_seq = self._steps
         basis_seq = self._bases
         mode_seq = self._modes
-        coeffs = self._coeffs
-        ndim = len(basis_seq)
+        coefficients = self._coefficients
+        ndim = self._ndim
 
         # Rename
-        coords_seq = coords
+        coords_seq = coordinates
 
         # For-loop over dimensions
         indexes_seq = []
@@ -265,7 +269,7 @@ class TensorSpline:
         # Interpolation (convolution via reduction)
         # TODO(dperdios): might want to change the default reduction axis
         axes_sum = tuple(range(ndim))  # first axes are the indexes
-        data = np.sum(coeffs[tuple(indexes_bc)] * weights_tp, axis=axes_sum)
+        data = np.sum(coefficients[tuple(indexes_bc)] * weights_tp, axis=axes_sum)
 
         return data
 
@@ -273,8 +277,8 @@ class TensorSpline:
 
         # Prepare data and axes
         # TODO(dperdios): there is probably too many copies along this process
-        coeffs = np.copy(data)
-        axes = tuple(range(coeffs.ndim))
+        coefficients = np.copy(data)
+        axes = tuple(range(coefficients.ndim))
         axes_roll = tuple(np.roll(axes, shift=-1))
 
         # TODO(dperdios): could do one less roll by starting with the initial
@@ -282,9 +286,9 @@ class TensorSpline:
         for basis, mode in zip(self._bases, self._modes):
 
             # Roll data w.r.t. dimension
-            coeffs = np.transpose(coeffs, axes=axes_roll)
+            coefficients = np.transpose(coefficients, axes=axes_roll)
 
             # Compute coefficients w.r.t. extension `mode` and `basis`
-            coeffs = mode.compute_coefficients(data=coeffs, basis=basis)
+            coefficients = mode.compute_coefficients(data=coefficients, basis=basis)
 
-        return coeffs
+        return coefficients

@@ -32,13 +32,13 @@ def test_interpolate_cardinal_spline(
     data[pad_right] = dirac_val
 
     # Create the tensor spline
-    ts = TensorSpline(data=data, coords=coords, basis=basis, mode=mode)
+    ts = TensorSpline(data=data, coordinates=coords, bases=basis, modes=mode)
 
     # Re-evaluate at points including the signal extension
     pad_right_eval = 2 * pad_right
     coords_eval_1d = np.arange(-pad_right_eval, pad_right_eval + 1)
     coords_eval = (coords_eval_1d,)
-    values = ts(coords=coords_eval)
+    values = ts(coordinates=coords_eval)
 
     # Expected values
     if mode == "zero":
@@ -129,22 +129,24 @@ def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
     # Tensor Spline
     bases = base_bases[:ndim]
     modes = base_modes[:ndim]
-    tensor_spline = TensorSpline(data=data, coords=coords_seq, basis=bases, mode=modes)
+    tensor_spline = TensorSpline(
+        data=data, coordinates=coords_seq, bases=bases, modes=modes
+    )
 
     # Default evaluation (grid=True): tensor product of evaluation coordinates
-    data_eval_tp = tensor_spline(coords=eval_coords_seq, grid=True)
+    data_eval_tp = tensor_spline(coordinates=eval_coords_seq, grid=True)
     if flag_complex_data:
         # Add a check since both real and imag party are identical
         np.testing.assert_equal(data_eval_tp.real, data_eval_tp.imag)
 
     # Meshgrid evaluation
     eval_coords_mg = np.meshgrid(*eval_coords_seq, indexing="ij")
-    data_eval_mg = tensor_spline(coords=eval_coords_mg, grid=False)
+    data_eval_mg = tensor_spline(coordinates=eval_coords_mg, grid=False)
     np.testing.assert_equal(data_eval_tp, data_eval_mg)
 
     # Reshaped meshgrid evaluation
     eval_coords_mg_rs = np.reshape(eval_coords_mg, newshape=(ndim, -1))
-    data_eval_mg_rs = tensor_spline(coords=eval_coords_mg_rs, grid=False)
+    data_eval_mg_rs = tensor_spline(coordinates=eval_coords_mg_rs, grid=False)
     np.testing.assert_equal(
         data_eval_tp, np.reshape(data_eval_mg_rs, data_eval_mg.shape)
     )
@@ -159,7 +161,7 @@ def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
         coords_batch = np.stack([coords_batch, coords_batch])
         eval_coords_tp_batch.append(coords_batch)
     eval_coords_tp_batch = tuple(eval_coords_tp_batch)
-    data_eval_tp_batch = tensor_spline(coords=eval_coords_tp_batch, grid=True)
+    data_eval_tp_batch = tensor_spline(coordinates=eval_coords_tp_batch, grid=True)
 
     # Batch-processing: Meshgrid
     eval_coords_mg_batch = []
@@ -169,5 +171,5 @@ def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
         coords_mg_batch = np.stack([coords_mg_batch, coords_mg_batch])
         eval_coords_mg_batch.append(coords_mg_batch)
     eval_coords_mg_batch = tuple(eval_coords_mg_batch)
-    data_eval_mg_batch = tensor_spline(coords=eval_coords_mg_batch, grid=False)
+    data_eval_mg_batch = tensor_spline(coordinates=eval_coords_mg_batch, grid=False)
     np.testing.assert_equal(data_eval_tp_batch, data_eval_mg_batch)
