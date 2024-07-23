@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from bssp.interpolate.tensorspline import TensorSpline
+from splineops.interpolate.tensorspline import TensorSpline
 
 # Data type (need to provide floating numbers, "float64" and "float32" are typical)
 dtype = "float32"

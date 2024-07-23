@@ -2,10 +2,10 @@ import numpy as np
 from typing import Tuple
 import numpy.typing as npt
 
-from bssp.bases.splinebasis import SplineBasis
-from bssp.modes.extensionmode import ExtensionMode
-from bssp.interpolate.utils import _compute_ck_zero_matrix_banded_v1
-from bssp.utils.interop import is_cupy_type
+from splineops.bases.splinebasis import SplineBasis
+from splineops.modes.extensionmode import ExtensionMode
+from splineops.interpolate.utils import _compute_ck_zero_matrix_banded_v1
+from splineops.utils.interop import is_cupy_type
 
 
 class FiniteSupportCoefficients(ExtensionMode):

@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 
-from bssp.bases.splinebasis import SplineBasis
+from splineops.bases.splinebasis import SplineBasis
 
 
 class BSpline4Basis(SplineBasis):

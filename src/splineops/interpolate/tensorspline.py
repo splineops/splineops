@@ -2,11 +2,11 @@ import numpy as np
 import numpy.typing as npt
 from typing import Sequence, Union, Tuple, cast
 
-from bssp.bases.splinebasis import SplineBasis
-from bssp.bases.utils import asbasis
-from bssp.modes.extensionmode import ExtensionMode
-from bssp.modes.utils import asmode
-from bssp.utils.interop import is_ndarray
+from splineops.bases.splinebasis import SplineBasis
+from splineops.bases.utils import asbasis
+from splineops.modes.extensionmode import ExtensionMode
+from splineops.modes.utils import asmode
+from splineops.utils.interop import is_ndarray
 
 TSplineBasis = Union[SplineBasis, str]
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]

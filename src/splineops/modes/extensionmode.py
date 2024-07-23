@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Tuple
 import numpy.typing as npt
 
-from bssp.bases.splinebasis import SplineBasis
+from splineops.bases.splinebasis import SplineBasis
 
 
 class ExtensionMode(metaclass=ABCMeta):
