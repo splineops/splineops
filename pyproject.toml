@@ -8,7 +8,7 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "bssp"
+name = "splineops"
 description = "B-spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
 license.file = "LICENSE"
@@ -30,7 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-urls.download = "https://github.com/dperdios/bssp"  # TODO(dperdios): make public
+urls.download = "https://github.com/splineops/splineops.git"  # TODO(dperdios): make public
 #urls.homepage = "https://"  # TODO(dperdios): need a homepage
 
 [project.optional-dependencies]
@@ -38,7 +38,7 @@ visualization = [
     "matplotlib >=3.8",
 ]
 dev = [
-    "bssp[visualization]",
+    "splineops[visualization]",
     "black >=23.10",
     "mypy >=1.8",
     "tox >=4.13",
@@ -62,7 +62,7 @@ exclude = [
 #    "/src",
 #]
 packages = [
-    "src/bssp",
+    "src/spineops",
 ]
 
 # Tests: pytest config

@@ -1,7 +1,7 @@
 from typing import Union, Mapping, Type
-from bssp.modes.extensionmode import ExtensionMode
-from bssp.modes.narrowmirroring import NarrowMirroring
-from bssp.modes.finitesupportcoefficients import FiniteSupportCoefficients
+from splineops.modes.extensionmode import ExtensionMode
+from splineops.modes.narrowmirroring import NarrowMirroring
+from splineops.modes.finitesupportcoefficients import FiniteSupportCoefficients
 
 mode_map: Mapping[str, Type[ExtensionMode]] = {
     "zero": FiniteSupportCoefficients,

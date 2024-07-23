@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
 import numpy.typing as npt
-from bssp.interpolate.tensorspline import TensorSpline
-from bssp.bases.utils import asbasis, basis_map
-from bssp.modes.utils import mode_map
+from splineops.interpolate.tensorspline import TensorSpline
+from splineops.bases.utils import asbasis, basis_map
+from splineops.modes.utils import mode_map
 
 
 @pytest.mark.parametrize("basis", basis_map.keys())
