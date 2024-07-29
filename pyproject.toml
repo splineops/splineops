@@ -62,7 +62,7 @@ exclude = [
 #    "/src",
 #]
 packages = [
-    "src/spineops",
+    "src/splineops",
 ]
 
 # Tests: pytest config
