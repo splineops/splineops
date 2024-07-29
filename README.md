@@ -1,8 +1,8 @@
-# splineops: B-spline signal processing
+# splineops: Spline signal processing
 
 ## Description
 
-B-spline signal processing in N-D with support for GPU computing.
+Spline signal processing in N-D with support for GPU computing.
 
 ## Installation
 

@@ -9,7 +9,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "splineops"
-description = "B-spline signal processing in N-D with support for GPU computing."
+description = "Spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
 license.file = "LICENSE"
 authors = [
