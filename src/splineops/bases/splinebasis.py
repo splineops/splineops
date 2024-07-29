@@ -66,7 +66,7 @@ class SplineBasis(metaclass=ABCMeta):
     # TODO(dperdios): Alternative constructor?
     # @classmethod
     # def from_name(cls, name: str):
-    #     from bssp.bases.utils import create_spline_basis
+    #     from splineops.bases.utils import create_spline_basis
     #     # Note: cannot import this before initializing SplineBasis
     #     return create_spline_basis(name=name)
 
