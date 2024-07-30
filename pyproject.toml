@@ -36,6 +36,8 @@ urls.download = "https://github.com/splineops/splineops.git"  # TODO(dperdios): 
 [project.optional-dependencies]
 visualization = [
     "matplotlib >=3.8",
+    "pooch >= 1.8",
+    "IPython >= 8.26",
 ]
 tests = [
     "tox >=4.13",
@@ -48,6 +50,16 @@ dev = [
     "splineops[visualization]",
     "splineops[tests]",
     "cupy >=12.2",
+]
+doc = [
+    "splineops[visualization]",
+    "sphinx >=7.3",
+    "sphinx-gallery >=0.17",
+    "sphinx-prompt >=1.8",
+    "sphinx-copybutton >=0.5",
+    "sphinx_remove_toctrees >=1.0",
+    "sphinx-design >=0.6",
+    "pydata-sphinx-theme >=0.15",
 ]
 
 # Hatch tool: dynamic version from git
