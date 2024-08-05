@@ -13,8 +13,8 @@ import splineops
 
 # Project information
 project = 'splineops'
-copyright = '2024, BIG lab'
-author = 'BIG lab'
+copyright = '2024, Biomedical Imaging Group'
+author = 'Biomedical Imaging Group'
 release = '0.0.1'
 
 # General configuration
@@ -28,6 +28,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx_design',
+    'myst_parser',
 ]
 
 templates_path = ['_templates']
