@@ -43,6 +43,9 @@ tests = [
     "tox >=4.13",
     "hatch >=1.9",
     "pytest >=6.0",
+]
+dev_cupy = [
+    "splineops[dev]",
     "black >=23.10",
     "mypy >=1.8",
 ]
