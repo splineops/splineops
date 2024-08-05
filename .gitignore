@@ -79,6 +79,9 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+doc/sg_execution_times.rst
+doc/auto_examples/
+doc/gen_modules/
 
 # PyBuilder
 .pybuilder/
