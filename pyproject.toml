@@ -37,13 +37,16 @@ urls.download = "https://github.com/splineops/splineops.git"  # TODO(dperdios): 
 visualization = [
     "matplotlib >=3.8",
 ]
-dev = [
-    "splineops[visualization]",
-    "black >=23.10",
-    "mypy >=1.8",
+test = [
     "tox >=4.13",
     "hatch >=1.9",
     "pytest >=6.0",
+    "black >=23.10",
+    "mypy >=1.8",
+]
+dev = [
+    "splineops[visualization]",
+    "splineops[test]",
     "cupy >=12.2",
 ]
 
