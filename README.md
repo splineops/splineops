@@ -45,10 +45,21 @@ tox -e format
 tox -e type
 ```
 
-Testing with the following one.
+Testing requires a valid environment with a supported Python version and `tox`
+installed. Tests can be run with the following command (automatic pick of the
+Python version).
 
 ```shell
 tox
+```
+
+Tests can also be launched for a specific Python version (must match the one
+installed in the active environment)
+
+```shell
+tox -e py310
+tox -e py311
+tox -e py312
 ```
 
 *IMPORTANT:* Since CI is not implemented, make sure to run, pass and/or fix
@@ -83,6 +94,7 @@ pip install -e .
 ```
 
 If a specific CUDA version is required
+
 ```shell
 mamba install cupy cuda-version=12.3
 ```
