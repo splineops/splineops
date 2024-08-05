@@ -5,19 +5,19 @@ SplineOps is a Python-based N-dimensional signal processing library with support
 ## Installation
 
 Install minimal dependencies in a dedicated environment
-(shown here using [Conda](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html)).
+(shown here using [Mamba](https://mamba.readthedocs.io/en/latest/)).
 
 Create and activate your environment
 
 ```shell
-conda create -n myenv
-conda activate myenv
+mamba create -n myenv
+mamba activate myenv
 ```
 
 Minimal requirements:
 
 ```shell
-conda install numpy scipy
+mamba install numpy scipy
 ```
 
 Simply install `splineops` from its wheel using `pip`.
@@ -32,7 +32,7 @@ pip install splineops
 To run the examples, `matplotlib`, `pooch` (for built-in image datasets) and `IPython` (for Python UI widgets) will also be required.
 
 ```shell
-conda install matplotlib pooch IPython
+mamba install matplotlib pooch IPython
 ```
 
 ## Formatting, type checking, and testing
@@ -83,7 +83,7 @@ hatch build -t wheel
 Easiest way to install dev dependencies
 
 ```shell
-conda install numpy scipy black mypy tox hatch pytest matplotlib pooch IPython
+mamba install numpy scipy black mypy tox hatch pytest matplotlib pooch IPython
 ```
 
 Install `splineops` development environment in editable mode
@@ -97,7 +97,7 @@ pip install -e .[dev]
 You can use SplineOps with `cupy`. If a specific CUDA version is required do
 
 ```shell
-conda install cupy cuda-version=12.3
+mamba install cupy cuda-version=12.3
 ```
 
 Install `splineops` cupy development environment in editable mode
@@ -110,7 +110,7 @@ Potential other CuPy libraries
 ([CuPy from Conda-Forge](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge))
 
 ```shell
-conda install cupy cutensor cudnn nccl
+mamba install cupy cutensor cudnn nccl
 ```
 
 ## Building the documentation
@@ -118,20 +118,21 @@ conda install cupy cutensor cudnn nccl
 To build the Sphinx documentation, install `splineops` doc dependencies
 
 ```shell
-conda install sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx_remove_toctrees sphinx-design pydata-sphinx-theme myst_parser
+mamba install sphinx
+pip install sphinx-gallery sphinx-prompt sphinx-copybutton sphinx_remove_toctrees pydata-sphinx-theme myst_parser
 ```
 
 Or install `splineops` doc environment in editable mode
 
 ```shell
-pip install -e .[doc]
+pip install -e .[docs]
 ```
 
-Navigate to the `doc` directory and run the `make html` command
+Navigate to the `docs` directory and run the `make html` command
 
 ```shell
-cd doc
+cd docs
 make html
 ```
 
-Then, go to `doc/_build/html` and open `index.html` to navigate the documentation locally.
+Then, go to `docs/_build/html` and open `index.html` to navigate the documentation locally.
