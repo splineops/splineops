@@ -1,8 +1,6 @@
 # SplineOps: spline signal processing
 
-## Description
-
-Spline signal processing in N-D with support for GPU computing.
+SplineOps is a Python-based N-dimensional signal processing library with support for GPU computing.
 
 ## Installation
 
@@ -120,7 +118,7 @@ conda install cupy cutensor cudnn nccl
 To build the Sphinx documentation, install `splineops` doc dependencies
 
 ```shell
-conda install sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx_remove_toctrees sphinx-design pydata-sphinx-theme
+conda install sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx_remove_toctrees sphinx-design pydata-sphinx-theme myst_parser
 ```
 
 Or install `splineops` doc environment in editable mode

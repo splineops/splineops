@@ -1,4 +1,5 @@
 Installation
 ============
 
-Install minimal dependencies in a dedicated environment.
+.. include:: ../../README.md
+   :parser: myst
