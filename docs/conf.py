@@ -76,7 +76,7 @@ html_context = {
     'github_user': 'Biomedical-Imaging-Group',
     'github_repo': 'splineops',
     'github_version': 'main',
-    'doc_path': 'doc',
+    'doc_path': 'docs',
 }
 
 # Ensure the paths to logo and favicon are absolute
