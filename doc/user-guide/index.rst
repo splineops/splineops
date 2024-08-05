@@ -8,3 +8,4 @@ This guide provides comprehensive instructions for using and installing SplineOp
    :caption: Contents:
 
    installation
+   cupy_guide
