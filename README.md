@@ -1,4 +1,4 @@
-# splineops: Spline signal processing
+# SplineOps: spline signal processing
 
 ## Description
 
@@ -7,38 +7,39 @@ Spline signal processing in N-D with support for GPU computing.
 ## Installation
 
 Install minimal dependencies in a dedicated environment
-(shown here using [Mamba](https://mamba.readthedocs.io/en/latest/)).
+(shown here using [Conda](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html)).
 
-First activate you environment
+Create and activate your environment
 
 ```shell
-mamba activate <env-name>
+conda create -n myenv
+conda activate myenv
 ```
 
 Minimal requirements:
 
 ```shell
-mamba install numpy scipy
+conda install numpy scipy
 ```
 
 Simply install `splineops` from its wheel using `pip`.
 *IMPORTANT:*
 Not yet uploaded on pypi or anaconda/mamba.
-A wheel is needed and can be obtained from the source (see Packaging below).
+A wheel is needed and can be obtained from the source (see Packaging below)
 
 ```shell
 pip install splineops
 ```
 
-To run the examples, `matplotlib` will also be required.
+To run the examples, `matplotlib`, `pooch` (for built-in image datasets) and `IPython` (for Python UI widgets) will also be required.
 
 ```shell
-mamba install matplotlib 
+conda install matplotlib pooch IPython
 ```
 
 ## Formatting, type checking, and testing
 
-Formatting and type checking is performed using the following commands.
+Formatting and type checking is performed using the following commands
 
 ```shell
 tox -e format
@@ -84,24 +85,55 @@ hatch build -t wheel
 Easiest way to install dev dependencies
 
 ```shell
-mamba install cupy numpy scipy black mypy tox hatch pytest matplotlib
+conda install numpy scipy black mypy tox hatch pytest matplotlib pooch IPython
 ```
 
-Install `splineops` in editable mode
+Install `splineops` development environment in editable mode
 
 ```shell
-pip install -e .
+pip install -e .[dev]
 ```
 
-If a specific CUDA version is required
+## GPU compatibility
+
+You can use SplineOps with `cupy`. If a specific CUDA version is required do
 
 ```shell
-mamba install cupy cuda-version=12.3
+conda install cupy cuda-version=12.3
+```
+
+Install `splineops` cupy development environment in editable mode
+
+```shell
+pip install -e .[dev_cupy]
 ```
 
 Potential other CuPy libraries
 ([CuPy from Conda-Forge](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge))
 
 ```shell
-mamba install cupy cutensor cudnn nccl
+conda install cupy cutensor cudnn nccl
 ```
+
+## Building the documentation
+
+To build the Sphinx documentation, install `splineops` doc dependencies
+
+```shell
+conda install sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx_remove_toctrees sphinx-design pydata-sphinx-theme
+```
+
+Or install `splineops` doc environment in editable mode
+
+```shell
+pip install -e .[doc]
+```
+
+Navigate to the `doc` directory and run the `make html` command
+
+```shell
+cd doc
+make html
+```
+
+Then, go to `doc/_build/html` and open `index.html` to navigate the documentation locally.
