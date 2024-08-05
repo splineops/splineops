@@ -110,3 +110,10 @@ Plot results
    :language: python
    :start-after: # Plot results
    :linenos:
+
+Download the full script
+------------------------
+
+You can download the full Python script here:
+
+:download:`Download full Python script <GPU_Interoperability_Using_Cupy.py>`

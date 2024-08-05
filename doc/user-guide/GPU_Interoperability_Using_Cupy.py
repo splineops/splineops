@@ -19,18 +19,7 @@ This example demonstrates GPU interoperability using CuPy and tensor spline inte
 import numpy as np
 import matplotlib.pyplot as plt
 from splineops.interpolate.tensorspline import TensorSpline
-
-try:
-    import cupy as cp
-    gpu_available = cp.cuda.runtime.getDeviceCount() > 0
-except ImportError:
-    gpu_available = False
-    cp = np  # Fall back to NumPy if CuPy is not available
-except cp.cuda.runtime.CUDARuntimeError:
-    gpu_available = False
-    cp = np  # Fall back to NumPy if CUDA runtime is not available
-
-# Now you can use cp (which will be either CuPy or NumPy) in your code.
+import cupy as cp
 
 # %%
 # Data type
@@ -79,16 +68,11 @@ tensor_spline_np = TensorSpline(
 #
 # Note: We first need to convert the NumPy data to CuPy.
 
-if gpu_available:
-    data_cp = cp.asarray(data)
-    coordinates_cp = cp.asarray(xx), cp.asarray(yy)
-    tensor_spline_cp = TensorSpline(
-        data=data_cp, coordinates=coordinates_cp, bases=bases, modes=modes
-    )
-else:
-    data_cp = data
-    coordinates_cp = xx, yy
-    tensor_spline_cp = tensor_spline_np  # Fallback to NumPy tensor spline
+data_cp = cp.asarray(data)
+coordinates_cp = cp.asarray(xx), cp.asarray(yy)
+tensor_spline_cp = TensorSpline(
+    data=data_cp, coordinates=coordinates_cp, bases=bases, modes=modes
+)
 
 # %%
 # Create evaluation coordinates (extended and oversampled in this case)
@@ -115,24 +99,16 @@ data_eval_np = tensor_spline_np(coordinates=eval_coords_np)
 #
 # Note: We first need to convert the evaluation coordinates to CuPy.
 
-if gpu_available:
-    eval_coords_cp = cp.asarray(eval_xx), cp.asarray(eval_yy)
-    data_eval_cp = tensor_spline_cp(coordinates=eval_coords_cp)
-else:
-    eval_coords_cp = eval_coords_np
-    data_eval_cp = data_eval_np  # Fallback to NumPy evaluation
+eval_coords_cp = cp.asarray(eval_xx), cp.asarray(eval_yy)
+data_eval_cp = tensor_spline_cp(coordinates=eval_coords_cp)
 
 # %%
 # Compute difference
 # ------------------
 
-if gpu_available:
-    data_eval_cp_np = data_eval_cp.get()  # Convert CuPy array to NumPy array
-    abs_diff = np.abs(data_eval_cp_np - data_eval_np)
-    mse = np.mean((data_eval_cp_np - data_eval_np) ** 2)
-else:
-    abs_diff = np.abs(data_eval_cp - data_eval_np)
-    mse = np.mean((data_eval_cp - data_eval_np) ** 2)
+data_eval_cp_np = data_eval_cp.get()  # Convert CuPy array to NumPy array
+abs_diff = np.abs(data_eval_cp_np - data_eval_np)
+mse = np.mean((data_eval_cp_np - data_eval_np) ** 2)
 print(f"Maximum absolute difference: {np.max(abs_diff)}")
 print(f"Mean square error: {mse}")
 
@@ -146,15 +122,12 @@ fig, axes = plt.subplots(
 ax = axes[0]
 ax.imshow(data_eval_np.T)
 ax.set_title("NumPy")
-if gpu_available:
-    data_eval_cp_np = data_eval_cp.get()  # Ensure we have a NumPy array
-    ax = axes[1]
-    ax.set_title("CuPy")
-    ax.imshow(data_eval_cp_np.T)
-else:
-    ax = axes[1]
-    ax.set_title("CuPy (not available)")
-    ax.imshow(data_eval_np.T)
+
+data_eval_cp_np = data_eval_cp.get()  # Ensure we have a NumPy array
+ax = axes[1]
+ax.set_title("CuPy")
+ax.imshow(data_eval_cp_np.T)
+
 ax = axes[2]
 ax.set_title(f"Absolute difference\n(MSE: {mse:.2e})")
 ax.imshow(abs_diff.T)
