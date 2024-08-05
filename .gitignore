@@ -78,10 +78,10 @@ instance/
 .scrapy
 
 # Sphinx documentation
-doc/_build/
-doc/sg_execution_times.rst
-doc/auto_examples/
-doc/gen_modules/
+docs/_build/
+docs/sg_execution_times.rst
+docs/auto_examples/
+docs/gen_modules/
 
 # PyBuilder
 .pybuilder/

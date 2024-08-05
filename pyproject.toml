@@ -54,7 +54,7 @@ dev = [
     "splineops[tests]",
     "cupy >=12.2",
 ]
-doc = [
+docs = [
     "splineops[visualization]",
     "sphinx >=7.3",
     "sphinx-gallery >=0.17",
@@ -73,7 +73,7 @@ source = "vcs"
 # Hatch build
 [tool.hatch.build]
 exclude = [
-    "/doc",
+    "/docs",
     "/tests",
     "/examples",
 ]
