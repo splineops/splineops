@@ -14,6 +14,12 @@ mamba create -n myenv
 mamba activate myenv
 ```
 
+Make sure you have the conda-forge channel added to your conda configuration. If not, you can add it using
+
+```shell
+conda config --add channels conda-forge
+```
+
 Minimal requirements:
 
 ```shell
@@ -118,11 +124,10 @@ mamba install cupy cutensor cudnn nccl
 To build the Sphinx documentation, install `splineops` doc dependencies
 
 ```shell
-mamba install sphinx
-pip install sphinx-gallery sphinx-prompt sphinx-copybutton sphinx_remove_toctrees pydata-sphinx-theme myst_parser
+mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme myst-parser
 ```
 
-Or install `splineops` doc environment in editable mode
+Install `splineops` doc environment in editable mode
 
 ```shell
 pip install -e .[docs]
