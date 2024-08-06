@@ -89,7 +89,7 @@ hatch build -t wheel
 Easiest way to install dev dependencies
 
 ```shell
-mamba install numpy scipy black mypy tox hatch pytest matplotlib pooch IPython
+mamba install numpy scipy matplotlib pooch IPython black mypy tox hatch pytest
 ```
 
 Install `splineops` development environment in editable mode
