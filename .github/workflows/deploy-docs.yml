@@ -1,0 +1,52 @@
+name: Deploy Sphinx Documentation to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: '3.12'
+          auto-update-conda: true
+          auto-activate-base: false
+
+      - name: Install Mamba
+        run: conda install -n base -c conda-forge mamba
+
+      - name: Create Mamba environment
+        run: mamba create --name splineops_env python=3.12
+
+      - name: Install dependencies
+        run: |
+          mamba run -n splineops_env mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme myst-parser
+          mamba run -n splineops_env pip install -e .[docs]
+
+      - name: Build documentation
+        run: mamba run -n splineops_env make -C docs html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/_build/html
+          publish_branch: main
+          destination_repo: splineops/splineops.github.io
