@@ -13,20 +13,40 @@ TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
 TExtensionMode = Union[ExtensionMode, str]
 TExtensionModes = Union[TExtensionMode, Sequence[TExtensionMode]]
 
-
 class TensorSpline:
+    """
+    A class to represent a tensor spline for multi-dimensional interpolation and approximation.
+
+    Parameters
+    ----------
+    data : (:py:obj:`numpy.typing.NDArray`)
+        The input data array to be approximated or interpolated.
+    coordinates : (:py:obj:`Union[numpy.typing.NDArray, Sequence[numpy.typing.NDArray]]`)
+        The coordinates corresponding to the input data.
+    bases : (:py:class:`~TSplineBases`)
+        The spline bases used for the approximation.
+    modes : (:py:class:`~TExtensionModes`)
+        The extension modes for handling boundaries.
+    """
+    
     def __init__(
         self,
         data: npt.NDArray,
-        # TODO(dperdios): naming convention, used `samples` instead of `data`?
         coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
         bases: TSplineBases,
         modes: TExtensionModes,
-        # TODO(dperdios): extrapolate? only at evaluation time?
-        # TODO(dperdios): axis? axes? probably complex
-        # TODO(dperdios): optional reduction strategy (e.g., first or last)
     ) -> None:
+        """
+        Initializes the TensorSpline object with the given data, coordinates, bases, and modes.
 
+        Raises
+        ------
+        TypeError
+            If the provided data is not an ndarray.
+        ValueError
+            If the coordinates are not strictly ascending, have incompatible shapes with the data, 
+            contain non-real numbers, or if the data and coordinates have different floating precisions.
+        """
         # Data
         if not is_ndarray(data):
             raise TypeError("Must be an array.")
@@ -122,18 +142,50 @@ class TensorSpline:
     # Properties
     @property
     def coefficients(self) -> npt.NDArray:
+        """
+        Returns a copy of the computed coefficients.
+
+        Returns
+        -------
+        npt.NDArray
+            The coefficients array.
+        """
         return np.copy(self._coefficients)
 
     @property
     def bases(self) -> Tuple[SplineBasis, ...]:
+        """
+        Returns the tuple of spline bases.
+
+        Returns
+        -------
+        Tuple[SplineBasis, ...]
+            The spline bases.
+        """
         return self._bases
 
     @property
     def modes(self) -> Tuple[ExtensionMode, ...]:
+        """
+        Returns the tuple of extension modes.
+
+        Returns
+        -------
+        Tuple[ExtensionMode, ...]
+            The extension modes.
+        """
         return self._modes
 
     @property
     def ndim(self):
+        """
+        Returns the number of dimensions of the data.
+
+        Returns
+        -------
+        int
+            The number of dimensions.
+        """
         return self._ndim
 
     # Methods
@@ -143,12 +195,46 @@ class TensorSpline:
         grid: bool = True,
         # TODO(dperdios): extrapolate?
     ) -> npt.NDArray:
+        """
+        Evaluates the tensor spline at the given coordinates.
+
+        Parameters
+        ----------
+        coordinates : Union[npt.NDArray, Sequence[npt.NDArray]]
+            The coordinates at which to evaluate the spline.
+        grid : bool, optional
+            Whether the coordinates form a grid, by default True.
+
+        Returns
+        -------
+        npt.NDArray
+            The evaluated data at the given coordinates.
+        """
         return self.eval(coordinates=coordinates, grid=grid)
 
     def eval(
         self, coordinates: Union[npt.NDArray, Sequence[npt.NDArray]], grid: bool = True
     ) -> npt.NDArray:
+        """
+        Evaluates the tensor spline at the given coordinates.
 
+        Parameters
+        ----------
+        coordinates : Union[npt.NDArray, Sequence[npt.NDArray]]
+            The coordinates at which to evaluate the spline.
+        grid : bool, optional
+            Whether the coordinates form a grid, by default True.
+
+        Returns
+        -------
+        npt.NDArray
+            The evaluated data at the given coordinates.
+
+        Raises
+        ------
+        ValueError
+            If the coordinates are not strictly ascending or have incompatible shapes.
+        """
         # Check coordinates
         ndim = self._ndim
         if grid:
@@ -274,7 +360,19 @@ class TensorSpline:
         return data
 
     def _compute_coefficients(self, data: npt.NDArray) -> npt.NDArray:
+        """
+        Computes the coefficients for the tensor spline based on the input data.
 
+        Parameters
+        ----------
+        data : npt.NDArray
+            The input data array.
+
+        Returns
+        -------
+        npt.NDArray
+            The computed coefficients.
+        """
         # Prepare data and axes
         # TODO(dperdios): there is probably too many copies along this process
         coefficients = np.copy(data)
