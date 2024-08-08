@@ -54,7 +54,7 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }} # GITHUB_TOKEN
-          #external_repository: splineops/splineops.github.io
-          #publish_branch: main
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          external_repository: splineops/splineops.github.io
+          publish_branch: main
           publish_dir: docs/_build/html
