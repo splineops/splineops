@@ -1,0 +1,49 @@
+name: Test Library
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          auto-update-conda: true
+          auto-activate-base: false
+          miniconda-version: "latest"
+
+      - name: Install Mamba
+        run: |
+            echo "Installing Mamba for python ${{ matrix.python-version }}"
+            conda install -n base -c conda-forge mamba
+
+      - name: Create environment
+        run: |
+            echo "Creating environment for python ${{ matrix.python-version }}"
+            mamba create --name test_env python=${{ matrix.python-version }} -c conda-forge
+
+      - name: Install dependencies with Mamba
+        run:  |
+            echo "Installing dependencies for python ${{ matrix.python-version }}"
+            mamba run -n test_env mamba install tox -c conda-forge
+
+      - name: Run tests with tox
+        run:  |
+            echo "Running tests with tox for python ${{ matrix.python-version }}"
+            mamba run -n test_env tox
