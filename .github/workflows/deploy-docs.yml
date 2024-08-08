@@ -28,20 +28,28 @@ jobs:
           python-version: '3.12'
           auto-update-conda: true
           auto-activate-base: false
+          miniconda-version: "latest"  # Ensure Miniconda is installed
 
       - name: Install Mamba
-        run: conda install -n base -c conda-forge mamba
-
+        run: |
+          echo "Installing Mamba"
+          conda install -n base -c conda-forge mamba
+      
       - name: Create Mamba environment
-        run: mamba create --name splineops_env python=3.12
-
+        run: |
+          echo "Creating Mamba environment"
+          mamba create --name splineops_env python=3.12 -c conda-forge
+      
       - name: Install dependencies
         run: |
-          mamba run -n splineops_env mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme myst-parser
+          echo "Installing dependencies"
+          mamba run -n splineops_env mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme myst-parser -c conda-forge
           mamba run -n splineops_env pip install -e .[docs]
-
+      
       - name: Build documentation
-        run: mamba run -n splineops_env make -C docs html
+        run: |
+          echo "Building documentation"
+          mamba run -n splineops_env make -C docs html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
