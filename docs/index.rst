@@ -24,7 +24,7 @@ Key Features & Capabilities
 .. figure:: _static/feature_01.jpg
    :alt: Key Feature Illustration
    :align: center
-   :scale: 50%
+   :scale: 60%
 
    General B-Spline formula
 
