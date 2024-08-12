@@ -5,9 +5,28 @@ from collections import abc
 import numpy.typing as npt
 import numpy as np
 
-
 # TODO(dperdios): Naming BSplineBasis? What about OMOMS or others?
 class SplineBasis(metaclass=ABCMeta):
+    """
+    Abstract base class for spline basis functions.
+
+    Parameters
+    ----------
+    support : int
+        The support of the spline basis, representing the smallest interval in which the basis function is non-zero.
+    degree : int
+        The degree of the spline basis function. This parameter is not currently used in the implementation.
+    poles : Optional[Sequence[float]], optional
+        Poles of the spline basis function, by default None.
+
+    Raises
+    ------
+    ValueError
+        If `support` or `degree` is not an integer.
+    TypeError
+        If `poles` is not a sequence of real numbers.
+    """
+
     def __init__(
         self, support: int, degree: int, poles: Optional[Sequence[float]] = None
     ) -> None:
@@ -38,18 +57,45 @@ class SplineBasis(metaclass=ABCMeta):
     # Properties
     @property
     def support(self):
+        """
+        int: The support of the spline basis, representing the smallest interval in which the basis function is non-zero.
+        """
         return self._support
 
     @property
     def degree(self):
+        """
+        int: The degree of the spline basis function.
+        """
         return self._degree
 
     @property
     def poles(self):
+        """
+        Optional[Tuple[float]]: The poles of the spline basis function.
+        """
         return self._poles
 
     # Methods
     def __call__(self, x: npt.NDArray) -> npt.NDArray:
+        """
+        Evaluate the spline basis function at given points.
+
+        Parameters
+        ----------
+        x : npt.NDArray
+            Input array of real numbers where the spline basis is evaluated.
+
+        Returns
+        -------
+        npt.NDArray
+            The evaluated spline basis function values at the input points.
+
+        Raises
+        ------
+        ValueError
+            If `x` is not an array of real numbers.
+        """
 
         # Check input
         if not np.isrealobj(x):
@@ -61,6 +107,19 @@ class SplineBasis(metaclass=ABCMeta):
     @staticmethod
     @abstractmethod
     def eval(x: npt.NDArray) -> npt.NDArray:
+        """
+        Abstract method to evaluate the spline basis function.
+
+        Parameters
+        ----------
+        x : npt.NDArray
+            Input array of real numbers where the spline basis is evaluated.
+
+        Returns
+        -------
+        npt.NDArray
+            The evaluated spline basis function values at the input points.
+        """
         pass
 
     # TODO(dperdios): Alternative constructor?
@@ -72,6 +131,24 @@ class SplineBasis(metaclass=ABCMeta):
 
     # Methods
     def compute_support_indexes(self, x: npt.NDArray) -> npt.NDArray:
+        """
+        Compute the support indexes for the spline basis at given points.
+
+        Parameters
+        ----------
+        x : npt.NDArray
+            Input array of real numbers for which to compute support indexes.
+
+        Returns
+        -------
+        npt.NDArray
+            The support indexes for the spline basis.
+
+        Raises
+        ------
+        ValueError
+            If `x` is not an array of real numbers.
+        """
 
         # Check input
         if not np.isrealobj(x):
