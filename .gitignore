@@ -79,10 +79,12 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/_contents/
 docs/sg_execution_times.rst
 docs/auto_examples/
 docs/gen_modules/
-docs/jupyterlite_notebooks/
+docs/notebooks_binder/
+docs/notebooks_jupyterlite/
 
 # PyBuilder
 .pybuilder/

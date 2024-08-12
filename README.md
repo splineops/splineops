@@ -124,7 +124,7 @@ mamba install cupy cutensor cudnn nccl
 To build the Sphinx documentation, install `splineops` doc dependencies
 
 ```shell
-mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme myst-parser
+mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
 ```
 
 Install `splineops` doc environment in editable mode
