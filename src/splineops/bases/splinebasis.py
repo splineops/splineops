@@ -16,7 +16,7 @@ class SplineBasis(metaclass=ABCMeta):
         The support of the spline basis, representing the smallest interval in which the basis function is non-zero.
     degree : int
         The degree of the spline basis function. This parameter is not currently used in the implementation.
-    poles : Optional[Sequence[float]], optional
+    poles : :py:obj:`~typing.Optional` [:py:obj:`~typing.Tuple` [:py:obj:`float`]], optional
         Poles of the spline basis function, by default None.
 
     Raises
@@ -30,6 +30,25 @@ class SplineBasis(metaclass=ABCMeta):
     def __init__(
         self, support: int, degree: int, poles: Optional[Sequence[float]] = None
     ) -> None:
+        """
+        Initialize the SplineBasis object.
+
+        Parameters
+        ----------
+        support : int
+            The support of the spline basis, representing the smallest interval in which the basis function is non-zero.
+        degree : int
+            The degree of the spline basis function.
+        poles : :py:obj:`~typing.Optional` [:py:obj:`~typing.Tuple` [:py:obj:`float`]], optional
+            Poles of the spline basis function, by default None.
+
+        Raises
+        ------
+        ValueError
+            If `support` or `degree` is not an integer.
+        TypeError
+            If `poles` is not a sequence of real numbers.
+        """
 
         # Support
         # TODO(dperdios): should consider renaming it? Support is a measure of
@@ -72,7 +91,7 @@ class SplineBasis(metaclass=ABCMeta):
     @property
     def poles(self):
         """
-        Optional[Tuple[float]]: The poles of the spline basis function.
+        :py:obj:`~typing.Optional` [:py:obj:`~typing.Tuple` [:py:obj:`float`]]: The poles of the spline basis function.
         """
         return self._poles
 
@@ -83,12 +102,12 @@ class SplineBasis(metaclass=ABCMeta):
 
         Parameters
         ----------
-        x : npt.NDArray
+        x : :py:obj:`~numpy.typing.NDArray`
             Input array of real numbers where the spline basis is evaluated.
 
         Returns
         -------
-        npt.NDArray
+        :py:obj:`~numpy.typing.NDArray`
             The evaluated spline basis function values at the input points.
 
         Raises
@@ -112,12 +131,12 @@ class SplineBasis(metaclass=ABCMeta):
 
         Parameters
         ----------
-        x : npt.NDArray
+        x : :py:obj:`~numpy.typing.NDArray`
             Input array of real numbers where the spline basis is evaluated.
 
         Returns
         -------
-        npt.NDArray
+        :py:obj:`~numpy.typing.NDArray`
             The evaluated spline basis function values at the input points.
         """
         pass
@@ -136,12 +155,12 @@ class SplineBasis(metaclass=ABCMeta):
 
         Parameters
         ----------
-        x : npt.NDArray
+        x : :py:obj:`~numpy.typing.NDArray`
             Input array of real numbers for which to compute support indexes.
 
         Returns
         -------
-        npt.NDArray
+        :py:obj:`~numpy.typing.NDArray`
             The support indexes for the spline basis.
 
         Raises
