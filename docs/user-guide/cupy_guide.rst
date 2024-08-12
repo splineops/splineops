@@ -103,6 +103,13 @@ Compute difference
    :end-before: # Plot results
    :linenos:
 
+The results are as follows:
+
+.. code-block:: none
+
+    Maximum absolute difference: 1.6689300537109375e-06
+    Mean square error: 1.372329577449885e-13
+
 Plot results
 ------------
 
@@ -110,6 +117,9 @@ Plot results
    :language: python
    :start-after: # Plot results
    :linenos:
+
+.. image:: ../_static/GPU_Interoperability_Using_Cupy_Plot.png
+   :alt: Plot showing results of GPU Interoperability using CuPy
 
 Download the full script
 ------------------------
