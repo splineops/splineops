@@ -24,16 +24,16 @@ class ExtensionMode(metaclass=ABCMeta):
 
         Parameters
         ----------
-        indexes : npt.NDArray
+        indexes : :class:`numpy.typing.NDArray`
             Array of indexes where the extension should occur.
-        weights : npt.NDArray
+        weights : :class:`numpy.typing.NDArray`
             Weights associated with the extension at the given indexes.
         length : float
             The length of the original signal.
 
         Returns
         -------
-        Tuple[npt.NDArray, npt.NDArray]
+        Tuple[:class:`numpy.typing.NDArray`, :class:`numpy.typing.NDArray`]
             A tuple containing the extended indexes and the corresponding weights.
 
         Notes
@@ -50,14 +50,14 @@ class ExtensionMode(metaclass=ABCMeta):
 
         Parameters
         ----------
-        data : npt.NDArray
+        data : :class:`numpy.typing.NDArray`
             The input data for which to compute the spline coefficients.
         basis : SplineBasis
             The spline basis to be used for computing the coefficients.
 
         Returns
         -------
-        npt.NDArray
+        :class:`numpy.typing.NDArray`
             The computed spline coefficients.
         """
         # TODO(dperdios): add `axis` argument? Currently computations need to

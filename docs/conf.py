@@ -83,6 +83,16 @@ html_context = {
 html_logo = os.path.abspath('./_static/logo.png')
 html_favicon = os.path.abspath('./_static/logo.ico')
 
+# Options for intersphinx extension
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "NumPy [stable]": ("https://numpy.org/doc/stable/", None),
+    "CuPy [latest]": ("https://docs.cupy.dev/en/latest/", None),
+    "SciPy [latest]": ("https://docs.scipy.org/doc/scipy/", None),
+    "Pytest [latest]": ("https://docs.pytest.org/en/latest/", None),
+    "Matplotlib [stable]": ("https://matplotlib.org/stable/", None),
+}
+
 # Function to ensure the static directory path is absolute
 def resolve_static_path(app, exception):
     """
