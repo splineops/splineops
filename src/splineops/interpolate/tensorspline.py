@@ -8,9 +8,18 @@ from splineops.modes.extensionmode import ExtensionMode
 from splineops.modes.utils import asmode
 from splineops.utils.interop import is_ndarray
 
+# Type Aliases
+
+#: TSplineBasis: Represents either a SplineBasis object or a string identifier for a spline basis.
 TSplineBasis = Union[SplineBasis, str]
+
+#: TSplineBases: Represents either a single TSplineBasis or a sequence of TSplineBasis objects/identifiers.
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
+
+#: TExtensionMode: Represents either an ExtensionMode object or a string identifier for an extension mode.
 TExtensionMode = Union[ExtensionMode, str]
+
+#: TExtensionModes: Represents either a single TExtensionMode or a sequence of TExtensionMode objects/identifiers.
 TExtensionModes = Union[TExtensionMode, Sequence[TExtensionMode]]
 
 class TensorSpline:
@@ -19,13 +28,13 @@ class TensorSpline:
 
     Parameters
     ----------
-    data : (:py:obj:`numpy.typing.NDArray`)
+    data : :py:obj:`numpy.typing.NDArray`
         The input data array to be approximated or interpolated.
-    coordinates : (:py:obj:`Union[numpy.typing.NDArray, Sequence[numpy.typing.NDArray]]`)
+    coordinates : :py:obj:`typing.Union` [:py:obj:`numpy.typing.NDArray`, :py:obj:`typing.Sequence` [:py:obj:`numpy.typing.NDArray`]]
         The coordinates corresponding to the input data.
-    bases : (:py:class:`~TSplineBases`)
+    bases : :py:class:`~TSplineBases`
         The spline bases used for the approximation.
-    modes : (:py:class:`~TExtensionModes`)
+    modes : :py:class:`~TExtensionModes`
         The extension modes for handling boundaries.
     """
     
