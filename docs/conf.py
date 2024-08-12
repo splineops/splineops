@@ -94,8 +94,8 @@ html_context = {
 }
 
 # Ensure the paths to logo and favicon are absolute
-html_logo = os.path.abspath('./_static/logo.png')
-html_favicon = os.path.abspath('./_static/logo.ico')
+html_logo = '_static/logo.png'
+html_favicon = '_static/logo.ico'
 
 # Options for intersphinx extension
 intersphinx_mapping = {
