@@ -29,6 +29,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx_design',
     'myst_parser',
+    'jupyterlite_sphinx',
 ]
 
 templates_path = ['_templates']
@@ -38,17 +39,21 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 html_theme = 'pydata_sphinx_theme'
 
 # Set html_static_path to an absolute path
-html_static_path = [os.path.abspath('_static')]
-html_css_files = ['css/custom.css']
+html_static_path = ['_static']
+html_css_files = ['_static/css/custom.css']
 
 # sphinx-gallery configuration
 sphinx_gallery_conf = {
-    'examples_dirs': [os.path.abspath('../examples')],
-    'gallery_dirs': [os.path.abspath('auto_examples')],
+    'examples_dirs': '../examples',
+    'gallery_dirs': 'auto_examples',
     'within_subsection_order': FileNameSortKey,
-    'backreferences_dir': os.path.abspath('gen_modules/backreferences'),
+    'backreferences_dir': 'gen_modules/backreferences',
     'filename_pattern': '.*',
     'matplotlib_animations': True,
+    'jupyterlite': { # https://sphinx-gallery.github.io/stable/configuration.html#generate-jupyterlite-links-for-gallery-notebooks-experimental
+        'use_jupyter_lab': True, # Whether JupyterLite links should start Jupyter Lab instead of the Retrolab Notebook interface.
+        'jupyterlite_contents': 'jupyterlite_notebooks', # where to copy the example notebooks (relative to Sphinx source directory)
+    },
 }
 
 html_theme_options = {

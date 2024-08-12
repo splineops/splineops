@@ -64,6 +64,8 @@ docs = [
     "sphinx-design >=0.6",
     "pydata-sphinx-theme >=0.15",
     "myst-parser >= 3.0",
+    "jupyterlite-sphinx >= 0.16",
+    "jupyterlite-pyodide-kernel >= 0.4",
 ]
 
 # Hatch tool: dynamic version from git
