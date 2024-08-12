@@ -1,5 +1,5 @@
-GPU Interoperability using CuPy
-===============================
+GPU Support
+===========
 
 This guide demonstrates how to use SplineOps with CuPy for GPU interoperability.
 

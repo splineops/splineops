@@ -1,4 +1,4 @@
-# SplineOps: spline signal processing
+# SplineOps: Spline Operations
 
 SplineOps is a Python-based N-dimensional signal processing library with support for GPU computing.
 
