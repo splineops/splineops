@@ -3,11 +3,16 @@ GPU Interoperability Using CuPy
 ===============================
 
 This example demonstrates GPU interoperability using CuPy and tensor spline interpolation. The following steps are performed:
-1. Generates random data and coordinates.
-2. Creates tensor splines using NumPy and CuPy.
-3. Evaluates the splines on a set of coordinates.
-4. Computes the absolute difference and mean square error between the NumPy and CuPy evaluations.
-5. Plots the results.
+
+1. Generate random data and coordinates.
+
+2. Create tensor splines using NumPy and CuPy.
+
+3. Evaluate the splines on a set of coordinates.
+
+4. Compute the absolute difference and mean square error between the NumPy and CuPy evaluations.
+
+5. Plot the results.
 """
 
 # %%
