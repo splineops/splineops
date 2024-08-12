@@ -3,9 +3,6 @@ TensorSpline
 
 .. automodule:: splineops.interpolate.tensorspline
    :members:
-   :undoc-members:
    :show-inheritance:
-   :special-members:
+   :special-members: __init__, __call__
    :member-order: bysource
-
-Abstract class to extend signals for boundary conditions.

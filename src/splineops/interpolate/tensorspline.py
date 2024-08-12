@@ -28,9 +28,9 @@ class TensorSpline:
 
     Parameters
     ----------
-    data : :py:obj:`numpy.typing.NDArray`
+    data : :py:obj:`~numpy.typing.NDArray`
         The input data array to be approximated or interpolated.
-    coordinates : :py:obj:`typing.Union` [:py:obj:`numpy.typing.NDArray`, :py:obj:`typing.Sequence` [:py:obj:`numpy.typing.NDArray`]]
+    coordinates : :py:obj:`~typing.Union` [:py:obj:`~numpy.typing.NDArray`, :py:obj:`~typing.Sequence` [:py:obj:`~numpy.typing.NDArray`]]
         The coordinates corresponding to the input data.
     bases : :py:class:`~TSplineBases`
         The spline bases used for the approximation.
@@ -156,7 +156,7 @@ class TensorSpline:
 
         Returns
         -------
-        npt.NDArray
+        :py:obj:`~numpy.typing.NDArray`
             The coefficients array.
         """
         return np.copy(self._coefficients)
@@ -168,7 +168,7 @@ class TensorSpline:
 
         Returns
         -------
-        Tuple[SplineBasis, ...]
+        :py:obj:`~typing.Tuple` [:py:class:`~SplineBasis`, ...]
             The spline bases.
         """
         return self._bases
@@ -180,7 +180,7 @@ class TensorSpline:
 
         Returns
         -------
-        Tuple[ExtensionMode, ...]
+        :py:obj:`~typing.Tuple` [:py:class:`~ExtensionMode`, ...]
             The extension modes.
         """
         return self._modes
@@ -209,14 +209,14 @@ class TensorSpline:
 
         Parameters
         ----------
-        coordinates : Union[npt.NDArray, Sequence[npt.NDArray]]
+        coordinates : :py:obj:`~typing.Union` [:py:obj:`~numpy.typing.NDArray`, :py:obj:`~typing.Sequence` [:py:obj:`~numpy.typing.NDArray`]]
             The coordinates at which to evaluate the spline.
         grid : bool, optional
             Whether the coordinates form a grid, by default True.
 
         Returns
         -------
-        npt.NDArray
+        :py:obj:`~numpy.typing.NDArray`
             The evaluated data at the given coordinates.
         """
         return self.eval(coordinates=coordinates, grid=grid)
@@ -229,14 +229,14 @@ class TensorSpline:
 
         Parameters
         ----------
-        coordinates : Union[npt.NDArray, Sequence[npt.NDArray]]
+        coordinates : :py:obj:`~typing.Union` [:py:obj:`~numpy.typing.NDArray`, :py:obj:`~typing.Sequence` [:py:obj:`~numpy.typing.NDArray`]]
             The coordinates at which to evaluate the spline.
         grid : bool, optional
             Whether the coordinates form a grid, by default True.
 
         Returns
         -------
-        npt.NDArray
+        :py:obj:`~numpy.typing.NDArray`
             The evaluated data at the given coordinates.
 
         Raises
@@ -374,12 +374,12 @@ class TensorSpline:
 
         Parameters
         ----------
-        data : npt.NDArray
+        data : :py:obj:`~numpy.typing.NDArray`
             The input data array.
 
         Returns
         -------
-        npt.NDArray
+        :py:obj:`~numpy.typing.NDArray`
             The computed coefficients.
         """
         # Prepare data and axes
