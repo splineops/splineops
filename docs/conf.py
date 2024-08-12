@@ -50,9 +50,18 @@ sphinx_gallery_conf = {
     'backreferences_dir': 'gen_modules/backreferences',
     'filename_pattern': '.*',
     'matplotlib_animations': True,
+    'binder': { # https://sphinx-gallery.github.io/stable/configuration.html#generate-binder-links-for-gallery-notebooks-experimental
+        'org': 'splineops',
+        'repo': 'splineops',
+        'binderhub_url': 'https://mybinder.org',
+        'branch': 'main',
+        'dependencies': '../.binder/requirements.txt',
+        'notebooks_dir': 'notebooks_binder', # Jupyter notebooks for Binder will be copied to this directory (relative to built documentation root).
+        'use_jupyter_lab': True,
+    },
     'jupyterlite': { # https://sphinx-gallery.github.io/stable/configuration.html#generate-jupyterlite-links-for-gallery-notebooks-experimental
         'use_jupyter_lab': True, # Whether JupyterLite links should start Jupyter Lab instead of the Retrolab Notebook interface.
-        'jupyterlite_contents': 'jupyterlite_notebooks', # where to copy the example notebooks (relative to Sphinx source directory)
+        'jupyterlite_contents': 'notebooks_jupyterlite', # where to copy the example notebooks (relative to Sphinx source directory)
     },
 }
 
