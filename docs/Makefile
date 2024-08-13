@@ -19,6 +19,7 @@ clean:
 	rm -rf $(BUILDDIR)/
 	rm -rf auto_examples/
 	rm -rf gen_modules/
+	rm -rf notebooks_jupyterlite/
 	rm -f sg_execution_times.rst
 
 .PHONY: clean
