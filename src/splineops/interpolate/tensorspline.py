@@ -17,23 +17,64 @@ class TensorSpline:
     """
     A class to represent a tensor spline for multi-dimensional interpolation and approximation.
 
+    This class allows you to perform interpolation on N-dimensional data using a variety of spline bases
+    and extension modes. It is flexible and can handle different boundary conditions and spline types.
+
     Parameters
     ----------
     data : array_like
-        N-dimensional array with input data.
+        The input N-dimensional array to be interpolated.
     coordinates : array_like
         The coordinates corresponding to the input data.
-    bases : str or sequence of string
-        The spline bases used for the approximation. This can also be a sequence of bases specifying the basis to use on each axis.
-    modes : str or sequence of string
-        Signal extension modes for handling boundaries. This can also be a sequence of modes specifying the mode to use on each axis.
+    bases : str or sequence of str
+        The spline bases used for interpolation. It can be a single basis applied across all axes or a sequence of bases for each axis. 
+
+        The following spline bases are available:
+
+        - **"bspline0"**, **"bspline0-sym"**: Zero-degree or piecewise constant B-splines and symmetric zero-degree or piecewise constant B-splines.
+        - **"bspline1"** to **"bspline9"**: First to ninth-degree B-splines.
+        - **"omoms0"**, **"omoms0-sym"**: Zero-degree O-MOMS splines and symmetric zero-degree O-MOMS splines.
+        - **"omoms1"** to **"omoms5"**: First to fifth-degree O-MOMS splines.
+        - **"omoms2-sym"**, **"omoms4-sym"**: Symmetric second and fourth-degree O-MOMS splines.
+        - **"nearest"**, **"nearest-sym"**: Nearest neighbor interpolation.
+        - **"linear"**: Linear interpolation.
+        - **"keys"**: Keys spline interpolation.
+
+    modes : str or sequence of str
+        Signal extension modes used to handle boundaries. It can be a single mode applied across all axes or a sequence of modes for each axis. 
+
+        The following extension modes are available for handling boundaries:
+    
+        - **"zero" (0 0 0 0 | a b c d | 0 0 0 0)** The input is extended by filling all values beyond the boundary with zeroes.
+        - **"mirror" (d c b | a b c d | c b a)** The input is extended by reflecting around the center of the data points adjacent to the border.
 
     Example
     -------
-    Here's a simple example to illustrate the use of the TensorSpline class for interpolation.
+    1. **1D Interpolation:**
+    
+    Here's an example to illustrate 1-dimensional interpolation using the TensorSpline class.
 
     >>> import numpy as np
     >>> from splineops.interpolate.tensorspline import TensorSpline
+    >>> data = np.array([1.0, 2.0, 3.0, 4.0])
+    >>> coordinates = np.linspace(0, data.size - 1, data.size)
+    >>> bases = "linear"  # Linear interpolation
+    >>> modes = "mirror"  # Mirror boundary handling
+    >>> tensor_spline = TensorSpline(data=data, coordinates=(coordinates,), bases=bases, modes=modes)
+
+    To interpolate the data at a new point:
+
+    >>> eval_coords = np.array([1.5])
+    >>> data_eval = tensor_spline(coordinates=eval_coords, grid=False)
+    >>> print(data_eval)
+    [2.5]
+
+    In this example, the interpolated value at `x = 1.5` is `2.5`, which is the midpoint between `data[1]` (2.0) and `data[2]` (3.0).
+
+    2. **2D Interpolation:**
+
+    Here's a simple example to illustrate 2-dimensional interpolation using the TensorSpline class.
+
     >>> a = np.arange(12.).reshape((4, 3))
     >>> a
     array([[ 0.,  1.,  2.],
@@ -43,8 +84,8 @@ class TensorSpline:
     >>> xx = np.linspace(0, a.shape[0] - 1, a.shape[0])
     >>> yy = np.linspace(0, a.shape[1] - 1, a.shape[1])
     >>> coordinates = xx, yy
-    >>> bases = "bspline1"  # Linear interpolation
-    >>> modes = "mirror"    # Mirror boundary handling
+    >>> bases = ["bspline1", "bspline1"]  # Linear interpolation along both axes
+    >>> modes = ["mirror", "mirror"]      # Mirror boundary handling along both axes
     >>> tensor_spline = TensorSpline(data=a, coordinates=coordinates, bases=bases, modes=modes)
 
     To interpolate the array `a` at coordinates `(0.5, 0.5)` and `(2, 1)`:
@@ -73,11 +114,11 @@ class TensorSpline:
         data : array_like
             The input N-dimensional array to be interpolated.
         coordinates : array_like
-            The coordinates corresponding to the input data. Must define a uniform grid.
+            The coordinates corresponding to the input data.
         bases : str or sequence of str
-            The spline bases used for interpolation. Can be a single basis applied across all axes or a sequence of bases for each axis.
+            The spline bases used for interpolation. It can be a single basis applied across all axes or a sequence of bases for each axis.
         modes : str or sequence of str
-            Signal extension modes used to handle boundaries. Can be a single mode applied across all axes or a sequence of modes for each axis.
+            Signal extension modes used to handle boundaries. It can be a single mode applied across all axes or a sequence of modes for each axis.
 
         Example
         -------
