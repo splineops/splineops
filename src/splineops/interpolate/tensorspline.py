@@ -27,6 +27,35 @@ class TensorSpline:
         The spline bases used for the approximation. This can also be a sequence of bases specifying the basis to use on each axis.
     modes : str or sequence of string
         Signal extension modes for handling boundaries. This can also be a sequence of modes specifying the mode to use on each axis.
+
+    Example
+    -------
+    Here's a simple example to illustrate the use of the TensorSpline class for interpolation.
+
+    >>> import numpy as np
+    >>> from splineops.interpolate.tensorspline import TensorSpline
+    >>> a = np.arange(12.).reshape((4, 3))
+    >>> a
+    array([[ 0.,  1.,  2.],
+           [ 3.,  4.,  5.],
+           [ 6.,  7.,  8.],
+           [ 9., 10., 11.]])
+    >>> xx = np.linspace(0, a.shape[0] - 1, a.shape[0])
+    >>> yy = np.linspace(0, a.shape[1] - 1, a.shape[1])
+    >>> coordinates = xx, yy
+    >>> bases = "bspline1"  # Linear interpolation
+    >>> modes = "mirror"    # Mirror boundary handling
+    >>> tensor_spline = TensorSpline(data=a, coordinates=coordinates, bases=bases, modes=modes)
+
+    To interpolate the array `a` at coordinates `(0.5, 0.5)` and `(2, 1)`:
+
+    >>> eval_coords = np.array([[0.5, 2], [0.5, 1]])
+    >>> data_eval_pts = tensor_spline(coordinates=eval_coords, grid=False)
+    >>> print(data_eval_pts)
+    [2. 7.]
+
+    In this example, the interpolated value at `(0.5, 0.5)` is `2.0`, and the value at `(2, 1)` is `7.0`.
+
     """
     
     def __init__(
@@ -37,7 +66,26 @@ class TensorSpline:
         modes: TExtensionModes,
     ) -> None:
         """
-        Initializes the TensorSpline object with the given data, coordinates, bases, and modes.
+        Initialize the TensorSpline object with the given data, coordinates, bases, and modes.
+
+        Parameters
+        ----------
+        data : array_like
+            The input N-dimensional array to be interpolated.
+        coordinates : array_like
+            The coordinates corresponding to the input data. Must define a uniform grid.
+        bases : str or sequence of str
+            The spline bases used for interpolation. Can be a single basis applied across all axes or a sequence of bases for each axis.
+        modes : str or sequence of str
+            Signal extension modes used to handle boundaries. Can be a single mode applied across all axes or a sequence of modes for each axis.
+
+        Example
+        -------
+        >>> a = np.arange(12.).reshape((4, 3))
+        >>> xx = np.linspace(0, a.shape[0] - 1, a.shape[0])
+        >>> yy = np.linspace(0, a.shape[1] - 1, a.shape[1])
+        >>> coordinates = xx, yy
+        >>> tensor_spline = TensorSpline(data=a, coordinates=coordinates, bases="bspline1", modes="mirror")
         """
         # Data
         if not is_ndarray(data):
@@ -134,50 +182,18 @@ class TensorSpline:
     # Properties
     @property
     def coefficients(self) -> npt.NDArray:
-        """
-        Returns a copy of the computed coefficients.
-
-        Returns
-        -------
-        ndarray
-            The coefficients array.
-        """
         return np.copy(self._coefficients)
 
     @property
     def bases(self) -> Tuple[SplineBasis, ...]:
-        """
-        Returns the tuple of spline bases.
-
-        Returns
-        -------
-        :py:obj:`~typing.Tuple` [:py:class:`~SplineBasis`, ...]
-            The spline bases.
-        """
         return self._bases
 
     @property
     def modes(self) -> Tuple[ExtensionMode, ...]:
-        """
-        Returns the tuple of extension modes.
-
-        Returns
-        -------
-        :py:obj:`~typing.Tuple` [:py:class:`~ExtensionMode`, ...]
-            The extension modes.
-        """
         return self._modes
 
     @property
     def ndim(self):
-        """
-        Returns the number of dimensions of the data.
-
-        Returns
-        -------
-        int
-            The number of dimensions.
-        """
         return self._ndim
 
     # Methods
@@ -187,40 +203,39 @@ class TensorSpline:
         grid: bool = True,
         # TODO(dperdios): extrapolate?
     ) -> npt.NDArray:
-        """
-        Evaluates the tensor spline at the given coordinates.
-
-        Parameters
-        ----------
-        coordinates : :py:obj:`~typing.Union` [:py:obj:`~numpy.typing.NDArray`, :py:obj:`~typing.Sequence` [:py:obj:`~numpy.typing.NDArray`]]
-            The coordinates at which to evaluate the spline.
-        grid : bool, optional
-            Whether the coordinates form a grid, by default True.
-
-        Returns
-        -------
-        ndarray
-            The evaluated data at the given coordinates.
-        """
         return self.eval(coordinates=coordinates, grid=grid)
 
     def eval(
         self, coordinates: Union[npt.NDArray, Sequence[npt.NDArray]], grid: bool = True
     ) -> npt.NDArray:
         """
-        Evaluates the tensor spline at the given coordinates.
+        Evaluate the tensor spline at the given coordinates.
 
         Parameters
         ----------
-        coordinates : :py:obj:`~typing.Union` [:py:obj:`~numpy.typing.NDArray`, :py:obj:`~typing.Sequence` [:py:obj:`~numpy.typing.NDArray`]]
-            The coordinates at which to evaluate the spline.
+        coordinates : array_like
+            The coordinates at which to evaluate the tensor spline. If `grid` is True, must be a sequence of 1-D arrays
+            representing the grid points along each axis. If `grid` is False, must be a sequence of N-D arrays of the same shape.
         grid : bool, optional
-            Whether the coordinates form a grid, by default True.
+            If True (default), assumes the input coordinates define a grid and evaluates the tensor spline over this grid.
+            If False, treats the input coordinates as a list of points at which to evaluate the tensor spline.
 
         Returns
         -------
-        ndarray
-            The evaluated data at the given coordinates.
+        data : ndarray
+            The interpolated values at the specified coordinates.
+
+        Example
+        -------
+        >>> a = np.arange(12.).reshape((4, 3))
+        >>> xx = np.linspace(0, a.shape[0] - 1, a.shape[0])
+        >>> yy = np.linspace(0, a.shape[1] - 1, a.shape[1])
+        >>> coordinates = xx, yy
+        >>> tensor_spline = TensorSpline(data=a, coordinates=coordinates, bases="bspline1", modes="mirror")
+        >>> eval_coords = np.array([[0.5, 2], [0.5, 1]])
+        >>> data_eval_pts = tensor_spline.eval(coordinates=eval_coords, grid=False)
+        >>> print(data_eval_pts)
+        [2. 7.]
         """
         # Check coordinates
         ndim = self._ndim
@@ -347,19 +362,6 @@ class TensorSpline:
         return data
 
     def _compute_coefficients(self, data: npt.NDArray) -> npt.NDArray:
-        """
-        Computes the coefficients for the tensor spline based on the input data.
-
-        Parameters
-        ----------
-        data : array-like
-            The input data array.
-
-        Returns
-        -------
-        ndarray
-            The computed coefficients.
-        """
         # Prepare data and axes
         # TODO(dperdios): there is probably too many copies along this process
         coefficients = np.copy(data)
