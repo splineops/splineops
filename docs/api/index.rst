@@ -7,8 +7,6 @@ The class and function reference of SplineOps.
    :maxdepth: 2
 
    tensorspline
-   splinebasis
-   extensionmode
 
 Indices and tables
 ==================
