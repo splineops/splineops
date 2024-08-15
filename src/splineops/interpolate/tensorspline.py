@@ -8,18 +8,9 @@ from splineops.modes.extensionmode import ExtensionMode
 from splineops.modes.utils import asmode
 from splineops.utils.interop import is_ndarray
 
-# Type Aliases
-
-#: TSplineBasis: Represents either a SplineBasis object or a string identifier for a spline basis.
 TSplineBasis = Union[SplineBasis, str]
-
-#: TSplineBases: Represents either a single TSplineBasis or a sequence of TSplineBasis objects/identifiers.
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
-
-#: TExtensionMode: Represents either an ExtensionMode object or a string identifier for an extension mode.
 TExtensionMode = Union[ExtensionMode, str]
-
-#: TExtensionModes: Represents either a single TExtensionMode or a sequence of TExtensionMode objects/identifiers.
 TExtensionModes = Union[TExtensionMode, Sequence[TExtensionMode]]
 
 class TensorSpline:
@@ -28,14 +19,14 @@ class TensorSpline:
 
     Parameters
     ----------
-    data : :py:obj:`~numpy.typing.NDArray`
-        The input data array to be approximated or interpolated.
-    coordinates : :py:obj:`~typing.Union` [:py:obj:`~numpy.typing.NDArray`, :py:obj:`~typing.Sequence` [:py:obj:`~numpy.typing.NDArray`]]
+    data : array_like
+        N-dimensional array with input data.
+    coordinates : array_like
         The coordinates corresponding to the input data.
-    bases : :py:class:`~TSplineBases`
-        The spline bases used for the approximation.
-    modes : :py:class:`~TExtensionModes`
-        The extension modes for handling boundaries.
+    bases : str or sequence of string
+        The spline bases used for the approximation. This can also be a sequence of bases specifying the basis to use on each axis.
+    modes : str or sequence of string
+        Signal extension modes for handling boundaries. This can also be a sequence of modes specifying the mode to use on each axis.
     """
     
     def __init__(
@@ -47,14 +38,6 @@ class TensorSpline:
     ) -> None:
         """
         Initializes the TensorSpline object with the given data, coordinates, bases, and modes.
-
-        Raises
-        ------
-        TypeError
-            If the provided data is not an ndarray.
-        ValueError
-            If the coordinates are not strictly ascending, have incompatible shapes with the data, 
-            contain non-real numbers, or if the data and coordinates have different floating precisions.
         """
         # Data
         if not is_ndarray(data):
@@ -156,7 +139,7 @@ class TensorSpline:
 
         Returns
         -------
-        :py:obj:`~numpy.typing.NDArray`
+        ndarray
             The coefficients array.
         """
         return np.copy(self._coefficients)
@@ -216,7 +199,7 @@ class TensorSpline:
 
         Returns
         -------
-        :py:obj:`~numpy.typing.NDArray`
+        ndarray
             The evaluated data at the given coordinates.
         """
         return self.eval(coordinates=coordinates, grid=grid)
@@ -236,13 +219,8 @@ class TensorSpline:
 
         Returns
         -------
-        :py:obj:`~numpy.typing.NDArray`
+        ndarray
             The evaluated data at the given coordinates.
-
-        Raises
-        ------
-        ValueError
-            If the coordinates are not strictly ascending or have incompatible shapes.
         """
         # Check coordinates
         ndim = self._ndim
@@ -374,12 +352,12 @@ class TensorSpline:
 
         Parameters
         ----------
-        data : :py:obj:`~numpy.typing.NDArray`
+        data : array-like
             The input data array.
 
         Returns
         -------
-        :py:obj:`~numpy.typing.NDArray`
+        ndarray
             The computed coefficients.
         """
         # Prepare data and axes
