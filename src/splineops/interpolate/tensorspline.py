@@ -60,7 +60,7 @@ class TensorSpline:
     >>> coordinates = np.linspace(0, data.size - 1, data.size)
     >>> bases = "linear"  # Linear interpolation
     >>> modes = "mirror"  # Mirror boundary handling
-    >>> tensor_spline = TensorSpline(data=data, coordinates=(coordinates,), bases=bases, modes=modes)
+    >>> tensor_spline = TensorSpline(data=data, coordinates=coordinates, bases=bases, modes=modes)
 
     To interpolate the data at a new point:
 

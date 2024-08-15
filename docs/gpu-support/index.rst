@@ -23,8 +23,7 @@ Imports
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # %%
-   :end-before: # Data type
+   :lines: 24-27
    :linenos:
 
 Data type
@@ -32,8 +31,7 @@ Data type
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Data type
-   :end-before: # Create random data samples and corresponding coordinates
+   :lines: 35-35
    :linenos:
 
 Create random data samples and corresponding coordinates
@@ -41,8 +39,7 @@ Create random data samples and corresponding coordinates
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Create random data samples and corresponding coordinates
-   :end-before: # Tensor spline bases and modes
+   :lines: 41-49
    :linenos:
 
 Tensor spline bases and modes
@@ -50,8 +47,7 @@ Tensor spline bases and modes
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Tensor spline bases and modes
-   :end-before: # Create tensor spline from NumPy data
+   :lines: 57-58
    :linenos:
 
 Create tensor spline from NumPy data
@@ -59,8 +55,7 @@ Create tensor spline from NumPy data
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Create tensor spline from NumPy data
-   :end-before: # Create tensor spline from CuPy data for GPU computations
+   :lines: 64-68
    :linenos:
 
 Create tensor spline from CuPy data for GPU computations
@@ -68,8 +63,7 @@ Create tensor spline from CuPy data for GPU computations
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Create tensor spline from CuPy data for GPU computations
-   :end-before: # Create evaluation coordinates (extended and oversampled in this case)
+   :lines: 76-80
    :linenos:
 
 Create evaluation coordinates (extended and oversampled in this case)
@@ -77,8 +71,7 @@ Create evaluation coordinates (extended and oversampled in this case)
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Create evaluation coordinates (extended and oversampled in this case)
-   :end-before: # Evaluate using NumPy
+   :lines: 86-92
    :linenos:
 
 Evaluate using NumPy
@@ -86,8 +79,7 @@ Evaluate using NumPy
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Evaluate using NumPy
-   :end-before: # Evaluate using CuPy
+   :lines: 98-99
    :linenos:
 
 Evaluate using CuPy
@@ -95,8 +87,7 @@ Evaluate using CuPy
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Evaluate using CuPy
-   :end-before: # Compute difference
+   :lines: 107-108
    :linenos:
 
 Compute difference
@@ -104,23 +95,22 @@ Compute difference
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Compute difference
-   :end-before: # Plot results
+   :lines: 114-118
    :linenos:
 
-The results are as follows:
+The results on terminal:
 
 .. code-block:: none
 
-    Maximum absolute difference: 1.6689300537109375e-06
-    Mean square error: 1.372329577449885e-13
+   Maximum absolute difference: 1.6689300537109375e-06
+   Mean square error: 1.372329577449885e-13
 
 Plot results
 ------------
 
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
-   :start-after: # Plot results
+   :lines: 124-140
    :linenos:
 
 .. image:: ../_static/GPU_Interoperability_Using_Cupy_Plot.png
