@@ -145,7 +145,7 @@ def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
     np.testing.assert_equal(data_eval_tp, data_eval_mg)
 
     # Reshaped meshgrid evaluation
-    eval_coords_mg_rs = np.reshape(eval_coords_mg, newshape=(ndim, -1))
+    eval_coords_mg_rs = np.reshape(eval_coords_mg, (ndim, -1))
     data_eval_mg_rs = tensor_spline(coordinates=eval_coords_mg_rs, grid=False)
     np.testing.assert_equal(
         data_eval_tp, np.reshape(data_eval_mg_rs, data_eval_mg.shape)

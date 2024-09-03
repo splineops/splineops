@@ -53,7 +53,7 @@ class FiniteSupportCoefficients(ExtensionMode):
         # Reshape for batch-processing
         coeffs_shape = coeffs.shape
         coeffs_ns = -1, coeffs.shape[-1]
-        coeffs_rs = np.reshape(coeffs, newshape=coeffs_ns)
+        coeffs_rs = np.reshape(coeffs, coeffs_ns)
 
         # CuPy compatibility
         if need_cupy_compat:
@@ -84,6 +84,6 @@ class FiniteSupportCoefficients(ExtensionMode):
             coeffs_rs = coeffs_rs_cp
 
         # Reshape back to original shape
-        coeffs = np.reshape(coeffs_rs, newshape=coeffs_shape)
+        coeffs = np.reshape(coeffs_rs, coeffs_shape)
 
         return coeffs
