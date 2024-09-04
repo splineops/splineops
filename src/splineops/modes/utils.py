@@ -2,12 +2,10 @@ from typing import Union, Mapping, Type
 from splineops.modes.extensionmode import ExtensionMode
 from splineops.modes.narrowmirroring import NarrowMirroring
 from splineops.modes.finitesupportcoefficients import FiniteSupportCoefficients
-from splineops.modes.periodicpadding import PeriodicPadding
 
 mode_map: Mapping[str, Type[ExtensionMode]] = {
     "zero": FiniteSupportCoefficients,
     "mirror": NarrowMirroring,
-    "periodic": PeriodicPadding,
 }
 
 

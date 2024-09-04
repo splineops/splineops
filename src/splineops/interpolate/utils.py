@@ -288,9 +288,6 @@ def _init_causal_coeff(
         #         zn *= pole
         # c0 *= (1 - pole * pole) / (1 - pole ** (2 * data_len + 2))
         raise NotImplementedError("Unknown boundary condition")
-    elif boundary.lower() == "periodic":
-        # Periodic boundary condition: The first coefficient is just the first value
-        return data[:, 0]
     else:
         raise NotImplementedError("Unknown boundary condition")
 
@@ -307,8 +304,5 @@ def _init_anticausal_coeff(data: np.ndarray, pole: float, boundary: str):
         # return -pole * data[:, -1]  # w/ gain
         # # return (1 - pole) ** 2 * data[:, -1]  # w/o gain
         raise NotImplementedError("Unknown boundary condition")
-    elif boundary.lower() == "periodic":
-        # For periodic boundary conditions, the anti-causal coefficient is the last data point
-        return data[:, -1]
     else:
         raise NotImplementedError("Unknown boundary condition")

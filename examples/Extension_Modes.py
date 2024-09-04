@@ -2,7 +2,7 @@
 Displaying Extension Modes
 ==========================
 
-This example shows current extension modes Finite Support Coefficients, Narrow Mirroring, and Periodic Padding.
+This example shows current extension modes Finite Support Coefficients and Narrow Mirroring.
 """
 
 # %%
@@ -14,45 +14,50 @@ This example shows current extension modes Finite Support Coefficients, Narrow M
 import numpy as np
 import matplotlib.pyplot as plt
 from splineops.interpolate.tensorspline import TensorSpline
+from splineops.bases.utils import create_basis
 
 # %%
-# Function to Create Linear Signal
-# --------------------------------
+# Function to Sample Spline Basis
+# -------------------------------
 #
-# Create a simple linear signal for the specified x values.
+# Sample the spline basis function at specified x values.
 
-def create_linear_signal(x_values):
-    return x_values  # Linear function: f(x) = x
+def sample_spline_basis(basis_name, x_values):
+    basis = create_basis(basis_name)
+    return basis.eval(x_values)
 
 # %%
-# Function to Plot Extension Modes for Linear Function
-# ----------------------------------------------------
+# Function to Plot Extension Modes for Multiple Degrees
+# -----------------------------------------------------
 #
-# Define a helper function to plot extension modes using a linear function and adding boundary markers.
+# Define a helper function to plot extension modes for B-splines of degrees 0 to 3 using TensorSpline.
 
-def plot_extension_modes_for_linear_function(mode_name, x_values, title):
+def plot_extension_modes_for_degrees(degrees, mode_name, x_values, title):
     plt.figure(figsize=(12, 6))
-
-    # Create the linear signal
-    data = create_linear_signal(x_values)
     
-    # Create TensorSpline instance
-    tensor_spline = TensorSpline(data=data, coordinates=(x_values,), bases="linear", modes=mode_name)
+    for degree in degrees:
+        basis_name = f"bspline{degree}"
+        
+        # Sample the spline basis
+        data = sample_spline_basis(basis_name, x_values)
+        
+        # Ensure that the data is scaled correctly for interpolation (degree 1 should interpolate exactly)
+        if degree == 1:
+            data = np.interp(x_values, x_values, data)
+        
+        # Create TensorSpline instance
+        tensor_spline = TensorSpline(data=data, coordinates=(x_values,), bases=basis_name, modes=mode_name)
+        
+        # Define the extended evaluation grid (from -10 to 10)
+        eval_x_values = np.linspace(-10, 10, 2000)
+        eval_coords = (eval_x_values,)
+        
+        # Evaluate the tensor spline
+        extended_data = tensor_spline.eval(coordinates=eval_coords)
+        
+        # Plot the results
+        plt.plot(eval_x_values, extended_data, label=f"B-Spline Degree {degree}")
     
-    # Define the extended evaluation grid (from -10 to 10)
-    eval_x_values = np.linspace(-10, 10, 2000)
-    eval_coords = (eval_x_values,)
-    
-    # Evaluate the tensor spline
-    extended_data = tensor_spline.eval(coordinates=eval_coords)
-    
-    # Plot the results
-    plt.plot(eval_x_values, extended_data, label="Linear Function f(x) = x")
-    
-    # Add vertical lines at the boundaries of the original signal
-    plt.axvline(x=x_values[0], color='red', linestyle='--', label='Original Signal Start')
-    plt.axvline(x=x_values[-1], color='blue', linestyle='--', label='Original Signal End')
-
     plt.title(title)
     plt.xlabel('x')
     plt.ylabel('Interpolated Value')
@@ -65,29 +70,25 @@ def plot_extension_modes_for_linear_function(mode_name, x_values, title):
 # --------------
 x_values = np.linspace(-3, 3, 101)  # Use 101 points to ensure 0 (middle) is included
 
+# Define degrees to plot
+degrees = [0, 1, 2, 3]
+
 # %%
 # Plot for Finite Support Coefficients
 # ------------------------------------
-plot_extension_modes_for_linear_function(
-    mode_name="zero",  # Finite Support Coefficients is represented by "zero"
+plot_extension_modes_for_degrees(
+    degrees=degrees,
+    mode_name="zero",
     x_values=x_values,
-    title="Extension Mode: Finite Support Coefficients for Linear Function",
+    title="Extension Mode: Finite Support Coefficients for B-Spline Degrees 0 to 3",
 )
 
 # %%
 # Plot for Narrow Mirroring
 # -------------------------
-plot_extension_modes_for_linear_function(
-    mode_name="mirror",  # Narrow Mirroring is represented by "mirror"
+plot_extension_modes_for_degrees(
+    degrees=degrees,
+    mode_name="mirror",
     x_values=x_values,
-    title="Extension Mode: Narrow Mirroring for Linear Function",
-)
-
-# %%
-# Plot for Periodic Extension Mode
-# --------------------------------
-plot_extension_modes_for_linear_function(
-    mode_name="periodic",  # New Periodic Mode
-    x_values=x_values,
-    title="Extension Mode: Periodic Padding for Linear Function",
+    title="Extension Mode: Narrow Mirroring for B-Spline Degrees 0 to 3",
 )
