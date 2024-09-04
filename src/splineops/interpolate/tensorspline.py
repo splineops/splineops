@@ -47,7 +47,6 @@ class TensorSpline:
     
         - **"zero" (0 0 0 0 | a b c d | 0 0 0 0)** The input is extended by filling all values beyond the boundary with zeroes.
         - **"mirror" (d c b | a b c d | c b a)** The input is extended by reflecting around the center of the data points adjacent to the border.
-        - **"periodic" (b c d | a b c d | a b c)** The input is extended as a periodic signal.
 
     Example
     -------
