@@ -26,13 +26,13 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Intended Audience :: Science/Research",
     "Development Status :: 4 - Beta",
-#    "License :: OSI Approved :: BSD License",  # TODO(dperdios): BSD?
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-urls.download = "https://github.com/splineops/splineops.git"  # TODO(dperdios): make public
-#urls.homepage = "https://"  # TODO(dperdios): need a homepage
+urls.download = "https://github.com/splineops/splineops.git"
+urls.homepage = "https://splineops.github.io/"
 
 [project.optional-dependencies]
 visualization = [
