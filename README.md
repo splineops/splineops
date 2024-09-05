@@ -1,6 +1,7 @@
 # SplineOps: Spline Operations
 
-SplineOps is a Python-based N-dimensional signal processing library with support for GPU computing.
+SplineOps is a Python-based N-dimensional signal processing library with
+support for GPU computing.
 
 ## Installation
 
@@ -14,7 +15,8 @@ mamba create -n myenv
 mamba activate myenv
 ```
 
-Make sure you have the conda-forge channel added to your conda configuration. If not, you can add it using
+Make sure you have the conda-forge channel added to your conda configuration.
+If not, you can add it using
 
 ```shell
 conda config --add channels conda-forge
@@ -35,7 +37,8 @@ A wheel is needed and can be obtained from the source (see Packaging below)
 pip install splineops
 ```
 
-To run the examples, `matplotlib`, `pooch` (for built-in image datasets) and `IPython` (for Python UI widgets) will also be required.
+To run the examples, `matplotlib`, `pooch` (for built-in image datasets)
+and `IPython` (for Python UI widgets) will also be required.
 
 ```shell
 mamba install matplotlib pooch IPython
@@ -124,7 +127,7 @@ mamba install cupy cutensor cudnn nccl
 To build the Sphinx documentation, install `splineops` doc dependencies
 
 ```shell
-mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
+mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme sphinx-design myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
 ```
 
 Install `splineops` doc environment in editable mode
@@ -140,4 +143,5 @@ cd docs
 make html
 ```
 
-Then, go to `docs/_build/html` and open `index.html` to navigate the documentation locally.
+Then, go to `docs/_build/html` and open `index.html` to navigate the
+documentation locally.
