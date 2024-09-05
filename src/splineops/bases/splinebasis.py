@@ -5,7 +5,7 @@ from collections import abc
 import numpy.typing as npt
 import numpy as np
 
-# TODO(dperdios): Naming BSplineBasis? What about OMOMS or others?
+
 class SplineBasis(metaclass=ABCMeta):
     def __init__(
         self, support: int, degree: int, poles: Optional[Sequence[float]] = None

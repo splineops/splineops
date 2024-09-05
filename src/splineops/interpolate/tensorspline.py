@@ -409,8 +409,7 @@ class TensorSpline:
         axes = tuple(range(coefficients.ndim))
         axes_roll = tuple(np.roll(axes, shift=-1))
 
-        # TODO(dperdios): could do one less roll by starting with the initial
-        #  shape
+        # TODO(dperdios): could do one less roll by starting with the initiat shape
         for basis, mode in zip(self._bases, self._modes):
 
             # Roll data w.r.t. dimension
