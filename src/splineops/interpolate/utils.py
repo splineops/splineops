@@ -104,7 +104,7 @@ def _compute_coeffs_narrow_mirror_wg(
     data: np.ndarray,
     poles: np.ndarray,
 ) -> np.ndarray:
-    # TODO: NOTE THIS ONE IS DOUBLE CHECKED
+    # TODO(dperdios): test and integrate this version
 
     DataLength = len(data)
 
@@ -149,7 +149,7 @@ def _compute_coeffs_narrow_mirror_wog(
     data: np.ndarray,
     poles: np.ndarray,
 ) -> np.ndarray:
-    # TODO: NOTE THIS ONE IS NOT PROPERLY IMPLEMENTED (from Philipe's sheet)
+    # TODO(dperdios): DO NOT USE (not validated and still erroneous)
 
     # Flatten data-view except last dimension (on which interpolation occurs)
     data_len = data.shape[-1]
@@ -270,7 +270,7 @@ def _init_causal_coeff(
             c0 /= 1 - zn**2
     elif boundary.lower() == "zero":
         # TODO(dperdios): not independent of pole number...
-        # # zn = 1  # TODO: probably wrong
+        # # zn = 1  # TODO(dperdios): needs attention
         # zn = pole
         # mul = pole * pole / (1 - pole * pole)
         # if horizon < data_len:

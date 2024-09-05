@@ -59,7 +59,7 @@ def create_basis(name: str) -> SplineBasis:
         )
 
     basis = basis_map[name]()  # type: ignore
-    # TODO(dperdios): not easy go get this mapping to work with mypy.
+    # TODO(dperdios): not easy to get this mapping to work with mypy.
     #  The type annotation `basis_map: Mapping[str, Type[SplineBasis]]` helps
     #  (as in https://stackoverflow.com/a/54243383) but the combination with
     #  mandatory inputs (e.g., `support`) in the constructor may not be
