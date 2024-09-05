@@ -53,8 +53,8 @@ def plot_bases(names, x_values, title):
 x_values = np.linspace(-3, 3, 1000)
 
 # %%
-# Combined Plot for B-Spline degrees 0 to 9 (excluding Sym bases)
-# ---------------------------------------------------------------
+# Combined Plot for B-Spline degrees 0 to 9
+# -----------------------------------------
 plot_bases(
     names=["bspline0", "bspline1", "bspline2", "bspline3", "bspline4", "bspline5", "bspline6", "bspline7", "bspline8", "bspline9"],
     x_values=x_values,
@@ -62,8 +62,8 @@ plot_bases(
 )
 
 # %%
-# Combined Plot for OMOMS degrees 0 to 5 (excluding Sym bases)
-# ------------------------------------------------------------
+# Combined Plot for OMOMS degrees 0 to 5
+# --------------------------------------
 plot_bases(
     names=["omoms0", "omoms1", "omoms2", "omoms3", "omoms4", "omoms5"],
     x_values=x_values,
@@ -71,8 +71,8 @@ plot_bases(
 )
 
 # %%
-# Plot for Keys Basis Function (unchanged)
-# ----------------------------------------
+# Plot for Keys Basis Function
+# ----------------------------
 plot_bases(
     names=["keys"],
     x_values=x_values,
