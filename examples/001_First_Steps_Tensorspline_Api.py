@@ -101,9 +101,7 @@ eval_extent = [
     eval_yy[-1] + dy / 2,
 ]
 
-fig, axes = plt.subplots(
-    nrows=1, ncols=2, figsize=(12, 6), sharex="all", sharey="all"
-)
+fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6), sharex="all", sharey="all")
 ax = axes[0]
 ax.imshow(data.T, extent=extent)
 ax.set_title("Original data samples")

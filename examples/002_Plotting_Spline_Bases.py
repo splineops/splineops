@@ -21,6 +21,7 @@ from splineops.bases.utils import basis_map, create_basis
 #
 # Define a helper function to plot spline bases.
 
+
 def plot_bases(names, x_values, title):
     plt.figure(figsize=(12, 6))
     for name in names:
@@ -29,16 +30,16 @@ def plot_bases(names, x_values, title):
             # Special case for Keys spline: no degree in the label
             readable_name = "Keys Spline"
         else:
-            name_parts = name.split('-')
+            name_parts = name.split("-")
             readable_name = f"{name_parts[0][:-1]} degree {name_parts[0][-1]}"
-        
+
         # Evaluate the basis function
         y_values = create_basis(name).eval(x_values)
         plt.plot(x_values, y_values, label=readable_name)
-    
+
     plt.title(title)
-    plt.xlabel('x')
-    plt.ylabel('y')
+    plt.xlabel("x")
+    plt.ylabel("y")
     plt.grid(True)
     plt.legend()
     plt.show()
@@ -56,7 +57,18 @@ x_values = np.linspace(-3, 3, 1000)
 # Combined Plot for B-Spline degrees 0 to 9
 # -----------------------------------------
 plot_bases(
-    names=["bspline0", "bspline1", "bspline2", "bspline3", "bspline4", "bspline5", "bspline6", "bspline7", "bspline8", "bspline9"],
+    names=[
+        "bspline0",
+        "bspline1",
+        "bspline2",
+        "bspline3",
+        "bspline4",
+        "bspline5",
+        "bspline6",
+        "bspline7",
+        "bspline8",
+        "bspline9",
+    ],
     x_values=x_values,
     title="B-Spline Basis Functions: B-Spline degree 0 to B-Spline degree 9",
 )
