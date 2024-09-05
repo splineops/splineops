@@ -25,6 +25,7 @@ from splineops.interpolate.tensorspline import TensorSpline
 #
 # Define the helper functions to rotate an image and create the animation.
 
+
 def rotate_image_splineops(image, angle, degree=3, mode="zero"):
     """
     Rotate an image by a specified angle using SplineOps' TensorSpline method.
@@ -66,6 +67,7 @@ def rotate_image_splineops(image, angle, degree=3, mode="zero"):
 
     return rotated_image
 
+
 # %%
 # Load and Preprocess Image
 # -------------------------
@@ -88,12 +90,12 @@ rotated_image_45 = rotate_image_splineops(image_resized, 45, degree=3)
 
 # Display the original and rotated images
 fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-ax[0].imshow(image_resized, cmap='gray')
-ax[0].set_title('Original Image')
-ax[0].axis('off')
-ax[1].imshow(rotated_image_45, cmap='gray')
-ax[1].set_title('Rotated Image (45 degrees, spline degree 3)')
-ax[1].axis('off')
+ax[0].imshow(image_resized, cmap="gray")
+ax[0].set_title("Original Image")
+ax[0].axis("off")
+ax[1].imshow(rotated_image_45, cmap="gray")
+ax[1].set_title("Rotated Image (45 degrees, spline degree 3)")
+ax[1].axis("off")
 plt.tight_layout()
 plt.show()
 
@@ -103,26 +105,34 @@ plt.show()
 #
 # Create the animation of the image being rotated from 0 to 360 degrees using different spline degrees.
 
+
 def create_combined_animation(images):
-    fig, axes = plt.subplots(3, 1, figsize=(6, 18), constrained_layout=True)  # Adjusted figsize and layout for vertical placement
+    fig, axes = plt.subplots(
+        3, 1, figsize=(6, 18), constrained_layout=True
+    )  # Adjusted figsize and layout for vertical placement
     for ax, degree in zip(axes, [0, 1, 3]):
-        ax.axis('off')
-        ax.set_title(f'Degree {degree}')
-    
-    image_plots = [ax.imshow(images[i], cmap='gray') for i, ax in enumerate(axes)]
-    
+        ax.axis("off")
+        ax.set_title(f"Degree {degree}")
+
+    image_plots = [ax.imshow(images[i], cmap="gray") for i, ax in enumerate(axes)]
+
     # Animation function
     def animate(frame):
         nonlocal images  # Ensure we modify the images array from the enclosing scope
         for i, degree in enumerate([0, 1, 3]):
             if frame > 0:
-                images[i] = rotate_image_splineops(images[i], 24, degree=degree)  # Rotate by 24 degrees each frame
+                images[i] = rotate_image_splineops(
+                    images[i], 24, degree=degree
+                )  # Rotate by 24 degrees each frame
             image_plots[i].set_data(images[i])
         return image_plots
 
     # Create the animation
-    ani = animation.FuncAnimation(fig, animate, frames=15, interval=250, blit=True)  # 15 frames, rotating 24 degrees per frame
+    ani = animation.FuncAnimation(
+        fig, animate, frames=15, interval=250, blit=True
+    )  # 15 frames, rotating 24 degrees per frame
     return ani
+
 
 # Create initial images list and animation
 images = [image_resized.copy() for _ in range(3)]
