@@ -16,28 +16,32 @@ import matplotlib.pyplot as plt
 from splineops.interpolate.tensorspline import TensorSpline
 
 # %%
-# Function to Create Linear Signal
-# --------------------------------
+# Function to Create Non-Continuous Signal with Bump
+# --------------------------------------------------
 #
-# Create a simple linear signal for the specified x values.
+# Create a signal that is mostly linear but introduces a "bump" at an arbitrary location.
 
-
-def create_linear_signal(x_values):
-    return x_values  # Linear function: f(x) = x
-
+def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_height=5):
+    linear_part = x_values  # Linear function: f(x) = x
+    bump = np.where(
+        (x_values > (bump_location - bump_width / 2)) & (x_values < (bump_location + bump_width / 2)),
+        bump_height,
+        0,
+    )
+    return linear_part + bump
 
 # %%
-# Function to Plot Extension Modes for Linear Function
-# ----------------------------------------------------
+# Function to Plot Extension Modes for Non-Continuous Function
+# ------------------------------------------------------------
 #
-# Define a helper function to plot extension modes using a linear function and adding boundary markers.
+# Define a helper function to plot extension modes using the non-continuous function.
 
 
-def plot_extension_modes_for_linear_function(mode_name, x_values, title):
+def plot_extension_modes_for_bump_function(mode_name, x_values, title):
     plt.figure(figsize=(12, 6))
 
-    # Create the linear signal
-    data = create_linear_signal(x_values)
+    # Create the signal with a bump
+    data = create_signal_with_bump(x_values)
 
     # Create TensorSpline instance
     tensor_spline = TensorSpline(
@@ -52,7 +56,7 @@ def plot_extension_modes_for_linear_function(mode_name, x_values, title):
     extended_data = tensor_spline.eval(coordinates=eval_coords)
 
     # Plot the results
-    plt.plot(eval_x_values, extended_data, label="Linear Function f(x) = x")
+    plt.plot(eval_x_values, extended_data, label="Extended Signal")
 
     # Add vertical lines at the boundaries of the original signal
     plt.axvline(
@@ -73,22 +77,22 @@ def plot_extension_modes_for_linear_function(mode_name, x_values, title):
 # %%
 # Define x Range
 # --------------
-x_values = np.linspace(-3, 3, 101)  # Use 101 points to ensure 0 (middle) is included
+x_values = np.linspace(0, 6, 101)  # Use 101 points to ensure 0 (middle) is included
 
 # %%
 # Plot for Finite Support Coefficients
 # ------------------------------------
-plot_extension_modes_for_linear_function(
+plot_extension_modes_for_bump_function(
     mode_name="zero",  # Finite Support Coefficients is represented by "zero"
     x_values=x_values,
-    title="Extension Mode: Finite Support Coefficients for Linear Function",
+    title="Extension Mode: Finite Support Coefficients",
 )
 
 # %%
 # Plot for Narrow Mirroring
 # -------------------------
-plot_extension_modes_for_linear_function(
+plot_extension_modes_for_bump_function(
     mode_name="mirror",  # Narrow Mirroring is represented by "mirror"
     x_values=x_values,
-    title="Extension Mode: Narrow Mirroring for Linear Function",
+    title="Extension Mode: Narrow Mirroring",
 )
