@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 from splineops.interpolate.tensorspline import TensorSpline
 
 # %%
-# Function to Create Non-Continuous Signal with Bump
-# --------------------------------------------------
+# Function to Create Non-Continuous Signal
+# ----------------------------------------
 #
 # Create a signal that is mostly linear but introduces a "bump" at an arbitrary location.
 
@@ -31,8 +31,8 @@ def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_heig
     return linear_part + bump
 
 # %%
-# Function to Plot Extension Modes for Non-Continuous Function
-# ------------------------------------------------------------
+# Function to Plot Extension Modes for Signal
+# -------------------------------------------
 #
 # Define a helper function to plot extension modes using the non-continuous function.
 
