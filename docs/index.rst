@@ -1,9 +1,14 @@
 SplineOps - Spline Operations
 =============================
 
-**SplineOps** is an innovative open-source software library dedicated to high-performance signal processing with splines. Designed to empower researchers, engineers, and data scientists, SplineOps excels in processing large datasets efficiently, supporting both CPU and GPU computations across a wide spectrum of applications. From data smoothing to complex multidimensional data interpolation, SplineOps offers precision and speed for your computational needs.
+**SplineOps** is a Python-based open-source software library aimed at providing efficient signal processing tools using splines. 
+Currently adapting and building on the legacy algorithms developed by the `Biomedical Imaging Group at EPFL <https://bigwww.epfl.ch/>`_ (Lausanne, Switzerland), 
+SplineOps is in active development and evolving to support modern computational demands.
 
-By embracing modern computing architectures and seamless integration with the PyData ecosystem, SplineOps enhances computational pipelines, enabling users to focus on forward-thinking innovation and data exploration.
+With a focus on handling large datasets, SplineOps supports both CPU and GPU computations, offering tools for data smoothing, interpolation, 
+and other applications. While still a work in progress, the library aims to integrate with the PyData ecosystem and support a variety of research and engineering needs.
+
+By leveraging modern computing architectures, SplineOps seeks to enhance computational workflows while maintaining the rigor and reliability of the original algorithms.
 
 .. figure:: _static/waveletbird_full.jpeg
    :alt: Main Feature of SplineOps
@@ -15,11 +20,11 @@ By embracing modern computing architectures and seamless integration with the Py
 Key Features & Capabilities
 ===========================
 
-- **Optimized Performance**: Engineered for optimal efficiency, leveraging both CPU and GPU architectures to handle large-scale signal data sets swiftly and effectively.
+- **Optimized Performance**: Leveraging CPU and GPU architectures to handle large-scale signal data sets effectively.
 
-- **Precision and Flexibility**: Advanced capabilities for precise, high-degree spline interpolations across multiple dimensions, ensuring versatile and powerful data manipulation.
+- **Precision and Flexibility**: High-degree spline interpolations across multiple dimensions.
 
-- **Scalability and Extensibility**: Designed with scalability in mind, SplineOps is straightforward to use and can be effortlessly expanded to incorporate new functionalities tailored to specific applications.
+- **Scalability and Extensibility**: To incorporate new functionalities tailored to specific applications.
 
 .. figure:: _static/feature_01.jpg
    :alt: Key Feature Illustration
