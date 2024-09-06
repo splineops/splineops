@@ -15,10 +15,10 @@ TExtensionModes = Union[TExtensionMode, Sequence[TExtensionMode]]
 
 class TensorSpline:
     """
-    A class to represent a tensor spline for multi-dimensional interpolation and approximation.
+    A class to handle a tensor spline for multi-dimensional interpolation and approximation.
 
-    This class allows you to perform interpolation on N-dimensional data using a variety of spline bases
-    and extension modes. It is flexible and can handle different boundary conditions and spline types.
+    This class allows you to store N-dimensional data and perform interpolation using a variety of spline bases
+    and extension modes. It is flexible and can handle different extension modes and spline bases.
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ class TensorSpline:
     >>> data = np.array([1.0, 2.0, 3.0, 4.0])
     >>> coordinates = np.linspace(0, data.size - 1, data.size)
     >>> bases = "linear"  # Linear interpolation
-    >>> modes = "mirror"  # Mirror boundary handling
+    >>> modes = "mirror"  # Mirror extension mode
     >>> tensor_spline = TensorSpline(data=data, coordinates=coordinates, bases=bases, modes=modes)
 
     To interpolate the data at a new point:
@@ -85,7 +85,7 @@ class TensorSpline:
     >>> yy = np.linspace(0, a.shape[1] - 1, a.shape[1])
     >>> coordinates = xx, yy
     >>> bases = ["bspline1", "bspline1"]  # Linear interpolation along both axes
-    >>> modes = ["mirror", "mirror"]      # Mirror boundary handling along both axes
+    >>> modes = ["mirror", "mirror"]      # Mirror extension mode handling along both axes
     >>> tensor_spline = TensorSpline(data=a, coordinates=coordinates, bases=bases, modes=modes)
 
     To interpolate the array `a` at coordinates `(0.5, 0.5)` and `(2, 1)`:
