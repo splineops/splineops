@@ -5,6 +5,7 @@ import os
 import sys
 from pathlib import Path
 from sphinx_gallery.sorting import FileNameSortKey
+from datetime import datetime
 
 # Path setup
 sys.path.insert(0, str(Path(__file__).parents[1]))
@@ -12,8 +13,7 @@ sys.path.insert(0, os.path.abspath("sphinxext"))
 
 # Project information
 project = 'splineops'
-copyright = '2024, Biomedical Imaging Group'
-author = 'Biomedical Imaging Group'
+copyright = f'2021 - {datetime.now().year}, SplineOps developers (BSD 3-Clause License)'
 release = '0.0.1'
 
 # General configuration
@@ -33,7 +33,13 @@ extensions = [
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
+exclude_patterns = [
+    '_build', 
+    'Thumbs.db', 
+    '.DS_Store', 
+    '**.ipynb_checkpoints',
+    '**sg_execution_times.rst',
+]
 
 # Options for HTML output
 html_theme = 'pydata_sphinx_theme'
