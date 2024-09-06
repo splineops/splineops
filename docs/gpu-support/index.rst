@@ -24,7 +24,6 @@ Imports
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 24-27
-   :linenos:
 
 Data type
 ---------
@@ -32,7 +31,6 @@ Data type
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 35-35
-   :linenos:
 
 Create random data samples and corresponding coordinates
 --------------------------------------------------------
@@ -40,7 +38,6 @@ Create random data samples and corresponding coordinates
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 41-49
-   :linenos:
 
 Tensor spline bases and modes
 -----------------------------
@@ -48,7 +45,6 @@ Tensor spline bases and modes
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 57-58
-   :linenos:
 
 Create tensor spline from NumPy data
 ------------------------------------
@@ -56,7 +52,6 @@ Create tensor spline from NumPy data
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 64-68
-   :linenos:
 
 Create tensor spline from CuPy data for GPU computations
 --------------------------------------------------------
@@ -64,7 +59,6 @@ Create tensor spline from CuPy data for GPU computations
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 76-80
-   :linenos:
 
 Create evaluation coordinates (extended and oversampled in this case)
 ---------------------------------------------------------------------
@@ -72,7 +66,6 @@ Create evaluation coordinates (extended and oversampled in this case)
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 86-92
-   :linenos:
 
 Evaluate using NumPy
 --------------------
@@ -80,7 +73,6 @@ Evaluate using NumPy
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 98-99
-   :linenos:
 
 Evaluate using CuPy
 -------------------
@@ -88,7 +80,6 @@ Evaluate using CuPy
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 107-108
-   :linenos:
 
 Compute difference
 ------------------
@@ -96,7 +87,6 @@ Compute difference
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 114-118
-   :linenos:
 
 The results on terminal:
 
@@ -111,7 +101,6 @@ Plot results
 .. literalinclude:: GPU_Interoperability_Using_Cupy.py
    :language: python
    :lines: 124-140
-   :linenos:
 
 .. image:: ../_static/GPU_Interoperability_Using_Cupy_Plot.png
    :alt: Plot showing results of GPU Interoperability using CuPy
