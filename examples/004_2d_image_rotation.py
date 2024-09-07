@@ -1,5 +1,5 @@
 """
-2D Image Rotation
+2D image rotation
 =================
 
 This script demonstrates how to rotate an 2D image being from 0 to 360 degrees using the Tensor Spline Interpolation, with each rotation performed on top of the last rotated image to observe error accumulation.
@@ -20,7 +20,7 @@ from matplotlib import animation
 from splineops.interpolate.tensorspline import TensorSpline
 
 # %%
-# Helper Functions
+# Helper functions
 # ----------------
 #
 # Define the helper functions to rotate an image and create the animation.
@@ -69,7 +69,7 @@ def rotate_image_splineops(image, angle, degree=3, mode="zero"):
 
 
 # %%
-# Load and Preprocess Image
+# Load and preprocess image
 # -------------------------
 #
 # Load the image and preprocess it for the rotation animation.
@@ -100,7 +100,7 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Create Animation
+# Create animation
 # ----------------
 #
 # Create the animation of the image being rotated from 0 to 360 degrees using different spline degrees.
