@@ -1,12 +1,12 @@
 """
-First Steps With the TensorSpline API
+First steps with the TensorSpline API
 =====================================
 
 This example demonstrates how to create a basic interpolation using the TensorSpline API.
 """
 
 # %%
-# Data Preparation
+# Data preparation
 # ----------------
 #
 # Data type (need to provide floating numbers, "float64" and "float32" are typical).
@@ -29,7 +29,7 @@ data = prng.standard_normal(size=tuple(c.size for c in coordinates))
 data = np.ascontiguousarray(data, dtype=dtype)
 
 # %%
-# Tensor Spline Setup
+# TensorSpline setup
 # -------------------
 #
 # Tensor spline bases and signal extension modes.
@@ -42,7 +42,7 @@ tensor_spline = TensorSpline(
 )
 
 # %%
-# Evaluation Coordinates
+# Evaluation coordinates
 # ----------------------
 #
 # Create evaluation coordinates (extended and oversampled in this case).
@@ -56,7 +56,7 @@ eval_xx = np.linspace(xx[0] - px, xx[-1] + px, 100 * nx)
 eval_yy = np.linspace(yy[0] - py, yy[-1] + py, 100 * ny)
 
 # %%
-# Standard Evaluation
+# Standard evaluation
 # -------------------
 #
 # Perform a standard evaluation on a grid of coordinates.
@@ -65,7 +65,7 @@ eval_coords = eval_xx, eval_yy
 data_eval = tensor_spline(coordinates=eval_coords)
 
 # %%
-# Meshgrid Evaluation
+# Meshgrid evaluation
 # -------------------
 #
 # Evaluate using a meshgrid (not the default choice but could be useful in some cases).
@@ -75,7 +75,7 @@ data_eval_mg = tensor_spline(coordinates=eval_coords_mg, grid=False)
 np.testing.assert_equal(data_eval, data_eval_mg)
 
 # %%
-# Points Evaluation
+# Points evaluation
 # -----------------
 #
 # Evaluate the tensor spline at a list of points directly.

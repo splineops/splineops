@@ -1,8 +1,8 @@
 """
-Displaying Extension Modes
-==========================
+Displaying signal extension modes
+=================================
 
-This example shows current extension modes Finite Support Coefficients and Narrow Mirroring.
+This example shows current extension modes finite support coefficients and narrow mirroring.
 """
 
 # %%
@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from splineops.interpolate.tensorspline import TensorSpline
 
 # %%
-# Function to Create Non-Continuous Signal
+# Function to create non-continuous signal
 # ----------------------------------------
 #
 # Create a signal that is mostly linear but introduces a "bump" at an arbitrary location.
@@ -34,7 +34,7 @@ def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_heig
 
 
 # %%
-# Function to Plot Extension Modes for Signal
+# Function to plot extension modes for signal
 # -------------------------------------------
 #
 # Define a helper function to plot extension modes using the non-continuous function.
@@ -78,12 +78,12 @@ def plot_extension_modes_for_bump_function(mode_name, x_values, title):
 
 
 # %%
-# Define x Range
+# Define x range
 # --------------
 x_values = np.linspace(0, 6, 101)  # Use 101 points to ensure 0 (middle) is included
 
 # %%
-# Plot for Finite Support Coefficients
+# Plot for finite support coefficients
 # ------------------------------------
 plot_extension_modes_for_bump_function(
     mode_name="zero",  # Finite Support Coefficients is represented by "zero"
@@ -92,7 +92,7 @@ plot_extension_modes_for_bump_function(
 )
 
 # %%
-# Plot for Narrow Mirroring
+# Plot for narrow mirroring
 # -------------------------
 plot_extension_modes_for_bump_function(
     mode_name="mirror",  # Narrow Mirroring is represented by "mirror"

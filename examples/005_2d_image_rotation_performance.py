@@ -1,5 +1,5 @@
 """
-2D Image Rotation Performance
+2D image rotation performance
 =============================
 
 This example demonstrates how to create a basic rotation using the TensorSpline API and comparing against Scipy's.
@@ -19,7 +19,7 @@ from scipy import ndimage, datasets
 from splineops.interpolate.tensorspline import TensorSpline
 
 # %%
-# Calculate Inscribed Rectangle Bounds from Image
+# Calculate inscribed rectangle bounds from image
 # -----------------------------------------------
 #
 # Calculate the bounds for the largest rectangle that can be inscribed within a circle, which itself is inscribed within the original image, based on the image array directly.
@@ -61,7 +61,7 @@ def calculate_inscribed_rectangle_bounds_from_image(image):
 
 
 # %%
-# Crop Image to Bounds
+# Crop image to bounds
 # --------------------
 #
 # Crop an image to the specified bounds.
@@ -84,10 +84,10 @@ def crop_image_to_bounds(image, bounds):
 
 
 # %%
-# Calculate Signal-to-Noise Ratio (SNR)
+# Calculate signal-to-noise ratio (SNR)
 # -------------------------------------
 #
-# Compute the Signal-to-Noise Ratio (SNR) between the original and modified images.
+# Compute the SNR between the original and modified images.
 
 
 def calculate_snr(original, modified):
@@ -112,15 +112,15 @@ def calculate_snr(original, modified):
 
 
 # %%
-# Calculate Mean Squared Error (MSE)
+# Calculate mean squared error (MSE)
 # ----------------------------------
 #
-# Compute the Mean Squared Error (MSE) between the original and modified images.
+# Compute the MSE between the original and modified images.
 
 
 def calculate_mse(original, modified):
     """
-    Compute the Mean Squared Error (MSE) between the original and modified images.
+    Compute the mean squared error (MSE) between the original and modified images.
 
     Parameters:
     - original: The original image as a 2D numpy array.
@@ -134,7 +134,7 @@ def calculate_mse(original, modified):
 
 
 # %%
-# Rotate Image and Crop using SplineOps
+# Rotate image and crop using SplineOps
 # -------------------------------------
 #
 # Rotate an image by a specified angle using the splineops library's TensorSpline method and crop the result.
@@ -186,7 +186,7 @@ def rotate_image_and_crop_splineops(image, angle, degree=3, mode="zero", iterati
 
 
 # %%
-# Rotate Image and Crop using SciPy
+# Rotate image and crop using SciPy
 # ---------------------------------
 #
 # Rotate an image by a specified angle using SciPy's ndimage.rotate function and crop the result.
@@ -214,7 +214,7 @@ def rotate_image_and_crop_scipy(image, angle, order=3, iterations=5):
 
 
 # %%
-# Benchmark and Display Rotation
+# Benchmark and display rotation
 # ------------------------------
 #
 # Perform a benchmark of the rotation operation for both SplineOps and SciPy libraries and display images.
@@ -272,7 +272,7 @@ def benchmark_and_display_rotation(image, angle, degree, iterations):
 
 
 # %%
-# Load Image and Perform Rotations
+# Load image and perform rotations
 # --------------------------------
 #
 # Load the image, perform rotations using both SplineOps and SciPy methods, and display the results.

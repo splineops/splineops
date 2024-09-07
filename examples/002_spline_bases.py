@@ -1,5 +1,5 @@
 """
-Plotting Spline Bases
+Plotting spline bases
 =====================
 
 This example demonstrates how to plot the spline bases of the library.
@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from splineops.bases.utils import basis_map, create_basis
 
 # %%
-# Function to Plot Bases
+# Function to plot bases
 # ----------------------
 #
 # Define a helper function to plot spline bases.
@@ -46,7 +46,7 @@ def plot_bases(names, x_values, title):
 
 
 # %%
-# Spline Bases Evaluation and Plotting
+# Spline bases evaluation and plotting
 # ------------------------------------
 #
 # Define the x range and plot the spline bases in figures.
@@ -54,7 +54,7 @@ def plot_bases(names, x_values, title):
 x_values = np.linspace(-3, 3, 1000)
 
 # %%
-# Combined Plot for B-Spline degrees 0 to 9
+# Combined plot for B-spline degrees 0 to 9
 # -----------------------------------------
 plot_bases(
     names=[
@@ -74,8 +74,8 @@ plot_bases(
 )
 
 # %%
-# Combined Plot for OMOMS degrees 0 to 5
-# --------------------------------------
+# Combined plot for O-MOMS degrees 0 to 5
+# ---------------------------------------
 plot_bases(
     names=["omoms0", "omoms1", "omoms2", "omoms3", "omoms4", "omoms5"],
     x_values=x_values,
@@ -83,7 +83,7 @@ plot_bases(
 )
 
 # %%
-# Plot for Keys Basis Function
+# Plot for Keys basis function
 # ----------------------------
 plot_bases(
     names=["keys"],
