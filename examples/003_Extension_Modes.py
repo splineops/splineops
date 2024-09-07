@@ -21,14 +21,17 @@ from splineops.interpolate.tensorspline import TensorSpline
 #
 # Create a signal that is mostly linear but introduces a "bump" at an arbitrary location.
 
+
 def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_height=5):
     linear_part = x_values  # Linear function: f(x) = x
     bump = np.where(
-        (x_values > (bump_location - bump_width / 2)) & (x_values < (bump_location + bump_width / 2)),
+        (x_values > (bump_location - bump_width / 2))
+        & (x_values < (bump_location + bump_width / 2)),
         bump_height,
         0,
     )
     return linear_part + bump
+
 
 # %%
 # Function to Plot Extension Modes for Signal
