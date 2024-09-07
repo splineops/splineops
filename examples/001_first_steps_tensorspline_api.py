@@ -80,7 +80,7 @@ np.testing.assert_equal(data_eval, data_eval_mg)
 #
 # Evaluate the tensor spline at a list of points directly.
 
-eval_coords_pts = np.reshape(eval_coords_mg, newshape=(2, -1))
+eval_coords_pts = np.reshape(eval_coords_mg, (2, -1))
 data_eval_pts = tensor_spline(coordinates=eval_coords_pts, grid=False)
 np.testing.assert_equal(data_eval, np.reshape(data_eval_pts, data_eval_mg.shape))
 
