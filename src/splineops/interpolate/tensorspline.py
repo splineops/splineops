@@ -13,6 +13,7 @@ TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
 TExtensionMode = Union[ExtensionMode, str]
 TExtensionModes = Union[TExtensionMode, Sequence[TExtensionMode]]
 
+
 class TensorSpline:
     """
     A class to handle a tensor spline for multi-dimensional interpolation and approximation.
@@ -27,7 +28,7 @@ class TensorSpline:
     coordinates : array_like
         The coordinates corresponding to the input data.
     bases : str or sequence of str
-        The spline bases used for interpolation. It can be a single basis applied across all axes or a sequence of bases for each axis. 
+        The spline bases used for interpolation. It can be a single basis applied across all axes or a sequence of bases for each axis.
 
         The following spline bases are available:
 
@@ -41,17 +42,17 @@ class TensorSpline:
         - **"keys"**: Keys spline interpolation.
 
     modes : str or sequence of str
-        Signal extension modes used to handle boundaries. It can be a single mode applied across all axes or a sequence of modes for each axis. 
+        Signal extension modes used to handle boundaries. It can be a single mode applied across all axes or a sequence of modes for each axis.
 
         The following extension modes are available for handling boundaries:
-    
+
         - **"zero" (0 0 0 0 | a b c d | 0 0 0 0)** The input is extended by filling all values beyond the boundary with zeroes.
         - **"mirror" (d c b | a b c d | c b a)** The input is extended by reflecting around the center of the data points adjacent to the border.
 
     Example
     -------
     1. **1D Interpolation:**
-    
+
     Here's an example to illustrate 1-dimensional interpolation using the TensorSpline class.
 
     >>> import numpy as np
@@ -98,7 +99,7 @@ class TensorSpline:
     In this example, the interpolated value at `(0.5, 0.5)` is `2.0`, and the value at `(2, 1)` is `7.0`.
 
     """
-    
+
     def __init__(
         self,
         data: npt.NDArray,
