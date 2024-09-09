@@ -1,0 +1,58 @@
+name: Publish Python Package to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger the workflow when a new version tag (e.g., v1.0.0) is pushed
+    branches:
+      - main  # Only trigger on the main branch
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Miniconda
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: '3.12'
+          auto-update-conda: true
+          auto-activate-base: false
+          miniconda-version: "latest"  # Ensure Miniconda is installed
+
+      # Step 3: Install Mamba
+      - name: Install Mamba
+        run: |
+          echo "Installing Mamba"
+          conda install -n base -c conda-forge mamba
+      
+      # Step 4: Create the environment with Mamba
+      - name: Create Mamba environment
+        run: |
+          echo "Creating Mamba environment"
+          mamba create --name splineops_env python=3.12 -c conda-forge
+      
+      # Step 5: Install the necessary dependencies (including Hatch)
+      - name: Install dependencies
+        run: |
+          echo "Installing dependencies"
+          mamba run -n splineops_env pip install hatch
+      
+      # Step 6: Build the Python package using Hatch
+      - name: Build the package
+        run: |
+          echo "Building the package"
+          mamba run -n splineops_env hatch build
+
+      # Step 7: Publish the package to PyPI using Hatch
+      - name: Publish to PyPI
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}  # Access the PyPI API token stored in GitHub Secrets
+        run: |
+          echo "Publishing to PyPI"
+          mamba run -n splineops_env hatch publish --user __token__ --password $PYPI_TOKEN
