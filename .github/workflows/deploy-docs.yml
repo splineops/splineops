@@ -43,7 +43,6 @@ jobs:
       - name: Install dependencies
         run: |
           echo "Installing dependencies"
-          mamba run -n splineops_env mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme myst-parser -c conda-forge
           mamba run -n splineops_env pip install -e .[docs]
       
       - name: Build documentation
