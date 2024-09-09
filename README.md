@@ -28,10 +28,7 @@ Minimal requirements:
 mamba install numpy scipy
 ```
 
-Simply install `splineops` from its wheel using `pip`.
-*IMPORTANT:*
-Not yet uploaded on pypi or anaconda/mamba.
-A wheel is needed and can be obtained from the source (see Packaging below)
+Simply install `splineops` using `pip`.
 
 ```shell
 pip install splineops
