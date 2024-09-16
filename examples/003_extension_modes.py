@@ -99,3 +99,13 @@ plot_extension_modes_for_bump_function(
     x_values=x_values,
     title="Extension Mode: Narrow Mirroring",
 )
+
+
+# %%
+# Plot for periodic padding
+# -------------------------
+plot_extension_modes_for_bump_function(
+    mode_name="periodic", # Periodic Padding is represented by "periodic"
+    x_values=x_values,
+    title="Extension Mode: Periodic Padding",
+)
