@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath("sphinxext"))
 
 # Project information
 project = 'splineops'
-copyright = f'2021 - {datetime.now().year}, SplineOps developers (BSD 3-Clause License)'
+copyright = f'{datetime.now().year}, SplineOps authors'
 release = '0.0.1'
 
 # General configuration
