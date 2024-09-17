@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath("sphinxext"))
 # Project information
 project = 'splineops'
 copyright = f'{datetime.now().year}, SplineOps authors'
-release = '0.0.1'
+release = '0.3.6'
 
 # General configuration
 extensions = [
