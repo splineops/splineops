@@ -61,7 +61,7 @@ sphinx_gallery_conf = {
     'matplotlib_animations': True,
     'binder': { # https://sphinx-gallery.github.io/stable/configuration.html#generate-binder-links-for-gallery-notebooks-experimental
         'org': 'splineops',
-        'repo': 'splineops',
+        'repo': 'splineops.github.io',
         'binderhub_url': 'https://mybinder.org',
         'branch': 'main',
         'dependencies': '../.binder/requirements.txt',
