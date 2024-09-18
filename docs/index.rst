@@ -33,6 +33,26 @@ Key Features & Capabilities
 
    General B-Spline formula
 
+References
+==========
+
+Below are the key foundational papers that SplineOps builds upon, with citations in the same style as your existing references.
+
+[Unser1993a]  
+M\. Unser, A. Aldroubi, and M. Eden, “B-Spline Signal Processing Part I: Theory,” *IEEE Transactions on Signal Processing*, vol. 41, no. 2, pp. 821–833, 1993.  
+Available at: `https://bigwww.epfl.ch/publications/unser9301.html <https://bigwww.epfl.ch/publications/unser9301.html>`__.  
+Full PDF: `https://bigwww.epfl.ch/publications/unser9301.pdf <https://bigwww.epfl.ch/publications/unser9301.pdf>`__.
+
+[Unser1993b]  
+M\. Unser, A. Aldroubi, and M. Eden, “B-Spline Signal Processing Part II: Theory and Applications,” *IEEE Transactions on Signal Processing*, vol. 41, no. 2, pp. 834–848, 1993.  
+Available at: `https://bigwww.epfl.ch/publications/unser9302.html <https://bigwww.epfl.ch/publications/unser9302.html>`__.  
+Full PDF: `https://bigwww.epfl.ch/publications/unser9302.pdf <https://bigwww.epfl.ch/publications/unser9302.pdf>`__.
+
+[Thévenaz2000]  
+P\. Thévenaz, T. Blu, and M. Unser, “Interpolation Revisited,” *IEEE Transactions on Medical Imaging*, vol. 19, no. 7, pp. 739–758, 2000.  
+Available at: `https://bigwww.epfl.ch/publications/thevenaz0002.html <https://bigwww.epfl.ch/publications/thevenaz0002.html>`__.  
+Full PDF: `https://bigwww.epfl.ch/publications/thevenaz0002.pdf <https://bigwww.epfl.ch/publications/thevenaz0002.pdf>`__.
+
 Contents
 ========
 
