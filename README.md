@@ -1,9 +1,11 @@
 # SplineOps: Spline Operations
 
-SplineOps is a Python-based N-dimensional signal processing library with
+`splineops` is a Python-based N-dimensional signal processing library with
 support for GPU computing.
 
 ## Installation
+
+You need at least `Python 3.10` to install `splineops`, and ideally `Python 3.12`. `Python 3.11` is also compatible.
 
 Install minimal dependencies in a dedicated environment
 (shown here using [Mamba](https://mamba.readthedocs.io/en/latest/)).
@@ -100,7 +102,7 @@ pip install -e .[dev]
 
 ## GPU compatibility
 
-You can use SplineOps with `cupy`. If a specific CUDA version is required do
+You can use `splineops` with `cupy`. If a specific CUDA version is required do
 
 ```shell
 mamba install cupy cuda-version=12.3
