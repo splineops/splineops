@@ -135,11 +135,11 @@ Install `splineops` doc environment in editable mode
 pip install -e .[docs]
 ```
 
-Navigate to the `docs` directory and run the `.\make.bat html` command
+Navigate to the `docs` directory and run the `make html` command
 
 ```shell
 cd docs
-.\make.bat html
+make html
 ```
 
 Then, go to `docs/_build/html` and open `index.html` to navigate the
