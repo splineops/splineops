@@ -1,11 +1,11 @@
 # core.py
 import numpy as np
-from splineops.interpolate.advanced.utils import (
+from splineops.interpolate.ls_oblique.utils import (
     beta, get_interpolation_coefficients, get_samples,
     do_integ, do_diff, calculate_final_size, border
 )
 
-class Resize:
+class LS_Oblique_Resize:
     def __init__(self):
         # Initialization of parameters
         self.interp_degree = None
@@ -245,8 +245,7 @@ class Resize:
         output_vector[:length_output] = add_output_vector[:length_output]
 
 
-def resize_image(input_img_normalized, output_size=None, zoom_factors=None,
-                 method='Least-Squares', interpolation='Linear', inversable=False):
+def ls_oblique_resize(input_img_normalized, output_size=None, zoom_factors=None, method='Least-Squares', interpolation='Linear', inversable=False):
     """
     Resize an image using spline interpolation.
 
@@ -315,7 +314,7 @@ def resize_image(input_img_normalized, output_size=None, zoom_factors=None,
     output_image = np.zeros((output_height, output_width), dtype=np.float64)
 
     # Create an instance of Resize class
-    resizer = Resize()
+    resizer = LS_Oblique_Resize()
 
     # Perform resizing with a copy of the input image
     input_image_copy = input_img_normalized.copy()

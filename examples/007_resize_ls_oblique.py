@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from scipy.datasets import ascent
 from scipy.ndimage import zoom
 from splineops.interpolate.resize import resize
-from splineops.interpolate.advanced.ls_oblique_resize import resize_image
+from splineops.interpolate.ls_oblique.ls_oblique_resize import ls_oblique_resize
 
 # %%
 # Helper Functions
@@ -51,7 +51,7 @@ def resize_and_compute_metrics(input_image, method, interpolation, zoom_factor):
     input_image_normalized = (input_image / 255.0).astype(np.float64)
 
     # Resize (shrink) the image
-    shrunken_image = resize_image(
+    shrunken_image = ls_oblique_resize(
         input_img_normalized=input_image_normalized,
         zoom_factors=(zoom_factor, zoom_factor),
         method=method,
@@ -60,7 +60,7 @@ def resize_and_compute_metrics(input_image, method, interpolation, zoom_factor):
     )
 
     # Resize (expand) back to original size
-    expanded_image = resize_image(
+    expanded_image = ls_oblique_resize(
         input_img_normalized=shrunken_image,
         output_size=input_image_normalized.shape,
         method=method,
