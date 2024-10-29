@@ -80,14 +80,14 @@ def resize_and_compute_metrics(input_image, method, interpolation, zoom_factor):
 
 def resize_with_scipy_zoom(input_image_normalized, zoom_factor, interpolation):
     """Resize an image with SciPy's zoom function, then resize back and compute metrics."""
-    order = {'Linear': 1, 'Quadratic': 2, 'Cubic': 3}[interpolation]
-    resized_image = zoom(input_image_normalized, (zoom_factor, zoom_factor), order=order)
+    degree = {'Linear': 1, 'Quadratic': 2, 'Cubic': 3}[interpolation]
+    resized_image = zoom(input_image_normalized, (zoom_factor, zoom_factor), order=degree)
     reverse_zoom_factor = 1.0 / zoom_factor
-    resized_reverse_image = zoom(resized_image, (reverse_zoom_factor, reverse_zoom_factor), order=order)
+    resized_reverse_image = zoom(resized_image, (reverse_zoom_factor, reverse_zoom_factor), order=degree)
 
     zoom_factors = (input_image_normalized.shape[0] / resized_reverse_image.shape[0],
                     input_image_normalized.shape[1] / resized_reverse_image.shape[1])
-    resized_reverse_output = zoom(resized_reverse_image, zoom_factors, order=order)
+    resized_reverse_output = zoom(resized_reverse_image, zoom_factors, order=degree)
 
     # Calculate metrics
     snr = compute_snr(input_image_normalized, resized_reverse_output)
@@ -140,10 +140,10 @@ def main():
         ax[0, 0].set_title("Original Image")
         ax[0, 0].axis("off")
 
-        interp_order = {'Linear': 1, 'Quadratic': 2, 'Cubic': 3}[interpolation_type]
+        interp_degree = {'Linear': 1, 'Quadratic': 2, 'Cubic': 3}[interpolation_type]
 
         ax[0, 1].imshow(create_black_background(ls_output, input_image.shape), cmap="gray")
-        ax[0, 1].set_title(f"{method} Resized (Zoom: {zoom_factor}x, Degree: {interp_order}, Time: {ls_time:.2f}s)")
+        ax[0, 1].set_title(f"{method} Resized (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {ls_time:.2f}s)")
         ax[0, 1].axis("off")
 
         ls_diff = np.clip(np.abs(input_image_normalized - ls_resized_reverse / 255.0), 0, 1)
@@ -156,7 +156,7 @@ def main():
         ax[1, 0].axis("off")
 
         ax[1, 1].imshow(create_black_background(scipy_output, input_image.shape), cmap="gray")
-        ax[1, 1].set_title(f"SciPy Zoom (Zoom: {zoom_factor}x, Degree: {interp_order}, Time: {scipy_time:.2f}s)")
+        ax[1, 1].set_title(f"SciPy Zoom (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {scipy_time:.2f}s)")
         ax[1, 1].axis("off")
 
         scipy_diff = np.clip(np.abs(input_image_normalized - scipy_resized_reverse / 255.0), 0, 1)
