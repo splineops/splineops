@@ -38,7 +38,7 @@ original_extent = [0, image.shape[1], 0, image.shape[0]]
 # Resize the image to a specified output size and position it in the top-left corner of a black canvas the size of the original image.
 
 output_size = (image.shape[0] // 2, image.shape[1] * 3 // 4)
-resized_image_size = resize(image, output_size=output_size, bases="bspline3", modes="mirror", degree=3)
+resized_image_size = resize(image, output_size=output_size, modes="mirror", degree=3)
 print("Resized image shape (using output_size):", resized_image_size.shape)
 
 # Create a black canvas of the original image size and position the resized image in the corner
@@ -52,7 +52,7 @@ canvas_size[:resized_image_size.shape[0], :resized_image_size.shape[1]] = resize
 # Resize the image by scaling factors and position it in the top-left corner of a black canvas the size of the original image.
 
 zoom_factors = (0.5, 0.75)
-resized_image_zoom = resize(image, zoom_factors=zoom_factors, bases="bspline3", modes="mirror", degree=3)
+resized_image_zoom = resize(image, zoom_factors=zoom_factors, modes="mirror", degree=3)
 print("Resized image shape (using zoom_factors):", resized_image_zoom.shape)
 
 # Create a black canvas and position the resized image in the corner

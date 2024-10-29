@@ -2,23 +2,26 @@
 
 import numpy as np
 from splineops.interpolate.tensorspline import TensorSpline
+from splineops.bases.utils import asbasis
 
-def resize(data, output=None, output_size=None, zoom_factors=None, bases="linear", modes="mirror", degree=3):
+def resize(data, zoom_factors=None, output=None, output_size=None, degree=3, modes="mirror"):
     """
     Resize an N-dimensional image using TensorSpline for interpolation.
-    
+
     Parameters:
         data (ndarray): The input data to resize.
-        output (ndarray, optional): Array to store the resized output.
-        output_size (tuple, optional): Desired output shape. If provided, zoom_factors is ignored.
         zoom_factors (float or sequence, optional): Scaling factors for each axis. Ignored if output_size is provided.
-        bases (str or sequence of str): Spline basis or list of bases for each dimension.
+        output (ndarray or dtype, optional): Array in which to place the output, or the dtype of the returned array.
+        output_size (tuple, optional): Desired output shape. If provided, zoom_factors is ignored.
+        degree (int): Degree of the B-spline interpolation (0 to 9).
         modes (str or sequence of str): Extension modes or list of modes for each dimension.
-        degree (int): Degree of the spline interpolation.
 
     Returns:
-        ndarray: Resized data, either in `output` or a new array.
+        ndarray: Resized data in `output` if specified, otherwise a new array.
     """
+    if not (0 <= degree <= 9):
+        raise ValueError("degree must be an integer between 0 and 9 for B-spline interpolation.")
+
     if output_size is not None:
         # Calculate zoom factors based on output size
         zoom_factors = [new / old for new, old in zip(output_size, data.shape)]
@@ -30,7 +33,11 @@ def resize(data, output=None, output_size=None, zoom_factors=None, bases="linear
         zoom_factors = [zoom_factors] * data.ndim
 
     # Define a consistent dtype based on the input data
-    dtype = data.dtype
+    dtype = data.dtype if output is None else output.dtype
+
+    # Choose B-spline basis string based on degree
+    basis_str = f"bspline{degree}"
+    basis = asbasis(basis_str)
 
     # Original coordinates for each dimension
     original_coords = [np.linspace(0, dim - 1, dim, dtype=dtype) for dim in data.shape]
@@ -45,7 +52,7 @@ def resize(data, output=None, output_size=None, zoom_factors=None, bases="linear
     tensor_spline = TensorSpline(
         data=data,
         coordinates=original_coords,
-        bases=bases,
+        bases=basis,
         modes=modes
     )
 
@@ -54,6 +61,13 @@ def resize(data, output=None, output_size=None, zoom_factors=None, bases="linear
 
     # Assign to output array if specified
     if output is not None:
-        np.copyto(output, output_data)
-        return output
+        if isinstance(output, np.ndarray):
+            np.copyto(output, output_data)
+            return output
+        else:
+            # Create an array with the specified dtype
+            output = np.empty(output_data.shape, dtype=output)
+            np.copyto(output, output_data)
+            return output
+    
     return output_data
