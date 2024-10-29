@@ -300,7 +300,7 @@ def resize_image(input_img_normalized, output_size=None, zoom_factors=None,
         elif interpolation == "Quadratic":
             analy_degree = 1
         else:  # Cubic
-            analy_degree = 2
+            analy_degree = 1
 
     # Compute output image size based on inversable parameter
     if inversable:

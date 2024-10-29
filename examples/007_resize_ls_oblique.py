@@ -117,7 +117,7 @@ def main():
 
     zoom_factor = 1 / 3.14
     methods = ["Least-Squares", "Oblique projection"]
-    interpolation_type = "Linear"
+    interpolation_type = "Cubic"
 
     for method in methods:
         # Measure and process with advanced method
