@@ -1,27 +1,40 @@
 # utils.py
 import numpy as np
 
-def calculate_final_size(inversable, height, width, zoom_y, zoom_x):
-    size = [height, width, 0, 0]
+def calculate_final_size(inversable, input_sizes, zoom_factors):
+    """
+    Calculate the working and final sizes for each dimension.
 
-    if inversable:
-        w2 = int(round(round((size[0] - 1) * zoom_y) / zoom_y))
-        while size[0] - 1 - w2 != 0:
-            size[0] += 1
-            w2 = int(round(round((size[0] - 1) * zoom_y) / zoom_y))
+    Parameters:
+    - inversable: bool
+        Whether to adjust sizes to ensure invertibility.
+    - input_sizes: list or tuple of ints
+        The sizes of the input image per dimension.
+    - zoom_factors: list or tuple of floats
+        The zoom factors per dimension.
 
-        h2 = int(round(round((size[1] - 1) * zoom_x) / zoom_x))
-        while size[1] - 1 - h2 != 0:
-            size[1] += 1
-            h2 = int(round(round((size[1] - 1) * zoom_x) / zoom_x))
-
-        size[2] = int(round((size[0] - 1) * zoom_y) + 1)
-        size[3] = int(round((size[1] - 1) * zoom_x) + 1)
-    else:
-        size[2] = int(round(size[0] * zoom_y))
-        size[3] = int(round(size[1] * zoom_x))
-
-    return size
+    Returns:
+    - working_sizes: list of ints
+        Adjusted working sizes per dimension (may be increased if inversable is True).
+    - final_sizes: list of ints
+        Final sizes per dimension after scaling.
+    """
+    working_sizes = []
+    final_sizes = []
+    for size, zoom in zip(input_sizes, zoom_factors):
+        if inversable:
+            working_size = size
+            s = int(round(round((working_size - 1) * zoom) / zoom))
+            while working_size - 1 - s != 0:
+                working_size += 1
+                s = int(round(round((working_size - 1) * zoom) / zoom))
+            final_size = int(round((working_size - 1) * zoom) + 1)
+        else:
+            working_size = size
+            final_size = int(round(working_size * zoom))
+        working_sizes.append(working_size)
+        final_sizes.append(final_size)
+    return working_sizes, final_sizes
 
 def border(size, degree, tolerance=1e-10):
     if degree in [0, 1]:

@@ -1,4 +1,3 @@
-# core.py
 import numpy as np
 from splineops.interpolate.ls_oblique.utils import (
     beta, get_interpolation_coefficients, get_samples,
@@ -11,33 +10,31 @@ class LS_Oblique_Resize:
         self.interp_degree = None
         self.analy_degree = None
         self.synthe_degree = None
-        self.zoom_y = None
-        self.zoom_x = None
+        self.zoom_factors = None  # List of zoom factors per dimension
+        self.shifts = None        # List of shifts per dimension
         self.inversable = None
         self.analy_even = 0
         self.corr_degree = None
         self.half_support = None
-        self.spline_array_height = None
-        self.spline_array_width = None
-        self.index_min_height = None
-        self.index_max_height = None
-        self.index_min_width = None
-        self.index_max_width = None
+        self.spline_arrays = []       # List of spline arrays per dimension
+        self.index_min_list = []      # List of index_min arrays per dimension
+        self.index_max_list = []      # List of index_max arrays per dimension
+        self.add_vector_list = []     # List of add_vector arrays per dimension
+        self.add_output_vector_list = []  # List of add_output_vector arrays per dimension
+        self.period_sym_list = []     # List of period_sym per dimension
+        self.period_asym_list = []    # List of period_asym per dimension
 
     def compute_zoom(self, input_img, output_img, analy_degree, synthe_degree,
-                    interp_degree, zoom_y, zoom_x, shift_y, shift_x, inversable):
+                     interp_degree, zoom_factors, shifts, inversable):
         self.interp_degree = interp_degree
         self.analy_degree = analy_degree
         self.synthe_degree = synthe_degree
-        self.zoom_y = zoom_y
-        self.zoom_x = zoom_x
+        self.zoom_factors = zoom_factors
+        self.shifts = shifts
         self.inversable = inversable
 
-        ny, nx = input_img.shape
-
-        size = calculate_final_size(inversable, ny, nx, zoom_y, zoom_x)
-        working_size_y, working_size_x = size[:2]
-        final_size_y, final_size_x = size[2:]
+        n_dims = input_img.ndim
+        input_shape = input_img.shape
 
         if ((analy_degree + 1) / 2) * 2 == analy_degree + 1:
             self.analy_even = 1
@@ -46,148 +43,124 @@ class LS_Oblique_Resize:
         self.corr_degree = analy_degree + synthe_degree + 1
         self.half_support = (total_degree + 1) / 2.0
 
-        # Calculate and set up row-related arrays
-        add_border_height = max(border(final_size_y, self.corr_degree), total_degree)
-        final_total_height = final_size_y + add_border_height
-        length_total_height = working_size_y + int(np.ceil(add_border_height / zoom_y))
+        # Calculate working and final sizes per dimension
+        self.working_sizes, self.final_sizes = calculate_final_size(
+            inversable, input_shape, zoom_factors)
 
-        self.index_min_height = np.zeros(final_total_height, dtype=int)
-        self.index_max_height = np.zeros(final_total_height, dtype=int)
-        length_array_spln_height = final_total_height * (2 + total_degree)
-        self.spline_array_height = np.zeros(length_array_spln_height)
+        # Initialize lists to store per-dimension variables
+        self.index_min_list = []
+        self.index_max_list = []
+        self.spline_arrays = []
+        self.add_vector_list = []
+        self.add_output_vector_list = []
+        self.period_sym_list = []
+        self.period_asym_list = []
+        self.length_totals = []
+        self.length_output_totals = []
 
-        shift_y += ((analy_degree + 1.0) / 2.0 - np.floor((analy_degree + 1.0) / 2.0)) * (1.0 / zoom_y - 1.0)
-        fact_height = np.power(zoom_y, analy_degree + 1)
+        for dim in range(n_dims):
+            ny = self.working_sizes[dim]
+            zoom = self.zoom_factors[dim]
+            shift = self.shifts[dim]
+            final_size = self.final_sizes[dim]
 
-        l_range_height = np.arange(final_total_height)
-        affine_indices_height = l_range_height / zoom_y + shift_y
-        self.index_min_height = np.ceil(affine_indices_height - self.half_support).astype(int)
-        self.index_max_height = np.floor(affine_indices_height + self.half_support).astype(int)
+            add_border = max(border(final_size, self.corr_degree), total_degree)
+            final_total_size = final_size + add_border
+            length_total = ny + int(np.ceil(add_border / zoom))
+            self.length_totals.append(length_total)
+            self.length_output_totals.append(final_total_size)
 
-        i = 0
-        for l in range(final_total_height):
-            for k in range(self.index_min_height[l], self.index_max_height[l] + 1):
-                self.spline_array_height[i] = fact_height * beta(affine_indices_height[l] - k, total_degree)
-                i += 1
+            # Shift adjustments
+            shift += ((analy_degree + 1.0) / 2.0 - np.floor((analy_degree + 1.0) / 2.0)) * (1.0 / zoom - 1.0)
+            fact = np.power(zoom, analy_degree + 1)
 
-        # Calculate and set up column-related arrays
-        add_border_width = max(border(final_size_x, self.corr_degree), total_degree)
-        final_total_width = final_size_x + add_border_width
-        length_total_width = working_size_x + int(np.ceil(add_border_width / zoom_x))
+            l_range = np.arange(final_total_size)
+            affine_indices = l_range / zoom + shift
+            index_min = np.ceil(affine_indices - self.half_support).astype(int)
+            index_max = np.floor(affine_indices + self.half_support).astype(int)
 
-        self.index_min_width = np.zeros(final_total_width, dtype=int)
-        self.index_max_width = np.zeros(final_total_width, dtype=int)
-        length_array_spln_width = final_total_width * (2 + total_degree)
-        self.spline_array_width = np.zeros(length_array_spln_width)
+            # Initialize spline array
+            length_spline_array = final_total_size * (2 + total_degree)
+            spline_array = np.zeros(length_spline_array)
 
-        shift_x += ((analy_degree + 1.0) / 2.0 - np.floor((analy_degree + 1.0) / 2.0)) * (1.0 / zoom_x - 1.0)
-        fact_width = np.power(zoom_x, analy_degree + 1)
+            i = 0
+            for l in range(final_total_size):
+                for k in range(index_min[l], index_max[l] + 1):
+                    spline_array[i] = fact * beta(affine_indices[l] - k, total_degree)
+                    i += 1
 
-        l_range_width = np.arange(final_total_width)
-        affine_indices_width = l_range_width / zoom_x + shift_x
-        self.index_min_width = np.ceil(affine_indices_width - self.half_support).astype(int)
-        self.index_max_width = np.floor(affine_indices_width + self.half_support).astype(int)
+            self.index_min_list.append(index_min)
+            self.index_max_list.append(index_max)
+            self.spline_arrays.append(spline_array)
 
-        i = 0
-        for l in range(final_total_width):
-            for k in range(self.index_min_width[l], self.index_max_width[l] + 1):
-                self.spline_array_width[i] = fact_width * beta(affine_indices_width[l] - k, total_degree)
-                i += 1
+            # Periods for symmetry and asymmetry
+            period_sym = 2 * ny - 2
+            period_asym = 2 * ny - 3
+            self.period_sym_list.append(period_sym)
+            self.period_asym_list.append(period_asym)
 
-        output_column = np.zeros(final_size_y)
-        output_row = np.zeros(final_size_x)
-        working_row = np.zeros(working_size_x)
-        working_column = np.zeros(working_size_y)
+            # Initialize add vectors
+            add_vector = np.zeros(length_total)
+            add_output_vector = np.zeros(final_total_size)
+            self.add_vector_list.append(add_vector)
+            self.add_output_vector_list.append(add_output_vector)
 
-        add_vector_height = np.zeros(length_total_height)
-        add_output_vector_height = np.zeros(final_total_height)
-        add_vector_width = np.zeros(length_total_width)
-        add_output_vector_width = np.zeros(final_total_width)
+        # Begin resizing process
+        image = input_img.copy()
 
-        period_column_sym = 2 * working_size_y - 2
-        period_row_sym = 2 * working_size_x - 2
-        period_column_asym = 2 * working_size_y - 3
-        period_row_asym = 2 * working_size_x - 3
+        for dim in range(n_dims):
+            # Move current dimension to axis 0
+            image = np.moveaxis(image, dim, 0)
 
-        image = np.zeros((working_size_y, final_size_x))
+            # Prepare per-dimension variables
+            index_min = self.index_min_list[dim]
+            index_max = self.index_max_list[dim]
+            spline_array = self.spline_arrays[dim]
+            period_sym = self.period_sym_list[dim]
+            period_asym = self.period_asym_list[dim]
+            add_vector = self.add_vector_list[dim]
+            add_output_vector = self.add_output_vector_list[dim]
+            length_total = self.length_totals[dim]
+            length_output_total = self.length_output_totals[dim]
+            output_size = self.final_sizes[dim]
 
-        # Perform row and column resampling using the unified function
-        if inversable:
-            inver_image = np.zeros((working_size_y, working_size_x))
-            inver_image[:ny, :nx] = input_img
+            # Reshape for processing
+            shape = image.shape
+            reshaped_image = image.reshape(shape[0], -1)
+            output_shape = (output_size,) + shape[1:]
+            output_image = np.zeros(output_shape, dtype=image.dtype)
+            reshaped_output = output_image.reshape(output_shape[0], -1)
 
-            if working_size_x > nx:
-                inver_image[:, nx:] = inver_image[:, nx - 1: nx]
-            if working_size_y > ny:
-                inver_image[ny:, :] = inver_image[ny - 1: ny, :]
+            # Process each line
+            for idx in range(reshaped_image.shape[1]):
+                input_vector = reshaped_image[:, idx]
+                output_vector = np.zeros(output_size)
 
-            for y in range(working_size_y):
-                working_row = inver_image[y, :]
-                get_interpolation_coefficients(working_row, interp_degree)
-                # Row resampling
+                # Get interpolation coefficients
+                get_interpolation_coefficients(input_vector, interp_degree)
+
+                # Resampling
                 self.resampling(
-                    input_vector=working_row,
-                    output_vector=output_row,
-                    add_vector=add_vector_width,
-                    add_output_vector=add_output_vector_width,
-                    max_sym_boundary=period_row_sym,
-                    max_asym_boundary=period_row_asym,
-                    index_min=self.index_min_width,
-                    index_max=self.index_max_width,
-                    spline_array=self.spline_array_width
+                    input_vector=input_vector,
+                    output_vector=output_vector,
+                    add_vector=add_vector,
+                    add_output_vector=add_output_vector,
+                    max_sym_boundary=period_sym,
+                    max_asym_boundary=period_asym,
+                    index_min=index_min,
+                    index_max=index_max,
+                    spline_array=spline_array
                 )
-                image[y, :] = output_row
 
-            for y in range(final_size_x):
-                working_column = image[:, y]
-                get_interpolation_coefficients(working_column, interp_degree)
-                # Column resampling
-                self.resampling(
-                    input_vector=working_column,
-                    output_vector=output_column,
-                    add_vector=add_vector_height,
-                    add_output_vector=add_output_vector_height,
-                    max_sym_boundary=period_column_sym,
-                    max_asym_boundary=period_column_asym,
-                    index_min=self.index_min_height,
-                    index_max=self.index_max_height,
-                    spline_array=self.spline_array_height
-                )
-                output_img[:, y] = output_column
-        else:
-            for y in range(working_size_y):
-                working_row = input_img[y, :]
-                get_interpolation_coefficients(working_row, interp_degree)
-                # Row resampling
-                self.resampling(
-                    input_vector=working_row,
-                    output_vector=output_row,
-                    add_vector=add_vector_width,
-                    add_output_vector=add_output_vector_width,
-                    max_sym_boundary=period_row_sym,
-                    max_asym_boundary=period_row_asym,
-                    index_min=self.index_min_width,
-                    index_max=self.index_max_width,
-                    spline_array=self.spline_array_width
-                )
-                image[y, :] = output_row
+                # Store the output vector
+                reshaped_output[:, idx] = output_vector
 
-            for y in range(final_size_x):
-                working_column = image[:, y]
-                get_interpolation_coefficients(working_column, interp_degree)
-                # Column resampling
-                self.resampling(
-                    input_vector=working_column,
-                    output_vector=output_column,
-                    add_vector=add_vector_height,
-                    add_output_vector=add_output_vector_height,
-                    max_sym_boundary=period_column_sym,
-                    max_asym_boundary=period_column_asym,
-                    index_min=self.index_min_height,
-                    index_max=self.index_max_height,
-                    spline_array=self.spline_array_height
-                )
-                output_img[:, y] = output_column
+            # Reshape back and move axis back
+            image = output_image.reshape(output_shape)
+            image = np.moveaxis(image, 0, dim)
+
+        # Copy to output image
+        np.copyto(output_img, image)
 
     def resampling(self, input_vector, output_vector, add_vector, add_output_vector,
                    max_sym_boundary, max_asym_boundary, index_min, index_max, spline_array):
@@ -202,8 +175,8 @@ class LS_Oblique_Resize:
             average = do_integ(input_vector, self.analy_degree + 1)
 
         add_vector[:length_input] = input_vector
-        l = np.arange(length_input, length_total)
 
+        l = np.arange(length_input, length_total)
         if self.analy_even == 1:
             l2 = np.where(l >= max_sym_boundary, np.abs(l % max_sym_boundary), l)
             l2 = np.where(l2 >= length_input, max_sym_boundary - l2, l2)
@@ -215,7 +188,7 @@ class LS_Oblique_Resize:
 
         add_output_vector.fill(0.0)  # Initialize the add_output_vector with zeros
 
-        # Use specified index and spline arrays (these differ for rows vs. columns)
+        # Use specified index and spline arrays (these differ for dimensions)
         i = 0
         for l in range(length_output_total):
             for k in range(index_min[l], index_max[l] + 1):
@@ -252,10 +225,10 @@ def ls_oblique_resize(input_img_normalized, output_size=None, zoom_factors=None,
     Parameters:
     - input_img_normalized: np.ndarray
         The input image to be resized.
-    - output_size: tuple of ints (new_height, new_width), optional
-        Desired output image size. If provided, zoom factors are computed from it.
-    - zoom_factors: tuple of floats (zoom_y, zoom_x), optional
-        Zoom factors for height and width. Used if output_size is not provided.
+    - output_size: tuple of ints, optional
+        Desired output image size per dimension. If provided, zoom factors are computed from it.
+    - zoom_factors: tuple of floats, optional
+        Zoom factors per dimension. Used if output_size is not provided.
     - method: str, optional
         Interpolation method ('Interpolation', 'Least-Squares', 'Oblique projection').
     - interpolation: str, optional
@@ -267,20 +240,29 @@ def ls_oblique_resize(input_img_normalized, output_size=None, zoom_factors=None,
     - output_image: np.ndarray
         The resized image.
     """
+    n_dims = input_img_normalized.ndim
+    input_shape = input_img_normalized.shape
+
     # Determine the zoom factors
     if output_size is not None:
-        zoom_y = output_size[0] / input_img_normalized.shape[0]
-        zoom_x = output_size[1] / input_img_normalized.shape[1]
+        zoom_factors = [output_size[i] / input_shape[i] for i in range(n_dims)]
     elif zoom_factors is not None:
-        zoom_y, zoom_x = zoom_factors
+        if len(zoom_factors) != n_dims:
+            raise ValueError(f"zoom_factors must have {n_dims} elements.")
     else:
         raise ValueError("Either output_size or zoom_factors must be provided.")
+
+    shifts = [0.0] * n_dims  # Initialize shifts per dimension
 
     # Set degrees based on interpolation method
     if interpolation == "Linear":
         interp_degree = 1
         synthe_degree = 1
         analy_degree = 1
+    elif interpolation == "Quadratic":
+        interp_degree = 2
+        synthe_degree = 2
+        analy_degree = 2
     else:  # Cubic
         interp_degree = 3
         synthe_degree = 3
@@ -292,26 +274,25 @@ def ls_oblique_resize(input_img_normalized, output_size=None, zoom_factors=None,
     elif method == "Oblique projection":
         if interpolation == "Linear":
             analy_degree = 0
+        elif interpolation == "Quadratic":
+            analy_degree = 1
         else:  # Cubic
             analy_degree = 1
 
     # Compute output image size based on inversable parameter
     if inversable:
-        # Use calculate_final_size to get the correct output size
-        size = calculate_final_size(inversable, input_img_normalized.shape[0], input_img_normalized.shape[1], zoom_y, zoom_x)
-        working_size_y, working_size_x = size[:2]
-        output_height, output_width = size[2], size[3]
-
+        # Use calculate_final_size to get the correct output sizes per dimension
+        working_sizes, final_sizes = calculate_final_size(
+            inversable, input_shape, zoom_factors)
+        output_shape = tuple(final_sizes)
         # Inform the user if the output size has changed
-        if output_size is not None and (output_height != output_size[0] or output_width != output_size[1]):
-            print(f"Note: Output size adjusted to ({output_height}, {output_width}) to ensure invertibility.")
+        if output_size is not None and output_shape != tuple(output_size):
+            print(f"Note: Output size adjusted to {output_shape} to ensure invertibility.")
     else:
-        # Define the output image size as before
-        output_height = int(np.round(input_img_normalized.shape[0] * zoom_y))
-        output_width = int(np.round(input_img_normalized.shape[1] * zoom_x))
+        output_shape = tuple([int(np.round(input_shape[i] * zoom_factors[i])) for i in range(n_dims)])
 
     # Create the output image with the correct size
-    output_image = np.zeros((output_height, output_width), dtype=np.float64)
+    output_image = np.zeros(output_shape, dtype=np.float64)
 
     # Create an instance of Resize class
     resizer = LS_Oblique_Resize()
@@ -326,10 +307,8 @@ def ls_oblique_resize(input_img_normalized, output_size=None, zoom_factors=None,
         analy_degree,
         synthe_degree,
         interp_degree,
-        zoom_y,
-        zoom_x,
-        shift_y=0,
-        shift_x=0,
+        zoom_factors,
+        shifts,
         inversable=inversable
     )
 

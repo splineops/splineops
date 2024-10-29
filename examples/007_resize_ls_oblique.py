@@ -6,13 +6,12 @@ This example compares TensorSpline resizing with advanced interpolation methods:
 Least-Squares and Oblique Projection, as well as SciPy's built-in zoom.
 """
 
-import os
-import time
+# Import necessary libraries
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 from scipy.datasets import ascent
 from scipy.ndimage import zoom
-from splineops.interpolate.resize import resize
 from splineops.interpolate.ls_oblique.ls_oblique_resize import ls_oblique_resize
 
 # %%
@@ -106,67 +105,66 @@ def create_black_background(image, original_shape):
     return black_background
 
 # %%
-# Main Script
-# -----------
-#
-# Run resizing with different methods and display comparison.
+# Load Image and Set Parameters
+# -----------------------------
+# Load the 'ascent' image and set parameters for the resizing methods.
 
-def main():
-    input_image = load_ascent_image()  # Load and resize ascent image
-    input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
+input_image = load_ascent_image()  # Load and resize ascent image
+input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
-    zoom_factor = 1 / 3.14
-    methods = ["Least-Squares", "Oblique projection"]
-    interpolation_type = "Cubic"
+zoom_factor = 1 / 3.14
+methods = ["Least-Squares", "Oblique projection"]
+interpolation_type = "Cubic"
 
-    for method in methods:
-        # Measure and process with advanced method
-        start_time = time.time()
-        ls_output, ls_resized_reverse, ls_snr, ls_mse = resize_and_compute_metrics(
-            input_image, method, interpolation_type, zoom_factor
-        )
-        ls_time = time.time() - start_time
+# %%
+# Run Resizing and Compare Results
+# --------------------------------
+# For each method, resize the image using TensorSpline and SciPy, then compute and display metrics.
 
-        # Process with SciPy zoom
-        start_time = time.time()
-        scipy_output, scipy_resized_reverse, scipy_snr, scipy_mse = resize_with_scipy_zoom(
-            input_image_normalized, zoom_factor, interpolation_type
-        )
-        scipy_time = time.time() - start_time
+for method in methods:
+    # Measure and process with advanced method
+    start_time = time.time()
+    ls_output, ls_resized_reverse, ls_snr, ls_mse = resize_and_compute_metrics(
+        input_image, method, interpolation_type, zoom_factor
+    )
+    ls_time = time.time() - start_time
 
-        # Display and analyze results
-        fig, ax = plt.subplots(2, 3, figsize=(18, 12))
-        ax[0, 0].imshow(input_image, cmap="gray")
-        ax[0, 0].set_title("Original Image")
-        ax[0, 0].axis("off")
+    # Process with SciPy zoom
+    start_time = time.time()
+    scipy_output, scipy_resized_reverse, scipy_snr, scipy_mse = resize_with_scipy_zoom(
+        input_image_normalized, zoom_factor, interpolation_type
+    )
+    scipy_time = time.time() - start_time
 
-        interp_degree = {'Linear': 1, 'Quadratic': 2, 'Cubic': 3}[interpolation_type]
+    # Display and analyze results
+    fig, ax = plt.subplots(2, 3, figsize=(18, 12))
+    ax[0, 0].imshow(input_image, cmap="gray")
+    ax[0, 0].set_title("Original Image")
+    ax[0, 0].axis("off")
 
-        ax[0, 1].imshow(create_black_background(ls_output, input_image.shape), cmap="gray")
-        ax[0, 1].set_title(f"{method} Resized (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {ls_time:.2f}s)")
-        ax[0, 1].axis("off")
+    interp_degree = {'Linear': 1, 'Quadratic': 2, 'Cubic': 3}[interpolation_type]
 
-        ls_diff = np.clip(np.abs(input_image_normalized - ls_resized_reverse / 255.0), 0, 1)
-        ax[0, 2].imshow(ls_diff, cmap="gray")
-        ax[0, 2].set_title(f"{method} Difference (SNR: {ls_snr:.2f} dB, MSE: {ls_mse:.2e})")
-        ax[0, 2].axis("off")
+    ax[0, 1].imshow(create_black_background(ls_output, input_image.shape), cmap="gray")
+    ax[0, 1].set_title(f"{method} Resized (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {ls_time:.2f}s)")
+    ax[0, 1].axis("off")
 
-        ax[1, 0].imshow(input_image, cmap="gray")
-        ax[1, 0].set_title("Original Image")
-        ax[1, 0].axis("off")
+    ls_diff = np.clip(np.abs(input_image_normalized - ls_resized_reverse / 255.0), 0, 1)
+    ax[0, 2].imshow(ls_diff, cmap="gray")
+    ax[0, 2].set_title(f"{method} Difference (SNR: {ls_snr:.2f} dB, MSE: {ls_mse:.2e})")
+    ax[0, 2].axis("off")
 
-        ax[1, 1].imshow(create_black_background(scipy_output, input_image.shape), cmap="gray")
-        ax[1, 1].set_title(f"SciPy Zoom (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {scipy_time:.2f}s)")
-        ax[1, 1].axis("off")
+    ax[1, 0].imshow(input_image, cmap="gray")
+    ax[1, 0].set_title("Original Image")
+    ax[1, 0].axis("off")
 
-        scipy_diff = np.clip(np.abs(input_image_normalized - scipy_resized_reverse / 255.0), 0, 1)
-        ax[1, 2].imshow(scipy_diff, cmap="gray")
-        ax[1, 2].set_title(f"SciPy Difference (SNR: {scipy_snr:.2f} dB, MSE: {scipy_mse:.2e})")
-        ax[1, 2].axis("off")
+    ax[1, 1].imshow(create_black_background(scipy_output, input_image.shape), cmap="gray")
+    ax[1, 1].set_title(f"SciPy Zoom (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {scipy_time:.2f}s)")
+    ax[1, 1].axis("off")
 
-        plt.tight_layout()
-        plt.show()
+    scipy_diff = np.clip(np.abs(input_image_normalized - scipy_resized_reverse / 255.0), 0, 1)
+    ax[1, 2].imshow(scipy_diff, cmap="gray")
+    ax[1, 2].set_title(f"SciPy Difference (SNR: {scipy_snr:.2f} dB, MSE: {scipy_mse:.2e})")
+    ax[1, 2].axis("off")
 
-
-if __name__ == "__main__":
-    main()
+    plt.tight_layout()
+    plt.show()
