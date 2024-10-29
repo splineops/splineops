@@ -29,24 +29,28 @@ def resize(data, output=None, output_size=None, zoom_factors=None, bases="linear
     if isinstance(zoom_factors, (int, float)):
         zoom_factors = [zoom_factors] * data.ndim
 
+    # Define a consistent dtype based on the input data
+    dtype = data.dtype
+
     output_data = data
     for axis, zoom_factor in enumerate(zoom_factors):
         if zoom_factor != 1.0:  # Skip axis if no resizing needed
-            original_coords = np.linspace(0, output_data.shape[axis] - 1, output_data.shape[axis])
+            # Adjust coordinates to map the entire original field of view
+            original_coords = np.linspace(0, output_data.shape[axis] - 1, output_data.shape[axis], dtype=dtype)
             new_coords_len = output_size[axis] if output_size else int(output_data.shape[axis] * zoom_factor)
-            new_coords = np.linspace(0, output_data.shape[axis] - 1, new_coords_len)
+            new_coords = np.linspace(original_coords[0], original_coords[-1], new_coords_len, dtype=dtype)
 
             # Create a TensorSpline instance for this axis
             tensor_spline = TensorSpline(
                 data=output_data,
-                coordinates=[original_coords if i == axis else np.arange(output_data.shape[i])
+                coordinates=[original_coords if i == axis else np.arange(output_data.shape[i], dtype=dtype)
                              for i in range(output_data.ndim)],
                 bases=bases,
                 modes=modes
             )
 
             # Interpolate along the current axis
-            coords = [new_coords if i == axis else np.arange(output_data.shape[i])
+            coords = [new_coords if i == axis else np.arange(output_data.shape[i], dtype=dtype)
                       for i in range(output_data.ndim)]
             output_data = tensor_spline.eval(coordinates=coords, grid=True)
 
