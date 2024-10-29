@@ -282,10 +282,6 @@ def resize_image(input_img_normalized, output_size=None, zoom_factors=None,
         interp_degree = 1
         synthe_degree = 1
         analy_degree = 1
-    elif interpolation == "Quadratic":
-        interp_degree = 2
-        synthe_degree = 2
-        analy_degree = 2
     else:  # Cubic
         interp_degree = 3
         synthe_degree = 3
@@ -297,8 +293,6 @@ def resize_image(input_img_normalized, output_size=None, zoom_factors=None,
     elif method == "Oblique projection":
         if interpolation == "Linear":
             analy_degree = 0
-        elif interpolation == "Quadratic":
-            analy_degree = 1
         else:  # Cubic
             analy_degree = 1
 
