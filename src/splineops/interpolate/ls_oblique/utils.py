@@ -1,7 +1,13 @@
 # utils.py
 import numpy as np
+import numpy.typing as npt
+from typing import Sequence, Tuple, Union, Optional
 
-def calculate_final_size(inversable, input_sizes, zoom_factors):
+def calculate_final_size(
+    inversable: bool, 
+    input_sizes: Sequence[int], 
+    zoom_factors: Sequence[float]
+) -> Tuple[list[int], list[int]]:
     """
     Calculate the working and final sizes for each dimension.
 
@@ -36,7 +42,7 @@ def calculate_final_size(inversable, input_sizes, zoom_factors):
         final_sizes.append(final_size)
     return working_sizes, final_sizes
 
-def border(size, degree, tolerance=1e-10):
+def border(size: int, degree: int, tolerance: float = 1e-10) -> int:
     if degree in [0, 1]:
         return 0
 
@@ -60,7 +66,7 @@ def border(size, degree, tolerance=1e-10):
     return horizon
 
 # Beta function implementation for spline calculations
-def beta(x, degree):
+def beta(x: float, degree: int) -> float:
     """
     Computes the value of the B-spline basis function at a given point x for a specified degree.
     """
@@ -137,7 +143,7 @@ def beta(x, degree):
     return betan
 
 # Calculate interpolation coefficients based on degree
-def get_interpolation_coefficients(c, degree):
+def get_interpolation_coefficients(c: npt.NDArray, degree: int) -> None:
     z = []
     lambda_ = 1.0
     tolerance = 1e-10
@@ -183,7 +189,7 @@ def get_interpolation_coefficients(c, degree):
             c[n] = zk * (c[n + 1] - c[n])
 
 # Define sampling rules based on degree
-def get_samples(c, degree):
+def get_samples(c: npt.NDArray, degree: int) -> None:
     if degree == 0 or degree == 1:
         return
     elif degree == 2:
@@ -206,7 +212,7 @@ def get_samples(c, degree):
     np.copyto(c, s)
 
 # Applies FIR filter symmetrically
-def symmetric_fir(h, c, s):
+def symmetric_fir(h: Sequence[float], c: npt.NDArray, s: npt.NDArray) -> None:
     if len(c) != len(s):
         raise IndexError("Incompatible size")
 
@@ -277,7 +283,11 @@ def symmetric_fir(h, c, s):
         raise ValueError("Invalid filter half-length (should be [2..4])")
 
 # Calculates the initial causal coefficient
-def get_initial_causal_coefficient(c, z, tolerance=1e-10):
+def get_initial_causal_coefficient(
+    c: npt.NDArray, 
+    z: float, 
+    tolerance: float = 1e-10
+) -> float:
     z1 = z
     zn = z ** (len(c) - 1)
     sum_ = c[0] + zn * c[-1]
@@ -295,11 +305,15 @@ def get_initial_causal_coefficient(c, z, tolerance=1e-10):
     return sum_ / (1.0 - z ** (2 * len(c) - 2))
 
 # Calculates the initial anti-causal coefficient
-def get_initial_anti_causal_coefficient(c, z, tolerance=1e-10):
+def get_initial_anti_causal_coefficient(
+    c: npt.NDArray, 
+    z: float, 
+    tolerance: float = 1e-10
+) -> float:
     return (z * c[-2] + c[-1]) * z / (z * z - 1.0)
 
 # Performs integration based on degree
-def do_integ(c, nb):
+def do_integ(c: npt.NDArray, nb: int) -> float:
     size = len(c)
     m = 0.0
     average = 0.0
@@ -337,20 +351,20 @@ def do_integ(c, nb):
     return average
 
 # Helper for integration
-def integ_sa(c, m):
+def integ_sa(c: npt.NDArray, m: float) -> None:
     c -= m
     c[0] *= 0.5
     c[1:] += np.cumsum(c[:-1])
 
 # Helper for anti-symmetric integration
-def integ_as(c, y):
+def integ_as(c: npt.NDArray, y: npt.NDArray) -> None:
     z = c.copy()
     y[0] = z[0]
     y[1] = 0
     y[2:] = -np.cumsum(z[1:-1])
 
 # Differentiates based on degree
-def do_diff(c, nb):
+def do_diff(c: npt.NDArray, nb: int) -> None:
     size = len(c)
     if nb == 1:
         diff_as(c)
@@ -368,12 +382,12 @@ def do_diff(c, nb):
         diff_as(c)
 
 # Single-difference helper
-def diff_sa(c):
+def diff_sa(c: npt.NDArray) -> None:
     old = c[-2]
     c[:-1] -= c[1:]  # Perform the element-wise subtraction
     c[-1] -= old     # Update the last element
 
 # Anti-symmetric difference helper
-def diff_as(c):
+def diff_as(c: npt.NDArray) -> None:
     c[1:] -= c[:-1]  # Perform the element-wise subtraction for differentiation
     c[0] *= 2.0      # Update the first element

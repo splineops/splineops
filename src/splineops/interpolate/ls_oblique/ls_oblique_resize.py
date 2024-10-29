@@ -1,31 +1,42 @@
 import numpy as np
+import numpy.typing as npt
+from typing import Sequence
 from splineops.interpolate.ls_oblique.utils import (
     beta, get_interpolation_coefficients, get_samples,
     do_integ, do_diff, calculate_final_size, border
 )
 
 class LS_Oblique_Resize:
-    def __init__(self):
+    def __init__(self) -> None:
         # Initialization of parameters
-        self.interp_degree = None
-        self.analy_degree = None
-        self.synthe_degree = None
-        self.zoom_factors = None  # List of zoom factors per dimension
-        self.shifts = None        # List of shifts per dimension
-        self.inversable = None
-        self.analy_even = 0
-        self.corr_degree = None
-        self.half_support = None
-        self.spline_arrays = []       # List of spline arrays per dimension
-        self.index_min_list = []      # List of index_min arrays per dimension
-        self.index_max_list = []      # List of index_max arrays per dimension
-        self.add_vector_list = []     # List of add_vector arrays per dimension
-        self.add_output_vector_list = []  # List of add_output_vector arrays per dimension
-        self.period_sym_list = []     # List of period_sym per dimension
-        self.period_asym_list = []    # List of period_asym per dimension
+        self.interp_degree: int = None
+        self.analy_degree: int = None
+        self.synthe_degree: int = None
+        self.zoom_factors: Sequence[float] = None
+        self.shifts: Sequence[float] = None
+        self.inversable: bool = None
+        self.analy_even: int = 0
+        self.corr_degree: int = None
+        self.half_support: float = None
+        self.spline_arrays: list[npt.NDArray] = []
+        self.index_min_list: list[npt.NDArray] = []
+        self.index_max_list: list[npt.NDArray] = []
+        self.add_vector_list: list[npt.NDArray] = []
+        self.add_output_vector_list: list[npt.NDArray] = []
+        self.period_sym_list: list[int] = []
+        self.period_asym_list: list[int] = []
 
-    def compute_zoom(self, input_img, output_img, analy_degree, synthe_degree,
-                     interp_degree, zoom_factors, shifts, inversable):
+    def compute_zoom(
+        self, 
+        input_img: npt.NDArray, 
+        output_img: npt.NDArray, 
+        analy_degree: int, 
+        synthe_degree: int, 
+        interp_degree: int, 
+        zoom_factors: Sequence[float], 
+        shifts: Sequence[float], 
+        inversable: bool
+    ) -> None:
         self.interp_degree = interp_degree
         self.analy_degree = analy_degree
         self.synthe_degree = synthe_degree
@@ -162,8 +173,18 @@ class LS_Oblique_Resize:
         # Copy to output image
         np.copyto(output_img, image)
 
-    def resampling(self, input_vector, output_vector, add_vector, add_output_vector,
-                   max_sym_boundary, max_asym_boundary, index_min, index_max, spline_array):
+    def resampling(
+        self, 
+        input_vector: npt.NDArray, 
+        output_vector: npt.NDArray, 
+        add_vector: npt.NDArray, 
+        add_output_vector: npt.NDArray, 
+        max_sym_boundary: int, 
+        max_asym_boundary: int, 
+        index_min: npt.NDArray, 
+        index_max: npt.NDArray, 
+        spline_array: npt.NDArray
+    ) -> None:
         length_input = len(input_vector)
         length_output = len(output_vector)
         length_total = len(add_vector)
@@ -218,7 +239,14 @@ class LS_Oblique_Resize:
         output_vector[:length_output] = add_output_vector[:length_output]
 
 
-def ls_oblique_resize(input_img_normalized, output_size=None, zoom_factors=None, method='Least-Squares', interpolation='Linear', inversable=False):
+def ls_oblique_resize(
+    input_img_normalized: npt.NDArray, 
+    output_size: Sequence[int] = None, 
+    zoom_factors: Sequence[float] = None, 
+    method: str = 'Least-Squares', 
+    interpolation: str = 'Linear', 
+    inversable: bool = False
+) -> npt.NDArray:
     """
     Resize an image using spline interpolation.
 
