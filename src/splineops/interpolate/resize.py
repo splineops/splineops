@@ -32,27 +32,25 @@ def resize(data, output=None, output_size=None, zoom_factors=None, bases="linear
     # Define a consistent dtype based on the input data
     dtype = data.dtype
 
-    output_data = data
-    for axis, zoom_factor in enumerate(zoom_factors):
-        if zoom_factor != 1.0:  # Skip axis if no resizing needed
-            # Adjust coordinates to map the entire original field of view
-            original_coords = np.linspace(0, output_data.shape[axis] - 1, output_data.shape[axis], dtype=dtype)
-            new_coords_len = output_size[axis] if output_size else int(output_data.shape[axis] * zoom_factor)
-            new_coords = np.linspace(original_coords[0], original_coords[-1], new_coords_len, dtype=dtype)
+    # Original coordinates for each dimension
+    original_coords = [np.linspace(0, dim - 1, dim, dtype=dtype) for dim in data.shape]
 
-            # Create a TensorSpline instance for this axis
-            tensor_spline = TensorSpline(
-                data=output_data,
-                coordinates=[original_coords if i == axis else np.arange(output_data.shape[i], dtype=dtype)
-                             for i in range(output_data.ndim)],
-                bases=bases,
-                modes=modes
-            )
+    # New coordinates based on zoom_factors or output_size
+    new_coords = [
+        np.linspace(0, dim - 1, int(dim * zoom), dtype=dtype)
+        for dim, zoom in zip(data.shape, zoom_factors)
+    ]
 
-            # Interpolate along the current axis
-            coords = [new_coords if i == axis else np.arange(output_data.shape[i], dtype=dtype)
-                      for i in range(output_data.ndim)]
-            output_data = tensor_spline.eval(coordinates=coords, grid=True)
+    # Create a single TensorSpline instance
+    tensor_spline = TensorSpline(
+        data=data,
+        coordinates=original_coords,
+        bases=bases,
+        modes=modes
+    )
+
+    # Evaluate the TensorSpline at the new coordinates grid
+    output_data = tensor_spline.eval(coordinates=new_coords, grid=True)
 
     # Assign to output array if specified
     if output is not None:
