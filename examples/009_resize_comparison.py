@@ -1,46 +1,56 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.misc import ascent
+from scipy.ndimage import zoom
 from splineops.interpolate.resize import resize
-from splineops.interpolate.ls_oblique.ls_oblique_resize import LS_Oblique_Resize
-from splineops.interpolate.tensorspline import TensorSpline
 
-# Generate a sample 2D image (e.g., simple gradient or synthetic data)
-image = np.linspace(0, 1, 100).reshape(10, 10)
+# Helper functions for metrics
+def compute_snr(original, processed):
+    """Compute Signal-to-Noise Ratio between two images."""
+    signal_power = 255.0 ** 2
+    noise_power = np.mean((original - processed) ** 2)
+    snr = 10 * np.log10(signal_power / noise_power)
+    return snr
 
-# Parameters for resizing
-zoom_factors = (2, 2)  # Scale by 2 in both dimensions
-degrees = [1, 3]       # Degrees to compare
+def compute_mse(original, processed):
+    """Compute Mean Squared Error between two images."""
+    mse = np.mean((original - processed) ** 2)
+    return mse
+
+# Load the ascent image and prepare parameters
+image = ascent()
+image_normalized = (image / 255.0).astype(np.float64)  # Normalize to [0, 1]
+
+zoom_factor = 0.5
+degrees = [1, 3]
+methods = ["interpolation", "least-squares", "oblique", "scipy"]
 
 # Set up subplots
-fig, axes = plt.subplots(3, len(degrees), figsize=(10, 6))
-fig.suptitle("Comparison of Resizing Methods")
+fig, axes = plt.subplots(len(methods), len(degrees), figsize=(15, 10))
+fig.suptitle("Comparison of Resizing Methods with SNR and MSE on Ascent Image")
 
-for i, degree in enumerate(degrees):
-    # Tensor Spline Interpolation
-    ts_resized = resize(image, zoom_factors=zoom_factors, degree=degree)
-    axes[0, i].imshow(ts_resized, cmap="viridis")
-    axes[0, i].set_title(f"Tensor Spline Degree {degree}")
-    axes[0, i].axis("off")
-    
-    # LS Interpolation
-    ls_resizer = LS_Oblique_Resize()
-    ls_resized = np.zeros((image.shape[0] * zoom_factors[0], image.shape[1] * zoom_factors[1]))
-    ls_resizer.compute_zoom(image, ls_resized, analy_degree=degree, synthe_degree=degree,
-                            interp_degree=degree, zoom_factors=zoom_factors, shifts=(0, 0), inversable=False)
-    axes[1, i].imshow(ls_resized, cmap="viridis")
-    axes[1, i].set_title(f"LS Resize Degree {degree}")
-    axes[1, i].axis("off")
-    
-    # Oblique Interpolation
-    oblique_resizer = LS_Oblique_Resize()
-    oblique_resized = np.zeros((image.shape[0] * zoom_factors[0], image.shape[1] * zoom_factors[1]))
-    oblique_resizer.compute_zoom(image, oblique_resized, analy_degree=degree+1, synthe_degree=degree-1,
-                                 interp_degree=degree, zoom_factors=zoom_factors, shifts=(0, 0), inversable=False)
-    axes[2, i].imshow(oblique_resized, cmap="viridis")
-    axes[2, i].set_title(f"Oblique Resize Degree {degree}")
-    axes[2, i].axis("off")
+for i, method in enumerate(methods):
+    for j, degree in enumerate(degrees):
+        # Perform resizing based on the chosen method
+        if method == "scipy":
+            # Use SciPy's zoom function for interpolation
+            resized_down = zoom(image_normalized, zoom_factor, order=degree)
+            resized_up = zoom(resized_down, (1 / zoom_factor), order=degree)
+        else:
+            # Use our custom resize function for TensorSpline, LS, and Oblique
+            resized_down = resize(image_normalized, zoom_factors=(zoom_factor, zoom_factor), degree=degree, method=method)
+            resized_up = resize(resized_down, output_size=image.shape, degree=degree, method=method)
 
-# Display the comparison plot
+        # Compute SNR and MSE
+        snr = compute_snr(image_normalized, resized_up)
+        mse = compute_mse(image_normalized, resized_up)
+        
+        # Display the resized image and metrics
+        axes[i, j].imshow(np.clip(resized_up * 255.0, 0, 255).astype(np.uint8), cmap="gray")
+        title_method = "SciPy Zoom" if method == "scipy" else method.capitalize()
+        axes[i, j].set_title(f"{title_method} (Degree {degree})\nSNR: {snr:.2f} dB, MSE: {mse:.2e}")
+        axes[i, j].axis("off")
+
 plt.tight_layout()
-plt.subplots_adjust(top=0.85)
+plt.subplots_adjust(top=0.92)
 plt.show()
