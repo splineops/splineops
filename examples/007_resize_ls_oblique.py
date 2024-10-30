@@ -114,7 +114,7 @@ input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize t
 
 zoom_factor = 1 / 3.14
 methods = ["Least-Squares", "Oblique projection"]
-interpolation_type = "Cubic"
+interpolation_type = "Quadratic"
 
 # %%
 # Run Resizing and Compare Results

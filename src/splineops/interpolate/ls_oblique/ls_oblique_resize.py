@@ -47,8 +47,7 @@ class LS_Oblique_Resize:
         n_dims = input_img.ndim
         input_shape = input_img.shape
 
-        if ((analy_degree + 1) / 2) * 2 == analy_degree + 1:
-            self.analy_even = 1
+        self.analy_even = ((analy_degree + 1) % 2 == 0)
 
         total_degree = interp_degree + analy_degree + 1
         self.corr_degree = analy_degree + synthe_degree + 1
