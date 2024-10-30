@@ -296,6 +296,10 @@ def ls_oblique_resize(
         synthe_degree = 3
         analy_degree = 3
 
+    #if method == "Least-Squares":
+    #    if interpolation == "Quadratic":
+    #        analy_degree = 1
+
     # Adjust degrees based on method
     if method == "Interpolation":
         analy_degree = -1
