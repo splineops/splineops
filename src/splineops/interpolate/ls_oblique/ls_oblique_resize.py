@@ -7,50 +7,108 @@ from splineops.interpolate.ls_oblique.utils import (
 )
 
 class LS_Oblique_Resize:
+    """
+    A class to perform least-squares oblique image resizing using spline interpolation.
+
+    This class implements image resizing algorithms based on splines, allowing for
+    interpolation, least-squares, and oblique projection methods with various spline degrees.
+
+    Attributes
+    ----------
+    interp_degree : int
+        Degree of the interpolation spline.
+    analy_degree : int
+        Degree of the analysis spline.
+    synthe_degree : int
+        Degree of the synthesis spline.
+    zoom_factors : Sequence[float]
+        Zoom factors per dimension.
+    shifts : Sequence[float]
+        Shifts per dimension (usually zero).
+    inversable : bool
+        Indicates if the resizing should be inversable.
+    analy_even : int
+        Indicates if the analysis function is even (1) or odd (0).
+    corr_degree : int
+        Degree used for correlation (analy_degree + synthe_degree + 1).
+    half_support : float
+        Half of the support size of the spline function.
+    spline_arrays : list of np.ndarray
+        Precomputed spline values per dimension.
+    index_min_list : list of np.ndarray
+        Minimum indices for spline evaluation per dimension.
+    index_max_list : list of np.ndarray
+        Maximum indices for spline evaluation per dimension.
+    add_vector_list : list of np.ndarray
+        Auxiliary vectors for resampling per dimension.
+    add_output_vector_list : list of np.ndarray
+        Auxiliary output vectors for resampling per dimension.
+    period_sym_list : list of int
+        Periods for symmetric boundary conditions per dimension.
+    period_asym_list : list of int
+        Periods for antisymmetric boundary conditions per dimension.
+    length_totals : list of int
+        Total lengths of the extended signal per dimension.
+    length_output_totals : list of int
+        Total lengths of the output signal per dimension.
+    """
+
     def __init__(self) -> None:
+        """
+        Initialize the LS_Oblique_Resize object with default parameters.
+        """
         # Initialization of parameters
-        self.interp_degree: int = None       # Degree of the interpolation spline
-        self.analy_degree: int = None        # Degree of the analysis spline
-        self.synthe_degree: int = None       # Degree of the synthesis spline
-        self.zoom_factors: Sequence[float] = None  # Zoom factors per dimension
-        self.shifts: Sequence[float] = None         # Shift per dimension (usually zero)
-        self.inversable: bool = None         # Whether to adjust sizes to ensure invertibility
-        self.analy_even: int = 0             # Indicates symmetry of the analysis function (1 if even)
-        self.corr_degree: int = None         # Degree used for correlation (analysis + synthesis + 1)
-        self.half_support: float = None      # Half of the support size of the spline function
-        self.spline_arrays: list[npt.NDArray] = []   # Precomputed spline values per dimension
-        self.index_min_list: list[npt.NDArray] = []  # Minimum indices for spline evaluation per dimension
-        self.index_max_list: list[npt.NDArray] = []  # Maximum indices for spline evaluation per dimension
-        self.add_vector_list: list[npt.NDArray] = []         # Auxiliary vectors for resampling per dimension
-        self.add_output_vector_list: list[npt.NDArray] = []  # Auxiliary output vectors for resampling per dimension
-        self.period_sym_list: list[int] = []   # Periods for symmetric boundary conditions per dimension
-        self.period_asym_list: list[int] = []  # Periods for antisymmetric boundary conditions per dimension
-        self.length_totals: list[int] = []             # Total lengths of the extended signal per dimension
-        self.length_output_totals: list[int] = []      # Total lengths of the output signal per dimension
+        self.interp_degree: int = None
+        self.analy_degree: int = None
+        self.synthe_degree: int = None
+        self.zoom_factors: Sequence[float] = None
+        self.shifts: Sequence[float] = None
+        self.inversable: bool = None
+        self.analy_even: int = 0
+        self.corr_degree: int = None
+        self.half_support: float = None
+        self.spline_arrays: list[npt.NDArray] = []
+        self.index_min_list: list[npt.NDArray] = []
+        self.index_max_list: list[npt.NDArray] = []
+        self.add_vector_list: list[npt.NDArray] = []
+        self.add_output_vector_list: list[npt.NDArray] = []
+        self.period_sym_list: list[int] = []
+        self.period_asym_list: list[int] = []
+        self.length_totals: list[int] = []
+        self.length_output_totals: list[int] = []
 
     def compute_zoom(
-        self, 
-        input_img: npt.NDArray, 
-        output_img: npt.NDArray, 
-        analy_degree: int, 
-        synthe_degree: int, 
-        interp_degree: int, 
-        zoom_factors: Sequence[float], 
-        shifts: Sequence[float], 
+        self,
+        input_img: npt.NDArray,
+        output_img: npt.NDArray,
+        analy_degree: int,
+        synthe_degree: int,
+        interp_degree: int,
+        zoom_factors: Sequence[float],
+        shifts: Sequence[float],
         inversable: bool
     ) -> None:
         """
-        Main function to compute the zoomed (resized) image.
+        Compute the zoomed (resized) image using spline interpolation.
 
-        Parameters:
-        - input_img: Input image to be resized.
-        - output_img: Output image (preallocated) to store the resized image.
-        - analy_degree: Degree of the analysis spline.
-        - synthe_degree: Degree of the synthesis spline.
-        - interp_degree: Degree of the interpolation spline.
-        - zoom_factors: Zoom factors per dimension.
-        - shifts: Shifts per dimension (usually zero).
-        - inversable: Whether to adjust sizes to ensure invertibility.
+        Parameters
+        ----------
+        input_img : np.ndarray
+            The input image to be resized.
+        output_img : np.ndarray
+            The output image (preallocated) to store the resized image.
+        analy_degree : int
+            Degree of the analysis spline.
+        synthe_degree : int
+            Degree of the synthesis spline.
+        interp_degree : int
+            Degree of the interpolation spline.
+        zoom_factors : Sequence[float]
+            Zoom factors per dimension.
+        shifts : Sequence[float]
+            Shifts per dimension (usually zero).
+        inversable : bool
+            Indicates if the resizing should adjust sizes to ensure invertibility.
         """
         self.interp_degree = interp_degree
         self.analy_degree = analy_degree
@@ -62,11 +120,13 @@ class LS_Oblique_Resize:
         n_dims = input_img.ndim
         input_shape = input_img.shape
 
-        # Determine if the analysis degree is even or odd
+        # Determine if the analysis function is even or odd
         # This affects the boundary conditions (symmetric or antisymmetric)
-        self.analy_even = ((analy_degree + 1) % 2 == 0)
+        self.analy_even = int((analy_degree + 1) % 2 == 0)
+        # For example:
+        # If analy_degree = 2 (Quadratic), analy_even = int((2 + 1) % 2 == 0) = int(3 % 2 == 0) = 0 (odd)
+        # If analy_degree = 3 (Cubic), analy_even = int((3 + 1) % 2 == 0) = int(4 % 2 == 0) = 1 (even)
 
-        # Compute total degree and half of the support size
         total_degree = interp_degree + analy_degree + 1
         self.corr_degree = analy_degree + synthe_degree + 1
         self.half_support = (total_degree + 1) / 2.0
@@ -93,9 +153,10 @@ class LS_Oblique_Resize:
             shift = self.shifts[dim]
             final_size = self.final_sizes[dim]
 
-            # Compute the additional border required
+            # Compute the additional border required based on the correlation degree
             add_border = max(border(final_size, self.corr_degree), total_degree)
             final_total_size = final_size + add_border
+            # Calculate the extended length of the input vector
             length_total = ny + int(np.ceil(add_border / zoom))
             self.length_totals.append(length_total)
             self.length_output_totals.append(final_total_size)
@@ -199,30 +260,40 @@ class LS_Oblique_Resize:
         np.copyto(output_img, image)
 
     def resampling(
-        self, 
-        input_vector: npt.NDArray, 
-        output_vector: npt.NDArray, 
-        add_vector: npt.NDArray, 
-        add_output_vector: npt.NDArray, 
-        max_sym_boundary: int, 
-        max_asym_boundary: int, 
-        index_min: npt.NDArray, 
-        index_max: npt.NDArray, 
+        self,
+        input_vector: npt.NDArray,
+        output_vector: npt.NDArray,
+        add_vector: npt.NDArray,
+        add_output_vector: npt.NDArray,
+        max_sym_boundary: int,
+        max_asym_boundary: int,
+        index_min: npt.NDArray,
+        index_max: npt.NDArray,
         spline_array: npt.NDArray
     ) -> None:
         """
-        Perform resampling of a 1D signal (vector).
+        Perform resampling of a 1D signal (vector) using spline interpolation.
 
-        Parameters:
-        - input_vector: The input signal to resample.
-        - output_vector: The output resampled signal.
-        - add_vector: Auxiliary vector for extended signal.
-        - add_output_vector: Auxiliary vector for output computation.
-        - max_sym_boundary: Period for symmetric boundary extension.
-        - max_asym_boundary: Period for antisymmetric boundary extension.
-        - index_min: Minimum indices for spline evaluation.
-        - index_max: Maximum indices for spline evaluation.
-        - spline_array: Precomputed spline coefficients.
+        Parameters
+        ----------
+        input_vector : np.ndarray
+            The input signal to resample.
+        output_vector : np.ndarray
+            The output resampled signal.
+        add_vector : np.ndarray
+            Auxiliary vector for extended signal.
+        add_output_vector : np.ndarray
+            Auxiliary vector for output computation.
+        max_sym_boundary : int
+            Period for symmetric boundary extension.
+        max_asym_boundary : int
+            Period for antisymmetric boundary extension.
+        index_min : np.ndarray
+            Minimum indices for spline evaluation.
+        index_max : np.ndarray
+            Maximum indices for spline evaluation.
+        spline_array : np.ndarray
+            Precomputed spline coefficients.
         """
         length_input = len(input_vector)
         length_output = len(output_vector)
@@ -288,31 +359,46 @@ class LS_Oblique_Resize:
         output_vector[:length_output] = add_output_vector[:length_output]
 
 def ls_oblique_resize(
-    input_img_normalized: npt.NDArray, 
-    output_size: Sequence[int] = None, 
-    zoom_factors: Sequence[float] = None, 
-    method: str = 'Least-Squares', 
-    interpolation: str = 'Linear', 
+    input_img_normalized: npt.NDArray,
+    output_size: Sequence[int] = None,
+    zoom_factors: Sequence[float] = None,
+    method: str = 'Least-Squares',
+    interpolation: str = 'Linear',
     inversable: bool = False
 ) -> npt.NDArray:
     """
     Resize an image using spline interpolation.
 
-    Parameters:
-    - input_img_normalized: The input image to be resized.
-    - output_size: Desired output image size per dimension.
-    - zoom_factors: Zoom factors per dimension (used if output_size is not provided).
-    - method: Interpolation method ('Interpolation', 'Least-Squares', 'Oblique projection').
-    - interpolation: Type of interpolation ('Linear', 'Quadratic', 'Cubic').
-    - inversable: If True, adjust sizes to ensure invertibility (output size may change slightly).
+    Parameters
+    ----------
+    input_img_normalized : np.ndarray
+        The input image to be resized.
+    output_size : tuple of ints, optional
+        Desired output image size per dimension. If provided, zoom factors are computed from it.
+    zoom_factors : tuple of floats, optional
+        Zoom factors per dimension. Used if output_size is not provided.
+    method : str, optional
+        Interpolation method ('Interpolation', 'Least-Squares', 'Oblique projection').
+    interpolation : str, optional
+        Type of interpolation ('Linear', 'Quadratic', 'Cubic').
+    inversable : bool, optional
+        If True, adjust sizes to ensure invertibility. Output size may change slightly.
 
-    Returns:
-    - output_image: The resized image.
+    Returns
+    -------
+    output_image : np.ndarray
+        The resized image.
+
+    Raises
+    ------
+    ValueError
+        If neither output_size nor zoom_factors are provided.
+        If zoom_factors length does not match the number of dimensions.
     """
     n_dims = input_img_normalized.ndim
     input_shape = input_img_normalized.shape
 
-    # Determine the zoom factors if output_size is provided
+    # Determine the zoom factors
     if output_size is not None:
         zoom_factors = [output_size[i] / input_shape[i] for i in range(n_dims)]
     elif zoom_factors is not None:
@@ -321,8 +407,7 @@ def ls_oblique_resize(
     else:
         raise ValueError("Either output_size or zoom_factors must be provided.")
 
-    # Initialize shifts per dimension (usually zero)
-    shifts = [0.0] * n_dims
+    shifts = [0.0] * n_dims  # Initialize shifts per dimension
 
     # Set degrees based on interpolation method
     if interpolation == "Linear":
@@ -342,7 +427,7 @@ def ls_oblique_resize(
     if method == "Interpolation":
         analy_degree = -1  # No analysis degree needed for interpolation
     elif method == "Oblique projection":
-        # For oblique projection, the analysis degree may be different
+        # For oblique projection, the analysis degree may differ
         if interpolation == "Linear":
             analy_degree = 0
         elif interpolation == "Quadratic":
@@ -352,7 +437,7 @@ def ls_oblique_resize(
 
     # Compute output image size based on inversable parameter
     if inversable:
-        # Adjust sizes to ensure invertibility
+        # Use calculate_final_size to get the correct output sizes per dimension
         working_sizes, final_sizes = calculate_final_size(
             inversable, input_shape, zoom_factors)
         output_shape = tuple(final_sizes)

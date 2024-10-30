@@ -4,31 +4,34 @@ import numpy.typing as npt
 from typing import Sequence, Tuple, Union, Optional
 
 def calculate_final_size(
-    inversable: bool, 
-    input_sizes: Sequence[int], 
+    inversable: bool,
+    input_sizes: Sequence[int],
     zoom_factors: Sequence[float]
 ) -> Tuple[list[int], list[int]]:
     """
     Calculate the working and final sizes for each dimension.
 
-    Parameters:
-    - inversable: bool
+    Parameters
+    ----------
+    inversable : bool
         Whether to adjust sizes to ensure invertibility.
-    - input_sizes: list or tuple of ints
+    input_sizes : Sequence[int]
         The sizes of the input image per dimension.
-    - zoom_factors: list or tuple of floats
+    zoom_factors : Sequence[float]
         The zoom factors per dimension.
 
-    Returns:
-    - working_sizes: list of ints
+    Returns
+    -------
+    working_sizes : list of int
         Adjusted working sizes per dimension (may be increased if inversable is True).
-    - final_sizes: list of ints
+    final_sizes : list of int
         Final sizes per dimension after scaling.
     """
     working_sizes = []
     final_sizes = []
     for size, zoom in zip(input_sizes, zoom_factors):
         if inversable:
+            # Adjust working size to ensure invertibility
             working_size = size
             s = int(round(round((working_size - 1) * zoom) / zoom))
             while working_size - 1 - s != 0:
@@ -43,9 +46,27 @@ def calculate_final_size(
     return working_sizes, final_sizes
 
 def border(size: int, degree: int, tolerance: float = 1e-10) -> int:
+    """
+    Calculate the border size required based on the spline degree.
+
+    Parameters
+    ----------
+    size : int
+        Size of the dimension.
+    degree : int
+        Degree of the spline.
+    tolerance : float, optional
+        Tolerance for numerical calculations (default is 1e-10).
+
+    Returns
+    -------
+    horizon : int
+        The calculated border size.
+    """
     if degree in [0, 1]:
         return 0
 
+    # Calculate the pole z based on the degree
     if degree == 2:
         z = np.sqrt(8.0) - 3.0
     elif degree == 3:
@@ -61,6 +82,7 @@ def border(size: int, degree: int, tolerance: float = 1e-10) -> int:
     else:
         raise ValueError("Invalid degree (should be [0..7])")
 
+    # Calculate the number of terms needed to reach the desired tolerance
     horizon = 2 + int(np.log(tolerance) / np.log(abs(z)))
     horizon = min(horizon, size)
     return horizon
@@ -68,7 +90,19 @@ def border(size: int, degree: int, tolerance: float = 1e-10) -> int:
 # Beta function implementation for spline calculations
 def beta(x: float, degree: int) -> float:
     """
-    Computes the value of the B-spline basis function at a given point x for a specified degree.
+    Compute the value of the B-spline basis function at a given point x for a specified degree.
+
+    Parameters
+    ----------
+    x : float
+        The point at which to evaluate the B-spline basis function.
+    degree : int
+        The degree of the B-spline basis function.
+
+    Returns
+    -------
+    betan : float
+        The value of the B-spline basis function at point x.
     """
     betan = 0.0
     if degree == 0:
@@ -144,6 +178,20 @@ def beta(x: float, degree: int) -> float:
 
 # Calculate interpolation coefficients based on degree
 def get_interpolation_coefficients(c: npt.NDArray, degree: int) -> None:
+    """
+    Compute the interpolation coefficients for a signal c given a spline degree.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal (modified in place).
+    degree : int
+        The degree of the spline.
+
+    Notes
+    -----
+    This function modifies the input array c in place.
+    """
     z = []
     lambda_ = 1.0
     tolerance = 1e-10
@@ -175,21 +223,37 @@ def get_interpolation_coefficients(c: npt.NDArray, degree: int) -> None:
         return
 
     z = np.array(z)
+    # Compute normalization factor lambda_
     lambda_ = np.prod((1.0 - z) * (1.0 - 1.0 / z))
 
-    c *= lambda_
+    c *= lambda_ # Normalize the signal
 
     for zk in z:
+        # Forward recursion (causal)
         c[0] = get_initial_causal_coefficient(c, zk, tolerance)
         for n in range(1, len(c)):
             c[n] += zk * c[n - 1]
 
+        # Backward recursion (anti-causal)
         c[-1] = get_initial_anti_causal_coefficient(c, zk, tolerance)
         for n in range(len(c) - 2, -1, -1):
             c[n] = zk * (c[n + 1] - c[n])
 
-# Define sampling rules based on degree
 def get_samples(c: npt.NDArray, degree: int) -> None:
+    """
+    Extract the samples from the continuous representation of the signal c.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal (modified in place).
+    degree : int
+        The degree of the spline.
+
+    Notes
+    -----
+    This function modifies the input array c in place.
+    """
     if degree == 0 or degree == 1:
         return
     elif degree == 2:
@@ -211,11 +275,23 @@ def get_samples(c: npt.NDArray, degree: int) -> None:
     symmetric_fir(h, c, s)
     np.copyto(c, s)
 
-# Applies FIR filter symmetrically
 def symmetric_fir(h: Sequence[float], c: npt.NDArray, s: npt.NDArray) -> None:
+    """
+    Perform symmetric FIR filtering on the signal c using filter coefficients h.
+
+    Parameters
+    ----------
+    h : Sequence[float]
+        Filter coefficients.
+    c : np.ndarray
+        The input signal.
+    s : np.ndarray
+        The output signal after filtering (must be same size as c).
+    """
     if len(c) != len(s):
         raise IndexError("Incompatible size")
 
+    # Implement the FIR filter based on the length of h
     if len(h) == 2:
         if len(c) >= 2:
             s[0] = h[0] * c[0] + 2.0 * h[1] * c[1]
@@ -282,12 +358,28 @@ def symmetric_fir(h: Sequence[float], c: npt.NDArray, s: npt.NDArray) -> None:
     else:
         raise ValueError("Invalid filter half-length (should be [2..4])")
 
-# Calculates the initial causal coefficient
 def get_initial_causal_coefficient(
     c: npt.NDArray, 
     z: float, 
     tolerance: float = 1e-10
 ) -> float:
+    """
+    Calculate the initial causal coefficient for the IIR filter.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal.
+    z : float
+        The pole of the filter.
+    tolerance : float, optional
+        The tolerance for numerical calculations (default is 1e-10).
+
+    Returns
+    -------
+    float
+        The initial causal coefficient.
+    """
     z1 = z
     zn = z ** (len(c) - 1)
     sum_ = c[0] + zn * c[-1]
@@ -304,16 +396,50 @@ def get_initial_causal_coefficient(
 
     return sum_ / (1.0 - z ** (2 * len(c) - 2))
 
-# Calculates the initial anti-causal coefficient
 def get_initial_anti_causal_coefficient(
     c: npt.NDArray, 
     z: float, 
     tolerance: float = 1e-10
 ) -> float:
+    """
+    Calculate the initial anti-causal coefficient for the IIR filter.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal.
+    z : float
+        The pole of the filter.
+    tolerance : float, optional
+        The tolerance for numerical calculations (default is 1e-10).
+
+    Returns
+    -------
+    float
+        The initial anti-causal coefficient.
+    """
     return (z * c[-2] + c[-1]) * z / (z * z - 1.0)
 
-# Performs integration based on degree
 def do_integ(c: npt.NDArray, nb: int) -> float:
+    """
+    Perform integration on the signal c nb times.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal (modified in place).
+    nb : int
+        Number of integration steps.
+
+    Returns
+    -------
+    average : float
+        The average value after integration.
+
+    Notes
+    -----
+    This function modifies the input array c in place.
+    """
     size = len(c)
     m = 0.0
     average = 0.0
@@ -350,21 +476,60 @@ def do_integ(c: npt.NDArray, nb: int) -> float:
 
     return average
 
-# Helper for integration
 def integ_sa(c: npt.NDArray, m: float) -> None:
+    """
+    Perform semi-analytical integration on the signal c.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal (modified in place).
+    m : float
+        The average value to subtract from the signal.
+
+    Notes
+    -----
+    This function modifies the input array c in place.
+    """
     c -= m
     c[0] *= 0.5
     c[1:] += np.cumsum(c[:-1])
 
-# Helper for anti-symmetric integration
 def integ_as(c: npt.NDArray, y: npt.NDArray) -> None:
+    """
+    Perform anti-symmetric integration on the signal c.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal.
+    y : np.ndarray
+        The output signal after integration.
+
+    Notes
+    -----
+    This function modifies the output array y in place.
+    """
     z = c.copy()
     y[0] = z[0]
     y[1] = 0
     y[2:] = -np.cumsum(z[1:-1])
 
-# Differentiates based on degree
 def do_diff(c: npt.NDArray, nb: int) -> None:
+    """
+    Perform differentiation on the signal c nb times.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal (modified in place).
+    nb : int
+        Number of differentiation steps.
+
+    Notes
+    -----
+    This function modifies the input array c in place.
+    """
     size = len(c)
     if nb == 1:
         diff_as(c)
@@ -381,13 +546,35 @@ def do_diff(c: npt.NDArray, nb: int) -> None:
         diff_sa(c)
         diff_as(c)
 
-# Single-difference helper
 def diff_sa(c: npt.NDArray) -> None:
+    """
+    Perform semi-analytical differentiation on the signal c.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal (modified in place).
+
+    Notes
+    -----
+    This function modifies the input array c in place.
+    """
     old = c[-2]
     c[:-1] -= c[1:]  # Perform the element-wise subtraction
     c[-1] -= old     # Update the last element
 
-# Anti-symmetric difference helper
 def diff_as(c: npt.NDArray) -> None:
+    """
+    Perform anti-symmetric differentiation on the signal c.
+
+    Parameters
+    ----------
+    c : np.ndarray
+        The input signal (modified in place).
+
+    Notes
+    -----
+    This function modifies the input array c in place.
+    """
     c[1:] -= c[:-1]  # Perform the element-wise subtraction for differentiation
     c[0] *= 2.0      # Update the first element
