@@ -362,8 +362,8 @@ def ls_oblique_resize(
     input_img_normalized: npt.NDArray,
     output_size: Sequence[int] = None,
     zoom_factors: Sequence[float] = None,
-    method: str = 'Least-Squares',
-    interpolation: str = 'Linear',
+    method: str = 'least-squares',
+    interpolation: str = 'linear',
     inversable: bool = False
 ) -> npt.NDArray:
     """
@@ -378,9 +378,9 @@ def ls_oblique_resize(
     zoom_factors : tuple of floats, optional
         Zoom factors per dimension. Used if output_size is not provided.
     method : str, optional
-        Interpolation method ('Interpolation', 'Least-Squares', 'Oblique projection').
+        Interpolation method ('standard', 'least-squares', 'oblique').
     interpolation : str, optional
-        Type of interpolation ('Linear', 'Quadratic', 'Cubic').
+        Type of interpolation ('linear', 'quadratic', 'cubic').
     inversable : bool, optional
         If True, adjust sizes to ensure invertibility. Output size may change slightly.
 
@@ -410,11 +410,11 @@ def ls_oblique_resize(
     shifts = [0.0] * n_dims  # Initialize shifts per dimension
 
     # Set degrees based on interpolation method
-    if interpolation == "Linear":
+    if interpolation == "linear":
         interp_degree = 1
         synthe_degree = 1
         analy_degree = 1
-    elif interpolation == "Quadratic":
+    elif interpolation == "quadratic":
         interp_degree = 2
         synthe_degree = 2
         analy_degree = 2
@@ -424,15 +424,15 @@ def ls_oblique_resize(
         analy_degree = 3
 
     # Adjust degrees based on method
-    if method == "Interpolation":
+    if method == "standard":
         analy_degree = -1  # No analysis degree needed for interpolation
-    elif method == "Oblique projection":
+    elif method == "oblique":
         # For oblique projection, the analysis degree may differ
-        if interpolation == "Linear":
+        if interpolation == "linear":
             analy_degree = 0
-        elif interpolation == "Quadratic":
+        elif interpolation == "quadratic":
             analy_degree = 1
-        else:  # Cubic
+        else:  # cubic
             analy_degree = 1
 
     # Compute output image size based on inversable parameter

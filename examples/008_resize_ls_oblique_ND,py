@@ -72,8 +72,8 @@ original_signal = np.sin(x) + 0.1 * np.random.randn(100)
 
 # Set parameters
 zoom_factor_1d = 0.5
-method = "Least-Squares"
-interpolation_type = "Cubic"
+method = "least-squares"
+interpolation_type = "cubic"
 
 # Apply LS_Oblique_Resize to the 1D signal
 shrunken_signal_1d, expanded_signal_1d, snr_1d, mse_1d = resize_and_compute_metrics(

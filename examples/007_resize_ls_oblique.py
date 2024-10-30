@@ -79,7 +79,7 @@ def resize_and_compute_metrics(input_image, method, interpolation, zoom_factor):
 
 def resize_with_scipy_zoom(input_image_normalized, zoom_factor, interpolation):
     """Resize an image with SciPy's zoom function, then resize back and compute metrics."""
-    degree = {'Linear': 1, 'Quadratic': 2, 'Cubic': 3}[interpolation]
+    degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation]
     resized_image = zoom(input_image_normalized, (zoom_factor, zoom_factor), order=degree)
     reverse_zoom_factor = 1.0 / zoom_factor
     resized_reverse_image = zoom(resized_image, (reverse_zoom_factor, reverse_zoom_factor), order=degree)
@@ -113,8 +113,8 @@ input_image = load_ascent_image()  # Load and resize ascent image
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
 zoom_factor = 1 / 3.14
-methods = ["Least-Squares", "Oblique projection"]
-interpolation_type = "Cubic"
+methods = ["least-Squares", "oblique"]
+interpolation_type = "cubic"
 
 # %%
 # Run Resizing and Compare Results
@@ -142,7 +142,7 @@ for method in methods:
     ax[0, 0].set_title("Original Image")
     ax[0, 0].axis("off")
 
-    interp_degree = {'Linear': 1, 'Quadratic': 2, 'Cubic': 3}[interpolation_type]
+    interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
 
     ax[0, 1].imshow(create_black_background(ls_output, input_image.shape), cmap="gray")
     ax[0, 1].set_title(f"{method} Resized (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {ls_time:.2f}s)")
