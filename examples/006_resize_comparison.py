@@ -108,7 +108,7 @@ input_image = load_head_mri_image()  # Load the head MRI image
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
 #zoom_factor = 1 / 3.14
-zoom_factor = 1.5
+zoom_factor = 1.54
 methods = ["interpolation", "least-squares", "oblique"]
 interpolation_type = "cubic"
 interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
