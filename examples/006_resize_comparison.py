@@ -103,7 +103,7 @@ def create_black_background(image, original_shape):
 input_image = load_head_mri_image()  # Load the head MRI image
 
 # Uncomment the following line to use the Ascent image instead
-input_image = load_ascent_image()  
+# input_image = load_ascent_image()  
 
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
