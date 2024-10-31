@@ -108,7 +108,7 @@ input_image = load_head_mri_image()  # Load the head MRI image
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
 #zoom_factor = 1 / 3.14
-zoom_factor = 1.22
+zoom_factor = 0.83
 methods = ["interpolation", "least-squares", "oblique"]
 interpolation_type = "cubic"
 interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
@@ -123,12 +123,19 @@ for method in methods:
     )
     ts_time = time.time() - start_time
 
+    # Print SNR, MSE, and processing time for TensorSpline method
+    print(f"\nMethod: {method.capitalize()}")
+    print(f"  TensorSpline - SNR: {ts_snr:.2f} dB, MSE: {ts_mse:.6f}, Time: {ts_time:.3f} s")
+
     # Process with SciPy zoom
     start_time = time.time()
     scipy_output, scipy_resized_reverse, scipy_snr, scipy_mse = resize_with_scipy_zoom(
         input_image_normalized, zoom_factor, interpolation_type
     )
     scipy_time = time.time() - start_time
+
+    # Print SNR, MSE, and processing time for SciPy method
+    print(f"  SciPy - SNR: {scipy_snr:.2f} dB, MSE: {scipy_mse:.6f}, Time: {scipy_time:.3f} s")
 
     # Display and analyze results
     fig, ax = plt.subplots(2, 3, figsize=(18, 12))
@@ -171,4 +178,3 @@ for method in methods:
 
     plt.tight_layout()
     plt.show()
-
