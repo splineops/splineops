@@ -34,7 +34,7 @@ def resize(data, zoom_factors=None, output=None, output_size=None, degree=3, mod
 
     # Call LS/oblique resize if conditions are met, else use TensorSpline
     if method in {"least-squares", "oblique"} and degree in {1, 2, 3}:
-        print(f"Using {method} projection method with mirror boundary conditions.")
+        #print(f"Using {method} projection method with mirror boundary conditions.")
         output_data = ls_oblique_resize(
             input_img_normalized=data,
             output_size=output_size,
@@ -50,7 +50,7 @@ def resize(data, zoom_factors=None, output=None, output_size=None, degree=3, mod
         basis = asbasis(basis_str)
         original_coords = [np.linspace(0, dim - 1, dim, dtype=dtype) for dim in data.shape]
         new_coords = [
-            np.linspace(0, dim - 1, int(dim * zoom), dtype=dtype)
+            np.linspace(0, dim - 1, round(dim * zoom), dtype=dtype)
             for dim, zoom in zip(data.shape, zoom_factors)
         ]
         tensor_spline = TensorSpline(data=data, coordinates=original_coords, bases=basis, modes=modes)

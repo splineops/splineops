@@ -84,7 +84,7 @@ def resize_with_scipy_zoom(input_image_normalized, zoom_factor, degree):
 input_image = load_head_mri_image()  # Load the head MRI image
 
 # Uncomment the following line to use the Ascent image instead
-# input_image = ascent()
+#input_image = ascent()
 
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
@@ -92,7 +92,7 @@ methods = ["interpolation", "least-squares", "oblique"]
 interpolation_type = "cubic"
 interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
 
-zoom_factors = np.linspace(0.1, 2.0, num=30)  # Zoom factors between 0.1 and 2.0
+zoom_factors = np.linspace(0.25, 1.99, num=100)  # Zoom factors between 0.1 and 2.0
 
 # Initialize dictionaries to store SNR and MSE values
 snr_results = {method: [] for method in methods + ['scipy']}
@@ -146,6 +146,7 @@ for method in methods + ['scipy']:
 plt.title('MSE vs. Zoom Factor')
 plt.xlabel('Zoom Factor')
 plt.ylabel('MSE')
+plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))  # Add this line here
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
