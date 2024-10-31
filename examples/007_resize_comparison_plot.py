@@ -92,7 +92,7 @@ methods = ["interpolation", "least-squares", "oblique"]
 interpolation_type = "cubic"
 interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
 
-zoom_factors = np.linspace(0.25, 1.99, num=100)  # Zoom factors between 0.1 and 2.0
+zoom_factors = np.linspace(0.25, 1.99, num=10)  # Zoom factors between 0.1 and 2.0
 
 # Initialize dictionaries to store SNR and MSE values
 snr_results = {method: [] for method in methods + ['scipy']}
