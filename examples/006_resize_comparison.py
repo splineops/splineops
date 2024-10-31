@@ -3,7 +3,7 @@ Comparison of Resizing Methods with TensorSpline and Advanced Techniques
 =======================================================================
 
 This example compares TensorSpline resizing with advanced interpolation methods:
-Least-Squares and Oblique Projection, as well as SciPy's built-in zoom.
+Least-Squares, Oblique Projection, and SciPy's built-in zoom.
 """
 
 # Import necessary libraries
@@ -12,14 +12,11 @@ import matplotlib.pyplot as plt
 import time
 from scipy.datasets import ascent
 from scipy.ndimage import zoom
-from splineops.interpolate.ls_oblique.ls_oblique_resize import ls_oblique_resize
+from splineops.interpolate.resize import resize
+from splineops.utils.image_loader import load_head_mri_image  # Import the MRI loader
 
-# %%
 # Helper Functions
 # ----------------
-#
-# Define utility functions to load, process, and evaluate images.
-
 def create_square_image():
     """Create a simple 10x10 image with a white square at the center."""
     img = np.zeros((10, 10))
@@ -44,27 +41,24 @@ def compute_mse(original, processed):
     mse = np.mean((original - processed) ** 2)
     return mse
 
-def resize_and_compute_metrics(input_image, method, interpolation, zoom_factor):
-    """Resize an image using a specified method, compute SNR and MSE after resizing back."""
-    # Normalize input image to [0, 1] range for resizing
+def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
+    """Resize an image using the `resize` function, compute SNR and MSE after resizing back."""
     input_image_normalized = (input_image / 255.0).astype(np.float64)
 
     # Resize (shrink) the image
-    shrunken_image = ls_oblique_resize(
-        input_img_normalized=input_image_normalized,
+    shrunken_image = resize(
+        data=input_image_normalized,
         zoom_factors=(zoom_factor, zoom_factor),
-        method=method,
-        interpolation=interpolation,
-        inversable=False
+        degree=degree,
+        method=method
     )
 
     # Resize (expand) back to original size
-    expanded_image = ls_oblique_resize(
-        input_img_normalized=shrunken_image,
+    expanded_image = resize(
+        data=shrunken_image,
         output_size=input_image_normalized.shape,
-        method=method,
-        interpolation=interpolation,
-        inversable=False
+        degree=degree,
+        method=method
     )
 
     # Calculate SNR and MSE
@@ -104,30 +98,30 @@ def create_black_background(image, original_shape):
     black_background[:image.shape[0], :image.shape[1]] = image
     return black_background
 
-# %%
-# Load Image and Set Parameters
-# -----------------------------
-# Load the 'ascent' image and set parameters for the resizing methods.
+# Load MRI Image and Set Parameters
+# ---------------------------------
+input_image = load_head_mri_image()  # Load the head MRI image
 
-input_image = load_ascent_image()  # Load and resize ascent image
+# Uncomment the following line to use the Ascent image instead
+input_image = load_ascent_image()  
+
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
-zoom_factor = 1 / 3.14
-methods = ["least-Squares", "oblique"]
+#zoom_factor = 1 / 3.14
+zoom_factor = 1.5
+methods = ["interpolation", "least-squares", "oblique"]
 interpolation_type = "cubic"
+interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
 
-# %%
 # Run Resizing and Compare Results
 # --------------------------------
-# For each method, resize the image using TensorSpline and SciPy, then compute and display metrics.
-
 for method in methods:
-    # Measure and process with advanced method
+    # Measure and process with each method
     start_time = time.time()
-    ls_output, ls_resized_reverse, ls_snr, ls_mse = resize_and_compute_metrics(
-        input_image, method, interpolation_type, zoom_factor
+    ts_output, ts_resized_reverse, ts_snr, ts_mse = resize_and_compute_metrics(
+        input_image, method, interp_degree, zoom_factor
     )
-    ls_time = time.time() - start_time
+    ts_time = time.time() - start_time
 
     # Process with SciPy zoom
     start_time = time.time()
@@ -142,22 +136,31 @@ for method in methods:
     ax[0, 0].set_title("Original Image")
     ax[0, 0].axis("off")
 
-    interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
+    # Check the zoom factor to decide on black background
+    if zoom_factor < 1:
+        ts_display = create_black_background(ts_output, input_image.shape)
+        scipy_display = create_black_background(scipy_output, input_image.shape)
+    else:
+        ts_display = ts_output
+        scipy_display = scipy_output
 
-    ax[0, 1].imshow(create_black_background(ls_output, input_image.shape), cmap="gray")
-    ax[0, 1].set_title(f"{method} Resized (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {ls_time:.2f}s)")
+    # Display TensorSpline resized image or its background
+    ax[0, 1].imshow(ts_display, cmap="gray")
+    ax[0, 1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {ts_time:.2f}s)")
     ax[0, 1].axis("off")
 
-    ls_diff = np.clip(np.abs(input_image_normalized - ls_resized_reverse / 255.0), 0, 1)
-    ax[0, 2].imshow(ls_diff, cmap="gray")
-    ax[0, 2].set_title(f"{method} Difference (SNR: {ls_snr:.2f} dB, MSE: {ls_mse:.2e})")
+    ts_diff = np.clip(np.abs(input_image_normalized - ts_resized_reverse / 255.0), 0, 1)
+    ax[0, 2].imshow(ts_diff, cmap="gray")
+    ax[0, 2].set_title(f"{method.capitalize()} Difference (SNR: {ts_snr:.2f} dB, MSE: {ts_mse:.2e})")
     ax[0, 2].axis("off")
 
+    # Display original image again for comparison
     ax[1, 0].imshow(input_image, cmap="gray")
     ax[1, 0].set_title("Original Image")
     ax[1, 0].axis("off")
 
-    ax[1, 1].imshow(create_black_background(scipy_output, input_image.shape), cmap="gray")
+    # Display SciPy resized image or its background
+    ax[1, 1].imshow(scipy_display, cmap="gray")
     ax[1, 1].set_title(f"SciPy Zoom (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {scipy_time:.2f}s)")
     ax[1, 1].axis("off")
 
@@ -168,3 +171,4 @@ for method in methods:
 
     plt.tight_layout()
     plt.show()
+

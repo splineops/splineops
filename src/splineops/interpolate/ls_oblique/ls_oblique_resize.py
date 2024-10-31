@@ -378,7 +378,7 @@ def ls_oblique_resize(
     zoom_factors : tuple of floats, optional
         Zoom factors per dimension. Used if output_size is not provided.
     method : str, optional
-        Interpolation method ('standard', 'least-squares', 'oblique').
+        Interpolation method ('interpolation', 'least-squares', 'oblique').
     interpolation : str, optional
         Type of interpolation ('linear', 'quadratic', 'cubic').
     inversable : bool, optional
@@ -424,7 +424,7 @@ def ls_oblique_resize(
         analy_degree = 3
 
     # Adjust degrees based on method
-    if method == "standard":
+    if method == "interpolation":
         analy_degree = -1  # No analysis degree needed for interpolation
     elif method == "oblique":
         # For oblique projection, the analysis degree may differ
