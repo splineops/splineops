@@ -1,13 +1,3 @@
-"""
-Comparison of Resizing Methods with TensorSpline and Advanced Techniques
-=======================================================================
-
-This example compares TensorSpline resizing with advanced interpolation methods:
-Least-Squares, Oblique Projection, and SciPy's built-in zoom.
-
-For various zoom factors between 0.1 and 2.0, this script computes the Signal-to-Noise Ratio (SNR) and Mean Squared Error (MSE) for each resizing method and plots them for comparison.
-"""
-
 # Import necessary libraries
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,7 +11,7 @@ from splineops.utils.image_loader import load_head_mri_image  # Import the MRI l
 # ----------------
 def compute_snr(original, processed):
     """Compute Signal-to-Noise Ratio between two images."""
-    signal_power = 1.0 ** 2
+    signal_power = 255.0 ** 2
     noise_power = np.mean((original - processed) ** 2)
     snr = 10 * np.log10(signal_power / noise_power)
     return snr
@@ -55,10 +45,6 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
     snr = compute_snr(input_image_normalized, expanded_image)
     mse = compute_mse(input_image_normalized, expanded_image)
 
-    # Convert images back to [0, 255] range for display
-    shrunken_image_display = np.clip(shrunken_image * 255.0, 0, 255)
-    expanded_image_display = np.clip(expanded_image * 255.0, 0, 255)
-
     return snr, mse
 
 def resize_with_scipy_zoom(input_image_normalized, zoom_factor, interpolation):
@@ -85,26 +71,25 @@ def resize_with_scipy_zoom(input_image_normalized, zoom_factor, interpolation):
 # Load MRI Image and Set Parameters
 # ---------------------------------
 input_image = load_head_mri_image()  # Load the head MRI image
-
-# Uncomment the following line to use the Ascent image instead
-#input_image = ascent()
-
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
 methods = ["interpolation", "least-squares", "oblique"]
-interpolation_type = "cubic"    
+interpolation_type = "cubic"
 interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
 
-zoom_factors = np.linspace(0.2, 1.0, num=10)[5]  # Zoom factors between 0.1 and 2.0
+# Set zoom factor to 0.83 and define the number of iterations
+zoom_factor = 0.83
+num_iterations = 20
 
-# Initialize dictionaries to store SNR and MSE values
+# Initialize dictionaries to store SNR and MSE values for each method
 snr_results = {method: [] for method in methods + ['scipy']}
 mse_results = {method: [] for method in methods + ['scipy']}
 
-# Run Resizing and Compute Metrics
-# --------------------------------
-for zoom_factor in zoom_factors:
-    print(f"\nZoom Factor: {zoom_factor:.2f}")
+# Run Resizing and Compute Metrics for a constant zoom factor
+# -----------------------------------------------------------
+for iteration in range(num_iterations):
+    print(f"\nIteration: {iteration + 1}")
+
     for method in methods:
         # Measure and process with each method
         start_time = time.time()
@@ -138,10 +123,10 @@ for zoom_factor in zoom_factors:
 # --------------------
 plt.figure(figsize=(12, 6))
 for method in methods + ['scipy']:
-    plt.plot(zoom_factors, snr_results[method], label=method.capitalize())
+    plt.plot(range(1, num_iterations + 1), snr_results[method], label=method.capitalize())
 
-plt.title('SNR vs. Zoom Factor')
-plt.xlabel('Zoom Factor')
+plt.title('SNR vs. Iterations for Constant Zoom Factor 0.83')
+plt.xlabel('Iteration')
 plt.ylabel('SNR (dB)')
 plt.legend()
 plt.grid(True)
@@ -150,10 +135,10 @@ plt.show()
 
 plt.figure(figsize=(12, 6))
 for method in methods + ['scipy']:
-    plt.plot(zoom_factors, mse_results[method], label=method.capitalize())
+    plt.plot(range(1, num_iterations + 1), mse_results[method], label=method.capitalize())
 
-plt.title('MSE vs. Zoom Factor')
-plt.xlabel('Zoom Factor')
+plt.title('MSE vs. Iterations for Constant Zoom Factor 0.83')
+plt.xlabel('Iteration')
 plt.ylabel('MSE')
 plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))  # Use scientific notation for y-axis
 plt.legend()
