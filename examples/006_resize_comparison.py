@@ -100,16 +100,16 @@ def create_black_background(image, original_shape):
 
 # Load MRI Image and Set Parameters
 # ---------------------------------
-#input_image = load_head_mri_image()  # Load the head MRI image
+input_image = load_head_mri_image()  # Load the head MRI image
 
 # Uncomment the following line to use the Ascent image instead
 # input_image = load_ascent_image()  
 
-input_image = create_square_image()  # Load the head MRI image
+#input_image = create_square_image()  # Load the head MRI image
 
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
-zoom_factor = 0.5
+zoom_factor = 3.5
 #zoom_factor = np.linspace(0.2, 1.0, num=10)[7]
 methods = ["interpolation", "least-squares", "oblique"]
 interpolation_type = "cubic"
@@ -158,8 +158,8 @@ for method in methods:
     ax[0, 1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {ts_time:.2f}s)")
     ax[0, 1].axis("off")
 
-    #ts_diff = np.clip(np.abs(input_image_normalized - ts_resized_reverse / 255.0), 0, 1)
-    ts_diff = np.clip(np.abs(ts_resized_reverse / 255.0), 0, 1)
+    ts_diff = np.clip(np.abs(input_image_normalized - ts_resized_reverse / 255.0), 0, 1)
+    #ts_diff = np.clip(np.abs(ts_resized_reverse / 255.0), 0, 1)
     ax[0, 2].imshow(ts_diff, cmap="gray")
     ax[0, 2].set_title(f"{method.capitalize()} Difference (SNR: {ts_snr:.2f} dB, MSE: {ts_mse:.2e})")
     ax[0, 2].axis("off")
