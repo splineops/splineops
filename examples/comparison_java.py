@@ -176,7 +176,7 @@ def mse(matrix1, matrix2):
     return np.mean((matrix1 - matrix2) ** 2)
 
 # Function to resize and compare square pattern images
-def resize_and_compare_square(java_downscaled, java_reverted, analy_degree, synthe_degree, interp_degree):
+def resize_and_compare_square(java_downscaled, java_reverted, degree, method):
     # Create a 10x10 square image
     input_img = np.zeros((10, 10))
     input_img[3:7, 3:7] = 255.0  # White square in the center
@@ -187,16 +187,16 @@ def resize_and_compare_square(java_downscaled, java_reverted, analy_degree, synt
     downscaled_img = resize(
         data=input_img_normalized,
         zoom_factors=(zoom_factor, zoom_factor),
-        degree=interp_degree,
-        method="least-squares" if analy_degree == synthe_degree == interp_degree == 3 else "oblique"
+        degree=degree,
+        method=method
     )
     
     # Step 2: Revert by upscaling
     reverted_img = resize(
         data=downscaled_img,
         output_size=(10, 10),
-        degree=interp_degree,
-        method="least-squares" if analy_degree == synthe_degree == interp_degree == 3 else "oblique"
+        degree=degree,
+        method=method
     )
 
     # Compute differences and MSE
@@ -205,7 +205,7 @@ def resize_and_compare_square(java_downscaled, java_reverted, analy_degree, synt
     downscaled_mse = mse(downscaled_img, java_downscaled)
     reverted_mse = mse(reverted_img, java_reverted)
 
-    print(f"Square - Degrees (Analy: {analy_degree}, Synthe: {synthe_degree}, Interp: {interp_degree})")
+    print(f"Square - Degree: {degree}, Method: {method}")
     print("\nDownscaled Difference:\n", downscaled_diff)
     print(f"\nDownscaled MSE: {downscaled_mse}\n")
     print("Reverted Difference:\n", reverted_diff)
@@ -213,7 +213,7 @@ def resize_and_compare_square(java_downscaled, java_reverted, analy_degree, synt
     print("\n" + "="*80 + "\n")
 
 # Function to resize and compare sinusoid pattern images
-def resize_and_compare_sinusoid(java_downscaled, java_reverted, analy_degree, synthe_degree, interp_degree):
+def resize_and_compare_sinusoid(java_downscaled, java_reverted, degree, method):
     # Create a 5x5 image with a sinusoidal pattern overlay on a central white square
     input_img = np.zeros((5, 5))
     freq_x, freq_y = 2.0 * np.pi / 5.0, 3.0 * np.pi / 5.0
@@ -228,16 +228,16 @@ def resize_and_compare_sinusoid(java_downscaled, java_reverted, analy_degree, sy
     upscaled_img = resize(
         data=input_img_normalized,
         zoom_factors=(zoom_factor, zoom_factor),
-        degree=interp_degree,
-        method="least-squares" if analy_degree == synthe_degree == interp_degree == 3 else "oblique"
+        degree=degree,
+        method=method
     )
     
     # Step 2: Revert by downscaling
     reverted_img = resize(
         data=upscaled_img,
         output_size=(5, 5),
-        degree=interp_degree,
-        method="least-squares" if analy_degree == synthe_degree == interp_degree == 3 else "oblique"
+        degree=degree,
+        method=method
     )
 
     # Compute differences and MSE
@@ -246,7 +246,7 @@ def resize_and_compare_sinusoid(java_downscaled, java_reverted, analy_degree, sy
     upscaled_mse = mse(upscaled_img, java_downscaled)
     reverted_mse = mse(reverted_img, java_reverted)
 
-    print(f"Sinusoid - Degrees (Analy: {analy_degree}, Synthe: {synthe_degree}, Interp: {interp_degree})")
+    print(f"Sinusoid - Degree: {degree}, Method: {method}")
     print("\nUpscaled Difference:\n", upscaled_diff)
     print(f"\nUpscaled MSE: {upscaled_mse}\n")
     print("Reverted Difference:\n", reverted_diff)
@@ -254,12 +254,12 @@ def resize_and_compare_sinusoid(java_downscaled, java_reverted, analy_degree, sy
     print("\n" + "="*80 + "\n")
 
 # Compare each Java image for square and sinusoid with appropriate degree settings
-resize_and_compare_square(downscaled_0_5_java_square_LS_3_3_3, reverted_0_5_java_square_LS_3_3_3, analy_degree=3, synthe_degree=3, interp_degree=3)
-resize_and_compare_square(downscaled_0_5_java_square_LS_1_1_1, reverted_0_5_java_square_LS_1_1_1, analy_degree=1, synthe_degree=1, interp_degree=1)
-resize_and_compare_square(downscaled_0_5_java_square_Oblique_0_1_1, reverted_0_5_java_square_Oblique_0_1_1, analy_degree=0, synthe_degree=1, interp_degree=1)
-resize_and_compare_square(downscaled_0_5_java_square_Oblique_1_3_3, reverted_0_5_java_square_Oblique_1_3_3, analy_degree=1, synthe_degree=3, interp_degree=3)
+resize_and_compare_square(downscaled_0_5_java_square_LS_3_3_3, reverted_0_5_java_square_LS_3_3_3, degree=3, method="least-squares")
+resize_and_compare_square(downscaled_0_5_java_square_LS_1_1_1, reverted_0_5_java_square_LS_1_1_1, degree=1, method="least-squares")
+resize_and_compare_square(downscaled_0_5_java_square_Oblique_0_1_1, reverted_0_5_java_square_Oblique_0_1_1, degree=1, method="oblique")
+resize_and_compare_square(downscaled_0_5_java_square_Oblique_1_3_3, reverted_0_5_java_square_Oblique_1_3_3, degree=3, method="oblique")
 
-resize_and_compare_sinusoid(upscaled_2_0_java_sinusoid_LS_3_3_3, reverted_2_0_java_sinusoid_LS_3_3_3, analy_degree=3, synthe_degree=3, interp_degree=3)
-resize_and_compare_sinusoid(upscaled_2_0_java_sinusoid_LS_1_1_1, reverted_2_0_java_sinusoid_LS_1_1_1, analy_degree=1, synthe_degree=1, interp_degree=1)
-resize_and_compare_sinusoid(upscaled_2_0_java_sinusoid_Oblique_0_1_1, reverted_2_0_java_sinusoid_Oblique_0_1_1, analy_degree=0, synthe_degree=1, interp_degree=1)
-resize_and_compare_sinusoid(upscaled_2_0_java_sinusoid_Oblique_1_3_3, reverted_2_0_java_sinusoid_Oblique_1_3_3, analy_degree=1, synthe_degree=3, interp_degree=3)
+resize_and_compare_sinusoid(upscaled_2_0_java_sinusoid_LS_3_3_3, reverted_2_0_java_sinusoid_LS_3_3_3, degree=3, method="least-squares")
+resize_and_compare_sinusoid(upscaled_2_0_java_sinusoid_LS_1_1_1, reverted_2_0_java_sinusoid_LS_1_1_1, degree=1, method="least-squares")
+resize_and_compare_sinusoid(upscaled_2_0_java_sinusoid_Oblique_0_1_1, reverted_2_0_java_sinusoid_Oblique_0_1_1, degree=1, method="oblique")
+resize_and_compare_sinusoid(upscaled_2_0_java_sinusoid_Oblique_1_3_3, reverted_2_0_java_sinusoid_Oblique_1_3_3, degree=3, method="oblique")

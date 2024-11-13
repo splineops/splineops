@@ -109,7 +109,7 @@ input_image = load_head_mri_image()  # Load the head MRI image
 
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
-zoom_factor = 3.5
+zoom_factor = 2.0
 #zoom_factor = np.linspace(0.2, 1.0, num=10)[7]
 methods = ["interpolation", "least-squares", "oblique"]
 interpolation_type = "cubic"
