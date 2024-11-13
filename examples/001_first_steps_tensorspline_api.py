@@ -19,8 +19,8 @@ from splineops.interpolate.tensorspline import TensorSpline
 dtype = "float32"
 
 nx, ny = 2, 5
-xmin, xmax = -3.1, +1
-ymin, ymax = 2, 6.5
+xmin, xmax = 0, 2.0
+ymin, ymax = 0, 5.0
 xx = np.linspace(xmin, xmax, nx, dtype=dtype)
 yy = np.linspace(ymin, ymax, ny, dtype=dtype)
 coordinates = xx, yy
@@ -49,7 +49,7 @@ tensor_spline = TensorSpline(
 
 dx = (xx[-1] - xx[0]) / (nx - 1)
 dy = (yy[-1] - yy[0]) / (ny - 1)
-pad_fct = 1.1
+pad_fct = 1.0
 px = pad_fct * nx * dx
 py = pad_fct * ny * dy
 eval_xx = np.linspace(xx[0] - px, xx[-1] + px, 100 * nx)
@@ -105,10 +105,10 @@ eval_extent = [
 
 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6), sharex="all", sharey="all")
 ax = axes[0]
-ax.imshow(data.T, extent=extent)
+ax.imshow(data.T, extent=extent, cmap='gray', aspect='equal')  # Set to grayscale and uniform grid
 ax.set_title("Original data samples")
 ax = axes[1]
-ax.imshow(data_eval.T, extent=eval_extent)
+ax.imshow(data_eval.T, extent=eval_extent, cmap='gray', aspect='equal')  # Set to grayscale and uniform grid
 ax.set_title("Interpolated data")
 
 plt.tight_layout()
