@@ -3,76 +3,75 @@ import pytest
 from splineops.interpolate.resize import resize
 
 # Mathematical functions for expected values in each pattern
-def expected_gradient_value(x, width):
-    return x / width
+def expected_gradient_value(coords, shape):
+    return sum(coord / dim_len for coord, dim_len in zip(coords, shape)) / len(shape)
 
-def expected_sinusoidal_value(x, y, width, height, freq_x=10, freq_y=5):
-    normalized_x = x / width * 2 * np.pi * freq_x
-    normalized_y = y / height * 2 * np.pi * freq_y
-    return (np.sin(normalized_x) + np.sin(normalized_y)) * 0.25 + 0.5
+def expected_sinusoidal_value(coords, shape, freqs=None):
+    if freqs is None:
+        freqs = [5 * (i + 1) for i in range(len(shape))]
+    values = [np.sin(2 * np.pi * freq * coord / dim_len) for coord, dim_len, freq in zip(coords, shape, freqs)]
+    return (np.sum(values) / len(values)) * 0.25 + 0.5
 
-def expected_checkerboard_value(x, y, square_size):
-    row, col = int(y // square_size), int(x // square_size)
-    return (row + col) % 2
+def expected_checkerboard_value(coords, square_sizes):
+    # Calculate the "row/column" equivalent for each dimension by dividing by the square size
+    indices = [int(coord // square_size) for coord, square_size in zip(coords, square_sizes)]
+    # Sum indices and perform modulo 2 for checkerboard alternation
+    return (sum(indices) % 2) * 1.0  # Return 1.0 for white, 0.0 for black
 
-# Calculate MSE with expected values
-def calculate_mse_with_expected(pattern_name, width, height, zoom_factors, resized_image):
-    target_height, target_width = resized_image.shape
+
+# Calculate MSE with expected values for N-dimensional patterns
+def calculate_mse_with_expected(pattern_name, shape, zoom_factors, resized_image, freqs=None, square_sizes=None):
+    target_shape = resized_image.shape
+    grid = np.meshgrid(*[np.arange(dim) for dim in target_shape], indexing="ij")
     if pattern_name == "Gradient":
-        expected_values = np.array([[expected_gradient_value(x / zoom_factors[1], width)
-                                     for x in range(target_width)]
-                                     for y in range(target_height)])
+        expected_values = np.array([expected_gradient_value([coord / zoom_factor for coord, zoom_factor in zip(point, zoom_factors)], shape)
+                                    for point in zip(*[g.flat for g in grid])]).reshape(target_shape)
     elif pattern_name == "Sinusoidal":
-        expected_values = np.array([[expected_sinusoidal_value(x / zoom_factors[1], y / zoom_factors[0], width, height, freq_x=10, freq_y=5)
-                                     for x in range(target_width)]
-                                     for y in range(target_height)])
+        expected_values = np.array([expected_sinusoidal_value([coord / zoom_factor for coord, zoom_factor in zip(point, zoom_factors)], shape, freqs)
+                                    for point in zip(*[g.flat for g in grid])]).reshape(target_shape)
     elif pattern_name == "Checkerboard":
-        expected_values = np.array([[expected_checkerboard_value(x / zoom_factors[1], y / zoom_factors[0], 100)
-                                     for x in range(target_width)]
-                                     for y in range(target_height)])
+        expected_values = np.array([expected_checkerboard_value([coord / zoom_factor for coord, zoom_factor in zip(point, zoom_factors)], square_sizes)
+                                    for point in zip(*[g.flat for g in grid])]).reshape(target_shape)
     else:
         raise ValueError("Unknown pattern name")
     mse = np.mean((expected_values - resized_image) ** 2)
     return mse
 
-# Test function for resizing patterns
-def resize_pattern_and_calculate_mse(pattern_name, width, height, zoom_factors, degree, method):
+# Generate pattern for N dimensions
+def generate_pattern(pattern_name, shape, zoom_factors, freqs=None, square_sizes=None):
+    grid = np.meshgrid(*[np.linspace(0, dim_len - 1, dim_len) for dim_len in shape], indexing="ij")
     if pattern_name == "Gradient":
-        pattern = np.linspace(0, 1, width).reshape(1, -1).repeat(height, axis=0)
+        pattern = np.array([expected_gradient_value(coords, shape) for coords in zip(*[g.flat for g in grid])]).reshape(shape)
     elif pattern_name == "Sinusoidal":
-        x = np.linspace(0, 2 * np.pi * 10, width)
-        y = np.linspace(0, 2 * np.pi * 5, height)
-        X, Y = np.meshgrid(x, y)
-        pattern = (np.sin(X) + np.sin(Y)) * 0.25 + 0.5
+        pattern = np.array([expected_sinusoidal_value(coords, shape, freqs) for coords in zip(*[g.flat for g in grid])]).reshape(shape)
     elif pattern_name == "Checkerboard":
-        rows = (np.arange(height) // 100) % 2
-        cols = (np.arange(width) // 100) % 2
-        pattern = np.bitwise_xor.outer(rows, cols).astype(float)
+        pattern = np.array([expected_checkerboard_value(coords, square_sizes) for coords in zip(*[g.flat for g in grid])]).reshape(shape)
     else:
         raise ValueError("Unknown pattern name")
-    
-    # Resize pattern
+    return pattern
+
+# Test function for resizing N-dimensional patterns
+def resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, method, freqs=None, square_sizes=None):
+    pattern = generate_pattern(pattern_name, shape, zoom_factors, freqs=freqs, square_sizes=square_sizes)
+    pattern = pattern.astype(np.float64)
     resized_image = resize(pattern, zoom_factors=zoom_factors, degree=degree, method=method)
-    
-    # Calculate MSE and PSNR
-    mse = calculate_mse_with_expected(pattern_name, width, height, zoom_factors, resized_image)
+    mse = calculate_mse_with_expected(pattern_name, shape, zoom_factors, resized_image, freqs, square_sizes)
     psnr = 10 * np.log10(1 / mse) if mse != 0 else float('inf')
-    
     return mse, psnr
 
-# Parametrized test cases
-@pytest.mark.parametrize("pattern_name, zoom_factors, degree, method, mse_threshold, psnr_threshold", [
-    ("Gradient", (0.75, 0.5), 3, "least-squares", 1e-6, 60),
-    ("Gradient", (0.2, 1.5), 1, "least-squares", 1e-6, 60),
-    ("Sinusoidal", (0.5, 0.5), 3, "least-squares", 1e-4, 40),
-    ("Sinusoidal", (2.33, 0.32), 1, "least-squares", 1e-4, 40),
-    ("Checkerboard", (0.3, 0.6), 3, "oblique", 1e-2, 23),
-    ("Checkerboard", (0.8, 3.0), 1, "oblique", 1e-2, 23),
+# Parametrized test cases for different dimensions
+@pytest.mark.parametrize("pattern_name, shape, zoom_factors, degree, method, mse_threshold, psnr_threshold, freqs, square_sizes", [
+    ("Gradient", (100,), (0.5,), 3, "least-squares", 1e-3, 60, None, None),
+    ("Gradient", (100, 100), (0.75, 1.5), 1, "oblique", 1e-3, 60, None, None),
+    ("Gradient", (50, 50, 50), (0.8, 2.8, 0.5), 3, "least-squares", 1e-3, 60, None, None),
+    ("Sinusoidal", (100,), (0.5,), 1, "oblique", 1e-3, 35, [10], None),
+    ("Sinusoidal", (100, 100), (0.314, 0.5), 3, "least-squares", 1e-3, 40, [10, 5], None),
+    ("Sinusoidal", (50, 50, 50), (1.8, 0.8, 0.5), 3, "least-squares", 1e-3, 40, [10, 5, 3], None),
+    ("Checkerboard", (100,), (0.5,), 3, "least-squares", 2e-2, 19, None, [10]),
+    ("Checkerboard", (1000, 1000), (0.3, 1.6), 1, "oblique", 1e-2, 23, None, [100, 100]),
+    ("Checkerboard", (50, 50, 50), (0.8, 1.2, 0.6), 1, "oblique", 1e-2, 21, None, [10, 10, 10]),
 ])
-def test_resize_pattern(pattern_name, zoom_factors, degree, method, mse_threshold, psnr_threshold):
-    width, height = 1000, 1000
-    mse, psnr = resize_pattern_and_calculate_mse(pattern_name, width, height, zoom_factors, degree, method)
-    
-    # Assertions for MSE and PSNR thresholds
+def test_resize_n_dimensional_pattern(pattern_name, shape, zoom_factors, degree, method, mse_threshold, psnr_threshold, freqs, square_sizes):
+    mse, psnr = resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, method, freqs=freqs, square_sizes=square_sizes)
     assert mse < mse_threshold, f"{pattern_name} pattern MSE {mse} exceeds threshold {mse_threshold}"
     assert psnr > psnr_threshold, f"{pattern_name} pattern PSNR {psnr} dB below threshold {psnr_threshold}"
