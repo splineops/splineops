@@ -2,7 +2,8 @@
 2D image rotation
 =================
 
-This script demonstrates how to rotate an 2D image being from 0 to 360 degrees using the Tensor Spline Interpolation, with each rotation performed on top of the last rotated image to observe error accumulation.
+This script demonstrates how to rotate an 2D image being from 0 to 360 degrees using the Tensor Spline Interpolation, 
+with each rotation performed on top of the last rotated image to observe error accumulation.
 """
 
 # %%
@@ -17,56 +18,7 @@ from scipy import ndimage, datasets
 from IPython.display import HTML, display
 from matplotlib import animation
 
-from splineops.interpolate.tensorspline import TensorSpline
-
-# %%
-# Helper functions
-# ----------------
-#
-# Define the helper functions to rotate an image and create the animation.
-
-
-def rotate_image_splineops(image, angle, degree=3, mode="zero"):
-    """
-    Rotate an image by a specified angle using SplineOps' TensorSpline method.
-
-    Parameters:
-    - image: The input image as a 2D numpy array.
-    - angle: The rotation angle in degrees.
-    - degree: The degree of the spline (0-7).
-    - mode: The mode for handling boundaries (default is "zero").
-
-    Returns:
-    - Rotated image as a 2D numpy array.
-    """
-    dtype = image.dtype
-    ny, nx = image.shape
-    xx = np.linspace(0, nx - 1, nx, dtype=dtype)
-    yy = np.linspace(0, ny - 1, ny, dtype=dtype)
-    data = np.ascontiguousarray(image, dtype=dtype)
-
-    degree = max(0, min(degree, 7))
-    basis = f"bspline{degree}"
-
-    tensor_spline = TensorSpline(
-        data=data, coordinates=(yy, xx), bases=basis, modes=mode
-    )
-    angle_rad = np.radians(-angle)
-    cos_angle, sin_angle = np.cos(angle_rad), np.sin(angle_rad)
-    original_center_x, original_center_y = (nx - 1) / 2.0, (ny - 1) / 2.0
-    oy, ox = np.ogrid[0:ny, 0:nx]
-    ox = ox - original_center_x
-    oy = oy - original_center_y
-
-    nx_coords = cos_angle * ox + sin_angle * oy + original_center_x
-    ny_coords = -sin_angle * ox + cos_angle * oy + original_center_y
-
-    eval_coords = ny_coords.flatten(), nx_coords.flatten()
-    interpolated_values = tensor_spline(coordinates=eval_coords, grid=False)
-    rotated_image = interpolated_values.reshape(ny, nx)
-
-    return rotated_image
-
+from splineops.interpolate.rotate import rotate
 
 # %%
 # Load and preprocess image
@@ -86,7 +38,7 @@ image_resized = ndimage.zoom(
 image_resized = image_resized.astype(np.float32)
 
 # Rotate the image by 45 degrees using spline of degree 3
-rotated_image_45 = rotate_image_splineops(image_resized, 45, degree=3)
+rotated_image_45 = rotate(image_resized, 45, degree=3)  # Use rotate_image from rotate.py
 
 # Display the original and rotated images
 fig, ax = plt.subplots(1, 2, figsize=(10, 5))
@@ -121,7 +73,7 @@ def create_combined_animation(images):
         nonlocal images  # Ensure we modify the images array from the enclosing scope
         for i, degree in enumerate([0, 1, 3]):
             if frame > 0:
-                images[i] = rotate_image_splineops(
+                images[i] = rotate(
                     images[i], 24, degree=degree
                 )  # Rotate by 24 degrees each frame
             image_plots[i].set_data(images[i])
