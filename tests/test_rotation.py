@@ -30,23 +30,56 @@ def test_rotate():
     cos_angle = np.cos(-angle_rad)
     sin_angle = np.sin(-angle_rad)
 
-    # Rotation matrix as used in the rotate function
+    # Rotation matrix to compute expected data
     R = np.array([
         [cos_angle, -sin_angle],
         [sin_angle, cos_angle]
     ])
 
-    # Apply rotation to the coordinates
+    # Apply rotation to the coordinates to get the rotated coordinates
     rotated_coords_flat = R @ coords_flat
 
     # Compute the expected data at the rotated coordinates
     data_expected_flat = np.sin(k * rotated_coords_flat[0, :]) + np.cos(k * rotated_coords_flat[1, :])
     data_expected = data_expected_flat.reshape(data_shape)
 
-    # Compute the difference between the rotated data and the expected data
+    # Now create the mask
+    # Coordinates of the rotated image centered at its center
+    coords_rotated = coords.copy()
+    coords_rotated_flat = coords_rotated.reshape(ndim, -1)
+
+    # Apply inverse rotation to the rotated image coordinates to map back to the original image coordinates
+    # Here, we use the positive angle because we're reversing the rotation
+    cos_angle_inv = np.cos(angle_rad)
+    sin_angle_inv = np.sin(angle_rad)
+
+    # Inverse rotation matrix
+    R_inv = np.array([
+        [cos_angle_inv, sin_angle_inv],
+        [-sin_angle_inv, cos_angle_inv]
+    ])
+
+    coords_original_flat = R_inv @ coords_rotated_flat
+
+    # Shift coordinates back to original image indices
+    coords_original_indices = coords_original_flat + np.array(center_coords)[:, np.newaxis]
+
+    # Check which coordinates are within the bounds of the original image
+    valid_mask = (
+        (coords_original_indices[0, :] >= 0) & (coords_original_indices[0, :] <= N - 1) &
+        (coords_original_indices[1, :] >= 0) & (coords_original_indices[1, :] <= N - 1)
+    )
+
+    valid_mask_image = valid_mask.reshape(data_shape)
+
+    # Compute the difference between the rotated data and the expected data within the valid region
     difference = data_rotated - data_expected
-    max_diff = np.max(np.abs(difference))
-    print(f"Maximum difference: {max_diff}")
+    max_diff = np.max(np.abs(difference[valid_mask_image]))
+    print(f"Maximum difference within the valid region: {max_diff}")
+
+    # Mask the difference array for plotting
+    difference_masked = np.copy(difference)
+    difference_masked[~valid_mask_image] = np.nan  # Exclude invalid pixels from the difference image
 
     # Plot the original data, rotated data, expected data, and the difference
     fig, axs = plt.subplots(1, 4, figsize=(20, 5))
@@ -63,8 +96,8 @@ def test_rotate():
     axs[2].imshow(data_expected, cmap='viridis', origin='lower')
     axs[2].set_title("Expected Rotated Image")
 
-    # Difference image
-    im = axs[3].imshow(difference, cmap='coolwarm', origin='lower')
+    # Difference image within the valid region
+    im = axs[3].imshow(difference_masked, cmap='coolwarm', origin='lower')
     axs[3].set_title("Difference (Rotated - Expected)")
     fig.colorbar(im, ax=axs[3], orientation='vertical', label='Difference')
 
