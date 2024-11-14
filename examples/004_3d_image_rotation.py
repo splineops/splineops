@@ -1,23 +1,9 @@
-"""
-3D Image Rotation Visualization with "L" Shape
-=============================================
-
-This script demonstrates rotating a 3D synthetic "L" shape on a selected 2D plane and visualizing the results.
-"""
-
-# %%
 # Imports
-# -------
 import numpy as np
 import matplotlib.pyplot as plt
 from splineops.interpolate.rotate import rotate
 
-# %%
 # Generate a synthetic 3D "L" shape
-# ---------------------------------
-#
-# We'll create a 3D volume with an "L" shape structure.
-
 size = 64  # Size of the 3D volume
 volume = np.zeros((size, size, size), dtype=np.float32)
 
@@ -33,24 +19,14 @@ plt.title("Original 3D Volume with 'L' Shape (Middle Slice)")
 plt.axis("off")
 plt.show()
 
-# %%
-# Apply rotation on the (1, 2) plane
-# ----------------------------------
-#
-# Rotate the 3D volume along the (1, 2) plane by a specified angle.
-
+# Apply rotation on the XY plane (around the z-axis)
 angle = 30  # Rotate by 30 degrees
 degree = 3  # Spline degree
 
-# Perform the rotation
-rotated_volume = rotate(volume, angle=angle, degree=degree, axes=(1, 2))
+# Perform the rotation using the z-axis as default
+rotated_volume = rotate(volume, angle=angle, degree=degree, axis=(0, 0, 1))
 
-# %%
 # Visualize Rotated Slices
-# ------------------------
-#
-# We'll display the original and rotated middle slices along the three main planes to compare.
-
 fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
 # Original slices
