@@ -2,22 +2,24 @@ import numpy as np
 from splineops.interpolate.rotate import rotate
 import matplotlib.pyplot as plt
 
-def test_rotate():
+def test_rotate_with_center():
 
     N = 500  # Image size
     data_shape = (N, N)
     ndim = 2
-    margin = 20  # Margin to exclude around the original boundaries
+    margin = 50  # Margin to exclude around the original boundaries
 
-    # Create a coordinate grid centered at the image center
+    # Define a custom center
+    custom_center = (250, 250)  # Example: row 350, column 250
+
+    # Create a coordinate grid
     grid = np.meshgrid(*[np.arange(dim) for dim in data_shape], indexing="ij")
-    center_coords = [(dim - 1) / 2.0 for dim in data_shape]
 
-    # Center the coordinates
-    coords = np.stack([g - c for g, c in zip(grid, center_coords)], axis=0)  # Shape: (ndim, N, N)
+    # Center the coordinates relative to the custom center
+    coords = np.stack([g - c for g, c in zip(grid, custom_center)], axis=0)  # Shape: (ndim, N, N)
     coords_flat = coords.reshape(ndim, -1)  # Shape: (ndim, N*N)
 
-    # Define the function f(x, y)
+    # Define the function f(x, y) relative to the custom center
     k = 0.1  # Spatial frequency
     data = np.sin(k * coords_flat[0, :]) + np.cos(k * coords_flat[1, :])
     data = data.reshape(data_shape)
@@ -28,10 +30,10 @@ def test_rotate():
 
     # Rotate the data using the rotate function
     angle = 30  # Rotation angle in degrees
-    data_rotated = rotate(data, angle=angle, degree=3, center=None)
+    data_rotated = rotate(data, angle=angle, degree=3, center=custom_center)
 
     # Rotate the mask using the same rotate function
-    mask_rotated = rotate(mask_original.astype(float), angle=angle, degree=0, center=None)
+    mask_rotated = rotate(mask_original.astype(float), angle=angle, degree=0, center=custom_center)
     # Since the mask is binary, use degree=0 (nearest neighbor) interpolation
 
     # Threshold the rotated mask to get back to a binary mask
@@ -68,23 +70,27 @@ def test_rotate():
     fig, axs = plt.subplots(1, 5, figsize=(25, 5))
 
     # Original image (generated data)
-    axs[0].imshow(data, cmap='viridis', origin='lower')
+    axs[0].imshow(data, cmap='viridis', origin='upper')
+    axs[0].scatter(custom_center[1], custom_center[0], color="red", label="Center of Rotation")
     axs[0].set_title("Original Image")
+    axs[0].legend()
 
     # Original mask
-    axs[1].imshow(mask_original, cmap='gray', origin='lower')
+    axs[1].imshow(mask_original, cmap='gray', origin='upper')
     axs[1].set_title("Original Mask")
 
     # Rotated image
-    axs[2].imshow(data_rotated, cmap='viridis', origin='lower')
+    axs[2].imshow(data_rotated, cmap='viridis', origin='upper')
+    axs[2].scatter(custom_center[1], custom_center[0], color="red", label="Center of Rotation")
     axs[2].set_title(f"Rotated Image (Angle: {angle}°)")
+    axs[2].legend()
 
     # Expected image (analytically calculated)
-    axs[3].imshow(data_expected, cmap='viridis', origin='lower')
+    axs[3].imshow(data_expected, cmap='viridis', origin='upper')
     axs[3].set_title("Expected Rotated Image")
 
     # Difference image within the valid region
-    im = axs[4].imshow(difference_masked, cmap='coolwarm', origin='lower')
+    im = axs[4].imshow(difference_masked, cmap='coolwarm', origin='upper')
     axs[4].set_title("Difference (Rotated - Expected)")
     fig.colorbar(im, ax=axs[4], orientation='vertical', label='Difference')
 
@@ -96,4 +102,4 @@ def test_rotate():
     assert max_diff < tolerance, f"Max difference {max_diff} exceeds tolerance {tolerance}"
 
 # Run the test
-test_rotate()
+test_rotate_with_center()
