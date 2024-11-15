@@ -17,7 +17,6 @@ def rotate(data, angle, axis=None, degree=3, mode="zero", center=None):
         ndarray: The rotated data as a numpy array.
     """
     ndim = data.ndim
-
     if ndim not in (2, 3):
         raise ValueError("This function supports only 2D or 3D data.")
 
@@ -46,17 +45,15 @@ def rotate(data, angle, axis=None, degree=3, mode="zero", center=None):
     angle_rad = np.radians(angle)
 
     if ndim == 2:
-        # Negate the angle to achieve counterclockwise rotation in image coordinates
+        # 2D rotation matrix
         cos_angle = np.cos(-angle_rad)
         sin_angle = np.sin(-angle_rad)
-
-        # Rotation matrix for 2D
         R = np.array([
             [cos_angle, -sin_angle],
             [sin_angle, cos_angle]
         ])
 
-        # Apply rotation to the 2D coordinates
+        # Apply rotation
         rotated_coords_flat = R @ coords_flat
 
     elif ndim == 3:
@@ -66,12 +63,12 @@ def rotate(data, angle, axis=None, degree=3, mode="zero", center=None):
         axis = np.array(axis, dtype=data.dtype)
         axis /= np.linalg.norm(axis)  # Normalize to make it a unit vector
 
-        cos_angle = np.cos(angle_rad)
-        sin_angle = np.sin(angle_rad)
+        # 3D rotation matrix using the axis-angle formula
+        cos_angle = np.cos(-angle_rad)
+        sin_angle = np.sin(-angle_rad)
         one_minus_cos = 1 - cos_angle
         ux, uy, uz = axis
 
-        # 3D rotation matrix using the axis-angle formula
         R = np.array([
             [cos_angle + ux**2 * one_minus_cos,
              ux * uy * one_minus_cos - uz * sin_angle,
@@ -84,15 +81,15 @@ def rotate(data, angle, axis=None, degree=3, mode="zero", center=None):
              cos_angle + uz**2 * one_minus_cos]
         ], dtype=data.dtype)
 
-        # Apply rotation to the 3D coordinates
+        # Apply rotation
         rotated_coords_flat = R @ coords_flat
 
-    # Add center coordinates back
+    # Translate coordinates back to the original space
     rotated_coords_flat += np.array(center_coords)[:, None]
 
     # Interpolate using TensorSpline
     interpolated_values = tensor_spline(coordinates=tuple(rotated_coords_flat), grid=False)
-    
+
     # Reshape back to the original data shape
     rotated_data = interpolated_values.reshape(data.shape)
 

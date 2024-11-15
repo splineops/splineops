@@ -1,4 +1,3 @@
-# Imports
 import numpy as np
 import matplotlib.pyplot as plt
 from splineops.interpolate.rotate import rotate
@@ -12,21 +11,15 @@ thickness = 5
 volume[:, size // 4:size // 4 + thickness, size // 4:size - size // 4] = 1  # Horizontal part of "L"
 volume[:, size // 4:size - size // 4, size // 4:size // 4 + thickness] = 1  # Vertical part of "L"
 
-# Display a middle slice to visualize the original 3D data
-plt.figure(figsize=(6, 6))
-plt.imshow(volume[size // 2], cmap="gray")
-plt.title("Original 3D Volume with 'L' Shape (Middle Slice)")
-plt.axis("off")
-plt.show()
+# Define the rotation parameters
+angle = 45  # Rotate by 45 degrees
+axis = (0, 0, 1)  # Custom axis of rotation
+center = (32, 32, 32)  # Center of rotation (middle of the volume)
 
-# Apply rotation on the XY plane (around the z-axis)
-angle = 30  # Rotate by 30 degrees
-degree = 3  # Spline degree
+# Perform the rotation
+rotated_volume = rotate(volume, angle=angle, degree=3, axis=axis, center=center)
 
-# Perform the rotation using the z-axis as default
-rotated_volume = rotate(volume, angle=angle, degree=degree, axis=(0, 0, 1))
-
-# Visualize Rotated Slices
+# Visualize original and rotated slices
 fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
 # Original slices
