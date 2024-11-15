@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 
 def test_rotate():
 
-    N = 100  # Image size
+    N = 500  # Image size
     data_shape = (N, N)
     ndim = 2
+    margin = 20  # Margin to exclude around the original boundaries
 
     # Create a coordinate grid centered at the image center
     grid = np.meshgrid(*[np.arange(dim) for dim in data_shape], indexing="ij")
@@ -21,9 +22,20 @@ def test_rotate():
     data = np.sin(k * coords_flat[0, :]) + np.cos(k * coords_flat[1, :])
     data = data.reshape(data_shape)
 
+    # Create a mask with margins on the original image
+    mask_original = np.zeros(data_shape, dtype=bool)
+    mask_original[margin:N-margin, margin:N-margin] = True  # Exclude margins
+
     # Rotate the data using the rotate function
     angle = 30  # Rotation angle in degrees
     data_rotated = rotate(data, angle=angle, degree=3, center=None)
+
+    # Rotate the mask using the same rotate function
+    mask_rotated = rotate(mask_original.astype(float), angle=angle, degree=0, center=None)
+    # Since the mask is binary, use degree=0 (nearest neighbor) interpolation
+
+    # Threshold the rotated mask to get back to a binary mask
+    mask_rotated = mask_rotated > 0.5  # Convert back to boolean
 
     # Compute the expected data by rotating the coordinates
     angle_rad = np.radians(angle)
@@ -43,63 +55,38 @@ def test_rotate():
     data_expected_flat = np.sin(k * rotated_coords_flat[0, :]) + np.cos(k * rotated_coords_flat[1, :])
     data_expected = data_expected_flat.reshape(data_shape)
 
-    # Now create the mask
-    # Coordinates of the rotated image centered at its center
-    coords_rotated = coords.copy()
-    coords_rotated_flat = coords_rotated.reshape(ndim, -1)
-
-    # Apply inverse rotation to the rotated image coordinates to map back to the original image coordinates
-    # Here, we use the positive angle because we're reversing the rotation
-    cos_angle_inv = np.cos(angle_rad)
-    sin_angle_inv = np.sin(angle_rad)
-
-    # Inverse rotation matrix
-    R_inv = np.array([
-        [cos_angle_inv, sin_angle_inv],
-        [-sin_angle_inv, cos_angle_inv]
-    ])
-
-    coords_original_flat = R_inv @ coords_rotated_flat
-
-    # Shift coordinates back to original image indices
-    coords_original_indices = coords_original_flat + np.array(center_coords)[:, np.newaxis]
-
-    # Check which coordinates are within the bounds of the original image
-    valid_mask = (
-        (coords_original_indices[0, :] >= 0) & (coords_original_indices[0, :] <= N - 1) &
-        (coords_original_indices[1, :] >= 0) & (coords_original_indices[1, :] <= N - 1)
-    )
-
-    valid_mask_image = valid_mask.reshape(data_shape)
-
     # Compute the difference between the rotated data and the expected data within the valid region
     difference = data_rotated - data_expected
-    max_diff = np.max(np.abs(difference[valid_mask_image]))
+    max_diff = np.max(np.abs(difference[mask_rotated]))
     print(f"Maximum difference within the valid region: {max_diff}")
 
     # Mask the difference array for plotting
     difference_masked = np.copy(difference)
-    difference_masked[~valid_mask_image] = np.nan  # Exclude invalid pixels from the difference image
+    difference_masked[~mask_rotated] = np.nan  # Exclude invalid pixels from the difference image
 
     # Plot the original data, rotated data, expected data, and the difference
-    fig, axs = plt.subplots(1, 4, figsize=(20, 5))
+    fig, axs = plt.subplots(1, 5, figsize=(25, 5))
 
     # Original image (generated data)
     axs[0].imshow(data, cmap='viridis', origin='lower')
     axs[0].set_title("Original Image")
 
+    # Original mask
+    axs[1].imshow(mask_original, cmap='gray', origin='lower')
+    axs[1].set_title("Original Mask")
+
     # Rotated image
-    axs[1].imshow(data_rotated, cmap='viridis', origin='lower')
-    axs[1].set_title(f"Rotated Image (Angle: {angle}°)")
+    axs[2].imshow(data_rotated, cmap='viridis', origin='lower')
+    axs[2].set_title(f"Rotated Image (Angle: {angle}°)")
 
     # Expected image (analytically calculated)
-    axs[2].imshow(data_expected, cmap='viridis', origin='lower')
-    axs[2].set_title("Expected Rotated Image")
+    axs[3].imshow(data_expected, cmap='viridis', origin='lower')
+    axs[3].set_title("Expected Rotated Image")
 
     # Difference image within the valid region
-    im = axs[3].imshow(difference_masked, cmap='coolwarm', origin='lower')
-    axs[3].set_title("Difference (Rotated - Expected)")
-    fig.colorbar(im, ax=axs[3], orientation='vertical', label='Difference')
+    im = axs[4].imshow(difference_masked, cmap='coolwarm', origin='lower')
+    axs[4].set_title("Difference (Rotated - Expected)")
+    fig.colorbar(im, ax=axs[4], orientation='vertical', label='Difference')
 
     plt.tight_layout()
     plt.show()
