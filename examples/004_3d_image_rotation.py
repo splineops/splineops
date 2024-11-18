@@ -1,3 +1,10 @@
+"""
+First steps with the TensorSpline API
+=====================================
+
+This example demonstrates how to create a basic interpolation using the TensorSpline API.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from splineops.interpolate.rotate import rotate
