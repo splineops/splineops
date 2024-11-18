@@ -142,6 +142,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+splineops-env
 
 # Spyder project settings
 .spyderproject
