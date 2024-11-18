@@ -1,7 +1,7 @@
 import numpy as np
 from splineops.interpolate.tensorspline import TensorSpline
 
-def rotate(data, angle, axis=None, degree=3, mode="zero", center=None):
+def rotate(data, angle, axis=None, center=None, degree=3, mode="zero"):
     """
     Rotate 2D or 3D data around a specified center using TensorSpline interpolation.
 

@@ -17,7 +17,7 @@ axis = (0, 0, 1)  # Custom axis of rotation
 center = (32, 32, 32)  # Center of rotation (middle of the volume)
 
 # Perform the rotation
-rotated_volume = rotate(volume, angle=angle, degree=3, axis=axis, center=center)
+rotated_volume = rotate(volume, angle=angle, axis=axis, center=center, degree=3)
 
 # Visualize original and rotated slices
 fig, axes = plt.subplots(2, 3, figsize=(15, 10))

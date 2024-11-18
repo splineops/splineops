@@ -41,11 +41,11 @@ def test_3d_rotate_with_center():
     axis = (1, 1, 1)  # Custom axis of rotation
 
     # Rotate the data using the rotate function
-    data_rotated = rotate(data, angle=angle, degree=3, axis=axis, center=custom_center)
+    data_rotated = rotate(data, angle=angle, center=custom_center, degree=3, axis=axis)
 
     # Rotate the mask using the same rotate function
     mask_rotated = rotate(
-        mask_original.astype(float), angle=angle, degree=0, axis=axis, center=custom_center
+        mask_original.astype(float), angle=angle, axis=axis, center=custom_center, degree=0
     )
     # Since the mask is binary, use degree=0 (nearest neighbor) interpolation
 

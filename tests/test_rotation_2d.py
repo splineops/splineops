@@ -30,10 +30,10 @@ def test_rotate_with_center():
 
     # Rotate the data using the rotate function
     angle = 30  # Rotation angle in degrees
-    data_rotated = rotate(data, angle=angle, degree=3, center=custom_center)
+    data_rotated = rotate(data, angle=angle, center=custom_center, degree=3)
 
     # Rotate the mask using the same rotate function
-    mask_rotated = rotate(mask_original.astype(float), angle=angle, degree=0, center=custom_center)
+    mask_rotated = rotate(mask_original.astype(float), angle=angle, center=custom_center, degree=0)
     # Since the mask is binary, use degree=0 (nearest neighbor) interpolation
 
     # Threshold the rotated mask to get back to a binary mask
