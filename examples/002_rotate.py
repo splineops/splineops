@@ -26,9 +26,9 @@ from splineops.utils.image_loader import load_collagen_image
 #
 # Load the image and preprocess it for the rotation animation.
 
-# Load and resize the ascent image
+# Load and resize the image
 image = load_collagen_image()
-size = 500  # Resize image to 500x500 for faster computation
+size = 500
 degree = 3
 image_resized = ndimage.zoom(
     image, (size / image.shape[0], size / image.shape[1]), order=degree
