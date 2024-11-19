@@ -23,8 +23,7 @@ input_image = load_head_mri_image()
 input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
 zoom_factor = 0.5  # Resize factor
-interpolation_type = "cubic"
-interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
+degree = 3
 
 # Helper Functions for Metric Calculation
 # ----------------------------------------
@@ -80,7 +79,7 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
 method = "interpolation"
 
 ts_output, ts_resized_reverse, ts_snr, ts_mse = resize_and_compute_metrics(
-    input_image, method, interp_degree, zoom_factor
+    input_image, method, degree, zoom_factor
 )
 
 # Display results
@@ -114,7 +113,7 @@ plt.show()
 method = "least-squares"
 
 ts_output, ts_resized_reverse, ts_snr, ts_mse = resize_and_compute_metrics(
-    input_image, method, interp_degree, zoom_factor
+    input_image, method, degree, zoom_factor
 )
 
 # Display results
@@ -148,7 +147,7 @@ plt.show()
 method = "oblique"
 
 ts_output, ts_resized_reverse, ts_snr, ts_mse = resize_and_compute_metrics(
-    input_image, method, interp_degree, zoom_factor
+    input_image, method, degree, zoom_factor
 )
 
 # Display results
@@ -179,9 +178,8 @@ plt.show()
 #
 # Resizing using SciPy's built-in zoom method for comparison.
 
-def resize_with_scipy_zoom(input_image_normalized, zoom_factor, interpolation):
+def resize_with_scipy_zoom(input_image_normalized, zoom_factor, degree):
     """Resize an image with SciPy's zoom function, then resize back and compute metrics."""
-    degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation]
     resized_image = zoom(input_image_normalized, (zoom_factor, zoom_factor), order=degree)
     reverse_zoom_factor = 1.0 / zoom_factor
     resized_reverse_image = zoom(resized_image, (reverse_zoom_factor, reverse_zoom_factor), order=degree)
@@ -201,7 +199,7 @@ def resize_with_scipy_zoom(input_image_normalized, zoom_factor, interpolation):
     return resized_image_display, resized_reverse_output_display, snr, mse
 
 scipy_output, scipy_resized_reverse, scipy_snr, scipy_mse = resize_with_scipy_zoom(
-    input_image_normalized, zoom_factor, interpolation_type
+    input_image_normalized, zoom_factor, degree
 )
 
 # Display results
