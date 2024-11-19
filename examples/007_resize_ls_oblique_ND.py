@@ -32,30 +32,35 @@ def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
 
     return resized_signal, resized_back_signal, snr, mse
 
-def resize_and_compare_methods(input_signal, zoom_factors, degree, methods):
-    """Compare resizing methods and compute metrics."""
-    results = {}
-    for method in methods:
-        if method == "scipy":
-            resized_signal, expanded_signal, snr, mse = resize_with_scipy_zoom(input_signal, zoom_factors, degree)
-        else:
-            resized_signal = resize(
-                data=input_signal,
-                zoom_factors=zoom_factors,
-                degree=degree,
-                method=method
-            )
-            expanded_signal = resize(
-                data=resized_signal,
-                output_size=input_signal.shape,
-                degree=degree,
-                method=method
-            )
-            snr = compute_snr(input_signal, expanded_signal)
-            mse = compute_mse(input_signal, expanded_signal)
+def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
+    """Resize an image using a given method and compute metrics."""
+    # Ensure zoom_factors is an array
+    if np.isscalar(zoom_factors):
+        zoom_factors = [zoom_factors] * len(input_image.shape)
 
-        results[method] = (resized_signal, expanded_signal, snr, mse)
-    return results
+    if method == "scipy":
+        resized_signal, resized_back_signal, snr, mse = resize_with_scipy_zoom(
+            input_signal=input_image,
+            zoom_factors=zoom_factors,
+            degree=degree
+        )
+    else:
+        resized_signal = resize(
+            data=input_image,
+            zoom_factors=zoom_factors,
+            degree=degree,
+            method=method
+        )
+        resized_back_signal = resize(
+            data=resized_signal,
+            output_size=input_image.shape,
+            degree=degree,
+            method=method
+        )
+        snr = compute_snr(input_image, resized_back_signal)
+        mse = compute_mse(input_image, resized_back_signal)
+
+    return resized_signal, resized_back_signal, snr, mse
 
 # %%
 # 1D Signal: Comparison of Methods
@@ -71,8 +76,15 @@ zoom_factor_1d = 0.5
 methods = ["interpolation", "least-squares", "oblique", "scipy"]
 degree = 3
 
-# Compare methods
-results_1d = resize_and_compare_methods(original_signal, (zoom_factor_1d,), degree, methods)
+# Initialize results dictionary
+results_1d = {}
+
+# Loop over methods
+for method in methods:
+    resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
+        original_signal, method, degree, zoom_factor_1d
+    )
+    results_1d[method] = (resized_signal, resized_back_signal, snr, mse)
 
 # %%
 # Visualization of 1D Signal Results
@@ -125,8 +137,15 @@ original_volume = np.sin(x) * np.sin(y) * np.sin(z)
 # Set parameters
 zoom_factors_3d = (0.5, 0.5, 0.5)
 
-# Compare methods
-results_3d = resize_and_compare_methods(original_volume, zoom_factors_3d, degree, methods)
+# Initialize results dictionary
+results_3d = {}
+
+# Loop over methods
+for method in methods:
+    resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
+        original_volume, method, degree, zoom_factors_3d
+    )
+    results_3d[method] = (resized_signal, resized_back_signal, snr, mse)
 
 # %%
 # Visualization of 3D Volume Results
