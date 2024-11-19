@@ -15,11 +15,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from splineops.interpolate.resize import resize
 
-dtype = "float32"
-
 # Create a simple 2D gradient image
 nx, ny = 50, 50  # Original image dimensions
-data = np.linspace(0, 1, nx * ny, dtype=dtype).reshape((nx, ny))
+data = np.linspace(0, 1, nx * ny).reshape((nx, ny))
 
 # Visualize the original data
 plt.figure(figsize=(5, 5))
