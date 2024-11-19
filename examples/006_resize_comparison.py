@@ -6,40 +6,40 @@ This example compares TensorSpline resizing with advanced interpolation methods:
 Least-Squares, Oblique Projection, and SciPy's built-in zoom.
 """
 
-# Import necessary libraries
+# %%
+# Load MRI Image and Normalize
+# ----------------------------
+#
+# We load the MRI head image and normalize it to the range [0, 1].
+
 import numpy as np
 import matplotlib.pyplot as plt
-import time
-from scipy.datasets import ascent
 from scipy.ndimage import zoom
 from splineops.interpolate.resize import resize
 from splineops.utils.image_loader import load_head_mri_image  # Import the MRI loader
 
-# Helper Functions
-# ----------------
-def create_square_image():
-    """Create a simple 10x10 image with a white square at the center."""
-    img = np.zeros((10, 10))
-    img[3:7, 3:7] = 255.0
-    return img
+# Load the MRI image
+input_image = load_head_mri_image()
+input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
 
-def load_ascent_image():
-    """Load and resize the 'ascent' image from SciPy datasets."""
-    img = ascent()
-    img_resized = zoom(img, (256 / img.shape[0], 256 / img.shape[1]), order=3)
-    return img_resized
+zoom_factor = 0.5  # Resize factor
+interpolation_type = "cubic"
+interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
 
+# Helper Functions for Metric Calculation
+# ----------------------------------------
 def compute_snr(original, processed):
-    """Compute Signal-to-Noise Ratio between two images."""
     signal_power = 1.0 ** 2
     noise_power = np.mean((original - processed) ** 2)
-    snr = 10 * np.log10(signal_power / noise_power)
-    return snr
+    return 10 * np.log10(signal_power / noise_power)
 
 def compute_mse(original, processed):
-    """Compute Mean Squared Error between two images."""
-    mse = np.mean((original - processed) ** 2)
-    return mse
+    return np.mean((original - processed) ** 2)
+
+def create_black_background(image, original_shape):
+    black_background = np.zeros(original_shape)
+    black_background[:image.shape[0], :image.shape[1]] = image
+    return black_background
 
 def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
     """Resize an image using the `resize` function, compute SNR and MSE after resizing back."""
@@ -71,6 +71,114 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
 
     return shrunken_image_display, expanded_image_display, snr, mse
 
+# %%
+# TensorSpline: Interpolation Method
+# -----------------------------------
+#
+# Resizing using TensorSpline with the "interpolation" method.
+
+method = "interpolation"
+
+ts_output, ts_resized_reverse, ts_snr, ts_mse = resize_and_compute_metrics(
+    input_image, method, interp_degree, zoom_factor
+)
+
+# Display results
+fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+ax[0].imshow(input_image, cmap="gray")
+ax[0].set_title("Original Image")
+ax[0].axis("off")
+
+if zoom_factor < 1:
+    ts_display = create_black_background(ts_output, input_image.shape)
+else:
+    ts_display = ts_output
+
+ax[1].imshow(ts_display, cmap="gray")
+ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x)")
+ax[1].axis("off")
+
+ts_diff = np.clip(np.abs(input_image_normalized - ts_resized_reverse / 255.0), 0, 1)
+ax[2].imshow(ts_diff, cmap="gray")
+ax[2].set_title(f"Difference (SNR: {ts_snr:.2f} dB, MSE: {ts_mse:.2e})")
+ax[2].axis("off")
+plt.tight_layout()
+plt.show()
+
+# %%
+# TensorSpline: Least-Squares Method
+# -----------------------------------
+#
+# Resizing using TensorSpline with the "least-squares" method.
+
+method = "least-squares"
+
+ts_output, ts_resized_reverse, ts_snr, ts_mse = resize_and_compute_metrics(
+    input_image, method, interp_degree, zoom_factor
+)
+
+# Display results
+fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+ax[0].imshow(input_image, cmap="gray")
+ax[0].set_title("Original Image")
+ax[0].axis("off")
+
+if zoom_factor < 1:
+    ts_display = create_black_background(ts_output, input_image.shape)
+else:
+    ts_display = ts_output
+
+ax[1].imshow(ts_display, cmap="gray")
+ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x)")
+ax[1].axis("off")
+
+ts_diff = np.clip(np.abs(input_image_normalized - ts_resized_reverse / 255.0), 0, 1)
+ax[2].imshow(ts_diff, cmap="gray")
+ax[2].set_title(f"Difference (SNR: {ts_snr:.2f} dB, MSE: {ts_mse:.2e})")
+ax[2].axis("off")
+plt.tight_layout()
+plt.show()
+
+# %%
+# TensorSpline: Oblique Projection Method
+# ---------------------------------------
+#
+# Resizing using TensorSpline with the "oblique" method.
+
+method = "oblique"
+
+ts_output, ts_resized_reverse, ts_snr, ts_mse = resize_and_compute_metrics(
+    input_image, method, interp_degree, zoom_factor
+)
+
+# Display results
+fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+ax[0].imshow(input_image, cmap="gray")
+ax[0].set_title("Original Image")
+ax[0].axis("off")
+
+if zoom_factor < 1:
+    ts_display = create_black_background(ts_output, input_image.shape)
+else:
+    ts_display = ts_output
+
+ax[1].imshow(ts_display, cmap="gray")
+ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x)")
+ax[1].axis("off")
+
+ts_diff = np.clip(np.abs(input_image_normalized - ts_resized_reverse / 255.0), 0, 1)
+ax[2].imshow(ts_diff, cmap="gray")
+ax[2].set_title(f"Difference (SNR: {ts_snr:.2f} dB, MSE: {ts_mse:.2e})")
+ax[2].axis("off")
+plt.tight_layout()
+plt.show()
+
+# %%
+# SciPy Zoom Resizing
+# --------------------
+#
+# Resizing using SciPy's built-in zoom method for comparison.
+
 def resize_with_scipy_zoom(input_image_normalized, zoom_factor, interpolation):
     """Resize an image with SciPy's zoom function, then resize back and compute metrics."""
     degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation]
@@ -92,92 +200,28 @@ def resize_with_scipy_zoom(input_image_normalized, zoom_factor, interpolation):
 
     return resized_image_display, resized_reverse_output_display, snr, mse
 
-def create_black_background(image, original_shape):
-    """Embed resized image on a black background of the original image size."""
-    black_background = np.zeros(original_shape)
-    black_background[:image.shape[0], :image.shape[1]] = image
-    return black_background
+scipy_output, scipy_resized_reverse, scipy_snr, scipy_mse = resize_with_scipy_zoom(
+    input_image_normalized, zoom_factor, interpolation_type
+)
 
-# Load MRI Image and Set Parameters
-# ---------------------------------
-input_image = load_head_mri_image()  # Load the head MRI image
+# Display results
+fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+ax[0].imshow(input_image, cmap="gray")
+ax[0].set_title("Original Image")
+ax[0].axis("off")
 
-# Uncomment the following line to use the Ascent image instead
-# input_image = load_ascent_image()  
+if zoom_factor < 1:
+    scipy_display = create_black_background(scipy_output, input_image.shape)
+else:
+    scipy_display = scipy_output
 
-#input_image = create_square_image()  # Load the head MRI image
+ax[1].imshow(scipy_display, cmap="gray")
+ax[1].set_title(f"SciPy Zoom (Zoom: {zoom_factor}x)")
+ax[1].axis("off")
 
-input_image_normalized = (input_image / 255.0).astype(np.float64)  # Normalize to [0, 1]
-
-zoom_factor = 2.0
-#zoom_factor = np.linspace(0.2, 1.0, num=10)[7]
-methods = ["interpolation", "least-squares", "oblique"]
-interpolation_type = "cubic"
-interp_degree = {'linear': 1, 'quadratic': 2, 'cubic': 3}[interpolation_type]
-
-# Run Resizing and Compare Results
-# --------------------------------
-for method in methods:
-    # Measure and process with each method
-    start_time = time.time()
-    ts_output, ts_resized_reverse, ts_snr, ts_mse = resize_and_compute_metrics(
-        input_image, method, interp_degree, zoom_factor
-    )
-    ts_time = time.time() - start_time
-
-    # Print SNR, MSE, and processing time for TensorSpline method
-    print(f"\nMethod: {method.capitalize()}")
-    print(f"  TensorSpline - SNR: {ts_snr:.2f} dB, MSE: {ts_mse:.6f}, Time: {ts_time:.3f} s")
-
-    # Process with SciPy zoom
-    start_time = time.time()
-    scipy_output, scipy_resized_reverse, scipy_snr, scipy_mse = resize_with_scipy_zoom(
-        input_image_normalized, zoom_factor, interpolation_type
-    )
-    scipy_time = time.time() - start_time
-
-    # Print SNR, MSE, and processing time for SciPy method
-    print(f"  SciPy - SNR: {scipy_snr:.2f} dB, MSE: {scipy_mse:.6f}, Time: {scipy_time:.3f} s")
-
-    # Display and analyze results
-    fig, ax = plt.subplots(2, 3, figsize=(18, 12))
-    ax[0, 0].imshow(input_image, cmap="gray")
-    ax[0, 0].set_title("Original Image")
-    ax[0, 0].axis("off")
-
-    # Check the zoom factor to decide on black background
-    if zoom_factor < 1:
-        ts_display = create_black_background(ts_output, input_image.shape)
-        scipy_display = create_black_background(scipy_output, input_image.shape)
-    else:
-        ts_display = ts_output
-        scipy_display = scipy_output
-
-    # Display TensorSpline resized image or its background
-    ax[0, 1].imshow(ts_display, cmap="gray")
-    ax[0, 1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {ts_time:.2f}s)")
-    ax[0, 1].axis("off")
-
-    ts_diff = np.clip(np.abs(input_image_normalized - ts_resized_reverse / 255.0), 0, 1)
-    #ts_diff = np.clip(np.abs(ts_resized_reverse / 255.0), 0, 1)
-    ax[0, 2].imshow(ts_diff, cmap="gray")
-    ax[0, 2].set_title(f"{method.capitalize()} Difference (SNR: {ts_snr:.2f} dB, MSE: {ts_mse:.2e})")
-    ax[0, 2].axis("off")
-
-    # Display original image again for comparison
-    ax[1, 0].imshow(input_image, cmap="gray")
-    ax[1, 0].set_title("Original Image")
-    ax[1, 0].axis("off")
-
-    # Display SciPy resized image or its background
-    ax[1, 1].imshow(scipy_display, cmap="gray")
-    ax[1, 1].set_title(f"SciPy Zoom (Zoom: {zoom_factor}x, Degree: {interp_degree}, Time: {scipy_time:.2f}s)")
-    ax[1, 1].axis("off")
-
-    scipy_diff = np.clip(np.abs(input_image_normalized - scipy_resized_reverse / 255.0), 0, 1)
-    ax[1, 2].imshow(scipy_diff, cmap="gray")
-    ax[1, 2].set_title(f"SciPy Difference (SNR: {scipy_snr:.2f} dB, MSE: {scipy_mse:.2e})")
-    ax[1, 2].axis("off")
-
-    plt.tight_layout()
-    plt.show()
+scipy_diff = np.clip(np.abs(input_image_normalized - scipy_resized_reverse / 255.0), 0, 1)
+ax[2].imshow(scipy_diff, cmap="gray")
+ax[2].set_title(f"Difference (SNR: {scipy_snr:.2f} dB, MSE: {scipy_mse:.2e})")
+ax[2].axis("off")
+plt.tight_layout()
+plt.show()
