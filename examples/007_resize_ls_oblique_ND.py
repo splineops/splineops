@@ -2,17 +2,13 @@
 Resizing 1D and 3D Signals with TensorSpline and Advanced Techniques
 ====================================================================
 
-This example demonstrates using the LS_Oblique_Resize model for resizing 1D and 3D signals.
-We will apply it to a synthetic 1D signal and a 3D volume to explore how it behaves in different dimensions.
+This example demonstrates resizing 1D and 3D signals using the same `resize` function
+from the `resize.py` module for consistency across examples.
 """
-
-# %%
-# Import necessary libraries and define helper functions
-# ------------------------------------------------------
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.interpolate.ls_oblique.ls_oblique_resize import ls_oblique_resize
+from splineops.interpolate.resize import resize  # Import the unified resize function
 
 def compute_snr(original, processed):
     """Compute Signal-to-Noise Ratio between two signals."""
@@ -24,26 +20,24 @@ def compute_mse(original, processed):
     """Compute Mean Squared Error between two signals."""
     return np.mean((original - processed) ** 2)
 
-def resize_and_compute_metrics(input_signal, method, interpolation, zoom_factors):
+def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
     """Resize a signal, compute SNR and MSE, and return the resized and reconstructed signals for comparison."""
     input_signal_normalized = (input_signal / np.max(input_signal)).astype(np.float64)
 
     # Resize (shrink) the signal
-    resized_signal = ls_oblique_resize(
-        input_img_normalized=input_signal_normalized,
+    resized_signal = resize(
+        data=input_signal_normalized,
         zoom_factors=zoom_factors,
-        method=method,
-        interpolation=interpolation,
-        inversable=False
+        degree=degree,
+        method=method
     )
 
     # Resize (expand) back to original size
-    expanded_signal = ls_oblique_resize(
-        input_img_normalized=resized_signal,
+    expanded_signal = resize(
+        data=resized_signal,
         output_size=input_signal_normalized.shape,
-        method=method,
-        interpolation=interpolation,
-        inversable=False
+        degree=degree,
+        method=method
     )
 
     # Calculate SNR and MSE
@@ -55,7 +49,7 @@ def resize_and_compute_metrics(input_signal, method, interpolation, zoom_factors
 # %%
 # 1D Signal Example
 # -----------------
-# Generate a synthetic 1D signal, resize it with LS_Oblique_Resize, and visualize the results.
+# Generate a synthetic 1D signal, resize it, and visualize the results.
 
 # Generate a 1D signal (sine wave with added noise)
 x = np.linspace(0, 4 * np.pi, 100)
@@ -64,11 +58,11 @@ original_signal = np.sin(x) + 0.1 * np.random.randn(100)
 # Set parameters
 zoom_factor_1d = 0.5
 method = "least-squares"
-interpolation_type = "cubic"
+degree = 3
 
-# Apply LS_Oblique_Resize to the 1D signal
+# Apply the unified resize function to the 1D signal
 resized_signal_1d, expanded_signal_1d, snr_1d, mse_1d = resize_and_compute_metrics(
-    original_signal, method, interpolation_type, (zoom_factor_1d,)
+    original_signal, method, degree, (zoom_factor_1d,)
 )
 
 # Plot the original, reconstructed, and difference signals
@@ -99,7 +93,7 @@ plt.show()
 # %%
 # 3D Volume Example
 # -----------------
-# Generate a synthetic 3D volume (a 3D sine wave pattern) and resize it with LS_Oblique_Resize.
+# Generate a synthetic 3D volume (a 3D sine wave pattern) and resize it.
 
 # Generate a 3D sine wave volume
 z, y, x = np.meshgrid(
@@ -112,9 +106,9 @@ original_volume = np.sin(x) * np.sin(y) * np.sin(z)
 # Set parameters
 zoom_factors_3d = (0.5, 0.5, 0.5)
 
-# Apply LS_Oblique_Resize to the 3D volume
+# Apply the unified resize function to the 3D volume
 resized_volume_3d, expanded_volume_3d, snr_3d, mse_3d = resize_and_compute_metrics(
-    original_volume, method, interpolation_type, zoom_factors_3d
+    original_volume, method, degree, zoom_factors_3d
 )
 
 # Visualize a slice of the original, resized, and difference volumes
