@@ -21,20 +21,28 @@ from splineops.utils.image_loader import load_head_mri_image  # Import the MRI l
 # Load the MRI image
 input_image = load_head_mri_image()
 
+# Normalize the image
+input_image_normalized = (input_image / 255.0).astype(np.float64)
+
+# Display the original image
+plt.imshow(input_image_normalized, cmap='gray')
+plt.title("Original MRI Image")
+plt.axis('off')
+plt.show()
+
+# %%
 # Helper Functions for Metric Calculation
-# ----------------------------------------
+# ---------------------------------------
+#
+# Define functions to compute Signal-to-Noise Ratio (SNR) and Mean Squared Error (MSE).
+
 def compute_snr(original, processed):
-    signal_power = 1.0 ** 2
+    signal_power = 1.0 ** 2  # Since the image is normalized to [0, 1]
     noise_power = np.mean((original - processed) ** 2)
     return 10 * np.log10(signal_power / noise_power)
 
 def compute_mse(original, processed):
     return np.mean((original - processed) ** 2)
-
-def create_black_background(image, original_shape):
-    black_background = np.zeros(original_shape)
-    black_background[:image.shape[0], :image.shape[1]] = image
-    return black_background
 
 def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
     """Resize using SciPy's zoom, then resize back and compute metrics."""
@@ -47,11 +55,10 @@ def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
 
     return resized_signal, resized_back_signal, snr, mse
 
-def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
+def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
     """Resize an image using a given method and compute metrics."""
-    # Ensure zoom_factors is an array
-    if np.isscalar(zoom_factor):
-        zoom_factors = [zoom_factor] * len(input_image.shape)
+    if np.isscalar(zoom_factors):
+        zoom_factors = [zoom_factors] * len(input_image.shape)
 
     if method == "scipy":
         resized_signal, resized_back_signal, snr, mse = resize_with_scipy_zoom(
@@ -77,133 +84,93 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
 
     return resized_signal, resized_back_signal, snr, mse
 
-def plot_2d_results(input_image, resized_signal_display, resized_back_signal, method, zoom_factor, snr, mse):
+def plot_results(
+    original_slice, 
+    resized_slice, 
+    resized_back_slice, 
+    method, 
+    zoom_factors, 
+    snr, 
+    mse
+):
     """
-    Display the original image, resized image, and difference map.
+    Generalized plot function for 2D and 3D data.
     """
-    # Normalize input image for difference calculation
+    import numpy as np
+    import matplotlib.pyplot as plt
 
+    # Check if all zoom factors are less than 1 (zooming out in all dimensions)
+    zoom_out = all(zf < 1 for zf in zoom_factors)
+
+    # Prepare resized display array
+    if zoom_out:
+        # Create a black background of the original slice's shape
+        resized_display = np.zeros_like(original_slice)
+        # Place the resized slice in the top-left corner of the black background
+        resized_display[
+            tuple(slice(0, r_dim) for r_dim in resized_slice.shape)
+        ] = resized_slice
+    else:
+        # Just use the resized slice as is
+        resized_display = resized_slice
+
+    # Plotting
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
 
-    # Original image
-    ax[0].imshow(input_image, cmap="gray")
+    # Original slice
+    ax[0].imshow(original_slice, cmap="gray", aspect='auto')
     ax[0].set_title("Original Image")
     ax[0].axis("off")
 
-    # Resized image with optional black background for zoom out
-    if zoom_factor < 1:
-        resized_display_with_background = create_black_background(resized_signal_display, input_image.shape)
-    else:
-        resized_display_with_background = resized_signal_display
-
-    ax[1].imshow(resized_display_with_background, cmap="gray")
-    ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x)")
+    # Resized slice
+    ax[1].imshow(resized_display, cmap="gray", aspect='auto')
+    ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factors})")
     ax[1].axis("off")
 
     # Difference map
-    diff_map = input_image - resized_back_signal
-    ax[2].imshow(diff_map, cmap="gray")
+    difference = original_slice - resized_back_slice
+    ax[2].imshow(difference, cmap="gray", aspect='auto')
     ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
     ax[2].axis("off")
 
     plt.tight_layout()
     plt.show()
 
-# Normalize the image
-input_image_normalized = (input_image / 255.0).astype(np.float64)
+# %%
+# Define Parameters for Resizing
+# ------------------------------
+#
+# Set the zoom factors, degree of interpolation, and the methods to be compared.
 
-# Define parameters
-zoom_factor = 0.5  # Resize factor
 degree = 3
+zoom_factors = (0.5, 0.5)
+methods = ["interpolation", "least-squares", "oblique", "scipy"]
 
 # %%
-# TensorSpline: Interpolation Method
-# -----------------------------------
-method = "interpolation"
+# Resizing and Comparing Methods
+# ------------------------------
+#
+# Iterate over the different methods and perform resizing, compute metrics, and plot results.
 
-resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
-    input_image_normalized, method, degree, zoom_factor
-)
+for method in methods:
+    if method == "scipy":
+        resized_signal, resized_back_signal, snr, mse = resize_with_scipy_zoom(
+            input_signal=input_image_normalized, 
+            zoom_factors=zoom_factors, 
+            degree=degree
+        )
+    else:
+        resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
+            input_image_normalized, method, degree, zoom_factors
+        )
 
-# Convert results back to [0, 255] for visualization
-resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8)
-
-# Display results
-plot_2d_results(
-    input_image=input_image_normalized,
-    resized_signal_display=resized_signal_display,
-    resized_back_signal=resized_back_signal,
-    method=method,
-    zoom_factor=zoom_factor,
-    snr=snr,
-    mse=mse
-)
-
-# %%
-# TensorSpline: Least-Squares Method
-# -----------------------------------
-method = "least-squares"
-
-resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
-    input_image_normalized, method, degree, zoom_factor
-)
-
-# Convert results back to [0, 255] for visualization
-resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8)
-
-# Display results
-plot_2d_results(
-    input_image=input_image_normalized,
-    resized_signal_display=resized_signal_display,
-    resized_back_signal=resized_back_signal,
-    method=method,
-    zoom_factor=zoom_factor,
-    snr=snr,
-    mse=mse
-)
-
-# %%
-# TensorSpline: Oblique Projection Method
-# ---------------------------------------
-method = "oblique"
-
-resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
-    input_image_normalized, method, degree, zoom_factor
-)
-
-# Convert results back to [0, 255] for visualization
-resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8)
-
-# Display results
-plot_2d_results(
-    input_image=input_image_normalized,
-    resized_signal_display=resized_signal_display,
-    resized_back_signal=resized_back_signal,
-    method=method,
-    zoom_factor=zoom_factor,
-    snr=snr,
-    mse=mse
-)
-
-# %%
-# SciPy Zoom Resizing
-# --------------------
-resized_signal, resized_back_signal, snr, mse = resize_with_scipy_zoom(
-    input_signal=input_image_normalized, 
-    zoom_factors=(zoom_factor, zoom_factor), 
-    degree=degree
-)
-
-# Convert results back to [0, 255] for visualization
-resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8)
-
-# Display results
-plot_2d_results(
-    input_image=input_image_normalized,
-    resized_signal_display=resized_signal_display,
-    resized_back_signal=resized_back_signal,
-    method="scipy",
-    zoom_factor=zoom_factor,
-    snr=snr,
-    mse=mse
-)
+    # Plot results
+    plot_results(
+        original_slice=input_image_normalized,
+        resized_slice=resized_signal,
+        resized_back_slice=resized_back_signal,
+        method=method,
+        zoom_factors=zoom_factors,
+        snr=snr,
+        mse=mse
+    )
