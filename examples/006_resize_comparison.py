@@ -77,10 +77,13 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
 
     return resized_signal, resized_back_signal, snr, mse
 
-def plot_2d_results(input_image, resized_signal_display, resized_back_signal, method, zoom_factor, snr, mse, normalized_input_image):
+def plot_2d_results(input_image, resized_signal_display, resized_back_signal, method, zoom_factor, snr, mse):
     """
     Display the original image, resized image, and difference map.
     """
+    # Normalize input image for difference calculation
+    normalized_input_image = (input_image / 255.0).astype(np.float64)
+
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
 
     # Original image
@@ -135,8 +138,7 @@ plot_2d_results(
     method=method,
     zoom_factor=zoom_factor,
     snr=snr,
-    mse=mse,
-    normalized_input_image=input_image_normalized
+    mse=mse
 )
 
 # %%
@@ -159,8 +161,7 @@ plot_2d_results(
     method=method,
     zoom_factor=zoom_factor,
     snr=snr,
-    mse=mse,
-    normalized_input_image=input_image_normalized
+    mse=mse
 )
 
 # %%
@@ -183,8 +184,7 @@ plot_2d_results(
     method=method,
     zoom_factor=zoom_factor,
     snr=snr,
-    mse=mse,
-    normalized_input_image=input_image_normalized
+    mse=mse
 )
 
 # %%
@@ -207,6 +207,5 @@ plot_2d_results(
     method="scipy",
     zoom_factor=zoom_factor,
     snr=snr,
-    mse=mse,
-    normalized_input_image=input_image_normalized
+    mse=mse
 )
