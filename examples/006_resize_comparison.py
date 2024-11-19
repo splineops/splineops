@@ -82,7 +82,6 @@ def plot_2d_results(input_image, resized_signal_display, resized_back_signal, me
     Display the original image, resized image, and difference map.
     """
     # Normalize input image for difference calculation
-    normalized_input_image = (input_image / 255.0).astype(np.float64)
 
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
 
@@ -102,7 +101,7 @@ def plot_2d_results(input_image, resized_signal_display, resized_back_signal, me
     ax[1].axis("off")
 
     # Difference map
-    diff_map = np.clip(np.abs(normalized_input_image - resized_back_signal), 0, 1)
+    diff_map = input_image - resized_back_signal
     ax[2].imshow(diff_map, cmap="gray")
     ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
     ax[2].axis("off")
@@ -116,7 +115,6 @@ input_image_normalized = (input_image / 255.0).astype(np.float64)
 # Define parameters
 zoom_factor = 0.5  # Resize factor
 degree = 3
-methods = ["interpolation", "least-squares", "oblique", "scipy"]
 
 # %%
 # TensorSpline: Interpolation Method
@@ -132,7 +130,7 @@ resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8
 
 # Display results
 plot_2d_results(
-    input_image=input_image,
+    input_image=input_image_normalized,
     resized_signal_display=resized_signal_display,
     resized_back_signal=resized_back_signal,
     method=method,
@@ -155,7 +153,7 @@ resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8
 
 # Display results
 plot_2d_results(
-    input_image=input_image,
+    input_image=input_image_normalized,
     resized_signal_display=resized_signal_display,
     resized_back_signal=resized_back_signal,
     method=method,
@@ -178,7 +176,7 @@ resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8
 
 # Display results
 plot_2d_results(
-    input_image=input_image,
+    input_image=input_image_normalized,
     resized_signal_display=resized_signal_display,
     resized_back_signal=resized_back_signal,
     method=method,
@@ -201,7 +199,7 @@ resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8
 
 # Display results
 plot_2d_results(
-    input_image=input_image,
+    input_image=input_image_normalized,
     resized_signal_display=resized_signal_display,
     resized_back_signal=resized_back_signal,
     method="scipy",
