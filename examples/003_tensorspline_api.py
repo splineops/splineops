@@ -1,0 +1,230 @@
+"""
+TensorSpline: A Comprehensive Guide
+===================================
+
+This unified example uses directly the TensorSpline class to perform interpolation, spline basis visualization, and signal extension mode handling.
+"""
+
+# %%
+# Imports
+# -------
+#
+# Import the necessary libraries and modules.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from splineops.interpolate.tensorspline import TensorSpline
+from splineops.bases.utils import create_basis
+
+# %%
+# Section 1: Data Preparation and TensorSpline Interpolation
+# ----------------------------------------------------------
+#
+# This section demonstrates how to create basic interpolation using the TensorSpline API.
+
+# %%
+# Data preparation
+# ----------------
+#
+# Data type configuration and sample data definition.
+
+dtype = "float32"
+
+nx, ny = 2, 5
+xmin, xmax = 0, 2.0
+ymin, ymax = 0, 5.0
+xx = np.linspace(xmin, xmax, nx, dtype=dtype)
+yy = np.linspace(ymin, ymax, ny, dtype=dtype)
+coordinates = xx, yy
+prng = np.random.default_rng(seed=5250)
+data = prng.standard_normal(size=tuple(c.size for c in coordinates))
+data = np.ascontiguousarray(data, dtype=dtype)
+
+# %%
+# TensorSpline setup
+# ------------------
+#
+# Configure bases and modes for the TensorSpline.
+
+bases = "bspline3"
+modes = "mirror"
+tensor_spline = TensorSpline(data=data, coordinates=coordinates, bases=bases, modes=modes)
+
+# %%
+# Evaluation coordinates
+# ----------------------
+#
+# Define evaluation coordinates to extend and oversample the original grid.
+
+dx = (xx[-1] - xx[0]) / (nx - 1)
+dy = (yy[-1] - yy[0]) / (ny - 1)
+pad_fct = 1.0
+px = pad_fct * nx * dx
+py = pad_fct * ny * dy
+eval_xx = np.linspace(xx[0] - px, xx[-1] + px, 100 * nx)
+eval_yy = np.linspace(yy[0] - py, yy[-1] + py, 100 * ny)
+eval_coords = eval_xx, eval_yy
+
+# %%
+# Interpolation and visualization
+# -------------------------------
+#
+# Perform interpolation and visualize the original and interpolated data.
+
+data_eval = tensor_spline(coordinates=eval_coords)
+
+extent = [xx[0] - dx / 2, xx[-1] + dx / 2, yy[0] - dy / 2, yy[-1] + dy / 2]
+eval_extent = [
+    eval_xx[0] - dx / 2,
+    eval_xx[-1] + dx / 2,
+    eval_yy[0] - dy / 2,
+    eval_yy[-1] + dy / 2,
+]
+
+fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6), sharex="all", sharey="all")
+axes[0].imshow(data.T, extent=extent, cmap="gray", aspect="equal")
+axes[0].set_title("Original Data Samples")
+axes[1].imshow(data_eval.T, extent=eval_extent, cmap="gray", aspect="equal")
+axes[1].set_title("Interpolated Data")
+plt.tight_layout()
+plt.show()
+
+# %%
+# Section 2: Visualizing Spline Bases
+# -----------------------------------
+#
+# This section demonstrates how to plot the spline bases available in the library.
+
+# %%
+# Define x range
+# --------------
+x_values = np.linspace(-3, 3, 1000)
+
+# %%
+# Function to plot bases
+# ----------------------
+#
+# Define a helper function to visualize spline bases.
+
+def plot_bases(names, x_values, title):
+    plt.figure(figsize=(12, 6))
+    for name in names:
+        if name == "keys":
+            readable_name = "Keys Spline"
+        else:
+            name_parts = name.split("-")
+            readable_name = f"{name_parts[0][:-1]} degree {name_parts[0][-1]}"
+        y_values = create_basis(name).eval(x_values)
+        plt.plot(x_values, y_values, label=readable_name)
+
+    plt.title(title)
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+# %%
+# Plot B-spline bases
+# -------------------
+#
+# Plot B-spline basis functions for degrees 0 through 9.
+
+plot_bases(
+    names=[f"bspline{i}" for i in range(10)],
+    x_values=x_values,
+    title="B-Spline Basis Functions: Degrees 0 to 9",
+)
+
+# %%
+# Plot OMOMS bases
+# ----------------
+#
+# Plot OMOMS basis functions for degrees 0 through 5.
+
+plot_bases(
+    names=[f"omoms{i}" for i in range(6)],
+    x_values=x_values,
+    title="OMOMS Basis Functions: Degrees 0 to 5",
+)
+
+# %%
+# Plot Keys basis
+# ---------------
+#
+# Plot the Keys spline basis function.
+
+plot_bases(
+    names=["keys"],
+    x_values=x_values,
+    title="Keys Basis Function",
+)
+
+# %%
+# Section 3: Signal Extension Modes
+# ---------------------------------
+#
+# This section demonstrates signal extension modes using a non-continuous signal.
+
+# %%
+# Define x range
+# --------------
+x_values = np.linspace(0, 6, 101)
+
+# %%
+# Function to create a signal with a bump
+# ---------------------------------------
+#
+# Generate a signal that is mostly linear but includes a "bump."
+
+def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_height=5):
+    linear_part = x_values
+    bump = np.where(
+        (x_values > (bump_location - bump_width / 2))
+        & (x_values < (bump_location + bump_width / 2)),
+        bump_height,
+        0,
+    )
+    return linear_part + bump
+
+# %%
+# Function to plot extension modes
+# --------------------------------
+#
+# Visualize signal extension modes for a given mode.
+
+def plot_extension_modes_for_bump_function(mode_name, x_values, title):
+    plt.figure(figsize=(12, 6))
+    data = create_signal_with_bump(x_values)
+    tensor_spline = TensorSpline(
+        data=data, coordinates=(x_values,), bases="linear", modes=mode_name
+    )
+    eval_x_values = np.linspace(-10, 10, 2000)
+    extended_data = tensor_spline.eval(coordinates=(eval_x_values,))
+    plt.plot(eval_x_values, extended_data, label="Extended Signal")
+    plt.axvline(x=x_values[0], color="red", linestyle="--", label="Original Start")
+    plt.axvline(x=x_values[-1], color="blue", linestyle="--", label="Original End")
+    plt.title(title)
+    plt.xlabel("x")
+    plt.ylabel("Interpolated Value")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+# %%
+# Plot for finite support coefficients
+# ------------------------------------
+plot_extension_modes_for_bump_function(
+    mode_name="zero",
+    x_values=x_values,
+    title="Extension Mode: Finite Support Coefficients",
+)
+
+# %%
+# Plot for narrow mirroring
+# -------------------------
+plot_extension_modes_for_bump_function(
+    mode_name="mirror",
+    x_values=x_values,
+    title="Extension Mode: Narrow Mirroring",
+)
