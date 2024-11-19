@@ -15,9 +15,10 @@ It also allows specifying a center of rotation and visualizes it in the rotated 
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import ndimage, datasets
+from scipy import ndimage
 from matplotlib import animation
 from splineops.interpolate.rotate import rotate
+from splineops.utils.image_loader import load_collagen_image
 
 # %%
 # Load and preprocess image
@@ -26,7 +27,7 @@ from splineops.interpolate.rotate import rotate
 # Load the image and preprocess it for the rotation animation.
 
 # Load and resize the ascent image
-image = datasets.ascent()
+image = load_collagen_image()
 size = 500  # Resize image to 500x500 for faster computation
 degree = 3
 image_resized = ndimage.zoom(
