@@ -63,6 +63,61 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
 
     return resized_signal, resized_back_signal, snr, mse
 
+def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr, mse):
+    """Plot results for 1D signals."""
+    fig, ax = plt.subplots(1, 3, figsize=(18, 5))
+
+    # Original signal
+    ax[0].plot(x, original, label="Original", color="blue")
+    ax[0].set_title("Original Signal")
+    ax[0].legend()
+    ax[0].grid(True)
+
+    # Resized signal
+    ax[1].plot(
+        np.linspace(0, x[-1], int(len(x) * zoom_factor)),
+        resized,
+        label=f"Resized ({method})",
+        color="orange"
+    )
+    ax[1].set_title(f"Resized Signal ({method})")
+    ax[1].legend()
+    ax[1].grid(True)
+
+    # Difference
+    difference = original - resized_back
+    ax[2].plot(x, difference, label="Difference", color="red")
+    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
+    ax[2].legend()
+    ax[2].grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_3d_results(original, resized, resized_back, method, middle_slice, snr, mse):
+    """Plot results for 3D volumes."""
+    fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+
+    # Original slice
+    ax[0].imshow(original[middle_slice, :, :], cmap="gray")
+    ax[0].set_title("Original Volume Slice")
+    ax[0].axis("off")
+
+    # Resized slice
+    resized_middle = resized.shape[0] // 2
+    ax[1].imshow(resized[resized_middle, :, :], cmap="gray")
+    ax[1].set_title(f"Resized Volume Slice ({method})")
+    ax[1].axis("off")
+
+    # Difference slice
+    difference = original - resized_back
+    ax[2].imshow(difference[middle_slice, :, :], cmap="gray")
+    ax[2].set_title(f"Difference Slice (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
+    ax[2].axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
 # %%
 # Generate a 1D signal
 # --------------------
@@ -89,32 +144,7 @@ resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
     original_signal, method, degree, zoom_factor_1d
 )
 
-# Plot results
-fig, ax = plt.subplots(1, 3, figsize=(18, 5))
-
-ax[0].plot(x, original_signal, label="Original", color="blue")
-ax[0].set_title("Original Signal")
-ax[0].legend()
-ax[0].grid(True)
-
-ax[1].plot(
-    np.linspace(0, 4 * np.pi, int(100 * zoom_factor_1d)),
-    resized_signal,
-    label=f"Resized ({method})",
-    color="orange"
-)
-ax[1].set_title(f"Resized Signal ({method})")
-ax[1].legend()
-ax[1].grid(True)
-
-difference = original_signal - resized_back_signal
-ax[2].plot(x, difference, label="Difference", color="red")
-ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].legend()
-ax[2].grid(True)
-
-plt.tight_layout()
-plt.show()
+plot_1d_results(original_signal, resized_signal, resized_back_signal, method, x, zoom_factor_1d, snr, mse)
 
 # %%
 # Method 2: Least-Squares
@@ -124,30 +154,7 @@ resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
     original_signal, method, degree, zoom_factor_1d
 )
 
-fig, ax = plt.subplots(1, 3, figsize=(18, 5))
-ax[0].plot(x, original_signal, label="Original", color="blue")
-ax[0].set_title("Original Signal")
-ax[0].legend()
-ax[0].grid(True)
-
-ax[1].plot(
-    np.linspace(0, 4 * np.pi, int(100 * zoom_factor_1d)),
-    resized_signal,
-    label=f"Resized ({method})",
-    color="orange"
-)
-ax[1].set_title(f"Resized Signal ({method})")
-ax[1].legend()
-ax[1].grid(True)
-
-difference = original_signal - resized_back_signal
-ax[2].plot(x, difference, label="Difference", color="red")
-ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].legend()
-ax[2].grid(True)
-
-plt.tight_layout()
-plt.show()
+plot_1d_results(original_signal, resized_signal, resized_back_signal, method, x, zoom_factor_1d, snr, mse)
 
 # %%
 # Method 3: Oblique
@@ -157,30 +164,7 @@ resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
     original_signal, method, degree, zoom_factor_1d
 )
 
-fig, ax = plt.subplots(1, 3, figsize=(18, 5))
-ax[0].plot(x, original_signal, label="Original", color="blue")
-ax[0].set_title("Original Signal")
-ax[0].legend()
-ax[0].grid(True)
-
-ax[1].plot(
-    np.linspace(0, 4 * np.pi, int(100 * zoom_factor_1d)),
-    resized_signal,
-    label=f"Resized ({method})",
-    color="orange"
-)
-ax[1].set_title(f"Resized Signal ({method})")
-ax[1].legend()
-ax[1].grid(True)
-
-difference = original_signal - resized_back_signal
-ax[2].plot(x, difference, label="Difference", color="red")
-ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].legend()
-ax[2].grid(True)
-
-plt.tight_layout()
-plt.show()
+plot_1d_results(original_signal, resized_signal, resized_back_signal, method, x, zoom_factor_1d, snr, mse)
 
 # %%
 # Method 4: SciPy
@@ -190,30 +174,7 @@ resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
     original_signal, method, degree, zoom_factor_1d
 )
 
-fig, ax = plt.subplots(1, 3, figsize=(18, 5))
-ax[0].plot(x, original_signal, label="Original", color="blue")
-ax[0].set_title("Original Signal")
-ax[0].legend()
-ax[0].grid(True)
-
-ax[1].plot(
-    np.linspace(0, 4 * np.pi, int(100 * zoom_factor_1d)),
-    resized_signal,
-    label=f"Resized ({method})",
-    color="orange"
-)
-ax[1].set_title(f"Resized Signal ({method})")
-ax[1].legend()
-ax[1].grid(True)
-
-difference = original_signal - resized_back_signal
-ax[2].plot(x, difference, label="Difference", color="red")
-ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].legend()
-ax[2].grid(True)
-
-plt.tight_layout()
-plt.show()
+plot_1d_results(original_signal, resized_signal, resized_back_signal, method, x, zoom_factor_1d, snr, mse)
 
 # %%
 # Generate a 3D signal
@@ -245,30 +206,7 @@ resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
     original_volume, method, degree, zoom_factors_3d
 )
 
-# Display resized and difference slices
-middle_resized = resized_volume.shape[0] // 2
-middle_back = resized_back_volume.shape[0] // 2
-
-fig, ax = plt.subplots(1, 3, figsize=(18, 6))
-
-# Original slice
-ax[0].imshow(original_volume[middle_slice, :, :], cmap="gray")
-ax[0].set_title("Original Volume Slice")
-ax[0].axis("off")
-
-# Resized slice
-ax[1].imshow(resized_volume[middle_resized, :, :], cmap="gray")
-ax[1].set_title(f"Resized Volume Slice ({method})")
-ax[1].axis("off")
-
-# Difference slice
-difference = original_volume - resized_back_volume
-ax[2].imshow(difference[middle_slice, :, :], cmap="gray")
-ax[2].set_title(f"Difference Slice (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].axis("off")
-
-plt.tight_layout()
-plt.show()
+plot_3d_results(original_volume, resized_volume, resized_back_volume, method, middle_slice, snr, mse)
 
 # %%
 # Method 2: Least-Squares
@@ -278,24 +216,7 @@ resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
     original_volume, method, degree, zoom_factors_3d
 )
 
-# Plot results (similar format as above)
-fig, ax = plt.subplots(1, 3, figsize=(18, 6))
-
-ax[0].imshow(original_volume[middle_slice, :, :], cmap="gray")
-ax[0].set_title("Original Volume Slice")
-ax[0].axis("off")
-
-ax[1].imshow(resized_volume[middle_resized, :, :], cmap="gray")
-ax[1].set_title(f"Resized Volume Slice ({method})")
-ax[1].axis("off")
-
-difference = original_volume - resized_back_volume
-ax[2].imshow(difference[middle_slice, :, :], cmap="gray")
-ax[2].set_title(f"Difference Slice (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].axis("off")
-
-plt.tight_layout()
-plt.show()
+plot_3d_results(original_volume, resized_volume, resized_back_volume, method, middle_slice, snr, mse)
 
 # %%
 # Method 3: Oblique
@@ -305,24 +226,7 @@ resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
     original_volume, method, degree, zoom_factors_3d
 )
 
-# Plot results
-fig, ax = plt.subplots(1, 3, figsize=(18, 6))
-
-ax[0].imshow(original_volume[middle_slice, :, :], cmap="gray")
-ax[0].set_title("Original Volume Slice")
-ax[0].axis("off")
-
-ax[1].imshow(resized_volume[middle_resized, :, :], cmap="gray")
-ax[1].set_title(f"Resized Volume Slice ({method})")
-ax[1].axis("off")
-
-difference = original_volume - resized_back_volume
-ax[2].imshow(difference[middle_slice, :, :], cmap="gray")
-ax[2].set_title(f"Difference Slice (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].axis("off")
-
-plt.tight_layout()
-plt.show()
+plot_3d_results(original_volume, resized_volume, resized_back_volume, method, middle_slice, snr, mse)
 
 # %%
 # Method 4: SciPy
@@ -332,21 +236,4 @@ resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
     original_volume, method, degree, zoom_factors_3d
 )
 
-# Plot results
-fig, ax = plt.subplots(1, 3, figsize=(18, 6))
-
-ax[0].imshow(original_volume[middle_slice, :, :], cmap="gray")
-ax[0].set_title("Original Volume Slice")
-ax[0].axis("off")
-
-ax[1].imshow(resized_volume[middle_resized, :, :], cmap="gray")
-ax[1].set_title(f"Resized Volume Slice ({method})")
-ax[1].axis("off")
-
-difference = original_volume - resized_back_volume
-ax[2].imshow(difference[middle_slice, :, :], cmap="gray")
-ax[2].set_title(f"Difference Slice (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].axis("off")
-
-plt.tight_layout()
-plt.show()
+plot_3d_results(original_volume, resized_volume, resized_back_volume, method, middle_slice, snr, mse)
