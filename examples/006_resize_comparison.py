@@ -42,33 +42,42 @@ def compute_mse(original, processed):
 
 def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
     """Resize using SciPy's zoom, then resize back and compute metrics."""
+    import time
+
+    start_time = time.perf_counter()
     resized_signal = zoom(input_signal, zoom_factors, order=degree)
+    time_elapsed = time.perf_counter() - start_time
+
     reverse_zoom_factors = 1.0 / np.array(zoom_factors)
     resized_back_signal = zoom(resized_signal, reverse_zoom_factors, order=degree)
 
     snr = compute_snr(input_signal, resized_back_signal)
     mse = compute_mse(input_signal, resized_back_signal)
 
-    return resized_signal, resized_back_signal, snr, mse
+    return resized_signal, resized_back_signal, snr, mse, time_elapsed
 
 def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
     """Resize a signal using a given method and compute metrics."""
+    import time
+
     if np.isscalar(zoom_factors):
         zoom_factors = [zoom_factors] * len(input_signal.shape)
 
     if method == "scipy":
-        resized_signal, resized_back_signal, snr, mse = resize_with_scipy_zoom(
+        resized_signal, resized_back_signal, snr, mse, time_elapsed = resize_with_scipy_zoom(
             input_signal=input_signal,
             zoom_factors=zoom_factors,
             degree=degree
         )
     else:
+        start_time = time.perf_counter()
         resized_signal = resize(
             data=input_signal,
             zoom_factors=zoom_factors,
             degree=degree,
             method=method
         )
+        time_elapsed = time.perf_counter() - start_time
         resized_back_signal = resize(
             data=resized_signal,
             output_size=input_signal.shape,
@@ -78,7 +87,7 @@ def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
         snr = compute_snr(input_signal, resized_back_signal)
         mse = compute_mse(input_signal, resized_back_signal)
 
-    return resized_signal, resized_back_signal, snr, mse
+    return resized_signal, resized_back_signal, snr, mse, time_elapsed
 
 def plot_results(
     original_slice, 
@@ -87,7 +96,8 @@ def plot_results(
     method, 
     zoom_factors, 
     snr, 
-    mse
+    mse,
+    time_elapsed
 ):
     """
     Generalized plot function for 2D and 3D data.
@@ -103,9 +113,9 @@ def plot_results(
         # Create a black background of the original slice's shape
         resized_display = np.zeros_like(original_slice)
         # Place the resized slice in the top-left corner of the black background
-        resized_display[
-            tuple(slice(0, r_dim) for r_dim in resized_slice.shape)
-        ] = resized_slice
+        start_indices = [0] * len(original_slice.shape)
+        slices = tuple(slice(start, start + res_dim) for start, res_dim in zip(start_indices, resized_slice.shape))
+        resized_display[slices] = resized_slice
     else:
         # Just use the resized slice as is
         resized_display = resized_slice
@@ -120,7 +130,7 @@ def plot_results(
 
     # Resized slice
     ax[1].imshow(resized_display, cmap="gray", aspect='auto')
-    ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factors})")
+    ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factors})\nTime: {time_elapsed:.4f}s")
     ax[1].axis("off")
 
     # Difference map
@@ -132,7 +142,7 @@ def plot_results(
     plt.tight_layout()
     plt.show()
 
-def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr, mse):
+def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr, mse, time_elapsed):
     """Plot results for 1D signals."""
     fig, ax = plt.subplots(1, 3, figsize=(18, 5))
 
@@ -150,7 +160,7 @@ def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr
         label=f"Resized ({method})",
         color="orange"
     )
-    ax[1].set_title(f"Resized Signal ({method})")
+    ax[1].set_title(f"Resized Signal ({method})\nTime: {time_elapsed:.4f}s")
     ax[1].legend()
     ax[1].grid(True)
 
@@ -206,7 +216,7 @@ zoom_factors_2d = (0.5, 0.5)
 # Iterate over the different methods, perform resizing, compute metrics, and plot results for the MRI image.
 
 for method in methods:
-    resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
+    resized_signal, resized_back_signal, snr, mse, time_elapsed = resize_and_compute_metrics(
         input_image_normalized, method, degree, zoom_factors_2d
     )
 
@@ -218,7 +228,8 @@ for method in methods:
         method=method,
         zoom_factors=zoom_factors_2d,
         snr=snr,
-        mse=mse
+        mse=mse,
+        time_elapsed=time_elapsed
     )
 
 # %%
@@ -249,7 +260,7 @@ plt.show()
 # Iterate over the different methods, perform resizing, compute metrics, and plot the results for the 1D signal.
 
 for method in methods:
-    resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
+    resized_signal, resized_back_signal, snr, mse, time_elapsed = resize_and_compute_metrics(
         original_signal, method, degree, zoom_factor_1d
     )
 
@@ -262,7 +273,8 @@ for method in methods:
         x=x,
         zoom_factor=zoom_factor_1d,
         snr=snr,
-        mse=mse
+        mse=mse,
+        time_elapsed=time_elapsed
     )
 
 # %%
@@ -297,7 +309,7 @@ plt.show()
 # Iterate over the different methods, perform resizing, compute metrics, and plot the results for the 3D signal.
 
 for method in methods:
-    resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
+    resized_volume, resized_back_volume, snr, mse, time_elapsed = resize_and_compute_metrics(
         original_volume, method, degree, zoom_factors_3d
     )
 
@@ -314,5 +326,6 @@ for method in methods:
         method=method,
         zoom_factors=zoom_factors_3d,
         snr=snr,
-        mse=mse
+        mse=mse,
+        time_elapsed=time_elapsed
     )
