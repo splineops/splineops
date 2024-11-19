@@ -94,25 +94,25 @@ def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr
     plt.tight_layout()
     plt.show()
 
-def plot_3d_results(original, resized, resized_back, method, middle_slice, snr, mse):
-    """Plot results for 3D volumes."""
+def plot_3d_results(original_slice, resized_slice, resized_back_slice, method, snr, mse):
+    """
+    Plot results for 3D volumes based on slices.
+    """
     fig, ax = plt.subplots(1, 3, figsize=(18, 6))
 
     # Original slice
-    ax[0].imshow(original[middle_slice, :, :], cmap="gray")
+    ax[0].imshow(original_slice, cmap="gray")
     ax[0].set_title("Original Volume Slice")
     ax[0].axis("off")
 
     # Resized slice
-    resized_middle = resized.shape[0] // 2
-    ax[1].imshow(resized[resized_middle, :, :], cmap="gray")
+    ax[1].imshow(resized_slice, cmap="gray")
     ax[1].set_title(f"Resized Volume Slice ({method})")
     ax[1].axis("off")
 
-    # Difference slice
-    difference = original - resized_back
-    ax[2].imshow(difference[middle_slice, :, :], cmap="gray")
-    ax[2].set_title(f"Difference Slice (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
+    # Resized back slice
+    ax[2].imshow(resized_back_slice, cmap="gray")
+    ax[2].set_title(f"Resized Back Slice (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
     ax[2].axis("off")
 
     plt.tight_layout()
@@ -206,7 +206,14 @@ resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
     original_volume, method, degree, zoom_factors_3d
 )
 
-plot_3d_results(original_volume, resized_volume, resized_back_volume, method, middle_slice, snr, mse)
+plot_3d_results(
+    original_slice=original_volume[middle_slice, :, :],
+    resized_slice=resized_volume[resized_volume.shape[0] // 2, :, :],
+    resized_back_slice=resized_back_volume[middle_slice, :, :],
+    method=method,
+    snr=snr,
+    mse=mse
+)
 
 # %%
 # Method 2: Least-Squares
@@ -216,7 +223,14 @@ resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
     original_volume, method, degree, zoom_factors_3d
 )
 
-plot_3d_results(original_volume, resized_volume, resized_back_volume, method, middle_slice, snr, mse)
+plot_3d_results(
+    original_slice=original_volume[middle_slice, :, :],
+    resized_slice=resized_volume[resized_volume.shape[0] // 2, :, :],
+    resized_back_slice=resized_back_volume[middle_slice, :, :],
+    method=method,
+    snr=snr,
+    mse=mse
+)
 
 # %%
 # Method 3: Oblique
@@ -226,7 +240,14 @@ resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
     original_volume, method, degree, zoom_factors_3d
 )
 
-plot_3d_results(original_volume, resized_volume, resized_back_volume, method, middle_slice, snr, mse)
+plot_3d_results(
+    original_slice=original_volume[middle_slice, :, :],
+    resized_slice=resized_volume[resized_volume.shape[0] // 2, :, :],
+    resized_back_slice=resized_back_volume[middle_slice, :, :],
+    method=method,
+    snr=snr,
+    mse=mse
+)
 
 # %%
 # Method 4: SciPy
@@ -236,4 +257,11 @@ resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
     original_volume, method, degree, zoom_factors_3d
 )
 
-plot_3d_results(original_volume, resized_volume, resized_back_volume, method, middle_slice, snr, mse)
+plot_3d_results(
+    original_slice=original_volume[middle_slice, :, :],
+    resized_slice=resized_volume[resized_volume.shape[0] // 2, :, :],
+    resized_back_slice=resized_back_volume[middle_slice, :, :],
+    method=method,
+    snr=snr,
+    mse=mse
+)
