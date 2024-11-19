@@ -77,6 +77,36 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factor):
 
     return resized_signal, resized_back_signal, snr, mse
 
+def plot_2d_results(input_image, resized_signal_display, resized_back_signal, method, zoom_factor, snr, mse, normalized_input_image):
+    """
+    Display the original image, resized image, and difference map.
+    """
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+
+    # Original image
+    ax[0].imshow(input_image, cmap="gray")
+    ax[0].set_title("Original Image")
+    ax[0].axis("off")
+
+    # Resized image with optional black background for zoom out
+    if zoom_factor < 1:
+        resized_display_with_background = create_black_background(resized_signal_display, input_image.shape)
+    else:
+        resized_display_with_background = resized_signal_display
+
+    ax[1].imshow(resized_display_with_background, cmap="gray")
+    ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x)")
+    ax[1].axis("off")
+
+    # Difference map
+    diff_map = np.clip(np.abs(normalized_input_image - resized_back_signal), 0, 1)
+    ax[2].imshow(diff_map, cmap="gray")
+    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
+    ax[2].axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
 # Normalize the image
 input_image_normalized = (input_image / 255.0).astype(np.float64)
 
@@ -96,29 +126,18 @@ resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
 
 # Convert results back to [0, 255] for visualization
 resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8)
-resized_back_signal_display = np.clip(resized_back_signal * 255.0, 0, 255).astype(np.uint8)
 
 # Display results
-fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-ax[0].imshow(input_image, cmap="gray")
-ax[0].set_title("Original Image")
-ax[0].axis("off")
-
-if zoom_factor < 1:
-    ts_display = create_black_background(resized_signal_display, input_image.shape)
-else:
-    ts_display = resized_signal_display
-
-ax[1].imshow(ts_display, cmap="gray")
-ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x)")
-ax[1].axis("off")
-
-ts_diff = np.clip(np.abs(input_image_normalized - resized_back_signal), 0, 1)
-ax[2].imshow(ts_diff, cmap="gray")
-ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].axis("off")
-plt.tight_layout()
-plt.show()
+plot_2d_results(
+    input_image=input_image,
+    resized_signal_display=resized_signal_display,
+    resized_back_signal=resized_back_signal,
+    method=method,
+    zoom_factor=zoom_factor,
+    snr=snr,
+    mse=mse,
+    normalized_input_image=input_image_normalized
+)
 
 # %%
 # TensorSpline: Least-Squares Method
@@ -131,29 +150,18 @@ resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
 
 # Convert results back to [0, 255] for visualization
 resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8)
-resized_back_signal_display = np.clip(resized_back_signal * 255.0, 0, 255).astype(np.uint8)
 
 # Display results
-fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-ax[0].imshow(input_image, cmap="gray")
-ax[0].set_title("Original Image")
-ax[0].axis("off")
-
-if zoom_factor < 1:
-    ts_display = create_black_background(resized_signal_display, input_image.shape)
-else:
-    ts_display = resized_signal_display
-
-ax[1].imshow(ts_display, cmap="gray")
-ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x)")
-ax[1].axis("off")
-
-ts_diff = np.clip(np.abs(input_image_normalized - resized_back_signal), 0, 1)
-ax[2].imshow(ts_diff, cmap="gray")
-ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].axis("off")
-plt.tight_layout()
-plt.show()
+plot_2d_results(
+    input_image=input_image,
+    resized_signal_display=resized_signal_display,
+    resized_back_signal=resized_back_signal,
+    method=method,
+    zoom_factor=zoom_factor,
+    snr=snr,
+    mse=mse,
+    normalized_input_image=input_image_normalized
+)
 
 # %%
 # TensorSpline: Oblique Projection Method
@@ -166,29 +174,18 @@ resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
 
 # Convert results back to [0, 255] for visualization
 resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8)
-resized_back_signal_display = np.clip(resized_back_signal * 255.0, 0, 255).astype(np.uint8)
 
 # Display results
-fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-ax[0].imshow(input_image, cmap="gray")
-ax[0].set_title("Original Image")
-ax[0].axis("off")
-
-if zoom_factor < 1:
-    ts_display = create_black_background(resized_signal_display, input_image.shape)
-else:
-    ts_display = resized_signal_display
-
-ax[1].imshow(ts_display, cmap="gray")
-ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factor}x)")
-ax[1].axis("off")
-
-ts_diff = np.clip(np.abs(input_image_normalized - resized_back_signal), 0, 1)
-ax[2].imshow(ts_diff, cmap="gray")
-ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].axis("off")
-plt.tight_layout()
-plt.show()
+plot_2d_results(
+    input_image=input_image,
+    resized_signal_display=resized_signal_display,
+    resized_back_signal=resized_back_signal,
+    method=method,
+    zoom_factor=zoom_factor,
+    snr=snr,
+    mse=mse,
+    normalized_input_image=input_image_normalized
+)
 
 # %%
 # SciPy Zoom Resizing
@@ -201,26 +198,15 @@ resized_signal, resized_back_signal, snr, mse = resize_with_scipy_zoom(
 
 # Convert results back to [0, 255] for visualization
 resized_signal_display = np.clip(resized_signal * 255.0, 0, 255).astype(np.uint8)
-resized_back_signal_display = np.clip(resized_back_signal * 255.0, 0, 255).astype(np.uint8)
 
 # Display results
-fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-ax[0].imshow(input_image, cmap="gray")
-ax[0].set_title("Original Image")
-ax[0].axis("off")
-
-if zoom_factor < 1:
-    scipy_display = create_black_background(resized_signal_display, input_image.shape)
-else:
-    scipy_display = resized_signal_display
-
-ax[1].imshow(scipy_display, cmap="gray")
-ax[1].set_title(f"SciPy Zoom (Zoom: {zoom_factor}x)")
-ax[1].axis("off")
-
-scipy_diff = np.clip(np.abs(input_image_normalized - resized_back_signal), 0, 1)
-ax[2].imshow(scipy_diff, cmap="gray")
-ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-ax[2].axis("off")
-plt.tight_layout()
-plt.show()
+plot_2d_results(
+    input_image=input_image,
+    resized_signal_display=resized_signal_display,
+    resized_back_signal=resized_back_signal,
+    method="scipy",
+    zoom_factor=zoom_factor,
+    snr=snr,
+    mse=mse,
+    normalized_input_image=input_image_normalized
+)
