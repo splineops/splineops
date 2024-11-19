@@ -7,10 +7,25 @@ This script demonstrates the performance of different resizing methods: `interpo
 computations and visualizations.
 """
 
+# %%
+# Import Necessary Libraries
+# --------------------------
+#
+# We import the required libraries, including NumPy for numerical computations,
+# Matplotlib for plotting, and the custom `resize` function from the `splineops` package.
+
 import numpy as np
 import matplotlib.pyplot as plt
 from splineops.interpolate.resize import resize  # Unified resize function
 from scipy.ndimage import zoom  # For SciPy's zoom comparison
+
+# %%
+# Define Helper Functions
+# -----------------------
+#
+# We define functions to compute the Signal-to-Noise Ratio (SNR) and Mean Squared Error (MSE).
+# Additionally, we include functions to perform resizing with SciPy's zoom and to compute
+# metrics for the resized signals.
 
 def compute_snr(original, processed):
     """Compute Signal-to-Noise Ratio between two signals."""
@@ -33,35 +48,87 @@ def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
 
     return resized_signal, resized_back_signal, snr, mse
 
-def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
-    """Resize an image using a given method and compute metrics."""
+def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
+    """Resize a signal using a given method and compute metrics."""
     # Ensure zoom_factors is an array
     if np.isscalar(zoom_factors):
-        zoom_factors = [zoom_factors] * len(input_image.shape)
+        zoom_factors = [zoom_factors] * len(input_signal.shape)
 
     if method == "scipy":
         resized_signal, resized_back_signal, snr, mse = resize_with_scipy_zoom(
-            input_signal=input_image,
+            input_signal=input_signal,
             zoom_factors=zoom_factors,
             degree=degree
         )
     else:
         resized_signal = resize(
-            data=input_image,
+            data=input_signal,
             zoom_factors=zoom_factors,
             degree=degree,
             method=method
         )
         resized_back_signal = resize(
             data=resized_signal,
-            output_size=input_image.shape,
+            output_size=input_signal.shape,
             degree=degree,
             method=method
         )
-        snr = compute_snr(input_image, resized_back_signal)
-        mse = compute_mse(input_image, resized_back_signal)
+        snr = compute_snr(input_signal, resized_back_signal)
+        mse = compute_mse(input_signal, resized_back_signal)
 
     return resized_signal, resized_back_signal, snr, mse
+
+def plot_results(
+    original_slice, 
+    resized_slice, 
+    resized_back_slice, 
+    method, 
+    zoom_factors, 
+    snr, 
+    mse
+):
+    """
+    Generalized plot function for 2D and 3D data.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # Check if all zoom factors are less than 1 (zooming out in all dimensions)
+    zoom_out = all(zf < 1 for zf in zoom_factors)
+
+    # Prepare resized display array
+    if zoom_out:
+        # Create a black background of the original slice's shape
+        resized_display = np.zeros_like(original_slice)
+        # Place the resized slice in the top-left corner of the black background
+        resized_display[
+            tuple(slice(0, r_dim) for r_dim in resized_slice.shape)
+        ] = resized_slice
+    else:
+        # Just use the resized slice as is
+        resized_display = resized_slice
+
+    # Plotting
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+
+    # Original slice
+    ax[0].imshow(original_slice, cmap="gray", aspect='auto')
+    ax[0].set_title("Original Image")
+    ax[0].axis("off")
+
+    # Resized slice
+    ax[1].imshow(resized_display, cmap="gray", aspect='auto')
+    ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factors})")
+    ax[1].axis("off")
+
+    # Difference map
+    difference = original_slice - resized_back_slice
+    ax[2].imshow(difference, cmap="gray", aspect='auto')
+    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
+    ax[2].axis("off")
+
+    plt.tight_layout()
+    plt.show()
 
 def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr, mse):
     """Plot results for 1D signals."""
@@ -74,8 +141,9 @@ def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr
     ax[0].grid(True)
 
     # Resized signal
+    resized_x = np.linspace(x[0], x[-1], resized.shape[0])
     ax[1].plot(
-        np.linspace(0, x[-1], int(len(x) * zoom_factor)),
+        resized_x,
         resized,
         label=f"Resized ({method})",
         color="orange"
@@ -94,33 +162,13 @@ def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr
     plt.tight_layout()
     plt.show()
 
-def plot_3d_results(original_slice, resized_slice, resized_back_slice, method, snr, mse):
-    """
-    Plot results for 3D volumes based on slices.
-    """
-    fig, ax = plt.subplots(1, 3, figsize=(18, 6))
-
-    # Original slice
-    ax[0].imshow(original_slice, cmap="gray")
-    ax[0].set_title("Original Volume Slice")
-    ax[0].axis("off")
-
-    # Resized slice
-    ax[1].imshow(resized_slice, cmap="gray")
-    ax[1].set_title(f"Resized Volume Slice ({method})")
-    ax[1].axis("off")
-
-    # Resized back slice
-    ax[2].imshow(resized_back_slice, cmap="gray")
-    ax[2].set_title(f"Resized Back Slice (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-    ax[2].axis("off")
-
-    plt.tight_layout()
-    plt.show()
-
 # %%
-# Generate a 1D signal
+# Generate a 1D Signal
 # --------------------
+#
+# We generate a noisy sine wave signal and define the parameters for resizing.
+
+# Generate the original 1D signal
 x = np.linspace(0, 4 * np.pi, 100)
 original_signal = np.sin(x) + 0.1 * np.random.randn(100)
 
@@ -137,58 +185,44 @@ plt.grid(True)
 plt.show()
 
 # %%
-# Method 1: Interpolation
-# ------------------------
-method = "interpolation"
-resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
-    original_signal, method, degree, zoom_factor_1d
-)
+# Resizing and Comparing Methods for 1D Signal
+# --------------------------------------------
+#
+# We iterate over the different methods, perform resizing, compute metrics, and plot the results for the 1D signal.
 
-plot_1d_results(original_signal, resized_signal, resized_back_signal, method, x, zoom_factor_1d, snr, mse)
+for method in methods:
+    resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
+        original_signal, method, degree, zoom_factor_1d
+    )
 
-# %%
-# Method 2: Least-Squares
-# ------------------------
-method = "least-squares"
-resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
-    original_signal, method, degree, zoom_factor_1d
-)
-
-plot_1d_results(original_signal, resized_signal, resized_back_signal, method, x, zoom_factor_1d, snr, mse)
-
-# %%
-# Method 3: Oblique
-# ------------------
-method = "oblique"
-resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
-    original_signal, method, degree, zoom_factor_1d
-)
-
-plot_1d_results(original_signal, resized_signal, resized_back_signal, method, x, zoom_factor_1d, snr, mse)
+    # Plot results
+    plot_1d_results(
+        original=original_signal,
+        resized=resized_signal,
+        resized_back=resized_back_signal,
+        method=method,
+        x=x,
+        zoom_factor=zoom_factor_1d,
+        snr=snr,
+        mse=mse
+    )
 
 # %%
-# Method 4: SciPy
-# ---------------
-method = "scipy"
-resized_signal, resized_back_signal, snr, mse = resize_and_compute_metrics(
-    original_signal, method, degree, zoom_factor_1d
-)
-
-plot_1d_results(original_signal, resized_signal, resized_back_signal, method, x, zoom_factor_1d, snr, mse)
-
-# %%
-# Generate a 3D signal
+# Generate a 3D Signal
 # --------------------
-z, y, x = np.meshgrid(
+#
+# We generate a 3D sine wave volume and define the parameters for resizing.
+
+# Generate the original 3D volume
+z, y, x_grid = np.meshgrid(
     np.linspace(0, 4 * np.pi, 50),
     np.linspace(0, 4 * np.pi, 50),
     np.linspace(0, 4 * np.pi, 50)
 )
-original_volume = np.sin(x) * np.sin(y) * np.sin(z)
+original_volume = np.sin(x_grid) * np.sin(y) * np.sin(z)
 
 # Define parameters
 zoom_factors_3d = (0.5, 0.5, 0.5)
-methods = ["interpolation", "least-squares", "oblique", "scipy"]
 degree = 3
 
 # Display a middle slice of the original volume
@@ -196,72 +230,32 @@ middle_slice = original_volume.shape[0] // 2
 plt.imshow(original_volume[middle_slice, :, :], cmap="gray")
 plt.title("Original Volume Slice (Middle)")
 plt.colorbar()
+plt.axis('off')
 plt.show()
 
 # %%
-# Method 1: Interpolation
-# ------------------------
-method = "interpolation"
-resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
-    original_volume, method, degree, zoom_factors_3d
-)
+# Resizing and Comparing Methods for 3D Signal
+# --------------------------------------------
+#
+# We iterate over the different methods, perform resizing, compute metrics, and plot the results for the 3D signal.
 
-plot_3d_results(
-    original_slice=original_volume[middle_slice, :, :],
-    resized_slice=resized_volume[resized_volume.shape[0] // 2, :, :],
-    resized_back_slice=resized_back_volume[middle_slice, :, :],
-    method=method,
-    snr=snr,
-    mse=mse
-)
+for method in methods:
+    resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
+        original_volume, method, degree, zoom_factors_3d
+    )
 
-# %%
-# Method 2: Least-Squares
-# ------------------------
-method = "least-squares"
-resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
-    original_volume, method, degree, zoom_factors_3d
-)
+    # Extract slices
+    original_slice = original_volume[middle_slice, :, :]
+    resized_slice = resized_volume[resized_volume.shape[0] // 2, :, :]
+    resized_back_slice = resized_back_volume[middle_slice, :, :]
 
-plot_3d_results(
-    original_slice=original_volume[middle_slice, :, :],
-    resized_slice=resized_volume[resized_volume.shape[0] // 2, :, :],
-    resized_back_slice=resized_back_volume[middle_slice, :, :],
-    method=method,
-    snr=snr,
-    mse=mse
-)
-
-# %%
-# Method 3: Oblique
-# ------------------
-method = "oblique"
-resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
-    original_volume, method, degree, zoom_factors_3d
-)
-
-plot_3d_results(
-    original_slice=original_volume[middle_slice, :, :],
-    resized_slice=resized_volume[resized_volume.shape[0] // 2, :, :],
-    resized_back_slice=resized_back_volume[middle_slice, :, :],
-    method=method,
-    snr=snr,
-    mse=mse
-)
-
-# %%
-# Method 4: SciPy
-# ---------------
-method = "scipy"
-resized_volume, resized_back_volume, snr, mse = resize_and_compute_metrics(
-    original_volume, method, degree, zoom_factors_3d
-)
-
-plot_3d_results(
-    original_slice=original_volume[middle_slice, :, :],
-    resized_slice=resized_volume[resized_volume.shape[0] // 2, :, :],
-    resized_back_slice=resized_back_volume[middle_slice, :, :],
-    method=method,
-    snr=snr,
-    mse=mse
-)
+    # Plot results
+    plot_results(
+        original_slice=original_slice,
+        resized_slice=resized_slice,
+        resized_back_slice=resized_back_slice,
+        method=method,
+        zoom_factors=zoom_factors_3d,
+        snr=snr,
+        mse=mse
+    )
