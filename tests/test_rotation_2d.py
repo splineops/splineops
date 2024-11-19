@@ -1,45 +1,35 @@
 import numpy as np
+import pytest
 from splineops.interpolate.rotate import rotate
-import matplotlib.pyplot as plt
 
-def test_rotate_with_center():
-
-    N = 500  # Image size
-    data_shape = (N, N)
+def generate_rotated_data_and_mask(data_shape, custom_center, margin, angle, k):
     ndim = 2
-    margin = 50  # Margin to exclude around the original boundaries
-
-    # Define a custom center
-    custom_center = (250, 250)  # Example: row 350, column 250
 
     # Create a coordinate grid
     grid = np.meshgrid(*[np.arange(dim) for dim in data_shape], indexing="ij")
 
     # Center the coordinates relative to the custom center
-    coords = np.stack([g - c for g, c in zip(grid, custom_center)], axis=0)  # Shape: (ndim, N, N)
-    coords_flat = coords.reshape(ndim, -1)  # Shape: (ndim, N*N)
+    coords = np.stack([g - c for g, c in zip(grid, custom_center)], axis=0)
+    coords_flat = coords.reshape(ndim, -1)
 
     # Define the function f(x, y) relative to the custom center
-    k = 0.1  # Spatial frequency
     data = np.sin(k * coords_flat[0, :]) + np.cos(k * coords_flat[1, :])
     data = data.reshape(data_shape)
 
     # Create a mask with margins on the original image
     mask_original = np.zeros(data_shape, dtype=bool)
-    mask_original[margin:N-margin, margin:N-margin] = True  # Exclude margins
+    mask_original[margin:data_shape[0] - margin, margin:data_shape[1] - margin] = True
 
-    # Rotate the data using the rotate function
-    angle = 30  # Rotation angle in degrees
+    # Rotate the data
     data_rotated = rotate(data, angle=angle, center=custom_center, degree=3)
 
-    # Rotate the mask using the same rotate function
+    # Rotate the mask
     mask_rotated = rotate(mask_original.astype(float), angle=angle, center=custom_center, degree=0)
-    # Since the mask is binary, use degree=0 (nearest neighbor) interpolation
-
-    # Threshold the rotated mask to get back to a binary mask
     mask_rotated = mask_rotated > 0.5  # Convert back to boolean
 
-    # Compute the expected data by rotating the coordinates
+    return data, data_rotated, mask_original, mask_rotated, coords_flat
+
+def compute_expected_data(coords_flat, angle, k):
     angle_rad = np.radians(angle)
     cos_angle = np.cos(-angle_rad)
     sin_angle = np.sin(-angle_rad)
@@ -55,51 +45,42 @@ def test_rotate_with_center():
 
     # Compute the expected data at the rotated coordinates
     data_expected_flat = np.sin(k * rotated_coords_flat[0, :]) + np.cos(k * rotated_coords_flat[1, :])
+    return data_expected_flat
+
+@pytest.mark.parametrize("N, margin, custom_center, angle, k, tolerance", [
+    # Basic cases
+    (500, 50, (250, 250), 30, 0.1, 1e-6),
+    (300, 30, (150, 150), 45, 0.2, 1e-5),
+
+    # Custom center at different locations
+    (400, 40, (200, 100), 60, 0.15, 1e-5),
+    (600, 50, (300, 300), 90, 0.1, 1e-5),
+    (500, 50, (100, 400), 120, 0.05, 1e-5),
+
+    # Large N with varied angles
+    (1000, 100, (500, 500), 15, 0.2, 1e-5),
+    (1000, 100, (800, 200), 135, 0.3, 5e-5),
+
+    # Small N with fine-grained rotation
+    (200, 20, (100, 100), 3, 0.1, 1e-6),
+    (200, 20, (50, 150), 273, 0.25, 3e-5),
+
+    # Extreme angles
+    (500, 50, (250, 250), 0, 0.1, 1e-6),
+    (500, 50, (250, 250), 361, 0.1, 1e-6),
+    (500, 50, (250, 250), -44, 0.1, 1e-6),
+])
+def test_rotate_with_center(N, margin, custom_center, angle, k, tolerance):
+    data_shape = (N, N)
+    data, data_rotated, mask_original, mask_rotated, coords_flat = generate_rotated_data_and_mask(
+        data_shape, custom_center, margin, angle, k
+    )
+    data_expected_flat = compute_expected_data(coords_flat, angle, k)
     data_expected = data_expected_flat.reshape(data_shape)
 
-    # Compute the difference between the rotated data and the expected data within the valid region
+    # Compute the difference within the valid region
     difference = data_rotated - data_expected
     max_diff = np.max(np.abs(difference[mask_rotated]))
-    print(f"Maximum difference within the valid region: {max_diff}")
 
-    # Mask the difference array for plotting
-    difference_masked = np.copy(difference)
-    difference_masked[~mask_rotated] = np.nan  # Exclude invalid pixels from the difference image
-
-    # Plot the original data, rotated data, expected data, and the difference
-    fig, axs = plt.subplots(1, 5, figsize=(25, 5))
-
-    # Original image (generated data)
-    axs[0].imshow(data, cmap='viridis', origin='upper')
-    axs[0].scatter(custom_center[1], custom_center[0], color="red", label="Center of Rotation")
-    axs[0].set_title("Original Image")
-    axs[0].legend()
-
-    # Original mask
-    axs[1].imshow(mask_original, cmap='gray', origin='upper')
-    axs[1].set_title("Original Mask")
-
-    # Rotated image
-    axs[2].imshow(data_rotated, cmap='viridis', origin='upper')
-    axs[2].scatter(custom_center[1], custom_center[0], color="red", label="Center of Rotation")
-    axs[2].set_title(f"Rotated Image (Angle: {angle}°)")
-    axs[2].legend()
-
-    # Expected image (analytically calculated)
-    axs[3].imshow(data_expected, cmap='viridis', origin='upper')
-    axs[3].set_title("Expected Rotated Image")
-
-    # Difference image within the valid region
-    im = axs[4].imshow(difference_masked, cmap='coolwarm', origin='upper')
-    axs[4].set_title("Difference (Rotated - Expected)")
-    fig.colorbar(im, ax=axs[4], orientation='vertical', label='Difference')
-
-    plt.tight_layout()
-    plt.show()
-
-    # Set a tolerance for the maximum acceptable difference
-    tolerance = 1e-5
+    # Assert the difference is within the tolerance
     assert max_diff < tolerance, f"Max difference {max_diff} exceeds tolerance {tolerance}"
-
-# Run the test
-test_rotate_with_center()
