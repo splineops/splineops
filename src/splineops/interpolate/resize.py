@@ -1,23 +1,68 @@
 import numpy as np
+import numpy.typing as npt
+from typing import Optional, Union, Sequence, Tuple
 from splineops.interpolate.tensorspline import TensorSpline
 from splineops.bases.utils import asbasis
 from splineops.interpolate.ls_oblique.ls_oblique_resize import ls_oblique_resize
 
-def resize(data, zoom_factors=None, output=None, output_size=None, degree=3, modes="mirror", method="interpolation"):
+
+def resize(
+    data: npt.NDArray,
+    zoom_factors: Optional[Union[float, Sequence[float]]] = None,
+    output: Optional[Union[npt.NDArray, np.dtype]] = None,
+    output_size: Optional[Tuple[int, ...]] = None,
+    degree: int = 3,
+    modes: Union[str, Sequence[str]] = "mirror",
+    method: str = "interpolation"
+) -> npt.NDArray:
     """
     Resize an N-dimensional image using TensorSpline for interpolation or LS/oblique projection methods.
 
-    Parameters:
-        data (ndarray): The input data to resize.
-        zoom_factors (float or sequence, optional): Scaling factors for each axis. Ignored if output_size is provided.
-        output (ndarray or dtype, optional): Array in which to place the output, or the dtype of the returned array.
-        output_size (tuple, optional): Desired output shape. If provided, zoom_factors is ignored.
-        degree (int): Degree of the B-spline interpolation (0 to 9).
-        modes (str or sequence of str): Extension modes or list of modes for each dimension.
-        method (str): Interpolation method, "interpolation" (default), "least-squares", or "oblique".
+    Parameters
+    ----------
+    data : npt.NDArray
+        The input data to resize.
+    zoom_factors : Optional[Union[float, Sequence[float]]], optional
+        Scaling factors for each axis. Ignored if `output_size` is provided.
+    output : Optional[Union[npt.NDArray, np.dtype]], optional
+        Array in which to place the output, or the dtype of the returned array.
+    output_size : Optional[Tuple[int, ...]], optional
+        Desired output shape. If provided, `zoom_factors` is ignored.
+    degree : int, optional
+        Degree of the B-spline interpolation (0 to 9). Default is 3.
+    modes : Union[str, Sequence[str]], optional
+        Extension modes or a list of modes for each dimension. Default is "mirror".
+    method : str, optional
+        Interpolation method: "interpolation" (default), "least-squares", or "oblique".
 
-    Returns:
-        ndarray: Resized data in `output` if specified, otherwise a new array.
+    Returns
+    -------
+    npt.NDArray
+        Resized data in `output` if specified, otherwise a new array.
+
+    Raises
+    ------
+    ValueError
+        If neither `output_size` nor `zoom_factors` is provided.
+        If `degree` is not an integer between 0 and 9.
+
+    Examples
+    --------
+    Resize a 2D array using interpolation:
+    
+    >>> import numpy as np
+    >>> from splineops.interpolate.resize import resize
+    >>> data = np.array([[1, 2], [3, 4]])
+    >>> resized_data = resize(data, zoom_factors=2)
+    >>> resized_data.shape
+    (4, 4)
+
+    Resize a 3D array using LS projection:
+    
+    >>> data_3d = np.random.rand(4, 4, 4)
+    >>> resized_data_3d = resize(data_3d, output_size=(8, 8, 8), degree=3, method="least-squares")
+    >>> resized_data_3d.shape
+    (8, 8, 8)
     """
     if not (0 <= degree <= 9):
         raise ValueError("degree must be an integer between 0 and 9 for B-spline interpolation.")
@@ -34,7 +79,7 @@ def resize(data, zoom_factors=None, output=None, output_size=None, degree=3, mod
 
     # Call LS/oblique resize if conditions are met, else use TensorSpline
     if method in {"least-squares", "oblique"} and degree in {1, 2, 3}:
-        #print(f"Using {method} projection method with mirror boundary conditions.")
+        # Use LS/oblique resize
         output_data = ls_oblique_resize(
             input_img_normalized=data,
             output_size=output_size,

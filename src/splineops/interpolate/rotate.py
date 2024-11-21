@@ -1,20 +1,62 @@
 import numpy as np
+import numpy.typing as npt
+from typing import Optional, Tuple
 from splineops.interpolate.tensorspline import TensorSpline
 
-def rotate(data, angle, axis=None, center=None, degree=3, mode="zero"):
+
+def rotate(
+    data: npt.NDArray,
+    angle: float,
+    axis: Optional[Tuple[float, float, float]] = None,
+    center: Optional[Tuple[float, float, float]] = None,
+    degree: int = 3,
+    mode: str = "zero"
+) -> npt.NDArray:
     """
     Rotate 2D or 3D data around a specified center using TensorSpline interpolation.
 
-    Parameters:
-        data (ndarray): The input 2D or 3D data array.
-        angle (float): The rotation angle in degrees.
-        axis (tuple of float, optional): The rotation axis vector for 3D data. Default is None, which implies (0, 0, 1).
-        degree (int): The degree of the spline (0 to 7). Default is 3.
-        mode (str): The mode for handling boundaries. Default is "zero".
-        center (tuple of float, optional): The center of rotation. Default is the center of the array.
+    Parameters
+    ----------
+    data : npt.NDArray
+        The input 2D or 3D data array to rotate.
+    angle : float
+        The rotation angle in degrees.
+    axis : Optional[Tuple[float, float, float]], optional
+        The rotation axis vector for 3D data. Default is None, which implies the z-axis (0, 0, 1).
+    center : Optional[Tuple[float, float, float]], optional
+        The center of rotation as a tuple of coordinates. Default is the center of the array.
+    degree : int, optional
+        The degree of the spline (0 to 7). Default is 3.
+    mode : str, optional
+        The mode for handling boundaries. Default is "zero".
 
-    Returns:
-        ndarray: The rotated data as a numpy array.
+    Returns
+    -------
+    npt.NDArray
+        The rotated data as a numpy array.
+
+    Raises
+    ------
+    ValueError
+        If the input data is not 2D or 3D.
+
+    Examples
+    --------
+    Rotate a 2D array by 45 degrees:
+    
+    >>> import numpy as np
+    >>> from splineops.interpolate.rotate import rotate
+    >>> data = np.array([[1, 2], [3, 4]])
+    >>> rotated_data = rotate(data, angle=45)
+    >>> rotated_data.shape
+    (2, 2)
+
+    Rotate a 3D array around a custom axis:
+    
+    >>> data_3d = np.random.rand(4, 4, 4)
+    >>> rotated_data_3d = rotate(data_3d, angle=30, axis=(1, 0, 0))
+    >>> rotated_data_3d.shape
+    (4, 4, 4)
     """
     ndim = data.ndim
     if ndim not in (2, 3):
