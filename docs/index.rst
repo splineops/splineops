@@ -61,6 +61,6 @@ Contents
    :caption: Contents:
 
    installation/index
-   gpu-support/index
+   user-guide/index
    auto_examples/index
    api/index

@@ -4,8 +4,10 @@ API Reference
 The class and function reference of SplineOps.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
+   resize
+   rotate
    tensorspline
 
 Indices and tables
