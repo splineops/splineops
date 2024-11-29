@@ -1,8 +1,8 @@
 """
-TensorSpline: A Comprehensive Guide
-===================================
+Using base class TensorSpline
+=============================
 
-This unified example uses directly the TensorSpline class to perform interpolation, spline basis visualization, and signal extension mode handling.
+This example uses directly the TensorSpline class to perform interpolation, spline basis visualization, and signal extension mode handling.
 """
 
 # %%
@@ -172,8 +172,8 @@ plot_bases(
 x_values = np.linspace(0, 6, 101)
 
 # %%
-# Function to create a signal with a bump
-# ---------------------------------------
+# Signal with a bump
+# -------------------
 #
 # Generate a signal that is mostly linear but includes a "bump."
 
@@ -188,8 +188,8 @@ def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_heig
     return linear_part + bump
 
 # %%
-# Function to plot extension modes
-# --------------------------------
+# Plot extension modes
+# --------------------
 #
 # Visualize signal extension modes for a given mode.
 
@@ -212,7 +212,7 @@ def plot_extension_modes_for_bump_function(mode_name, x_values, title):
     plt.show()
 
 # %%
-# Plot for finite support coefficients
+# Finite support coefficients
 # ------------------------------------
 plot_extension_modes_for_bump_function(
     mode_name="zero",
@@ -221,7 +221,7 @@ plot_extension_modes_for_bump_function(
 )
 
 # %%
-# Plot for narrow mirroring
+# Narrow mirroring
 # -------------------------
 plot_extension_modes_for_bump_function(
     mode_name="mirror",

@@ -117,8 +117,8 @@ ani = create_combined_animation(images, custom_center)
 ani_html = ani.to_jshtml()
 
 # %%
-# 3D image rotation with grayscale display and center marking in rotated slices
-# -----------------------------------------------------------------------------
+# 3D image rotation
+# -----------------
 #
 # Demonstrate the rotation of a 3D image around a custom center and axis.
 # The image slices are displayed in grayscale, with the center of rotation

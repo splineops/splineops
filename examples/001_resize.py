@@ -1,6 +1,6 @@
 """
-Comparison of resizing methods using SplineOps
-==============================================
+Resizing signals and images
+===========================
 
 This example compares SplineOps resizing with advanced interpolation methods:
 Least-Squares, Oblique Projection, and SciPy's built-in zoom, on 2D, 1D, and 3D signals.
@@ -23,8 +23,8 @@ from splineops.interpolate.resize import resize  # Unified resize function
 from splineops.utils.image_loader import load_head_mri_image  # Import the MRI loader
 
 # %%
-# Helper Functions for Metric Calculation
-# ---------------------------------------
+# Helper Functions
+# ----------------
 #
 # We define functions to compute Signal-to-Noise Ratio (SNR) and Mean Squared Error (MSE).
 # Additionally, we include functions to perform resizing with SciPy's zoom and to compute
@@ -175,8 +175,8 @@ def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr
     plt.show()
 
 # %%
-# Example of resizing
-# -------------------
+# Basic resizing example
+# ----------------------
 #
 # Create a simple 2D image as a sample data (e.g., a gradient or a checkerboard pattern).
 
@@ -191,8 +191,8 @@ plt.title("Original data")
 plt.show()
 
 # %%
-# Resizing with degree 1 and fixed output size
-# --------------------------------------------
+# Resizing with fixed output size
+# -------------------------------
 #
 # Apply the resize function with degree=1 for linear B-spline interpolation and a fixed output size.
 
@@ -207,8 +207,8 @@ plt.title("Degree 1, output size 100x100")
 plt.show()
 
 # %%
-# Resizing with degree 2 and zoom factor 0.3
-# ------------------------------------------
+# Resizing with zoom factor 0.3
+# -----------------------------
 #
 # Apply the resize function with degree=2 for quadratic B-spline interpolation and a zoom factor of 0.3.
 
@@ -223,8 +223,8 @@ plt.title("Degree 2, zoom factor 0.3")
 plt.show()
 
 # %%
-# Resizing with degree 3 and zoom factor 2.5
-# ------------------------------------------
+# Resizing with zoom factor 2.5
+# -----------------------------
 #
 # Apply the resize function with degree=3 for cubic B-spline interpolation and a zoom factor of 2.5.
 
@@ -239,8 +239,8 @@ plt.title("Degree 3, zoom factor 2.5")
 plt.show()
 
 # %%
-# Set common parameters for comparison of resizing methods
-# --------------------------------------------------------
+# Parameters for resizing methods
+# -------------------------------
 #
 # We define the degree of interpolation and the methods to be compared.
 
@@ -248,8 +248,8 @@ degree = 3
 methods = ["interpolation", "least-squares", "oblique", "scipy"]
 
 # %%
-# Load MRI Image and Normalize
-# ----------------------------
+# Load MRI Image
+# --------------
 #
 # We load the MRI head image and normalize it to the range [0, 1].
 
@@ -266,16 +266,16 @@ plt.axis('off')
 plt.show()
 
 # %%
-# Define Parameters for Resizing the MRI Image
-# --------------------------------------------
+# Parameters for Image resizing
+# -----------------------------
 #
 # Set the zoom factors for the MRI image.
 
 zoom_factors_2d = (0.5, 0.5)
 
 # %%
-# Resizing and Comparing Methods for MRI Image
-# --------------------------------------------
+# Methods for MRI resizing
+# ------------------------
 #
 # Iterate over the different methods, perform resizing, compute metrics, and plot results for the MRI image.
 
@@ -297,8 +297,8 @@ for method in methods:
     )
 
 # %%
-# Generate and Process 1D Signal
-# ------------------------------
+# Process 1D Signal
+# -----------------
 #
 # We generate a noisy sine wave signal and define the parameters for resizing.
 
@@ -318,8 +318,8 @@ plt.grid(True)
 plt.show()
 
 # %%
-# Resizing and Comparing Methods for 1D Signal
-# --------------------------------------------
+# Resizing 1D Signal
+# ------------------
 #
 # Iterate over the different methods, perform resizing, compute metrics, and plot the results for the 1D signal.
 
@@ -342,8 +342,8 @@ for method in methods:
     )
 
 # %%
-# Generate and Process 3D Signal
-# ------------------------------
+# Process 3D Signal
+# -----------------
 #
 # We generate a 3D sine wave volume and define the parameters for resizing.
 
@@ -367,8 +367,8 @@ plt.axis('off')
 plt.show()
 
 # %%
-# Resizing and Comparing Methods for 3D Signal
-# --------------------------------------------
+# Resizing 3D Signal
+# ------------------
 #
 # Iterate over the different methods, perform resizing, compute metrics, and plot the results for the 3D signal.
 
