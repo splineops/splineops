@@ -98,6 +98,5 @@ References
 
 - Unser, M. (1999). `Splines: A perfect fit for signal/image processing <https://ieeexplore.ieee.org/document/7075842>`_. IEEE Signal Processing Magazine.
 - Muñoz, A., Blu, T., & Unser, M. (2001). `Least-squares image resizing using finite differences <https://ieeexplore.ieee.org/document/941860>`_. IEEE Transactions on Image Processing, 10(9), 1365–1378.
-
-
+- Thévenaz, P., Blu, T., & Unser, M. (2000). `Interpolation revisited <https://ieeexplore.ieee.org/document/875199>`_. IEEE Transactions on Medical Imaging, 19(7), 739–758.
 
