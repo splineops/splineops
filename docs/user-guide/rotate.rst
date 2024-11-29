@@ -1,17 +1,26 @@
 Rotate Module
 =============
 
+.. currentmodule:: splineops
+
 Overview
 --------
 
-The `rotate` function in the `splineops` library allows you to rotate 2D or 3D data arrays around a specified axis and center using spline interpolation. This function is particularly useful for geometric transformations in image processing, computer graphics, and scientific computing.
+The `rotate` function in the `splineops` library enables rotation of 2D or 3D data arrays around a specified axis and center using spline interpolation. This function is widely used in image processing, computer graphics, and scientific computing.
 
-Mathematical Background
------------------------
+This module supports:
 
-**2D Rotation**
+- rotation of both 2D and 3D data arrays;
+- specification of arbitrary rotation axes and centers;
+- high-quality spline interpolation for accurate transformations.
 
-In 2D space, rotating a point :math:`(x, y)` around a center point :math:`(x_c, y_c)` by an angle :math:`\theta` (in radians) is achieved using the rotation matrix:
+Mathematical Details
+--------------------
+
+2D Rotation
+~~~~~~~~~~~
+
+In 2D space, a point :math:`(x, y)` can be rotated around a center point :math:`(x_c, y_c)` by an angle :math:`\theta` (in radians) using the rotation matrix:
 
 .. math::
 
@@ -22,29 +31,30 @@ In 2D space, rotating a point :math:`(x, y)` around a center point :math:`(x_c, 
    =
    \begin{pmatrix}
    \cos\theta & -\sin\theta \\
-   \sin\theta & \cos\theta \\
+   \sin\theta & \cos\theta
    \end{pmatrix}
    \begin{pmatrix}
    x - x_c \\
-   y - y_c \\
+   y - y_c
    \end{pmatrix}
    +
    \begin{pmatrix}
    x_c \\
-   y_c \\
+   y_c
    \end{pmatrix}
 
 Here, :math:`(x', y')` are the coordinates of the rotated point.
 
-**3D Rotation**
+3D Rotation
+~~~~~~~~~~~
 
-In 3D space, rotating a point :math:`\mathbf{v} = (x, y, z)` around an arbitrary axis defined by a unit vector :math:`\mathbf{u} = (u_x, u_y, u_z)` by an angle :math:`\theta` can be performed using Rodrigues' rotation formula:
+For 3D data, a point :math:`\mathbf{v} = (x, y, z)` can be rotated around an arbitrary axis defined by a unit vector :math:`\mathbf{u} = (u_x, u_y, u_z)` by an angle :math:`\theta` using Rodrigues' rotation formula:
 
 .. math::
 
    \mathbf{v}' = \mathbf{v} \cos\theta + (\mathbf{u} \times \mathbf{v}) \sin\theta + \mathbf{u} \left( \mathbf{u} \cdot \mathbf{v} \right) (1 - \cos\theta)
 
-Alternatively, the rotation can be represented using the rotation matrix :math:`\mathbf{R}`:
+Alternatively, the rotation can be expressed with a rotation matrix :math:`\mathbf{R}`:
 
 .. math::
 
@@ -55,7 +65,7 @@ Alternatively, the rotation can be represented using the rotation matrix :math:`
    u_z u_x (1 - \cos\theta) - u_y \sin\theta & u_z u_y (1 - \cos\theta) + u_x \sin\theta & \cos\theta + u_z^2 (1 - \cos\theta)
    \end{pmatrix}
 
-Then the rotated point is calculated as:
+The rotated point is calculated as:
 
 .. math::
 
@@ -78,26 +88,32 @@ Then the rotated point is calculated as:
    z_c
    \end{pmatrix}
 
-where :math:`(x_c, y_c, z_c)` is the center of rotation.
+where :math:`(x_c, y_c, z_c)` represents the center of rotation.
 
-**Interpolation**
+Interpolation
+~~~~~~~~~~~~~
 
-After rotation, the points may not align with the discrete grid of the original data array. To obtain the values at these new coordinates, spline interpolation is used:
+The rotation often results in coordinates that do not align with the original data grid. To compute the data values at these rotated coordinates, spline interpolation is used:
 
-- **TensorSpline Interpolation**: This method performs multidimensional spline interpolation, providing smooth and accurate values for the rotated data.
+- **TensorSpline Interpolation**: This method uses tensor-product B-splines for smooth and accurate interpolation in multiple dimensions, minimizing artifacts such as aliasing and ensuring high-quality results.
 
 Implementation Details
 ----------------------
 
-1. **Centering Coordinates**: The data coordinates are shifted so that the center of rotation aligns with the origin.
+1. **Centering Coordinates**: The coordinates are shifted such that the center of rotation aligns with the origin.
+   
+2. **Applying Rotation Matrix**: The appropriate rotation matrix (2D or 3D) is applied to the centered coordinates.
 
-2. **Applying Rotation Matrix**: The appropriate rotation matrix is applied to the centered coordinates.
+3. **Translating Back**: The rotated coordinates are shifted back to their original location by adding the center coordinates.
 
-3. **Translating Back**: The rotated coordinates are translated back by adding the center coordinates.
-
-4. **Interpolation**: Spline interpolation is used to compute the data values at the new rotated coordinates.
+4. **Interpolation**: Spline interpolation is applied to evaluate the rotated data values at the new coordinates.
 
 Examples
 --------
 
 * :ref:`sphx_glr_auto_examples_002_rotate.py`
+
+References
+----------
+
+- Unser, M. (1999). `Splines: A perfect fit for signal/image processing <https://ieeexplore.ieee.org/document/7075842>`_. IEEE Signal Processing Magazine.
