@@ -31,7 +31,7 @@ image = load_collagen_image()
 size = 500
 degree = 3 # spline degree
 rotation_angle = 45
-custom_center = (250, 250)  # Custom center for rotation (row, column)
+custom_center = (size // 2, size // 2)  # Custom center for rotation (row, column)
 
 image_resized = ndimage.zoom(
     image, (size / image.shape[0], size / image.shape[1]), order=degree
@@ -68,88 +68,87 @@ plt.show()
 # Create the animation of the image being rotated from 0 to 360 degrees using different spline degrees
 # and visualize the center of rotation only in the rotated images.
 
-def create_combined_animation(images, center):
+def rotate_and_crop(image, angle, degree, center, crop_size):
+    """
+    Rotate the image around a specified center and crop it to the given size.
+
+    Parameters:
+        image (np.array): Input image.
+        angle (float): Angle in degrees to rotate the image.
+        degree (int): Spline interpolation order for rotation.
+        center (tuple): Center of rotation (row, column).
+        crop_size (int): Size of the square to crop after rotation.
+
+    Returns:
+        cropped_image (np.array): Rotated and cropped image with histogram equalization.
+    """
+    # Rotate the image
+    rotated_image = rotate(image, angle=angle, degree=degree, center=center)
+
+    # Ensure crop_size does not exceed image dimensions
+    crop_size = int(min(crop_size, rotated_image.shape[0], rotated_image.shape[1]))
+
+    # Calculate cropping coordinates
+    start_row = int((rotated_image.shape[0] - crop_size) / 2)
+    start_col = int((rotated_image.shape[1] - crop_size) / 2)
+    end_row = start_row + crop_size
+    end_col = start_col + crop_size
+
+    # Crop the image
+    cropped_image = rotated_image[start_row:end_row, start_col:end_col]
+
+    return cropped_image
+
+# Function to create the animation
+def create_combined_animation(image, center, crop_size):
     """
     Create an animation showing the image being rotated for different spline degrees.
-    
+
     Parameters:
-        images (list of np.array): List of images for each spline degree.
+        image (np.array): Original image.
         center (tuple): The center of rotation as (row, column).
-        
+        crop_size (int): Size of the square to crop after rotation.
+
     Returns:
         ani: Matplotlib animation object.
     """
     fig, axes = plt.subplots(
         3, 1, figsize=(6, 18), constrained_layout=True
-    )  # Adjusted figsize and layout for vertical placement
-    for ax, degree in zip(axes, [0, 1, 3]):
+    )
+    degrees_list = [0, 1, 3]
+    for ax, degree in zip(axes, degrees_list):
         ax.axis("off")
-        ax.set_title(f"Degree {degree}")
+        ax.set_title(f"Spline Degree {degree}")
 
-    image_plots = [ax.imshow(images[i], cmap="gray") for i, ax in enumerate(axes)]
+    # Initialize the images
+    image_plots = []
+    for ax in axes:
+        # We set maximum value 128.0 (instead of 255.0) empyrically
+        img_plot = ax.imshow(np.zeros((crop_size, crop_size)), cmap="gray", vmin=0.0, vmax=128.0)
+        image_plots.append(img_plot)
 
     # Animation function
     def animate(frame):
-        nonlocal images  # Ensure we modify the images array from the enclosing scope
-        for i, degree in enumerate([0, 1, 3]):
-            if frame > 0:
-                images[i] = rotate(
-                    images[i], angle=24, degree=degree, center=center
-                )  # Rotate by 24 degrees each frame
-            image_plots[i].set_data(images[i])
+        angle = frame * 24  # Cumulative angle
+        for i, degree in enumerate(degrees_list):
+            cropped_image = rotate_and_crop(
+                image, angle=angle, degree=degree, center=center, crop_size=crop_size
+            )
+            image_plots[i].set_data(cropped_image)
         return image_plots
 
     # Create the animation
     ani = animation.FuncAnimation(
         fig, animate, frames=15, interval=250, blit=True
-    )  # 15 frames, rotating 24 degrees per frame
+    )
     return ani
 
+# Calculate the maximum valid crop size
+#crop_size = int(size / np.sqrt(2))  # Equivalent to size * 0.7071
+crop_size = int(0.3 * size)  # Equivalent to size * 0.7071
 
-# Function to create a circular mask
-def apply_circular_mask(image, radius, center=None):
-    """
-    Apply a circular mask to an image, leaving only the inside of the circle visible.
-    
-    Parameters:
-        image (np.array): Input image.
-        radius (int): Radius of the circle.
-        center (tuple, optional): Center of the circle (row, column). If None, defaults to the center of the image.
-    
-    Returns:
-        masked_image (np.array): Image with the circular mask applied.
-    """
-    # Determine the center of the circle
-    if center is None:
-        center = (image.shape[0] // 2, image.shape[1] // 2)
-    
-    # Create a grid of coordinates
-    y, x = np.ogrid[:image.shape[0], :image.shape[1]]
-    distance_from_center = np.sqrt((x - center[1])**2 + (y - center[0])**2)
-    
-    # Create the circular mask
-    mask = distance_from_center <= radius
-    
-    # Apply the mask to the image
-    masked_image = np.ones_like(image) * 255  # Create a white background
-    masked_image[mask] = image[mask]  # Keep the image data inside the circle
-    
-    return masked_image
-
-# Mask the image
-circle_radius = 200  # Define the radius of the circle
-masked_image = apply_circular_mask(image_resized, radius=circle_radius, center=custom_center)
-
-# Display the masked image
-plt.figure(figsize=(6, 6))
-plt.imshow(masked_image, cmap="gray")
-plt.title("Image with Circular Mask Applied")
-plt.axis("off")
-plt.show()
-
-# Replace `image_resized` with `masked_image` for animation
-images = [masked_image.copy() for _ in range(3)]
-ani = create_combined_animation(images, custom_center)
+# Create the animation
+ani = create_combined_animation(image_resized, custom_center, crop_size)
 
 # Display the animation
 ani_html = ani.to_jshtml()
