@@ -145,7 +145,7 @@ def create_combined_animation(image, center, crop_size):
 
 # Calculate the maximum valid crop size
 #crop_size = int(size / np.sqrt(2))  # Equivalent to size * 0.7071
-crop_size = int(0.3 * size)  # Equivalent to size * 0.7071
+crop_size = int(0.5 * size)  # Equivalent to size * 0.7071
 
 # Create the animation
 ani = create_combined_animation(image_resized, custom_center, crop_size)
@@ -190,10 +190,20 @@ data_rotated = rotate(data, angle=angle, center=custom_center, degree=3, axis=ax
 # Visualize slices of the original and rotated volumes in grayscale
 fig, axs = plt.subplots(2, 3, figsize=(18, 12))
 
+# Set global font sizes
+plt.rcParams.update({
+    'font.size': 14,  # Base font size
+    'axes.titlesize': 18,  # Title font size
+    'axes.labelsize': 16,  # Axis label font size
+    'xtick.labelsize': 14,  # X-axis tick font size
+    'ytick.labelsize': 14,  # Y-axis tick font size
+    'legend.fontsize': 14  # Legend font size
+})
+
 # Slices to visualize (middle slices in each dimension)
 slices = [
     (data, "Original Data", False),  # No center in the original data
-    (data_rotated, f"Rotated Data (Angle: {angle}°, Axis: {axis})", True),  # Center in rotated data
+    (data_rotated, f"Rotated {angle}°, Axis: {axis})", True),  # Center in rotated data
 ]
 
 for i, (volume, title, draw_center) in enumerate(slices):
@@ -201,22 +211,23 @@ for i, (volume, title, draw_center) in enumerate(slices):
     axs[i, 0].imshow(volume[N // 2], cmap="gray", origin="upper")
     if draw_center:
         axs[i, 0].scatter(custom_center[2], custom_center[1], color="red", label="Center")
-        axs[i, 0].legend()
-    axs[i, 0].set_title(f"{title} (XY plane)")
+        axs[i, 0].legend(fontsize=14)  # Legend font size
+    axs[i, 0].set_title(f"{title} (XY plane)", fontsize=18)  # Title font size
     
     # XZ Plane
     axs[i, 1].imshow(volume[:, N // 2, :], cmap="gray", origin="upper")
     if draw_center:
         axs[i, 1].scatter(custom_center[2], custom_center[0], color="red", label="Center")
-        axs[i, 1].legend()
-    axs[i, 1].set_title(f"{title} (XZ plane)")
+        axs[i, 1].legend(fontsize=14)  # Legend font size
+    axs[i, 1].set_title(f"{title} (XZ plane)", fontsize=18)  # Title font size
     
     # YZ Plane
     axs[i, 2].imshow(volume[:, :, N // 2], cmap="gray", origin="upper")
     if draw_center:
         axs[i, 2].scatter(custom_center[1], custom_center[0], color="red", label="Center")
-        axs[i, 2].legend()
-    axs[i, 2].set_title(f"{title} (YZ plane)")
+        axs[i, 2].legend(fontsize=14)  # Legend font size
+    axs[i, 2].set_title(f"{title} (YZ plane)", fontsize=18)  # Title font size
 
+# Adjust layout
 plt.tight_layout()
 plt.show()

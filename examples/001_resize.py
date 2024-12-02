@@ -100,10 +100,19 @@ def plot_results(
     time_elapsed
 ):
     """
-    Generalized plot function for 2D and 3D data.
+    Generalized plot function for 2D and 3D data with adjustable font sizes.
     """
     import numpy as np
     import matplotlib.pyplot as plt
+
+    # Set global font size
+    plt.rcParams.update({
+        'font.size': 14,  # Base font size
+        'axes.titlesize': 18,  # Title font size
+        'axes.labelsize': 16,  # Label font size
+        'xtick.labelsize': 14,  # X-axis tick font size
+        'ytick.labelsize': 14   # Y-axis tick font size
+    })
 
     # Check if all zoom factors are less than 1 (zooming out in all dimensions)
     zoom_out = all(zf < 1 for zf in zoom_factors)
@@ -125,31 +134,47 @@ def plot_results(
 
     # Original slice
     ax[0].imshow(original_slice, cmap="gray", aspect='auto')
-    ax[0].set_title("Original Image")
+    ax[0].set_title("Original Image", fontsize=18)  # Set title font size
     ax[0].axis("off")
 
     # Resized slice
     ax[1].imshow(resized_display, cmap="gray", aspect='auto')
-    ax[1].set_title(f"{method.capitalize()} Resized (Zoom: {zoom_factors})\nTime: {time_elapsed:.4f}s")
+    ax[1].set_title(f"{method.capitalize()} Resized\nZoom: {zoom_factors} Time: {time_elapsed:.4f}s", fontsize=18)
     ax[1].axis("off")
 
     # Difference map
     difference = original_slice - resized_back_slice
     ax[2].imshow(difference, cmap="gray", aspect='auto')
-    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
+    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})", fontsize=18)
     ax[2].axis("off")
 
+    # Adjust layout
     plt.tight_layout()
     plt.show()
 
 def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr, mse, time_elapsed):
-    """Plot results for 1D signals."""
+    """Plot results for 1D signals with adjustable font sizes."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    # Set global font size
+    plt.rcParams.update({
+        'font.size': 14,  # Base font size
+        'axes.titlesize': 18,  # Title font size
+        'axes.labelsize': 16,  # Axis label font size
+        'xtick.labelsize': 14,  # X-axis tick font size
+        'ytick.labelsize': 14,  # Y-axis tick font size
+        'legend.fontsize': 14  # Legend font size
+    })
+
     fig, ax = plt.subplots(1, 3, figsize=(18, 5))
 
     # Original signal
     ax[0].plot(x, original, label="Original", color="blue")
-    ax[0].set_title("Original Signal")
-    ax[0].legend()
+    ax[0].set_title("Original Signal", fontsize=18)  # Title font size
+    ax[0].set_xlabel("X-axis", fontsize=16)  # X-axis label font size
+    ax[0].set_ylabel("Amplitude", fontsize=16)  # Y-axis label font size
+    #ax[0].legend(fontsize=14)  # Legend font size
     ax[0].grid(True)
 
     # Resized signal
@@ -160,17 +185,22 @@ def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr
         label=f"Resized ({method})",
         color="orange"
     )
-    ax[1].set_title(f"Resized Signal ({method})\nTime: {time_elapsed:.4f}s")
-    ax[1].legend()
+    ax[1].set_title(f"Resized Signal ({method})\nTime: {time_elapsed:.4f}s", fontsize=18)
+    ax[1].set_xlabel("X-axis", fontsize=16)
+    ax[1].set_ylabel("Amplitude", fontsize=16)
+    #ax[1].legend(fontsize=14)
     ax[1].grid(True)
 
     # Difference
     difference = original - resized_back
     ax[2].plot(x, difference, label="Difference", color="red")
-    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})")
-    ax[2].legend()
+    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})", fontsize=18)
+    ax[2].set_xlabel("X-axis", fontsize=16)
+    ax[2].set_ylabel("Amplitude", fontsize=16)
+    #ax[2].legend(fontsize=14)
     ax[2].grid(True)
 
+    # Adjust layout
     plt.tight_layout()
     plt.show()
 
