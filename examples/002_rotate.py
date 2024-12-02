@@ -29,7 +29,10 @@ from splineops.utils.image_loader import load_collagen_image
 # Load and resize the image
 image = load_collagen_image()
 size = 500
-degree = 3
+degree = 3 # spline degree
+rotation_angle = 45
+custom_center = (250, 250)  # Custom center for rotation (row, column)
+
 image_resized = ndimage.zoom(
     image, (size / image.shape[0], size / image.shape[1]), order=degree
 )
@@ -37,21 +40,21 @@ image_resized = ndimage.zoom(
 # Convert to float32
 image_resized = image_resized.astype(np.float32)
 
-# Define a custom center for rotation
-custom_center = (250, 250)  # Example center coordinates (row, column)
-
-# Rotate the image by 45 degrees using spline of degree 3
-rotated_image_45 = rotate(image_resized, angle=45, degree=3, center=custom_center)
+# Rotate the image
+rotated_image = rotate(image_resized, angle=rotation_angle, degree=degree, center=custom_center)
 
 # Display the original and rotated images
 fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+
+# Display the original image
 ax[0].imshow(image_resized, cmap="gray")
 ax[0].set_title("Original Image")
 ax[0].axis("off")
 
-ax[1].imshow(rotated_image_45, cmap="gray")
+# Display the rotated image
+ax[1].imshow(rotated_image, cmap="gray")
 ax[1].scatter(custom_center[1], custom_center[0], color="red", label="Center of Rotation")
-ax[1].set_title("Rotated Image (45 degrees, spline degree 3)")
+ax[1].set_title(f"Rotated Image ({rotation_angle}°, spline degree {degree})")
 ax[1].axis("off")
 ax[1].legend()
 
@@ -85,12 +88,6 @@ def create_combined_animation(images, center):
 
     image_plots = [ax.imshow(images[i], cmap="gray") for i, ax in enumerate(axes)]
 
-    # Add center marker only to rotated images
-    center_markers = [
-        ax.scatter(center[1], center[0], color="red", label="Center of Rotation")
-        for ax in axes
-    ]
-
     # Animation function
     def animate(frame):
         nonlocal images  # Ensure we modify the images array from the enclosing scope
@@ -100,7 +97,7 @@ def create_combined_animation(images, center):
                     images[i], angle=24, degree=degree, center=center
                 )  # Rotate by 24 degrees each frame
             image_plots[i].set_data(images[i])
-        return image_plots + center_markers
+        return image_plots
 
     # Create the animation
     ani = animation.FuncAnimation(
@@ -109,8 +106,49 @@ def create_combined_animation(images, center):
     return ani
 
 
-# Create initial images list and animation
-images = [image_resized.copy() for _ in range(3)]
+# Function to create a circular mask
+def apply_circular_mask(image, radius, center=None):
+    """
+    Apply a circular mask to an image, leaving only the inside of the circle visible.
+    
+    Parameters:
+        image (np.array): Input image.
+        radius (int): Radius of the circle.
+        center (tuple, optional): Center of the circle (row, column). If None, defaults to the center of the image.
+    
+    Returns:
+        masked_image (np.array): Image with the circular mask applied.
+    """
+    # Determine the center of the circle
+    if center is None:
+        center = (image.shape[0] // 2, image.shape[1] // 2)
+    
+    # Create a grid of coordinates
+    y, x = np.ogrid[:image.shape[0], :image.shape[1]]
+    distance_from_center = np.sqrt((x - center[1])**2 + (y - center[0])**2)
+    
+    # Create the circular mask
+    mask = distance_from_center <= radius
+    
+    # Apply the mask to the image
+    masked_image = np.ones_like(image) * 255  # Create a white background
+    masked_image[mask] = image[mask]  # Keep the image data inside the circle
+    
+    return masked_image
+
+# Mask the image
+circle_radius = 200  # Define the radius of the circle
+masked_image = apply_circular_mask(image_resized, radius=circle_radius, center=custom_center)
+
+# Display the masked image
+plt.figure(figsize=(6, 6))
+plt.imshow(masked_image, cmap="gray")
+plt.title("Image with Circular Mask Applied")
+plt.axis("off")
+plt.show()
+
+# Replace `image_resized` with `masked_image` for animation
+images = [masked_image.copy() for _ in range(3)]
 ani = create_combined_animation(images, custom_center)
 
 # Display the animation
