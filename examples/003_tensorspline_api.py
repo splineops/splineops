@@ -1,8 +1,8 @@
 """
-TensorSpline: A Comprehensive Guide
-===================================
+Using base class TensorSpline
+=============================
 
-This unified example uses directly the TensorSpline class to perform interpolation, spline basis visualization, and signal extension mode handling.
+This example uses directly the TensorSpline class to perform interpolation, spline basis visualization, and signal extension mode handling.
 """
 
 # %%
@@ -15,12 +15,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from splineops.interpolate.tensorspline import TensorSpline
 from splineops.bases.utils import create_basis
-
-# %%
-# Section 1: Data Preparation and TensorSpline Interpolation
-# ----------------------------------------------------------
-#
-# This section demonstrates how to create basic interpolation using the TensorSpline API.
 
 # %%
 # Data preparation
@@ -90,21 +84,12 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Section 2: Visualizing Spline Bases
-# -----------------------------------
-#
-# This section demonstrates how to plot the spline bases available in the library.
-
-# %%
-# Define x range
-# --------------
-x_values = np.linspace(-3, 3, 1000)
-
-# %%
 # Function to plot bases
 # ----------------------
 #
 # Define a helper function to visualize spline bases.
+
+x_values = np.linspace(-3, 3, 1000) # Define x range
 
 def plot_bases(names, x_values, title):
     plt.figure(figsize=(12, 6))
@@ -161,21 +146,12 @@ plot_bases(
 )
 
 # %%
-# Section 3: Signal Extension Modes
-# ---------------------------------
-#
-# This section demonstrates signal extension modes using a non-continuous signal.
-
-# %%
-# Define x range
-# --------------
-x_values = np.linspace(0, 6, 101)
-
-# %%
-# Function to create a signal with a bump
-# ---------------------------------------
+# Signal with a bump
+# -------------------
 #
 # Generate a signal that is mostly linear but includes a "bump."
+
+x_values = np.linspace(0, 6, 101) # Define x range
 
 def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_height=5):
     linear_part = x_values
@@ -188,8 +164,8 @@ def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_heig
     return linear_part + bump
 
 # %%
-# Function to plot extension modes
-# --------------------------------
+# Plot extension modes
+# --------------------
 #
 # Visualize signal extension modes for a given mode.
 
@@ -212,7 +188,7 @@ def plot_extension_modes_for_bump_function(mode_name, x_values, title):
     plt.show()
 
 # %%
-# Plot for finite support coefficients
+# Finite support coefficients
 # ------------------------------------
 plot_extension_modes_for_bump_function(
     mode_name="zero",
@@ -221,7 +197,7 @@ plot_extension_modes_for_bump_function(
 )
 
 # %%
-# Plot for narrow mirroring
+# Narrow mirroring
 # -------------------------
 plot_extension_modes_for_bump_function(
     mode_name="mirror",

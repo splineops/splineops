@@ -7,27 +7,23 @@ support for GPU computing.
 
 You need at least `Python 3.10` to install `splineops`, and ideally `Python 3.12`. `Python 3.11` is also compatible.
 
-Install minimal dependencies in a dedicated environment
-(shown here using [Mamba](https://mamba.readthedocs.io/en/latest/)).
-
-Create and activate your environment
+Create and activate your Python virtual environment
 
 ```shell
-mamba create -n myenv
-mamba activate myenv
+python3 -m venv /path/to/splineops-env
+source /path/to/splineops-env/bin/activate
 ```
 
-Make sure you have the conda-forge channel added to your conda configuration.
-If not, you can add it using
+To deactivate the environment use
 
 ```shell
-conda config --add channels conda-forge
+deactivate
 ```
 
 Minimal requirements:
 
 ```shell
-mamba install numpy scipy
+pip install numpy scipy
 ```
 
 Simply install `splineops` using `pip`.
@@ -36,11 +32,11 @@ Simply install `splineops` using `pip`.
 pip install splineops
 ```
 
-To run the examples, `matplotlib`, `pooch` (for built-in image datasets)
+To run the examples, `matplotlib`
 and `IPython` (for Python UI widgets) will also be required.
 
 ```shell
-mamba install matplotlib pooch IPython
+pip install matplotlib IPython
 ```
 
 ## Formatting, type checking, and testing
@@ -91,7 +87,7 @@ hatch build -t wheel
 Easiest way to install dev dependencies
 
 ```shell
-mamba install numpy scipy matplotlib pooch IPython black mypy tox hatch pytest
+pip install numpy scipy matplotlib IPython black mypy tox hatch pytest
 ```
 
 Install `splineops` development environment in editable mode
@@ -105,7 +101,7 @@ pip install -e .[dev]
 You can use `splineops` with `cupy`. If a specific CUDA version is required do
 
 ```shell
-mamba install cupy cuda-version=12.3
+pip install cupy cuda-version=12.3
 ```
 
 Install `splineops` cupy development environment in editable mode
@@ -118,7 +114,7 @@ Potential other CuPy libraries
 ([CuPy from Conda-Forge](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge))
 
 ```shell
-mamba install cupy cutensor cudnn nccl
+pip install cupy cutensor cudnn nccl
 ```
 
 ## Building the documentation
@@ -126,7 +122,7 @@ mamba install cupy cutensor cudnn nccl
 To build the Sphinx documentation, install `splineops` doc dependencies
 
 ```shell
-mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme sphinx-design myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
+pip install numpy scipy matplotlib IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme sphinx-design myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
 ```
 
 Install `splineops` doc environment in editable mode
