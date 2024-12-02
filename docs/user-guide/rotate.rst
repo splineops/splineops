@@ -1,5 +1,5 @@
-Rotate Module
-=============
+Rotate
+======
 
 .. currentmodule:: splineops
 

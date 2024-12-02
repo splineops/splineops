@@ -1,5 +1,5 @@
-Resize Module
-=============
+Resize
+======
 
 .. currentmodule:: splineops
 
