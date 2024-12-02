@@ -194,40 +194,41 @@ fig, axs = plt.subplots(2, 3, figsize=(18, 12))
 plt.rcParams.update({
     'font.size': 14,  # Base font size
     'axes.titlesize': 18,  # Title font size
-    'axes.labelsize': 16,  # Axis label font size
-    'xtick.labelsize': 14,  # X-axis tick font size
-    'ytick.labelsize': 14,  # Y-axis tick font size
     'legend.fontsize': 14  # Legend font size
 })
 
 # Slices to visualize (middle slices in each dimension)
 slices = [
     (data, "Original Data", False),  # No center in the original data
-    (data_rotated, f"Rotated {angle}°, Axis: {axis})", True),  # Center in rotated data
+    (data_rotated, f"Rotated Angle {angle}°, Axis {axis})", True),  # Center in rotated data
 ]
 
 for i, (volume, title, draw_center) in enumerate(slices):
     # XY Plane
     axs[i, 0].imshow(volume[N // 2], cmap="gray", origin="upper")
+    axs[i, 0].axis("off")  # Remove x and y axis numbers
     if draw_center:
         axs[i, 0].scatter(custom_center[2], custom_center[1], color="red", label="Center")
-        axs[i, 0].legend(fontsize=14)  # Legend font size
-    axs[i, 0].set_title(f"{title} (XY plane)", fontsize=18)  # Title font size
+        axs[i, 0].legend(fontsize=14)
+    axs[i, 0].set_title(f"{title} (XY plane)", fontsize=18)
     
     # XZ Plane
     axs[i, 1].imshow(volume[:, N // 2, :], cmap="gray", origin="upper")
+    axs[i, 1].axis("off")  # Remove x and y axis numbers
     if draw_center:
         axs[i, 1].scatter(custom_center[2], custom_center[0], color="red", label="Center")
-        axs[i, 1].legend(fontsize=14)  # Legend font size
-    axs[i, 1].set_title(f"{title} (XZ plane)", fontsize=18)  # Title font size
+        axs[i, 1].legend(fontsize=14)
+    axs[i, 1].set_title(f"{title} (XZ plane)", fontsize=18)
     
     # YZ Plane
     axs[i, 2].imshow(volume[:, :, N // 2], cmap="gray", origin="upper")
+    axs[i, 2].axis("off")  # Remove x and y axis numbers
     if draw_center:
         axs[i, 2].scatter(custom_center[1], custom_center[0], color="red", label="Center")
-        axs[i, 2].legend(fontsize=14)  # Legend font size
-    axs[i, 2].set_title(f"{title} (YZ plane)", fontsize=18)  # Title font size
+        axs[i, 2].legend(fontsize=14)
+    axs[i, 2].set_title(f"{title} (YZ plane)", fontsize=18)
 
 # Adjust layout
 plt.tight_layout()
 plt.show()
+
