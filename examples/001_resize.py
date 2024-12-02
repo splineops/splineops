@@ -10,8 +10,8 @@ with step-by-step computations and visualizations.
 """
 
 # %%
-# Import Necessary Libraries
-# --------------------------
+# Import required libraries
+# -------------------------
 #
 # We import the required libraries, including NumPy for numerical computations,
 # Matplotlib for plotting, and the custom `resize` function from the `splineops` package.
@@ -23,7 +23,7 @@ from splineops.interpolate.resize import resize  # Unified resize function
 from splineops.utils.image_loader import load_head_mri_image  # Import the MRI loader
 
 # %%
-# Helper Functions
+# Helper functions
 # ----------------
 #
 # We define functions to compute Signal-to-Noise Ratio (SNR) and Mean Squared Error (MSE).
@@ -239,8 +239,8 @@ plt.title("Degree 3, zoom factor 2.5")
 plt.show()
 
 # %%
-# Load MRI Image
-# --------------
+# Process 2D signal
+# -----------------
 #
 # We load the MRI head image and normalize it to the range [0, 1].
 
@@ -265,8 +265,16 @@ plt.show()
 degree = 3
 zoom_factors_2d = (0.5, 0.5)
 
-resized_signal_MRI_interpolation, resized_back_signal_MRI_interpolation, snr_MRI_interpolation, mse_MRI_interpolation, time_elapsed_MRI_interpolation = resize_and_compute_metrics(
-    input_image_normalized, "interpolation", degree, zoom_factors_2d
+(
+    resized_signal_MRI_interpolation, 
+    resized_back_signal_MRI_interpolation, 
+    snr_MRI_interpolation, mse_MRI_interpolation, 
+    time_elapsed_MRI_interpolation
+) = resize_and_compute_metrics(
+    input_image_normalized, 
+    "interpolation", 
+    degree, 
+    zoom_factors_2d
 )
 
 # Plot results
@@ -287,8 +295,17 @@ plot_results(
 #
 # Perform resizing using least-squares projection method, compute metrics, and plot results for the MRI image.
 
-resized_signal_MRI_least_squares, resized_back_signal_MRI_least_squares, snr_MRI_least_squares, mse_MRI_least_squares, time_elapsed_MRI_least_squares = resize_and_compute_metrics(
-    input_image_normalized, "least_squares", degree, zoom_factors_2d
+(
+    resized_signal_MRI_least_squares, 
+    resized_back_signal_MRI_least_squares, 
+    snr_MRI_least_squares, 
+    mse_MRI_least_squares, 
+    time_elapsed_MRI_least_squares
+) = resize_and_compute_metrics(
+    input_image_normalized, 
+    "least_squares", 
+    degree, 
+    zoom_factors_2d
 )
 
 # Plot results
@@ -309,8 +326,17 @@ plot_results(
 #
 # Perform resizing using oblique projection method, compute metrics, and plot results for the MRI image.
 
-resized_signal_MRI_oblique, resized_back_signal_MRI_oblique, snr_MRI_oblique, mse_MRI_oblique, time_elapsed_MRI_oblique = resize_and_compute_metrics(
-    input_image_normalized, "oblique", degree, zoom_factors_2d
+(
+    resized_signal_MRI_oblique, 
+    resized_back_signal_MRI_oblique, 
+    snr_MRI_oblique, 
+    mse_MRI_oblique, 
+    time_elapsed_MRI_oblique
+) = resize_and_compute_metrics(
+    input_image_normalized, 
+    "oblique", 
+    degree, 
+    zoom_factors_2d
 )
 
 # Plot results
@@ -331,8 +357,16 @@ plot_results(
 #
 # Perform resizing using scipy ndimage zoom for benchmarking, compute metrics, and plot results for the MRI image.
 
-resized_signal_MRI_scipy, resized_back_signal_MRI_scipy, snr_MRI_scipy, mse_MRI_scipy, time_elapsed_MRI_scipy = resize_and_compute_metrics(
-    input_image_normalized, "scipy", degree, zoom_factors_2d
+(
+    resized_signal_MRI_scipy, 
+    resized_back_signal_MRI_scipy, 
+    snr_MRI_scipy, mse_MRI_scipy, 
+    time_elapsed_MRI_scipy
+) = resize_and_compute_metrics(
+    input_image_normalized, 
+    "scipy", 
+    degree, 
+    zoom_factors_2d
 )
 
 # Plot results
@@ -348,7 +382,7 @@ plot_results(
 )
 
 # %%
-# Process 1D Signal
+# Process 1D signal
 # -----------------
 #
 # We generate a noisy sine wave signal and define the parameters for resizing.
@@ -374,8 +408,17 @@ plt.show()
 #
 # Perform resizing with interpolation method, compute metrics, and plot the results for the 1D signal.
 
-resized_signal_1d_interpolation, resized_back_signal_1d_interpolation, snr_1d_interpolation, mse_1d_interpolation, time_elapsed_1d_interpolation = resize_and_compute_metrics(
-    original_signal, "interpolation", degree, zoom_factor_1d
+(
+    resized_signal_1d_interpolation, 
+    resized_back_signal_1d_interpolation, 
+    snr_1d_interpolation, 
+    mse_1d_interpolation, 
+    time_elapsed_1d_interpolation
+) = resize_and_compute_metrics(
+    original_signal, 
+    "interpolation", 
+    degree, 
+    zoom_factor_1d
 )
 
 # Plot results
@@ -397,8 +440,17 @@ plot_1d_results(
 #
 # Perform resizing with least-squares projection method, compute metrics, and plot the results for the 1D signal.
 
-resized_signal_1d_least_squares, resized_back_signal_1d_least_squares, snr_1d_least_squares, mse_1d_least_squares, time_elapsed_1d_least_squares = resize_and_compute_metrics(
-    original_signal, "least-squares", degree, zoom_factor_1d
+(
+    resized_signal_1d_least_squares, 
+    resized_back_signal_1d_least_squares, 
+    snr_1d_least_squares, 
+    mse_1d_least_squares, 
+    time_elapsed_1d_least_squares
+) = resize_and_compute_metrics(
+    original_signal, 
+    "least-squares", 
+    degree, 
+    zoom_factor_1d
 )
 
 # Plot results
@@ -420,8 +472,17 @@ plot_1d_results(
 #
 # Perform resizing with oblique projection method, compute metrics, and plot the results for the 1D signal.
 
-resized_signal_1d_oblique, resized_back_signal_1d_oblique, snr_1d_oblique, mse_1d_oblique, time_elapsed_1d_oblique = resize_and_compute_metrics(
-    original_signal, "oblique", degree, zoom_factor_1d
+(
+    resized_signal_1d_oblique, 
+    resized_back_signal_1d_oblique, 
+    snr_1d_oblique, 
+    mse_1d_oblique, 
+    time_elapsed_1d_oblique
+) = resize_and_compute_metrics(
+    original_signal, 
+    "oblique", 
+    degree, 
+    zoom_factor_1d
 )
 
 # Plot results
@@ -443,7 +504,13 @@ plot_1d_results(
 #
 # Perform resizing with scipy ndimage zoom for benchmarking, compute metrics, and plot the results for the 1D signal.
 
-resized_signal_1d_scipy, resized_back_signal_1d_scipy, snr_1d_scipy, mse_1d_scipy, time_elapsed_1d_scipy = resize_and_compute_metrics(
+(
+    resized_signal_1d_scipy, 
+    resized_back_signal_1d_scipy, 
+    snr_1d_scipy, 
+    mse_1d_scipy, 
+    time_elapsed_1d_scipy
+) = resize_and_compute_metrics(
     original_signal, "scipy", degree, zoom_factor_1d
 )
 
@@ -461,7 +528,7 @@ plot_1d_results(
 )
 
 # %%
-# Process 3D Signal
+# Process 3D signal
 # -----------------
 #
 # We generate a 3D sine wave volume and define the parameters for resizing.
@@ -494,8 +561,17 @@ original_slice = original_volume[middle_slice, :, :]
 #
 # Perform resizing with interpolation method, compute metrics, and plot the results for the 3D signal.
 
-resized_volume_interpolation, resized_back_volume_interpolation, snr_interpolation, mse_interpolation, time_elapsed_interpolation = resize_and_compute_metrics(
-    original_volume, "interpolation", degree, zoom_factors_3d
+(
+    resized_volume_interpolation, 
+    resized_back_volume_interpolation, 
+    snr_interpolation, 
+    mse_interpolation, 
+    time_elapsed_interpolation
+) = resize_and_compute_metrics(
+    original_volume, 
+    "interpolation",
+      degree, 
+      zoom_factors_3d
 )
 
 resized_slice_interpolation = resized_volume_interpolation[resized_volume_interpolation.shape[0] // 2, :, :]
@@ -519,8 +595,17 @@ plot_results(
 #
 # Perform resizing with least-squares projection method, compute metrics, and plot the results for the 3D signal.
 
-resized_volume_least_squares, resized_back_volume_least_squares, snr_least_squares, mse_least_squares, time_elapsed_least_squares = resize_and_compute_metrics(
-    original_volume, "least_squares", degree, zoom_factors_3d
+(
+    resized_volume_least_squares, 
+    resized_back_volume_least_squares, 
+    snr_least_squares, 
+    mse_least_squares, 
+    time_elapsed_least_squares
+) = resize_and_compute_metrics(
+    original_volume, 
+    "least_squares", 
+    degree, 
+    zoom_factors_3d
 )
 
 resized_slice_least_squares = resized_volume_least_squares[resized_volume_least_squares.shape[0] // 2, :, :]
@@ -544,8 +629,17 @@ plot_results(
 #
 # Perform resizing with oblique projection method, compute metrics, and plot the results for the 3D signal.
 
-resized_volume_oblique, resized_back_volume_oblique, snr_oblique, mse_oblique, time_elapsed_oblique = resize_and_compute_metrics(
-    original_volume, "oblique", degree, zoom_factors_3d
+(
+    resized_volume_oblique, 
+    resized_back_volume_oblique, 
+    snr_oblique, 
+    mse_oblique, 
+    time_elapsed_oblique
+) = resize_and_compute_metrics(
+    original_volume, 
+    "oblique", 
+    degree, 
+    zoom_factors_3d
 )
 
 resized_slice_oblique = resized_volume_oblique[resized_volume_oblique.shape[0] // 2, :, :]
@@ -569,8 +663,17 @@ plot_results(
 #
 # Perform resizing with oblique projection method, compute metrics, and plot the results for the 3D signal.
 
-resized_volume_scipy, resized_back_volume_scipy, snr_scipy, mse_scipy, time_elapsed_scipy = resize_and_compute_metrics(
-    original_volume, "scipy", degree, zoom_factors_3d
+(
+    resized_volume_scipy, 
+    resized_back_volume_scipy, 
+    snr_scipy, 
+    mse_scipy, 
+    time_elapsed_scipy
+) = resize_and_compute_metrics(
+    original_volume, 
+    "scipy", 
+    degree, 
+    zoom_factors_3d
 )
 
 resized_slice_scipy = resized_volume_scipy[resized_volume_scipy.shape[0] // 2, :, :]
