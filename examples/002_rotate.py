@@ -124,10 +124,6 @@ ani_html = ani.to_jshtml()
 # The image slices are displayed in grayscale, with the center of rotation
 # marked only in the rotated data slices.
 
-import numpy as np
-import matplotlib.pyplot as plt
-from splineops.interpolate.rotate import rotate
-
 # Define the size of the 3D image
 N = 128  # Volume size
 data_shape = (N, N, N)
