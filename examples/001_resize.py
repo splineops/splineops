@@ -257,19 +257,13 @@ plt.axis('off')
 plt.show()
 
 # %%
-# Parameters for resizing methods
-# -------------------------------
+# 2D resizing: interpolation
+# --------------------------
 #
-# We define the degree of interpolation and the methods to be compared.
+# Perform resizing using interpolation method, compute metrics, and plot results for the MRI image.
 
 degree = 3
 zoom_factors_2d = (0.5, 0.5)
-
-# %%
-# MRI resizing with interpolation method
-# --------------------------------------
-#
-# Perform resizing using interpolation method, compute metrics, and plot results for the MRI image.
 
 resized_signal_MRI_interpolation, resized_back_signal_MRI_interpolation, snr_MRI_interpolation, mse_MRI_interpolation, time_elapsed_MRI_interpolation = resize_and_compute_metrics(
     input_image_normalized, "interpolation", degree, zoom_factors_2d
@@ -288,8 +282,8 @@ plot_results(
 )
 
 # %%
-# MRI resizing with least-squares projection method
-# -------------------------------------------------
+# 2D resizing: least-squares
+# --------------------------
 #
 # Perform resizing using least-squares projection method, compute metrics, and plot results for the MRI image.
 
@@ -310,8 +304,8 @@ plot_results(
 )
 
 # %%
-# MRI resizing with oblique projection method
-# -------------------------------------------
+# 2D resizing: oblique
+# --------------------
 #
 # Perform resizing using oblique projection method, compute metrics, and plot results for the MRI image.
 
@@ -332,8 +326,8 @@ plot_results(
 )
 
 # %%
-# MRI resizing with scipy ndimage zoom
-# ------------------------------------
+# 2D resizing: scipy
+# ------------------
 #
 # Perform resizing using scipy ndimage zoom for benchmarking, compute metrics, and plot results for the MRI image.
 
@@ -375,8 +369,8 @@ plt.grid(True)
 plt.show()
 
 # %%
-# Resizing 1D Signal with interpolation
-# -------------------------------------
+# 1D resizing: interpolation
+# --------------------------
 #
 # Perform resizing with interpolation method, compute metrics, and plot the results for the 1D signal.
 
@@ -398,8 +392,8 @@ plot_1d_results(
 )
 
 # %%
-# Resizing 1D Signal with least-squares projection
-# ------------------------------------------------
+# 1D resizing: least-squares
+# --------------------------
 #
 # Perform resizing with least-squares projection method, compute metrics, and plot the results for the 1D signal.
 
@@ -421,8 +415,8 @@ plot_1d_results(
 )
 
 # %%
-# Resizing 1D Signal with oblique projection
-# ------------------------------------------
+# 1D resizing: oblique
+# --------------------
 #
 # Perform resizing with oblique projection method, compute metrics, and plot the results for the 1D signal.
 
@@ -444,8 +438,8 @@ plot_1d_results(
 )
 
 # %%
-# Resizing 1D Signal with scipy ndimage zoom
-# ------------------------------------------
+# 1D resizing: scipy
+# ------------------
 #
 # Perform resizing with scipy ndimage zoom for benchmarking, compute metrics, and plot the results for the 1D signal.
 
@@ -495,8 +489,8 @@ plt.show()
 original_slice = original_volume[middle_slice, :, :]
 
 # %%
-# Resizing 3D Signal with interpolation
-# -------------------------------------
+# 3D resizing: interpolation
+# --------------------------
 #
 # Perform resizing with interpolation method, compute metrics, and plot the results for the 3D signal.
 
@@ -520,8 +514,8 @@ plot_results(
 )
 
 # %%
-# Resizing 3D Signal with least-squares projection
-# ------------------------------------------------
+# 3D resizing: least-squares
+# --------------------------
 #
 # Perform resizing with least-squares projection method, compute metrics, and plot the results for the 3D signal.
 
@@ -545,8 +539,8 @@ plot_results(
 )
 
 # %%
-# Resizing 3D Signal with oblique projection
-# ------------------------------------------
+# 3D resizing: oblique
+# --------------------
 #
 # Perform resizing with oblique projection method, compute metrics, and plot the results for the 3D signal.
 
@@ -570,8 +564,8 @@ plot_results(
 )
 
 # %%
-# Resizing 3D Signal with scipy ndimage zoom
-# ------------------------------------------
+# 3D resizing: scipy
+# ------------------
 #
 # Perform resizing with oblique projection method, compute metrics, and plot the results for the 3D signal.
 
