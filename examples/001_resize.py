@@ -210,6 +210,111 @@ def plot_1d_results(
     plt.tight_layout()
     plt.show()
 
+def plot_universal_results(
+    original,
+    resized,
+    resized_back,
+    method,
+    zoom_factors,
+    snr,
+    mse,
+    time_elapsed,
+    x=None
+):
+    """
+    A universal plotting function that handles both 1D and 2D data without using if statements.
+    - For 1D data, line plots are used.
+    - For 2D data, imshow is used.
+    
+    Parameters
+    ----------
+    original : np.ndarray
+        The original data (1D or 2D).
+    resized : np.ndarray
+        The resized data (same dimensionality as original).
+    resized_back : np.ndarray
+        The data after resizing back to the original shape.
+    method : str
+        The resizing method name.
+    zoom_factors : float or tuple
+        The zoom factor(s) used for resizing.
+    snr : float
+        The Signal-to-Noise Ratio in dB.
+    mse : float
+        The Mean Squared Error.
+    time_elapsed : float
+        The time taken for the resizing operation.
+    x : np.ndarray or None
+        The x-axis values for 1D data. For 2D data, this is ignored.
+    """
+
+    # Compute difference
+    difference = original - resized_back
+
+    # Set global font size
+    plt.rcParams.update({
+        'font.size': 14,   # Base font size
+        'axes.titlesize': 18,
+        'axes.labelsize': 16,
+        'xtick.labelsize': 14,
+        'ytick.labelsize': 14,
+        'legend.fontsize': 14
+    })
+
+    # Titles for 1D and 2D cases
+    titles = {
+        1: [
+            "Original Signal",
+            f"Resized Signal ({method})\nTime: {time_elapsed:.4f}s",
+            f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})"
+        ],
+        2: [
+            "Original Image",
+            f"{method.capitalize()} Resized\nZoom: {zoom_factors} Time: {time_elapsed:.4f}s",
+            f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})"
+        ]
+    }
+
+    # Plotting functions for 1D and 2D data
+    # Each lambda takes: (ax, data, title, x)
+    # For 1D: line plot with dynamically adjusted x-axis values
+    # For 2D: imshow with axis off
+    plotters = {
+        1: lambda a, d, t, xv: (
+            a.plot(
+                np.linspace(xv[0], xv[-1], len(d)),  # Adjust x-axis to match resized length
+                d
+            ),
+            a.set_title(t),
+            a.set_xlabel("X-axis"),
+            a.set_ylabel("Amplitude"),
+            a.grid(True)
+        ),
+        2: lambda a, d, t, xv: (
+            a.imshow(d, cmap="gray", aspect='auto'),
+            a.set_title(t),
+            a.axis("off")
+        )
+    }
+
+    dim = original.ndim
+    plot_func = plotters[dim]
+    chosen_titles = titles[dim]
+
+    # Create figure and subplots
+    fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+
+    # Plot original
+    plot_func(ax[0], original, chosen_titles[0], x)
+    # Plot resized
+    plot_func(ax[1], resized, chosen_titles[1], x)
+    # Plot difference
+    plot_func(ax[2], difference, chosen_titles[2], x)
+
+    plt.tight_layout()
+    plt.show()
+
+
 # %%
 # Basic resizing example
 # ----------------------
@@ -314,10 +419,10 @@ zoom_factors_2d = (0.5, 0.5)
 )
 
 # Plot results
-plot_results(
-    original_slice=input_image_normalized,
-    resized_slice=resized_signal_MRI_interpolation,
-    resized_back_slice=resized_back_signal_MRI_interpolation,
+plot_universal_results(
+    original=input_image_normalized,
+    resized=resized_signal_MRI_interpolation,
+    resized_back=resized_back_signal_MRI_interpolation,
     method="interpolation",
     zoom_factors=zoom_factors_2d,
     snr=snr_MRI_interpolation,
@@ -345,10 +450,10 @@ plot_results(
 )
 
 # Plot results
-plot_results(
-    original_slice=input_image_normalized,
-    resized_slice=resized_signal_MRI_least_squares,
-    resized_back_slice=resized_back_signal_MRI_least_squares,
+plot_universal_results(
+    original=input_image_normalized,
+    resized=resized_signal_MRI_least_squares,
+    resized_back=resized_back_signal_MRI_least_squares,
     method="least-squares",
     zoom_factors=zoom_factors_2d,
     snr=snr_MRI_least_squares,
@@ -376,10 +481,10 @@ plot_results(
 )
 
 # Plot results
-plot_results(
-    original_slice=input_image_normalized,
-    resized_slice=resized_signal_MRI_oblique,
-    resized_back_slice=resized_back_signal_MRI_oblique,
+plot_universal_results(
+    original=input_image_normalized,
+    resized=resized_signal_MRI_oblique,
+    resized_back=resized_back_signal_MRI_oblique,
     method="oblique",
     zoom_factors=zoom_factors_2d,
     snr=snr_MRI_oblique,
@@ -406,10 +511,10 @@ plot_results(
 )
 
 # Plot results
-plot_results(
-    original_slice=input_image_normalized,
-    resized_slice=resized_signal_MRI_scipy,
-    resized_back_slice=resized_back_signal_MRI_scipy,
+plot_universal_results(
+    original=input_image_normalized,
+    resized=resized_signal_MRI_scipy,
+    resized_back=resized_back_signal_MRI_scipy,
     method="scipy",
     zoom_factors=zoom_factors_2d,
     snr=snr_MRI_scipy,
@@ -458,13 +563,13 @@ plt.show()
 )
 
 # Plot results
-plot_1d_results(
+plot_universal_results(
     original=original_signal,
     resized=resized_signal_1d_interpolation,
     resized_back=resized_back_signal_1d_interpolation,
     method="interpolation",
     x=x,
-    zoom_factor=zoom_factor_1d,
+    zoom_factors=zoom_factor_1d,
     snr=snr_1d_interpolation,
     mse=mse_1d_interpolation,
     time_elapsed=time_elapsed_1d_interpolation
@@ -490,13 +595,13 @@ plot_1d_results(
 )
 
 # Plot results
-plot_1d_results(
+plot_universal_results(
     original=original_signal,
     resized=resized_signal_1d_least_squares,
     resized_back=resized_back_signal_1d_least_squares,
     method="least-squares",
     x=x,
-    zoom_factor=zoom_factor_1d,
+    zoom_factors=zoom_factor_1d,
     snr=snr_1d_least_squares,
     mse=mse_1d_least_squares,
     time_elapsed=time_elapsed_1d_least_squares
@@ -522,13 +627,13 @@ plot_1d_results(
 )
 
 # Plot results
-plot_1d_results(
+plot_universal_results(
     original=original_signal,
     resized=resized_signal_1d_oblique,
     resized_back=resized_back_signal_1d_oblique,
     method="oblique",
     x=x,
-    zoom_factor=zoom_factor_1d,
+    zoom_factors=zoom_factor_1d,
     snr=snr_1d_oblique,
     mse=mse_1d_oblique,
     time_elapsed=time_elapsed_1d_oblique
@@ -551,13 +656,13 @@ plot_1d_results(
 )
 
 # Plot results
-plot_1d_results(
+plot_universal_results(
     original=original_signal,
     resized=resized_signal_1d_scipy,
     resized_back=resized_back_signal_1d_scipy,
     method="scipy",
     x=x,
-    zoom_factor=zoom_factor_1d,
+    zoom_factors=zoom_factor_1d,
     snr=snr_1d_scipy,
     mse=mse_1d_scipy,
     time_elapsed=time_elapsed_1d_scipy
@@ -614,10 +719,10 @@ resized_slice_interpolation = resized_volume_interpolation[resized_volume_interp
 resized_back_slice_interpolation = resized_back_volume_interpolation[middle_slice, :, :]
 
 # Plot results
-plot_results(
-    original_slice=original_slice,
-    resized_slice=resized_slice_interpolation,
-    resized_back_slice=resized_back_slice_interpolation,
+plot_universal_results(
+    original=original_slice,
+    resized=resized_slice_interpolation,
+    resized_back=resized_back_slice_interpolation,
     method="interpolation",
     zoom_factors=zoom_factors_3d,
     snr=snr_interpolation,
@@ -648,10 +753,10 @@ resized_slice_least_squares = resized_volume_least_squares[resized_volume_least_
 resized_back_slice_least_squares = resized_back_volume_least_squares[middle_slice, :, :]
 
 # Plot results
-plot_results(
-    original_slice=original_slice,
-    resized_slice=resized_slice_least_squares,
-    resized_back_slice=resized_back_slice_least_squares,
+plot_universal_results(
+    original=original_slice,
+    resized=resized_slice_least_squares,
+    resized_back=resized_back_slice_least_squares,
     method="least_squares",
     zoom_factors=zoom_factors_3d,
     snr=snr_least_squares,
@@ -682,10 +787,10 @@ resized_slice_oblique = resized_volume_oblique[resized_volume_oblique.shape[0] /
 resized_back_slice_oblique = resized_back_volume_oblique[middle_slice, :, :]
 
 # Plot results
-plot_results(
-    original_slice=original_slice,
-    resized_slice=resized_slice_oblique,
-    resized_back_slice=resized_back_slice_oblique,
+plot_universal_results(
+    original=original_slice,
+    resized=resized_slice_oblique,
+    resized_back=resized_back_slice_oblique,
     method="oblique",
     zoom_factors=zoom_factors_3d,
     snr=snr_oblique,
@@ -716,10 +821,10 @@ resized_slice_scipy = resized_volume_scipy[resized_volume_scipy.shape[0] // 2, :
 resized_back_slice_scipy = resized_back_volume_scipy[middle_slice, :, :]
 
 # Plot results
-plot_results(
-    original_slice=original_slice,
-    resized_slice=resized_slice_scipy,
-    resized_back_slice=resized_back_slice_scipy,
+plot_universal_results(
+    original=original_slice,
+    resized=resized_slice_scipy,
+    resized_back=resized_back_slice_scipy,
     method="scipy",
     zoom_factors=zoom_factors_3d,
     snr=snr_scipy,
