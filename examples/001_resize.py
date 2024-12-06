@@ -198,7 +198,6 @@ def plot_universal_results(
     mse,
     time_elapsed
 ):
-    
     # Set global font size
     plt.rcParams.update({
         'font.size': 14,  # Base font size
@@ -271,7 +270,7 @@ def plot_universal_results(
             a.grid(True)
         ),
         2: lambda a, d, t, xv: (
-            a.imshow(d, cmap="gray", aspect='auto', vmin=0, vmax=255),
+            a.imshow(d, cmap="gray", aspect='equal', vmin=0, vmax=255),
             a.set_title(t),
             a.axis("off")
         )
@@ -281,8 +280,8 @@ def plot_universal_results(
     plot_func = plotters[dim]
     chosen_titles = titles[dim]
 
-    # Create figure and subplots
-    fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+    # Create figure and subplots arranged vertically
+    fig, ax = plt.subplots(3, 1, figsize=(12, 24))  # Adjust the figsize for wider aspect ratio
 
     # Plot original (use scaled values for 2D/3D, raw for 1D)
     plot_func(ax[0], original_scaled, chosen_titles[0], None)
@@ -291,10 +290,12 @@ def plot_universal_results(
     # Plot difference
     plot_func(ax[2], difference_normalized, chosen_titles[2], None)
 
+    # Adjust spacing between plots
+    fig.subplots_adjust(hspace=0.5)  # Increase spacing between rows
+
     plt.tight_layout()
     plt.show()
 
-degree = 3
 
 # %%
 # Process 1D signals
@@ -305,6 +306,8 @@ degree = 3
 # Generate the original 1D signal
 x = np.linspace(0, 4 * np.pi, 100)
 original_signal = np.sin(x) + 0.1 * np.random.randn(100)
+
+degree = 3
 
 # Define parameters for 1D signal
 zoom_factor_1d = 0.5
