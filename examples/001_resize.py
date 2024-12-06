@@ -89,127 +89,6 @@ def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
 
     return resized_signal, resized_back_signal, snr, mse, time_elapsed
 
-def plot_results(
-    original_slice, 
-    resized_slice, 
-    resized_back_slice, 
-    method, 
-    zoom_factors, 
-    snr, 
-    mse,
-    time_elapsed
-):
-    """
-    Generalized plot function for 2D and 3D data with adjustable font sizes.
-    """
-
-    # Set global font size
-    plt.rcParams.update({
-        'font.size': 14,  # Base font size
-        'axes.titlesize': 18,  # Title font size
-        'axes.labelsize': 16,  # Label font size
-        'xtick.labelsize': 14,  # X-axis tick font size
-        'ytick.labelsize': 14   # Y-axis tick font size
-    })
-
-    # Check if all zoom factors are less than 1 (zooming out in all dimensions)
-    zoom_out = all(zf < 1 for zf in zoom_factors)
-
-    # Prepare resized display array
-    if zoom_out:
-        # Create a black background of the original slice's shape
-        resized_display = np.zeros_like(original_slice)
-        # Place the resized slice in the top-left corner of the black background
-        start_indices = [0] * len(original_slice.shape)
-        slices = tuple(slice(start, start + res_dim) for start, res_dim in zip(start_indices, resized_slice.shape))
-        resized_display[slices] = resized_slice
-    else:
-        # Just use the resized slice as is
-        resized_display = resized_slice
-
-    # Plotting
-    fig, ax = plt.subplots(1, 3, figsize=(18, 6))
-
-    # Original slice
-    ax[0].imshow(original_slice, cmap="gray", aspect='auto')
-    ax[0].set_title("Original Image", fontsize=18)  # Set title font size
-    ax[0].axis("off")
-
-    # Resized slice
-    ax[1].imshow(resized_display, cmap="gray", aspect='auto')
-    ax[1].set_title(f"{method.capitalize()} Resized\nZoom: {zoom_factors} Time: {time_elapsed:.4f}s", fontsize=18)
-    ax[1].axis("off")
-
-    # Difference map
-    difference = original_slice - resized_back_slice
-    ax[2].imshow(difference, cmap="gray", aspect='auto')
-    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})", fontsize=18)
-    ax[2].axis("off")
-
-    # Adjust layout
-    plt.tight_layout()
-    plt.show()
-
-def plot_1d_results(
-        original, 
-        resized, 
-        resized_back, 
-        method, 
-        x, 
-        zoom_factor, 
-        snr, 
-        mse, 
-        time_elapsed
-):
-    """Plot results for 1D signals with adjustable font sizes."""
-
-    # Set global font size
-    plt.rcParams.update({
-        'font.size': 14,  # Base font size
-        'axes.titlesize': 18,  # Title font size
-        'axes.labelsize': 16,  # Axis label font size
-        'xtick.labelsize': 14,  # X-axis tick font size
-        'ytick.labelsize': 14,  # Y-axis tick font size
-        'legend.fontsize': 14  # Legend font size
-    })
-
-    fig, ax = plt.subplots(1, 3, figsize=(18, 5))
-
-    # Original signal
-    ax[0].plot(x, original, label="Original", color="blue")
-    ax[0].set_title("Original Signal", fontsize=18)  # Title font size
-    ax[0].set_xlabel("X-axis", fontsize=16)  # X-axis label font size
-    ax[0].set_ylabel("Amplitude", fontsize=16)  # Y-axis label font size
-    #ax[0].legend(fontsize=14)  # Legend font size
-    ax[0].grid(True)
-
-    # Resized signal
-    resized_x = np.linspace(x[0], x[-1], resized.shape[0])
-    ax[1].plot(
-        resized_x,
-        resized,
-        label=f"Resized ({method})",
-        color="orange"
-    )
-    ax[1].set_title(f"Resized Signal ({method})\nTime: {time_elapsed:.4f}s", fontsize=18)
-    ax[1].set_xlabel("X-axis", fontsize=16)
-    ax[1].set_ylabel("Amplitude", fontsize=16)
-    #ax[1].legend(fontsize=14)
-    ax[1].grid(True)
-
-    # Difference
-    difference = original - resized_back
-    ax[2].plot(x, difference, label="Difference", color="red")
-    ax[2].set_title(f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})", fontsize=18)
-    ax[2].set_xlabel("X-axis", fontsize=16)
-    ax[2].set_ylabel("Amplitude", fontsize=16)
-    #ax[2].legend(fontsize=14)
-    ax[2].grid(True)
-
-    # Adjust layout
-    plt.tight_layout()
-    plt.show()
-
 def plot_universal_results(
     original,
     resized,
@@ -224,13 +103,13 @@ def plot_universal_results(
     """
     A universal plotting function that handles both 1D and 2D data without using if statements.
     - For 1D data, line plots are used.
-    - For 2D data, imshow is used.
+    - For 2D and 3D slices, imshow is used.
     
     When zoom factors are < 1, resized data is shown in a smaller area over a white background.
     Parameters
     ----------
     original : np.ndarray
-        The original data (1D or 2D).
+        The original data (1D, 2D, or 3D slice).
     resized : np.ndarray
         The resized data (same dimensionality as original).
     resized_back : np.ndarray
@@ -246,23 +125,46 @@ def plot_universal_results(
     time_elapsed : float
         The time taken for the resizing operation.
     x : np.ndarray or None
-        The x-axis values for 1D data. For 2D data, this is ignored.
+        The x-axis values for 1D data. For 2D or 3D slices, this is ignored.
     """
 
     # Compute difference
     difference = original - resized_back
 
-    # Set global font size
-    plt.rcParams.update({
-        'font.size': 14,   # Base font size
-        'axes.titlesize': 18,
-        'axes.labelsize': 16,
-        'xtick.labelsize': 14,
-        'ytick.labelsize': 14,
-        'legend.fontsize': 14
-    })
+    # Ensure original image is in the range [0, 255]
+    if original.ndim > 1:  # Only for 2D or 3D slices
+        original_scaled = (original - original.min()) / (original.max() - original.min()) * 255.0
+        original_scaled = original_scaled.astype(np.uint8)
+    else:
+        original_scaled = original  # Keep 1D data unchanged
 
-    # Titles for 1D and 2D cases
+    # Check if zoom factors are < 1 in any direction
+    zoom_factors = [zoom_factors] if isinstance(zoom_factors, (int, float)) else zoom_factors
+    zoom_out = any(zf < 1 for zf in zoom_factors)
+
+    # Adjust resized data to overlay on white background for 2D or 3D slices
+    if original.ndim > 1 and zoom_out:
+        # Normalize resized to [0, 255] for better visibility
+        resized_normalized = (resized - resized.min()) / (resized.max() - resized.min()) * 255.0
+        resized_normalized = resized_normalized.astype(np.uint8)
+
+        # Create a white background of the original's shape
+        resized_display = np.ones_like(original_scaled) * 255  # White background
+        # Place resized data in the top-left corner
+        start_indices = [0] * len(original_scaled.shape)
+        slices = tuple(slice(start, start + res_dim) for start, res_dim in zip(start_indices, resized.shape))
+        resized_display[slices] = resized_normalized
+    else:
+        resized_display = resized
+
+    # Normalize difference to [0, 255] for better visualization
+    if original.ndim > 1:
+        difference_normalized = (difference - difference.min()) / (difference.max() - difference.min()) * 255.0
+        difference_normalized = difference_normalized.astype(np.uint8)
+    else:
+        difference_normalized = difference
+
+    # Titles for 1D and 2D/3D cases
     titles = {
         1: [
             "Original Signal",
@@ -276,22 +178,7 @@ def plot_universal_results(
         ]
     }
 
-    # Check if zoom factors are < 1 in any direction
-    zoom_factors = [zoom_factors] if isinstance(zoom_factors, (int, float)) else zoom_factors
-    zoom_out = any(zf < 1 for zf in zoom_factors)
-
-    # Adjust resized data to overlay on white background for 2D
-    if original.ndim == 2 and zoom_out:
-        # Create a white background of the original's shape
-        resized_display = np.ones_like(original)
-        # Place resized data in the top-left corner
-        start_indices = [0] * len(original.shape)
-        slices = tuple(slice(start, start + res_dim) for start, res_dim in zip(start_indices, resized.shape))
-        resized_display[slices] = resized
-    else:
-        resized_display = resized
-
-    # Plotting functions for 1D and 2D data
+    # Plotting functions for 1D and 2D/3D slices
     plotters = {
         1: lambda a, d, t, xv: (
             a.plot(
@@ -304,7 +191,7 @@ def plot_universal_results(
             a.grid(True)
         ),
         2: lambda a, d, t, xv: (
-            a.imshow(d, cmap="gray", aspect='auto'),
+            a.imshow(d, cmap="gray", aspect='auto', vmin=0, vmax=255),
             a.set_title(t),
             a.axis("off")
         )
@@ -317,12 +204,12 @@ def plot_universal_results(
     # Create figure and subplots
     fig, ax = plt.subplots(1, 3, figsize=(18, 6))
 
-    # Plot original
-    plot_func(ax[0], original, chosen_titles[0], x)
-    # Plot resized (with adjustment for 2D zoom out)
+    # Plot original (use scaled values for 2D/3D, raw for 1D)
+    plot_func(ax[0], original_scaled, chosen_titles[0], x)
+    # Plot resized (with adjustment for zoom-out)
     plot_func(ax[1], resized_display, chosen_titles[1], x)
     # Plot difference
-    plot_func(ax[2], difference, chosen_titles[2], x)
+    plot_func(ax[2], difference_normalized, chosen_titles[2], x)
 
     plt.tight_layout()
     plt.show()
