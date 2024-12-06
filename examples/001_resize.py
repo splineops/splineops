@@ -102,8 +102,6 @@ def plot_results(
     """
     Generalized plot function for 2D and 3D data with adjustable font sizes.
     """
-    import numpy as np
-    import matplotlib.pyplot as plt
 
     # Set global font size
     plt.rcParams.update({
@@ -152,10 +150,18 @@ def plot_results(
     plt.tight_layout()
     plt.show()
 
-def plot_1d_results(original, resized, resized_back, method, x, zoom_factor, snr, mse, time_elapsed):
+def plot_1d_results(
+        original, 
+        resized, 
+        resized_back, 
+        method, 
+        x, 
+        zoom_factor, 
+        snr, 
+        mse, 
+        time_elapsed
+):
     """Plot results for 1D signals with adjustable font sizes."""
-    import matplotlib.pyplot as plt
-    import numpy as np
 
     # Set global font size
     plt.rcParams.update({
