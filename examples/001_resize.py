@@ -97,8 +97,7 @@ def plot_universal_results(
     zoom_factors,
     snr,
     mse,
-    time_elapsed,
-    x=None
+    time_elapsed
 ):
     """
     A universal plotting function that handles both 1D and 2D data without using if statements.
@@ -124,8 +123,6 @@ def plot_universal_results(
         The Mean Squared Error.
     time_elapsed : float
         The time taken for the resizing operation.
-    x : np.ndarray or None
-        The x-axis values for 1D data. For 2D or 3D slices, this is ignored.
     """
 
     # Compute difference
@@ -182,7 +179,7 @@ def plot_universal_results(
     plotters = {
         1: lambda a, d, t, xv: (
             a.plot(
-                np.linspace(xv[0], xv[-1], len(d)),  # Adjust x-axis to match resized length
+                np.linspace(0, 1, len(d)),  # Automatically generate x-axis based on data length
                 d
             ),
             a.set_title(t),
@@ -205,14 +202,15 @@ def plot_universal_results(
     fig, ax = plt.subplots(1, 3, figsize=(18, 6))
 
     # Plot original (use scaled values for 2D/3D, raw for 1D)
-    plot_func(ax[0], original_scaled, chosen_titles[0], x)
+    plot_func(ax[0], original_scaled, chosen_titles[0], None)
     # Plot resized (with adjustment for zoom-out)
-    plot_func(ax[1], resized_display, chosen_titles[1], x)
+    plot_func(ax[1], resized_display, chosen_titles[1], None)
     # Plot difference
-    plot_func(ax[2], difference_normalized, chosen_titles[2], x)
+    plot_func(ax[2], difference_normalized, chosen_titles[2], None)
 
     plt.tight_layout()
     plt.show()
+
 
 
 
@@ -469,7 +467,6 @@ plot_universal_results(
     resized=resized_signal_1d_interpolation,
     resized_back=resized_back_signal_1d_interpolation,
     method="interpolation",
-    x=x,
     zoom_factors=zoom_factor_1d,
     snr=snr_1d_interpolation,
     mse=mse_1d_interpolation,
@@ -501,7 +498,6 @@ plot_universal_results(
     resized=resized_signal_1d_least_squares,
     resized_back=resized_back_signal_1d_least_squares,
     method="least-squares",
-    x=x,
     zoom_factors=zoom_factor_1d,
     snr=snr_1d_least_squares,
     mse=mse_1d_least_squares,
@@ -533,7 +529,6 @@ plot_universal_results(
     resized=resized_signal_1d_oblique,
     resized_back=resized_back_signal_1d_oblique,
     method="oblique",
-    x=x,
     zoom_factors=zoom_factor_1d,
     snr=snr_1d_oblique,
     mse=mse_1d_oblique,
@@ -562,7 +557,6 @@ plot_universal_results(
     resized=resized_signal_1d_scipy,
     resized_back=resized_back_signal_1d_scipy,
     method="scipy",
-    x=x,
     zoom_factors=zoom_factor_1d,
     snr=snr_1d_scipy,
     mse=mse_1d_scipy,
