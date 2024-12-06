@@ -226,6 +226,7 @@ def plot_universal_results(
     - For 1D data, line plots are used.
     - For 2D data, imshow is used.
     
+    When zoom factors are < 1, resized data is shown in a smaller area over a white background.
     Parameters
     ----------
     original : np.ndarray
@@ -275,10 +276,22 @@ def plot_universal_results(
         ]
     }
 
+    # Check if zoom factors are < 1 in any direction
+    zoom_factors = [zoom_factors] if isinstance(zoom_factors, (int, float)) else zoom_factors
+    zoom_out = any(zf < 1 for zf in zoom_factors)
+
+    # Adjust resized data to overlay on white background for 2D
+    if original.ndim == 2 and zoom_out:
+        # Create a white background of the original's shape
+        resized_display = np.ones_like(original)
+        # Place resized data in the top-left corner
+        start_indices = [0] * len(original.shape)
+        slices = tuple(slice(start, start + res_dim) for start, res_dim in zip(start_indices, resized.shape))
+        resized_display[slices] = resized
+    else:
+        resized_display = resized
+
     # Plotting functions for 1D and 2D data
-    # Each lambda takes: (ax, data, title, x)
-    # For 1D: line plot with dynamically adjusted x-axis values
-    # For 2D: imshow with axis off
     plotters = {
         1: lambda a, d, t, xv: (
             a.plot(
@@ -306,13 +319,14 @@ def plot_universal_results(
 
     # Plot original
     plot_func(ax[0], original, chosen_titles[0], x)
-    # Plot resized
-    plot_func(ax[1], resized, chosen_titles[1], x)
+    # Plot resized (with adjustment for 2D zoom out)
+    plot_func(ax[1], resized_display, chosen_titles[1], x)
     # Plot difference
     plot_func(ax[2], difference, chosen_titles[2], x)
 
     plt.tight_layout()
     plt.show()
+
 
 
 # %%
