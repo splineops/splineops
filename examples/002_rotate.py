@@ -137,8 +137,12 @@ def create_combined_animation(image, center, radius):
         )
         image_plots.append(img_plot)
 
+    # Smaller rotation angle per frame
+    rotation_step = 10  # Degrees per frame (adjust this value)
+    total_frames = 360 // rotation_step  # Number of frames for a full rotation
+
     def animate(frame):
-        angle = frame * 24  # Cumulative angle
+        angle = frame * rotation_step  # Increment rotation angle
         for i, d in enumerate(degrees_list):
             rotated_img, m = rotate_and_mask(image, angle=angle, degree=d, center=center, radius=radius)
             image_plots[i].set_data(rotated_img)
@@ -146,7 +150,7 @@ def create_combined_animation(image, center, radius):
         return image_plots
 
     ani = animation.FuncAnimation(
-        fig, animate, frames=15, interval=250, blit=True
+        fig, animate, frames=total_frames, interval=250, blit=True
     )
     return ani
 
