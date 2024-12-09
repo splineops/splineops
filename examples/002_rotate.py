@@ -49,7 +49,7 @@ data_gray = (
 data_normalized = data_gray / 255.0
 
 # Define zoom factors for resizing
-zoom_factors = (0.5, 0.5)
+zoom_factors = (0.3, 0.3)
 degree = 3  # spline degree
 
 # Resize the image using spline interpolation (this returns image in [0,1])
