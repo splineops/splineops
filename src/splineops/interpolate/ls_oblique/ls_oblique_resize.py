@@ -1,3 +1,21 @@
+"""
+LS Oblique Resize
+=================
+
+This Python implementation is inspired by the Resize plugin for ImageJ, which performs image resizing
+using least-squares oblique image resizing with spline interpolation.
+
+Author: Arrate Munoz
+        Swiss Federal Institute of Technology Lausanne
+        Biomedical Imaging Group
+        BM-Ecublens
+        CH-1015 Lausanne EPFL, Switzerland
+
+Original Java version: July 11, 2001
+
+This Python class implements similar functionality with adjustments for Python's numpy-based ecosystem.
+"""
+
 import numpy as np
 import numpy.typing as npt
 from typing import Sequence
