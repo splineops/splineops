@@ -5,6 +5,8 @@ Image rotation
 This script demonstrates how to rotate a 2D image from 0 to 360 degrees using Tensor Spline Interpolation, 
 with each rotation performed on top of the last rotated image to observe error accumulation.
 It also allows specifying a center of rotation and visualizes it in the rotated image.
+
+You can download this example as both a Python script and as a Jupyter notebook.
 """
 
 # %%
@@ -41,7 +43,12 @@ image_resized = ndimage.zoom(
 image_resized = image_resized.astype(np.float32)
 
 # Rotate the image
-rotated_image = rotate(image_resized, angle=rotation_angle, degree=degree, center=custom_center)
+rotated_image = rotate(
+    image_resized,
+    angle=rotation_angle,
+    degree=degree,
+    center=custom_center,
+)
 
 # Display the original and rotated images
 fig, ax = plt.subplots(1, 2, figsize=(10, 5))
@@ -53,7 +60,12 @@ ax[0].axis("off")
 
 # Display the rotated image
 ax[1].imshow(rotated_image, cmap="gray")
-ax[1].scatter(custom_center[1], custom_center[0], color="red", label="Center of Rotation")
+ax[1].scatter(
+    custom_center[1], 
+    custom_center[0], 
+    color="red", 
+    label="Center of Rotation"
+)
 ax[1].set_title(f"Rotated Image ({rotation_angle}°, spline degree {degree})")
 ax[1].axis("off")
 ax[1].legend()
@@ -124,7 +136,12 @@ def create_combined_animation(image, center, crop_size):
     image_plots = []
     for ax in axes:
         # We set maximum value 128.0 (instead of 255.0) empyrically
-        img_plot = ax.imshow(np.zeros((crop_size, crop_size)), cmap="gray", vmin=0.0, vmax=128.0)
+        img_plot = ax.imshow(
+            np.zeros((crop_size, crop_size)),
+            cmap="gray",
+            vmin=0.0,
+            vmax=128.0,
+        )
         image_plots.append(img_plot)
 
     # Animation function
@@ -171,7 +188,7 @@ custom_center = (64, 64, 64)  # Center of the 3D volume
 # Create a 3D sinusoidal volume
 k = 0.1  # Spatial frequency
 grid = np.meshgrid(*[np.arange(dim) for dim in data_shape], indexing="ij")
-coords = np.stack([g - c for g, c in zip(grid, custom_center)], axis=0)  # Shape: (3, N, N, N)
+coords = np.stack([g - c for g, c in zip(grid, custom_center)], axis=0)
 coords_flat = coords.reshape(3, -1)  # Shape: (3, N*N*N)
 data = (
     np.sin(k * coords_flat[0, :]) +
@@ -199,8 +216,8 @@ plt.rcParams.update({
 
 # Slices to visualize (middle slices in each dimension)
 slices = [
-    (data, "Original Data", False),  # No center in the original data
-    (data_rotated, f"Rotated Angle {angle}°, Axis {axis})", True),  # Center in rotated data
+    (data, "Original Data", False),
+    (data_rotated, f"Rotated Angle {angle}°, Axis {axis})", True),
 ]
 
 for i, (volume, title, draw_center) in enumerate(slices):
@@ -208,7 +225,12 @@ for i, (volume, title, draw_center) in enumerate(slices):
     axs[i, 0].imshow(volume[N // 2], cmap="gray", origin="upper")
     axs[i, 0].axis("off")  # Remove x and y axis numbers
     if draw_center:
-        axs[i, 0].scatter(custom_center[2], custom_center[1], color="red", label="Center")
+        axs[i, 0].scatter(
+            custom_center[2], 
+            custom_center[1], 
+            color="red", 
+            label="Center"
+        )
         axs[i, 0].legend(fontsize=14)
     axs[i, 0].set_title(f"{title} (XY plane)", fontsize=18)
     
@@ -216,7 +238,12 @@ for i, (volume, title, draw_center) in enumerate(slices):
     axs[i, 1].imshow(volume[:, N // 2, :], cmap="gray", origin="upper")
     axs[i, 1].axis("off")  # Remove x and y axis numbers
     if draw_center:
-        axs[i, 1].scatter(custom_center[2], custom_center[0], color="red", label="Center")
+        axs[i, 1].scatter(
+            custom_center[2], 
+            custom_center[0], 
+            color="red", 
+            label="Center"
+        )
         axs[i, 1].legend(fontsize=14)
     axs[i, 1].set_title(f"{title} (XZ plane)", fontsize=18)
     
@@ -224,7 +251,12 @@ for i, (volume, title, draw_center) in enumerate(slices):
     axs[i, 2].imshow(volume[:, :, N // 2], cmap="gray", origin="upper")
     axs[i, 2].axis("off")  # Remove x and y axis numbers
     if draw_center:
-        axs[i, 2].scatter(custom_center[1], custom_center[0], color="red", label="Center")
+        axs[i, 2].scatter(
+            custom_center[1], 
+            custom_center[0], 
+            color="red", 
+            label="Center"
+        )
         axs[i, 2].legend(fontsize=14)
     axs[i, 2].set_title(f"{title} (YZ plane)", fontsize=18)
 

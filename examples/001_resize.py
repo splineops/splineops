@@ -8,7 +8,7 @@ Least-Squares, Oblique Projection, and SciPy's built-in zoom, on 2D, 1D, and 3D 
 We demonstrate the performance of these methods on a 1D signal, a 2D image and a 3D volume,
 with step-by-step computations and visualizations.
 
-You can download this example as both a Python script and as a Jupyter notebook, see right tab.
+You can download this example as both a Python script and as a Jupyter notebook.
 """
 
 # %%
@@ -36,7 +36,7 @@ from PIL import Image
 url = 'https://r0k.us/graphics/kodak/kodak/kodim19.png'
 response = requests.get(url)
 img = Image.open(BytesIO(response.content))
-data = np.array(img, dtype=np.float32)
+data = np.array(img, dtype=np.float64)
 
 # Normalize the image to [0,1]
 data_normalized = data / 255.0
@@ -108,8 +108,15 @@ def create_comparison_plot(original, transformed, zoom_factor):
 # Apply the resize function quadratic B-spline interpolation and a contracting zoom factor.
 
 zoom_factor = 0.3
-shrunken_image = resize_image(data_normalized, zoom_factor=zoom_factor, degree=2, extension_mode="mirror")
-create_comparison_plot(data.astype(np.uint8), shrunken_image, zoom_factor=zoom_factor)
+shrunken_image = resize_image(
+    data_normalized, 
+    zoom_factor=zoom_factor, 
+    degree=2, 
+    extension_mode="mirror")
+create_comparison_plot(
+    data.astype(np.uint8), 
+    shrunken_image, 
+    zoom_factor=zoom_factor)
 
 # %%
 # Expanding image
@@ -118,8 +125,15 @@ create_comparison_plot(data.astype(np.uint8), shrunken_image, zoom_factor=zoom_f
 # Apply the resize function with for cubic B-spline interpolation and an expanding zoom factor.
 
 zoom_factor = 2.5
-shrunken_image = resize_image(data_normalized, zoom_factor=zoom_factor, degree=3, extension_mode="mirror")
-create_comparison_plot(data.astype(np.uint8), shrunken_image, zoom_factor=zoom_factor)
+shrunken_image = resize_image(
+    data_normalized, 
+    zoom_factor=zoom_factor, 
+    degree=3, 
+    extension_mode="mirror")
+create_comparison_plot(
+    data.astype(np.uint8), 
+    shrunken_image, 
+    zoom_factor=zoom_factor)
 
 # %%
 # Helper functions
@@ -163,7 +177,13 @@ def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
         zoom_factors = [zoom_factors] * len(input_signal.shape)
 
     if method == "scipy":
-        resized_signal, resized_back_signal, snr, mse, time_elapsed = resize_with_scipy_zoom(
+        (
+            resized_signal, 
+            resized_back_signal, 
+            snr, 
+            mse, 
+            time_elapsed,
+        ) = resize_with_scipy_zoom(
             input_signal=input_signal,
             zoom_factors=zoom_factors,
             degree=degree
@@ -212,33 +232,52 @@ def plot_universal_results(
 
     # Ensure original image is in the range [0, 255]
     if original.ndim > 1:  # Only for 2D or 3D slices
-        original_scaled = (original - original.min()) / (original.max() - original.min()) * 255.0
+        original_scaled = (
+            (original - original.min()) 
+            / (original.max() - original.min()) 
+            * 255.0
+        )
         original_scaled = original_scaled.astype(np.uint8)
     else:
         original_scaled = original  # Keep 1D data unchanged
 
     # Check if zoom factors are < 1 in any direction
-    zoom_factors = [zoom_factors] if isinstance(zoom_factors, (int, float)) else zoom_factors
+    zoom_factors = (
+        [zoom_factors] 
+        if isinstance(zoom_factors, (int, float)) 
+        else zoom_factors
+    )
     zoom_out = any(zf < 1 for zf in zoom_factors)
 
     # Adjust resized data to overlay on white background for 2D or 3D slices
     if original.ndim > 1 and zoom_out:
         # Normalize resized to [0, 255] for better visibility
-        resized_normalized = (resized - resized.min()) / (resized.max() - resized.min()) * 255.0
+        resized_normalized = (
+            (resized - resized.min()) 
+            / (resized.max() - resized.min()) 
+            * 255.0
+        )
         resized_normalized = resized_normalized.astype(np.uint8)
 
         # Create a white background of the original's shape
         resized_display = np.ones_like(original_scaled) * 255  # White background
         # Place resized data in the top-left corner
         start_indices = [0] * len(original_scaled.shape)
-        slices = tuple(slice(start, start + res_dim) for start, res_dim in zip(start_indices, resized.shape))
+        slices = tuple(
+            slice(start, start + res_dim) 
+            for start, res_dim in zip(start_indices, resized.shape)
+        )
         resized_display[slices] = resized_normalized
     else:
         resized_display = resized
 
     # Normalize difference to [0, 255] for better visualization
     if original.ndim > 1:
-        difference_normalized = (difference - difference.min()) / (difference.max() - difference.min()) * 255.0
+        difference_normalized = (
+            (difference - difference.min()) 
+            / (difference.max() - difference.min()) 
+            * 255.0
+        )
         difference_normalized = difference_normalized.astype(np.uint8)
     else:
         difference_normalized = difference
@@ -261,7 +300,7 @@ def plot_universal_results(
     plotters = {
         1: lambda a, d, t, xv: (
             a.plot(
-                np.linspace(0, 1, len(d)),  # Automatically generate x-axis based on data length
+                np.linspace(0, 1, len(d)),  # Generate x-axis based on data length
                 d
             ),
             a.set_title(t),
@@ -281,7 +320,7 @@ def plot_universal_results(
     chosen_titles = titles[dim]
 
     # Create figure and subplots arranged vertically
-    fig, ax = plt.subplots(3, 1, figsize=(12, 24))  # Adjust the figsize for wider aspect ratio
+    fig, ax = plt.subplots(3, 1, figsize=(12, 24))
 
     # Plot original (use scaled values for 2D/3D, raw for 1D)
     plot_func(ax[0], original_scaled, chosen_titles[0], None)
@@ -325,11 +364,11 @@ plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_signal_1d_interpolation, 
-    resized_back_signal_1d_interpolation, 
-    snr_1d_interpolation, 
-    mse_1d_interpolation, 
-    time_elapsed_1d_interpolation
+    resized_signal_1d_interp, 
+    resized_back_signal_1d_interp, 
+    snr_1d_interp, 
+    mse_1d_interp, 
+    time_elapsed_1d_interp
 ) = resize_and_compute_metrics(
     original_signal, 
     "interpolation", 
@@ -340,13 +379,13 @@ plt.show()
 # Plot results
 plot_universal_results(
     original=original_signal,
-    resized=resized_signal_1d_interpolation,
-    resized_back=resized_back_signal_1d_interpolation,
+    resized=resized_signal_1d_interp,
+    resized_back=resized_back_signal_1d_interp,
     method="interpolation",
     zoom_factors=zoom_factor_1d,
-    snr=snr_1d_interpolation,
-    mse=mse_1d_interpolation,
-    time_elapsed=time_elapsed_1d_interpolation
+    snr=snr_1d_interp,
+    mse=mse_1d_interp,
+    time_elapsed=time_elapsed_1d_interp
 )
 
 # %%
@@ -354,11 +393,11 @@ plot_universal_results(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_signal_1d_least_squares, 
-    resized_back_signal_1d_least_squares, 
-    snr_1d_least_squares, 
-    mse_1d_least_squares, 
-    time_elapsed_1d_least_squares
+    resized_signal_1d_ls, 
+    resized_back_signal_1d_ls, 
+    snr_1d_ls, 
+    mse_1d_ls, 
+    time_elapsed_1d_ls
 ) = resize_and_compute_metrics(
     original_signal, 
     "least-squares", 
@@ -369,13 +408,13 @@ plot_universal_results(
 # Plot results
 plot_universal_results(
     original=original_signal,
-    resized=resized_signal_1d_least_squares,
-    resized_back=resized_back_signal_1d_least_squares,
+    resized=resized_signal_1d_ls,
+    resized_back=resized_back_signal_1d_ls,
     method="least-squares",
     zoom_factors=zoom_factor_1d,
-    snr=snr_1d_least_squares,
-    mse=mse_1d_least_squares,
-    time_elapsed=time_elapsed_1d_least_squares
+    snr=snr_1d_ls,
+    mse=mse_1d_ls,
+    time_elapsed=time_elapsed_1d_ls
 )
 
 # %%
@@ -383,11 +422,11 @@ plot_universal_results(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_signal_1d_oblique, 
-    resized_back_signal_1d_oblique, 
-    snr_1d_oblique, 
-    mse_1d_oblique, 
-    time_elapsed_1d_oblique
+    resized_signal_1d_ob, 
+    resized_back_signal_1d_ob, 
+    snr_1d_ob, 
+    mse_1d_ob, 
+    time_elapsed_1d_ob
 ) = resize_and_compute_metrics(
     original_signal, 
     "oblique", 
@@ -398,13 +437,13 @@ plot_universal_results(
 # Plot results
 plot_universal_results(
     original=original_signal,
-    resized=resized_signal_1d_oblique,
-    resized_back=resized_back_signal_1d_oblique,
+    resized=resized_signal_1d_ob,
+    resized_back=resized_back_signal_1d_ob,
     method="oblique",
     zoom_factors=zoom_factor_1d,
-    snr=snr_1d_oblique,
-    mse=mse_1d_oblique,
-    time_elapsed=time_elapsed_1d_oblique
+    snr=snr_1d_ob,
+    mse=mse_1d_ob,
+    time_elapsed=time_elapsed_1d_ob
 )
 
 # %%
@@ -443,7 +482,7 @@ plot_universal_results(
 url = 'https://r0k.us/graphics/kodak/kodak/kodim23.png'
 response = requests.get(url)
 img = Image.open(BytesIO(response.content))
-data = np.array(img, dtype=np.float32)
+data = np.array(img, dtype=np.float64)
 
 # Normalize the image to [0,1]
 input_image_normalized = data / 255.0
@@ -467,13 +506,13 @@ plt.show()
 zoom_factors_2d = (0.25, 0.25)
 
 (
-    resized_signal_2D_interpolation, 
-    resized_back_signal_2D_interpolation, 
-    snr_2D_interpolation, mse_2D_interpolation, 
-    time_elapsed_2D_interpolation
+    resized_signal_2D_interp, 
+    resized_back_signal_2D_interp, 
+    snr_2D_interp, mse_2D_interp, 
+    time_elapsed_2D_interp
 ) = resize_and_compute_metrics(
     input_image_normalized, 
-    "interpolation", 
+    "interpolation",
     degree, 
     zoom_factors_2d
 )
@@ -481,13 +520,13 @@ zoom_factors_2d = (0.25, 0.25)
 # Plot results
 plot_universal_results(
     original=input_image_normalized,
-    resized=resized_signal_2D_interpolation,
-    resized_back=resized_back_signal_2D_interpolation,
+    resized=resized_signal_2D_interp,
+    resized_back=resized_back_signal_2D_interp,
     method="interpolation",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2D_interpolation,
-    mse=mse_2D_interpolation,
-    time_elapsed=time_elapsed_2D_interpolation
+    snr=snr_2D_interp,
+    mse=mse_2D_interp,
+    time_elapsed=time_elapsed_2D_interp
 )
 
 # %%
@@ -495,14 +534,14 @@ plot_universal_results(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_signal_2D_least_squares, 
-    resized_back_signal_2D_least_squares, 
-    snr_2D_least_squares, 
-    mse_2D_least_squares, 
-    time_elapsed_2D_least_squares
+    resized_signal_2D_ls, 
+    resized_back_signal_2D_ls, 
+    snr_2D_ls, 
+    mse_2D_ls, 
+    time_elapsed_2D_ls
 ) = resize_and_compute_metrics(
     input_image_normalized, 
-    "least_squares", 
+    "least-squares", 
     degree, 
     zoom_factors_2d
 )
@@ -510,13 +549,13 @@ plot_universal_results(
 # Plot results
 plot_universal_results(
     original=input_image_normalized,
-    resized=resized_signal_2D_least_squares,
-    resized_back=resized_back_signal_2D_least_squares,
+    resized=resized_signal_2D_ls,
+    resized_back=resized_back_signal_2D_ls,
     method="least-squares",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2D_least_squares,
-    mse=mse_2D_least_squares,
-    time_elapsed=time_elapsed_2D_least_squares
+    snr=snr_2D_ls,
+    mse=mse_2D_ls,
+    time_elapsed=time_elapsed_2D_ls
 )
 
 # %%
@@ -524,11 +563,11 @@ plot_universal_results(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_signal_2D_oblique, 
-    resized_back_signal_2D_oblique, 
-    snr_2D_oblique, 
-    mse_2D_oblique, 
-    time_elapsed_2D_oblique
+    resized_signal_2D_ob, 
+    resized_back_signal_2D_ob, 
+    snr_2D_ob, 
+    mse_2D_ob, 
+    time_elapsed_2D_ob
 ) = resize_and_compute_metrics(
     input_image_normalized, 
     "oblique", 
@@ -539,13 +578,13 @@ plot_universal_results(
 # Plot results
 plot_universal_results(
     original=input_image_normalized,
-    resized=resized_signal_2D_oblique,
-    resized_back=resized_back_signal_2D_oblique,
+    resized=resized_signal_2D_ob,
+    resized_back=resized_back_signal_2D_ob,
     method="oblique",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2D_oblique,
-    mse=mse_2D_oblique,
-    time_elapsed=time_elapsed_2D_oblique
+    snr=snr_2D_ob,
+    mse=mse_2D_ob,
+    time_elapsed=time_elapsed_2D_ob
 )
 
 # %%
@@ -609,11 +648,11 @@ original_slice = original_volume[middle_slice, :, :]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_volume_interpolation, 
-    resized_back_volume_interpolation, 
-    snr_interpolation, 
-    mse_interpolation, 
-    time_elapsed_interpolation
+    resized_volume_interp, 
+    resized_back_volume_interp, 
+    snr_interp, 
+    mse_interp, 
+    time_elapsed_interp
 ) = resize_and_compute_metrics(
     original_volume, 
     "interpolation",
@@ -621,19 +660,19 @@ original_slice = original_volume[middle_slice, :, :]
       zoom_factors_3d
 )
 
-resized_slice_interpolation = resized_volume_interpolation[resized_volume_interpolation.shape[0] // 2, :, :]
-resized_back_slice_interpolation = resized_back_volume_interpolation[middle_slice, :, :]
+resized_slice_interp = resized_volume_interp[resized_volume_interp.shape[0] // 2, :, :]
+resized_back_slice_interp = resized_back_volume_interp[middle_slice, :, :]
 
 # Plot results
 plot_universal_results(
     original=original_slice,
-    resized=resized_slice_interpolation,
-    resized_back=resized_back_slice_interpolation,
+    resized=resized_slice_interp,
+    resized_back=resized_back_slice_interp,
     method="interpolation",
     zoom_factors=zoom_factors_3d,
-    snr=snr_interpolation,
-    mse=mse_interpolation,
-    time_elapsed=time_elapsed_interpolation
+    snr=snr_interp,
+    mse=mse_interp,
+    time_elapsed=time_elapsed_interp
 )
 
 # %%
@@ -641,31 +680,31 @@ plot_universal_results(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_volume_least_squares, 
-    resized_back_volume_least_squares, 
-    snr_least_squares, 
-    mse_least_squares, 
-    time_elapsed_least_squares
+    resized_volume_ls, 
+    resized_back_volume_ls, 
+    snr_ls, 
+    mse_ls, 
+    time_elapsed_ls
 ) = resize_and_compute_metrics(
     original_volume, 
-    "least_squares", 
+    "least-squares", 
     degree, 
     zoom_factors_3d
 )
 
-resized_slice_least_squares = resized_volume_least_squares[resized_volume_least_squares.shape[0] // 2, :, :]
-resized_back_slice_least_squares = resized_back_volume_least_squares[middle_slice, :, :]
+resized_slice_ls = resized_volume_ls[resized_volume_ls.shape[0] // 2, :, :]
+resized_back_slice_ls = resized_back_volume_ls[middle_slice, :, :]
 
 # Plot results
 plot_universal_results(
     original=original_slice,
-    resized=resized_slice_least_squares,
-    resized_back=resized_back_slice_least_squares,
-    method="least_squares",
+    resized=resized_slice_ls,
+    resized_back=resized_back_slice_ls,
+    method="least-squares",
     zoom_factors=zoom_factors_3d,
-    snr=snr_least_squares,
-    mse=mse_least_squares,
-    time_elapsed=time_elapsed_least_squares
+    snr=snr_ls,
+    mse=mse_ls,
+    time_elapsed=time_elapsed_ls
 )
 
 # %%
@@ -673,11 +712,11 @@ plot_universal_results(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_volume_oblique, 
-    resized_back_volume_oblique, 
-    snr_oblique, 
-    mse_oblique, 
-    time_elapsed_oblique
+    resized_volume_ob, 
+    resized_back_volume_ob, 
+    snr_ob, 
+    mse_ob, 
+    time_elapsed_ob
 ) = resize_and_compute_metrics(
     original_volume, 
     "oblique", 
@@ -685,19 +724,19 @@ plot_universal_results(
     zoom_factors_3d
 )
 
-resized_slice_oblique = resized_volume_oblique[resized_volume_oblique.shape[0] // 2, :, :]
-resized_back_slice_oblique = resized_back_volume_oblique[middle_slice, :, :]
+resized_slice_ob = resized_volume_ob[resized_volume_ob.shape[0] // 2, :, :]
+resized_back_slice_ob = resized_back_volume_ob[middle_slice, :, :]
 
 # Plot results
 plot_universal_results(
     original=original_slice,
-    resized=resized_slice_oblique,
-    resized_back=resized_back_slice_oblique,
+    resized=resized_slice_ob,
+    resized_back=resized_back_slice_ob,
     method="oblique",
     zoom_factors=zoom_factors_3d,
-    snr=snr_oblique,
-    mse=mse_oblique,
-    time_elapsed=time_elapsed_oblique
+    snr=snr_ob,
+    mse=mse_ob,
+    time_elapsed=time_elapsed_ob
 )
 
 # %%
