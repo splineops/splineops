@@ -17,15 +17,13 @@ The `resize` function in the `splineops` library enables resizing (scaling) of N
 Three resizing methods can be called:
 
 - **Standard Interpolation**: Smooth, continuous interpolation.
-- **Least-Squares Projection**: Optimal resizing with minimal approximation error. Slower than standard interpolation but with better interpolation quality.
-- **Oblique Projection**: Similar to Least-Squares projection, but faster and lower quality.
+- **Least-Squares Projection**: Optimal resizing with minimal approximation error. Slower than standard interpolation but with better interpolation quality. It requires float64 precision.
+- **Oblique Projection**: Similar to Least-Squares projection, but faster and lower quality. It works well with with float32 precision
+
+In general, it is recommended to use standard interpolation for most cases; in case higher accuracy is required and float64 precision is used, least-squares projection is recommended.
+Oblique projection provides better balance of performance, speed and accuracy.
 
 The `resize` module is suitable for a wide range of applications, including Image processing, Scientific visualization and Medical imaging.
-
-Examples
---------
-
-* :ref:`sphx_glr_auto_examples_001_resize.py`
 
 Mathematical Details
 --------------------
@@ -106,6 +104,11 @@ where :math:`\phi` represents the biorthogonal dual basis. Unlike least-squares,
 - Results in slightly lower interpolation quality compared to least-squares.
 
 This method is particularly effective for scenarios requiring fast computation with acceptable trade-offs in accuracy.
+
+Resize Example
+--------------
+
+* :ref:`sphx_glr_auto_examples_001_resize.py`
 
 References
 ----------

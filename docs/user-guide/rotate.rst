@@ -108,8 +108,8 @@ Implementation Details
 
 4. **Interpolation**: Spline interpolation is applied to evaluate the rotated data values at the new coordinates.
 
-Examples
---------
+Rotate Example
+--------------
 
 * :ref:`sphx_glr_auto_examples_002_rotate.py`
 
