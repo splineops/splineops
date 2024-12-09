@@ -25,11 +25,6 @@ Oblique projection provides better balance of performance, speed and accuracy.
 
 The `resize` module is suitable for a wide range of applications, including Image processing, Scientific visualization and Medical imaging.
 
-Resizing Example
-----------------
-
-* :ref:`sphx_glr_auto_examples_001_resize.py`
-
 Mathematical Details
 --------------------
 
@@ -109,6 +104,11 @@ where :math:`\phi` represents the biorthogonal dual basis. Unlike least-squares,
 - Results in slightly lower interpolation quality compared to least-squares.
 
 This method is particularly effective for scenarios requiring fast computation with acceptable trade-offs in accuracy.
+
+Resize Example
+--------------
+
+* :ref:`sphx_glr_auto_examples_001_resize.py`
 
 References
 ----------
