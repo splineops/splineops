@@ -1,6 +1,6 @@
 """
-Resizing 1D samples
-===================
+Resizing 1D samples with least-squares and oblique projection
+=============================================================
 
 This example compares SplineOps resizing with advanced interpolation methods:
 Least-Squares, Oblique Projection, and SciPy's built-in zoom, on 1D samples.
@@ -251,93 +251,118 @@ plt.grid(True)
 plt.show()
 
 # %%
-# Interpolate the data with a spline f
-# ------------------------------------
-#
-# We interpolate the 1D samples with a spline to obtain a continuous function f.
-#
-# Given the discrete samples :math:`f_{\text{samples}}(x_i)`, the spline interpolation :math:`f(x)` can be expressed as:
-#
-# .. math::
-#
-#    f(x) = \sum_{k} c_k \beta_n(x - k),
-#
-# where:
-# - :math:`\beta_n` is the B-spline of degree :math:`n`.
-# - :math:`c_k` are the spline coefficients determined from the input samples.
-#
-# By choosing a sufficiently fine grid, we approximate a continuous function :math:`f` from the discrete samples.
+# 1D resizing: interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+zoom_factor_1d = 0.5
 
 degree = 3
-high_res_factor = 10  # Upsample by a factor of 10 for smooth interpolation
-new_length = len(original_samples) * high_res_factor
 
-# Interpolated signal
-resized_signal = resize(
-    data=original_samples,
-    output_size=(new_length,),
-    degree=degree,
-    method="interpolation"
+(
+    resized_signal_1d_interp, 
+    resized_back_signal_1d_interp, 
+    snr_1d_interp, 
+    mse_1d_interp, 
+    time_elapsed_1d_interp
+) = resize_and_compute_metrics(
+    original_samples, 
+    "interpolation", 
+    degree, 
+    zoom_factor_1d
 )
 
-x_high_res = np.linspace(x[0], x[-1], new_length)
-
-plt.figure(figsize=(10, 4))
-plt.title("Original Samples with Interpolated Spline (f)")
-plt.stem(x, original_samples, basefmt=" ", label="Original Samples")
-plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
-plt.xlabel("X-axis")
-plt.ylabel("Amplitude")
-plt.legend()
-plt.grid(True)
-plt.show()
+# Plot results
+plot_universal_results(
+    original=original_samples,
+    resized=resized_signal_1d_interp,
+    resized_back=resized_back_signal_1d_interp,
+    method="interpolation",
+    zoom_factors=zoom_factor_1d,
+    snr=snr_1d_interp,
+    mse=mse_1d_interp,
+    time_elapsed=time_elapsed_1d_interp
+)
 
 # %%
-# Resample the data to obtain g
-# -----------------------------
-#
-# We now create a new function g by resampling f at a lower resolution.
-#
-# The resampled spline :math:`g(x)` is obtained by applying a scaling transformation to :math:`f`:
-#
-# .. math::
-#
-#    g(x_j) = f(T^{-1} x_j), \quad j = 1, \dots, M,
-#
-# where :math:`T` is a scaling transformation (in this case, downsampling by a known factor), 
-# and :math:`M` is the new number of samples after resampling. Thus, :math:`g` approximates :math:`f` on a coarser grid.
+# 1D resizing: least-squares projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-inverse_resample_factor = 1 / high_res_factor
-resampled_length = int(len(resized_signal) * inverse_resample_factor)
-
-# Resample f to obtain g
-resampled_signal = resize(
-    data=resized_signal,
-    output_size=(resampled_length,),
-    degree=degree,
-    method="interpolation"
+(
+    resized_signal_1d_ls, 
+    resized_back_signal_1d_ls, 
+    snr_1d_ls, 
+    mse_1d_ls, 
+    time_elapsed_1d_ls
+) = resize_and_compute_metrics(
+    original_samples, 
+    "least-squares", 
+    degree, 
+    zoom_factor_1d
 )
 
-x_resampled = np.linspace(x[0], x[-1], resampled_length)
-
-# Compute MSE between f and g
-resampled_back_signal = resize(
-    data=resampled_signal,
-    output_size=(len(resized_signal),),
-    degree=degree,
-    method="interpolation"
+# Plot results
+plot_universal_results(
+    original=original_samples,
+    resized=resized_signal_1d_ls,
+    resized_back=resized_back_signal_1d_ls,
+    method="least-squares",
+    zoom_factors=zoom_factor_1d,
+    snr=snr_1d_ls,
+    mse=mse_1d_ls,
+    time_elapsed=time_elapsed_1d_ls
 )
-mse_f_g = compute_mse(resized_signal, resampled_back_signal)
 
-print(f"Mean Squared Error (MSE) between spline (f) and rescaled spline (g): {mse_f_g:.2e}")
+# %%
+# 1D resizing: oblique projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-plt.figure(figsize=(10, 4))
-plt.title("Original Samples, Interpolated Spline (f), and Resampled Spline (g)")
-plt.stem(x, original_samples, basefmt=" ", linefmt='grey', markerfmt='o', label="Original Samples")
-plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
-plt.plot(x_resampled, resampled_signal, color="red", linewidth=2, linestyle="--", label="Resampled Spline (g)")
-plt.xlabel("X-axis")
-plt.ylabel("Amplitude")
-plt.legend()
-plt.grid(True)
-plt.show()
+(
+    resized_signal_1d_ob, 
+    resized_back_signal_1d_ob, 
+    snr_1d_ob, 
+    mse_1d_ob, 
+    time_elapsed_1d_ob
+) = resize_and_compute_metrics(
+    original_samples, 
+    "oblique", 
+    degree, 
+    zoom_factor_1d
+)
+
+# Plot results
+plot_universal_results(
+    original=original_samples,
+    resized=resized_signal_1d_ob,
+    resized_back=resized_back_signal_1d_ob,
+    method="oblique",
+    zoom_factors=zoom_factor_1d,
+    snr=snr_1d_ob,
+    mse=mse_1d_ob,
+    time_elapsed=time_elapsed_1d_ob
+)
+
+# %%
+# 1D resizing: scipy interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+(
+    resized_signal_1d_scipy, 
+    resized_back_signal_1d_scipy, 
+    snr_1d_scipy, 
+    mse_1d_scipy, 
+    time_elapsed_1d_scipy
+) = resize_and_compute_metrics(
+    original_samples, "scipy", degree, zoom_factor_1d
+)
+
+# Plot results
+plot_universal_results(
+    original=original_samples,
+    resized=resized_signal_1d_scipy,
+    resized_back=resized_back_signal_1d_scipy,
+    method="scipy",
+    zoom_factors=zoom_factor_1d,
+    snr=snr_1d_scipy,
+    mse=mse_1d_scipy,
+    time_elapsed=time_elapsed_1d_scipy
+)
