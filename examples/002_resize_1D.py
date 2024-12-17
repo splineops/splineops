@@ -229,17 +229,48 @@ def plot_universal_results(
 #
 # We generate 1D samples and resize them using interpolation, least-squares and oblique projections.
 
-# Generate the original 1D samples
-x = np.linspace(0, 4 * np.pi, 100)
-original_samples = np.sin(x) + 0.1 * np.random.randn(100)
+# Create a small array of about 10 samples
+x = np.linspace(0, 4 * np.pi, 10)  # Only 10 samples
+original_samples = np.sin(x)  # for example
 
-# Define parameters for 1D samples
-zoom_factor_1d = 0.5
-
-# Display the original samples
 plt.figure(figsize=(10, 4))
-plt.plot(x, original_samples, label="Original Samples", color="blue")
-plt.title("Original 1D Samples")
+plt.title("Original Sparse Samples")
+plt.stem(x, original_samples, basefmt=" ")
+plt.xlabel("X-axis")
+plt.ylabel("Amplitude")
+plt.grid(True)
+plt.show()
+
+# %%
+# Interpolate the data with a spline
+# ----------------------------------
+#
+# We interpolate the 1D samples.
+
+degree = 3
+high_res_factor = 10  # Upsample by a factor of 10 for smooth interpolation
+new_length = len(original_samples) * high_res_factor
+
+resized_signal = resize(
+    data=original_samples,
+    output_size=(new_length,),
+    degree=degree,
+    method="interpolation"
+)
+
+# Create a high-resolution x-axis
+x_high_res = np.linspace(x[0], x[-1], new_length)
+
+plt.figure(figsize=(10, 4))
+plt.title("Original Samples with Interpolated Spline")
+# Plot original samples as before
+plt.stem(x, original_samples, basefmt=" ", label="Original Samples")
+
+# Plot the high-resolution interpolated spline in green
+plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation")
+
+plt.xlabel("X-axis")
+plt.ylabel("Amplitude")
 plt.legend()
 plt.grid(True)
 plt.show()
@@ -247,6 +278,8 @@ plt.show()
 # %%
 # 1D resizing: interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+zoom_factor_1d = 0.5
 
 degree = 3
 
