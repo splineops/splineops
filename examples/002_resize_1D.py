@@ -227,7 +227,16 @@ def plot_universal_results(
 # Process 1D samples
 # ------------------
 #
-# We generate 1D samples and resize them using interpolation, least-squares and oblique projections.
+# We generate 1D samples and treat them as discrete signal points.
+# 
+# Let :math:`\mathbf{x} = [x_1, x_2, \dots, x_N]` be a set of 1D sampled points, and let the discrete signal
+# :math:`f_{\text{samples}}(x)` be defined as:
+#
+# .. math::
+#
+#    f_{\text{samples}}(x_i) = \sin(x_i), \quad i = 1, \dots, N.
+#
+# These are the input samples that we will interpolate.
 
 # Create a small array of about 10 samples
 x = np.linspace(0, 4 * np.pi, 10)  # Only 10 samples
@@ -245,12 +254,25 @@ plt.show()
 # Interpolate the data with a spline f
 # ------------------------------------
 #
-# We interpolate the 1D samples with a spline function f.
+# We interpolate the 1D samples with a spline to obtain a continuous function f.
+#
+# Given the discrete samples :math:`f_{\text{samples}}(x_i)`, the spline interpolation :math:`f(x)` can be expressed as:
+#
+# .. math::
+#
+#    f(x) = \sum_{k} c_k \beta_n(x - k),
+#
+# where:
+# - :math:`\beta_n` is the B-spline of degree :math:`n`.
+# - :math:`c_k` are the spline coefficients determined from the input samples.
+#
+# By choosing a sufficiently fine grid, we approximate a continuous function :math:`f` from the discrete samples.
 
 degree = 3
 high_res_factor = 10  # Upsample by a factor of 10 for smooth interpolation
 new_length = len(original_samples) * high_res_factor
 
+# Interpolated signal
 resized_signal = resize(
     data=original_samples,
     output_size=(new_length,),
@@ -258,17 +280,12 @@ resized_signal = resize(
     method="interpolation"
 )
 
-# Create a high-resolution x-axis
 x_high_res = np.linspace(x[0], x[-1], new_length)
 
 plt.figure(figsize=(10, 4))
-plt.title("Original Samples with Interpolated Spline")
-# Plot original samples as before
+plt.title("Original Samples with Interpolated Spline (f)")
 plt.stem(x, original_samples, basefmt=" ", label="Original Samples")
-
-# Plot the high-resolution interpolated spline in green
-plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation")
-
+plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
 plt.xlabel("X-axis")
 plt.ylabel("Amplitude")
 plt.legend()
@@ -276,15 +293,24 @@ plt.grid(True)
 plt.show()
 
 # %%
-# Resample the data
-# -----------------
+# Resample the data to obtain g
+# -----------------------------
 #
-# We create a new function g that is the rescaled version of the interpolated spline (f).
+# We now create a new function g by resampling f at a lower resolution.
+#
+# The resampled spline :math:`g(x)` is obtained by applying a scaling transformation to :math:`f`:
+#
+# .. math::
+#
+#    g(x_j) = f(T^{-1} x_j), \quad j = 1, \dots, M,
+#
+# where :math:`T` is a scaling transformation (in this case, downsampling by a known factor), 
+# and :math:`M` is the new number of samples after resampling. Thus, :math:`g` approximates :math:`f` on a coarser grid.
 
-inverse_resample_factor = 1 / high_res_factor  # Inverse factor for resampling
-resampled_length = int(len(resized_signal) * inverse_resample_factor)  # Resampled length
+inverse_resample_factor = 1 / high_res_factor
+resampled_length = int(len(resized_signal) * inverse_resample_factor)
 
-# Resample f (resized_signal) to obtain g
+# Resample f to obtain g
 resampled_signal = resize(
     data=resized_signal,
     output_size=(resampled_length,),
@@ -292,36 +318,24 @@ resampled_signal = resize(
     method="interpolation"
 )
 
-# Create x-axis for resampled spline (g)
 x_resampled = np.linspace(x[0], x[-1], resampled_length)
 
-# Compute MSE between the original spline (f) and the resampled spline (g)
-# We need to resize resampled_signal back to match the length of resized_signal for comparison
+# Compute MSE between f and g
 resampled_back_signal = resize(
     data=resampled_signal,
     output_size=(len(resized_signal),),
     degree=degree,
     method="interpolation"
 )
-
 mse_f_g = compute_mse(resized_signal, resampled_back_signal)
 
-# Print the MSE value in scientific notation
 print(f"Mean Squared Error (MSE) between spline (f) and rescaled spline (g): {mse_f_g:.2e}")
 
-# Plot original samples, interpolated spline (f), and resampled spline (g)
 plt.figure(figsize=(10, 4))
 plt.title("Original Samples, Interpolated Spline (f), and Resampled Spline (g)")
-
-# Original sparse samples
 plt.stem(x, original_samples, basefmt=" ", linefmt='grey', markerfmt='o', label="Original Samples")
-
-# Interpolated spline (f) in green
 plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
-
-# Resampled spline (g) in red
 plt.plot(x_resampled, resampled_signal, color="red", linewidth=2, linestyle="--", label="Resampled Spline (g)")
-
 plt.xlabel("X-axis")
 plt.ylabel("Amplitude")
 plt.legend()

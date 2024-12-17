@@ -111,7 +111,7 @@ Implementation Details
 Rotate Example
 --------------
 
-* :ref:`sphx_glr_auto_examples_002_rotate.py`
+* :ref:`sphx_glr_auto_examples_005_rotate.py`
 
 References
 ----------
