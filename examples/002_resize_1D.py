@@ -230,17 +230,20 @@ def plot_universal_results(
 # We generate 1D samples and treat them as discrete signal points.
 # 
 # Let :math:`\mathbf{x} = [x_1, x_2, \dots, x_N]` be a set of 1D sampled points, and let the discrete signal
-# :math:`f_{\text{samples}}(x)` be defined as:
+# :math:`f_{\text{samples}}(x)` be defined as random values within a specified range:
 #
 # .. math::
 #
-#    f_{\text{samples}}(x_i) = \sin(x_i), \quad i = 1, \dots, N.
+#    f_{\text{samples}}(x_i) \sim \text{Uniform}(-1, 1), \quad i = 1, \dots, N.
 #
 # These are the input samples that we will interpolate.
 
 # Create a small array of about 10 samples
 x = np.linspace(0, 4 * np.pi, 10)  # Only 10 samples
-original_samples = np.sin(x)  # for example
+
+# Generate random samples between -1 and 1
+np.random.seed(42)  # Set seed for reproducibility
+original_samples = np.random.uniform(-1, 1, len(x))  # Random values in range [-1, 1]
 
 plt.figure(figsize=(10, 4))
 plt.title("Original Sparse Samples")
