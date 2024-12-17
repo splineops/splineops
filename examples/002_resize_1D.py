@@ -251,6 +251,7 @@ plt.stem(x, original_samples, basefmt=" ")
 plt.xlabel("X-axis")
 plt.ylabel("Amplitude")
 plt.grid(True)
+plt.tight_layout()
 plt.show()
 
 # %%
@@ -293,6 +294,7 @@ plt.xlabel("X-axis")
 plt.ylabel("Amplitude")
 plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()
 
 # %%
@@ -366,4 +368,5 @@ plt.xlabel("X-axis")
 plt.ylabel("Amplitude")
 plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()
