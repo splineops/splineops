@@ -242,10 +242,10 @@ plt.grid(True)
 plt.show()
 
 # %%
-# Interpolate the data with a spline
-# ----------------------------------
+# Interpolate the data with a spline f
+# ------------------------------------
 #
-# We interpolate the 1D samples.
+# We interpolate the 1D samples with a spline function f.
 
 degree = 3
 high_res_factor = 10  # Upsample by a factor of 10 for smooth interpolation
