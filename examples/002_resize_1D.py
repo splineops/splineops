@@ -29,16 +29,16 @@ from PIL import Image
 #
 # We define functions to compute Signal-to-Noise Ratio (SNR) and Mean Squared Error (MSE).
 # Additionally, we include functions to perform resizing with SciPy's zoom and to compute
-# metrics for the resized signals.
+# metrics for the resized samples.
 
 def compute_snr(original, processed):
-    """Compute Signal-to-Noise Ratio between two signals."""
+    """Compute Signal-to-Noise Ratio between two samples."""
     signal_power = np.mean(original ** 2)
     noise_power = np.mean((original - processed) ** 2)
     return 10 * np.log10(signal_power / noise_power)
 
 def compute_mse(original, processed):
-    """Compute Mean Squared Error between two signals."""
+    """Compute Mean Squared Error between two samples."""
     return np.mean((original - processed) ** 2)
 
 def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
@@ -58,7 +58,7 @@ def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
     return resized_signal, resized_back_signal, snr, mse, time_elapsed
 
 def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
-    """Resize a signal using a given method and compute metrics."""
+    """Resize Samples using a given method and compute metrics."""
     import time
 
     if np.isscalar(zoom_factors):
@@ -224,22 +224,22 @@ def plot_universal_results(
     plt.show()
 
 # %%
-# Process 1D signals
+# Process 1D samples
 # ------------------
 #
-# We generate a 1D signal and resize it using interpolation, least-squares and oblique projections.
+# We generate 1D samples and resize them using interpolation, least-squares and oblique projections.
 
-# Generate the original 1D signal
+# Generate the original 1D samples
 x = np.linspace(0, 4 * np.pi, 100)
-original_signal = np.sin(x) + 0.1 * np.random.randn(100)
+original_samples = np.sin(x) + 0.1 * np.random.randn(100)
 
-# Define parameters for 1D signal
+# Define parameters for 1D samples
 zoom_factor_1d = 0.5
 
-# Display the original signal
+# Display the original samples
 plt.figure(figsize=(10, 4))
-plt.plot(x, original_signal, label="Original Signal", color="blue")
-plt.title("Original 1D Signal")
+plt.plot(x, original_samples, label="Original Samples", color="blue")
+plt.title("Original 1D Samples")
 plt.legend()
 plt.grid(True)
 plt.show()
@@ -257,7 +257,7 @@ degree = 3
     mse_1d_interp, 
     time_elapsed_1d_interp
 ) = resize_and_compute_metrics(
-    original_signal, 
+    original_samples, 
     "interpolation", 
     degree, 
     zoom_factor_1d
@@ -265,7 +265,7 @@ degree = 3
 
 # Plot results
 plot_universal_results(
-    original=original_signal,
+    original=original_samples,
     resized=resized_signal_1d_interp,
     resized_back=resized_back_signal_1d_interp,
     method="interpolation",
@@ -286,7 +286,7 @@ plot_universal_results(
     mse_1d_ls, 
     time_elapsed_1d_ls
 ) = resize_and_compute_metrics(
-    original_signal, 
+    original_samples, 
     "least-squares", 
     degree, 
     zoom_factor_1d
@@ -294,7 +294,7 @@ plot_universal_results(
 
 # Plot results
 plot_universal_results(
-    original=original_signal,
+    original=original_samples,
     resized=resized_signal_1d_ls,
     resized_back=resized_back_signal_1d_ls,
     method="least-squares",
@@ -315,7 +315,7 @@ plot_universal_results(
     mse_1d_ob, 
     time_elapsed_1d_ob
 ) = resize_and_compute_metrics(
-    original_signal, 
+    original_samples, 
     "oblique", 
     degree, 
     zoom_factor_1d
@@ -323,7 +323,7 @@ plot_universal_results(
 
 # Plot results
 plot_universal_results(
-    original=original_signal,
+    original=original_samples,
     resized=resized_signal_1d_ob,
     resized_back=resized_back_signal_1d_ob,
     method="oblique",
@@ -344,12 +344,12 @@ plot_universal_results(
     mse_1d_scipy, 
     time_elapsed_1d_scipy
 ) = resize_and_compute_metrics(
-    original_signal, "scipy", degree, zoom_factor_1d
+    original_samples, "scipy", degree, zoom_factor_1d
 )
 
 # Plot results
 plot_universal_results(
-    original=original_signal,
+    original=original_samples,
     resized=resized_signal_1d_scipy,
     resized_back=resized_back_signal_1d_scipy,
     method="scipy",
