@@ -276,6 +276,59 @@ plt.grid(True)
 plt.show()
 
 # %%
+# Resample the data
+# -----------------
+#
+# We create a new function g that is the rescaled version of the interpolated spline (f).
+
+inverse_resample_factor = 1 / high_res_factor  # Inverse factor for resampling
+resampled_length = int(len(resized_signal) * inverse_resample_factor)  # Resampled length
+
+# Resample f (resized_signal) to obtain g
+resampled_signal = resize(
+    data=resized_signal,
+    output_size=(resampled_length,),
+    degree=degree,
+    method="interpolation"
+)
+
+# Create x-axis for resampled spline (g)
+x_resampled = np.linspace(x[0], x[-1], resampled_length)
+
+# Compute MSE between the original spline (f) and the resampled spline (g)
+# We need to resize resampled_signal back to match the length of resized_signal for comparison
+resampled_back_signal = resize(
+    data=resampled_signal,
+    output_size=(len(resized_signal),),
+    degree=degree,
+    method="interpolation"
+)
+
+mse_f_g = compute_mse(resized_signal, resampled_back_signal)
+
+# Print the MSE value in scientific notation
+print(f"Mean Squared Error (MSE) between spline (f) and rescaled spline (g): {mse_f_g:.2e}")
+
+# Plot original samples, interpolated spline (f), and resampled spline (g)
+plt.figure(figsize=(10, 4))
+plt.title("Original Samples, Interpolated Spline (f), and Resampled Spline (g)")
+
+# Original sparse samples
+plt.stem(x, original_samples, basefmt=" ", linefmt='grey', markerfmt='o', label="Original Samples")
+
+# Interpolated spline (f) in green
+plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
+
+# Resampled spline (g) in red
+plt.plot(x_resampled, resampled_signal, color="red", linewidth=2, linestyle="--", label="Resampled Spline (g)")
+
+plt.xlabel("X-axis")
+plt.ylabel("Amplitude")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# %%
 # 1D resizing: interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
