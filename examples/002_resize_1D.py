@@ -224,7 +224,7 @@ def plot_universal_results(
     plt.show()
 
 # %%
-# Process 1D samples
+# Initial 1D samples
 # ------------------
 #
 # We generate 1D samples and treat them as discrete signal points.
@@ -251,8 +251,8 @@ plt.grid(True)
 plt.show()
 
 # %%
-# Interpolate the data with a spline f
-# ------------------------------------
+# Interpolate the samples with spline f
+# -------------------------------------
 #
 # We interpolate the 1D samples with a spline to obtain a continuous function f.
 #
@@ -293,19 +293,42 @@ plt.grid(True)
 plt.show()
 
 # %%
-# Resample the data to obtain g
-# -----------------------------
+# Rescaled spline g
+# -----------------
 #
-# We now create a new function g by resampling f at a lower resolution.
+# We now create a new function g by first extracting samples of f at a coarser resolution
+# and then using these samples to construct a new continuous interpolation function g.
 #
-# The resampled spline :math:`g(x)` is obtained by applying a scaling transformation to :math:`f`:
+# Unlike a simple scaled version of f, g is defined independently from f's spline coefficients,
+# using its own spline interpolation based on the downsampled samples of f.
+#
+# Specifically, let us take the high-resolution function :math:`f(x)` that was previously computed.
+# We downsample :math:`f(x)` by a known factor to obtain fewer samples. From these fewer samples,
+# we construct a new spline interpolation function :math:`g(x)` as:
 #
 # .. math::
 #
-#    g(x_j) = f(T^{-1} x_j), \quad j = 1, \dots, M,
+#    g(x) = \sum_{k} d_k \beta_n(x - k),
 #
-# where :math:`T` is a scaling transformation (in this case, downsampling by a known factor), 
-# and :math:`M` is the new number of samples after resampling. Thus, :math:`g` approximates :math:`f` on a coarser grid.
+# where :math:`d_k` are the spline coefficients computed from the downsampled samples of f,
+# and :math:`\beta_n` is the same B-spline basis function of degree n used in f.
+#
+# To compare f and g properly, we must realign their domains. Let :math:`\lambda` be the inverse
+# of the scaling factor used to define g's resolution relative to f. Then we consider :math:`g(\lambda x)`
+# when comparing against :math:`f(x)`. To measure how closely g approximates f, we define:
+#
+# .. math::
+#
+#    h(x) = f(x) - g(\lambda x).
+#
+# By sampling h(x) on the same grid as f(x), we can compute the Mean Squared Error (MSE):
+#
+# .. math::
+#
+#    \text{MSE} = \frac{1}{N} \sum_{i=1}^{N} [f(x_i) - g(\lambda x_i)]^2.
+#
+# The MSE provides a quantitative metric of the approximation quality of g relative to f,
+# taking into account the scaling and ensuring a fair comparison.
 
 inverse_resample_factor = 1 / high_res_factor
 resampled_length = int(len(resized_signal) * inverse_resample_factor)
@@ -320,7 +343,7 @@ resampled_signal = resize(
 
 x_resampled = np.linspace(x[0], x[-1], resampled_length)
 
-# Compute MSE between f and g
+# Compute MSE between f and g(lambda x)
 resampled_back_signal = resize(
     data=resampled_signal,
     output_size=(len(resized_signal),),
@@ -329,7 +352,7 @@ resampled_back_signal = resize(
 )
 mse_f_g = compute_mse(resized_signal, resampled_back_signal)
 
-print(f"Mean Squared Error (MSE) between spline (f) and rescaled spline (g): {mse_f_g:.2e}")
+print(f"Mean Squared Error (MSE) between f(x) and g(λx): {mse_f_g:.2e}")
 
 plt.figure(figsize=(10, 4))
 plt.title("Original Samples, Interpolated Spline (f), and Resampled Spline (g)")
