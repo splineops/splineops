@@ -337,69 +337,64 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Side-by-Side Comparison with Shrunken Bottom Plot
-# -------------------------------------------------
+# Side-by-Side Comparison + Third Row Expanding g to h
+# ----------------------------------------------------
 #
-# Finally, we create a figure with a 2×2 GridSpec:
-#   - The top row spans both columns, showing the entire domain x=0..(len(x)-1)
-#   - The bottom row is split: left subplot for the "shrunken" domain of g[k] vs. k,
-#     and right subplot left blank (white space).
+# We now create a figure with 3 rows:
+#   1) Full top row for f and the discrete g points
+#   2) Bottom-left (shrunken g) vs. bottom-right blank
+#   3) Another row spanning the full width for h[k] = g_spline(k / λ), 
+#      i.e. the spline of g expanded to the domain [0..26].
 #
-# The ratio of widths is chosen dynamically so that the bottom-left subplot domain 
-# visually matches g[k]’s domain length compared to the total domain length above.
-#
-# This ensures no hard-coded references (like "3", "27", or "8"); 
-# everything is derived from the data itself.
+# On that third row, we also overlay the red squares of the discrete g samples.
 
-fig = plt.figure(figsize=(12, 6))
+fig = plt.figure(figsize=(12, 9))  # increased height to accommodate 3 rows
 
-domain_length = x[-1] - x[0]  # e.g. 26 if x is 0..26
-num_g_points = len(g_lambda)  # e.g. 10 if x_lambda has 10 points
-g_domain_length = num_g_points - 1  # e.g. 9 => last index is 9
+domain_length = x[-1] - x[0]        # e.g. 26 if x goes 0..26
+num_g_points = len(g_lambda)        # number of discrete g samples
+g_domain_length = num_g_points - 1  # e.g. 9 if len(g_lambda)=10
 
-# e.g., if domain_length=26, g_domain_length=9 => width_ratios=[9, 17]
-width_ratios = [g_domain_length, domain_length - g_domain_length]
+# We'll have 3 rows × 2 columns:
+#   Row 0: entire top for f + g
+#   Row 1: left subplot for "shrunken" g, right is blank
+#   Row 2: entire bottom for h
+gs = GridSpec(
+    nrows=3,
+    ncols=2,
+    width_ratios=[g_domain_length, domain_length - g_domain_length],
+    height_ratios=[1, 1, 1]  # three equal rows
+)
 
-gs = GridSpec(nrows=2, ncols=2, width_ratios=width_ratios, height_ratios=[1, 1])
-
-#####################################
-# Top subplot (ax1) - Spans 2 columns
-#####################################
+###########################################
+# (1) TOP ROW: Original f + discrete g
+###########################################
 ax1 = fig.add_subplot(gs[0, :])  # spans both columns
-
 ax1.set_title("Original Samples, Interpolated f, and Sampled g[k]")
 
 ax1.stem(x, original_samples, basefmt=" ", label="Original Samples")
 ax1.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
-
-# Plot sampled points g[k] in red hollow squares
 ax1.plot(
-    x_lambda, 
-    g_lambda, 
-    'rs',
-    mfc='none',
-    markersize=12,
-    markeredgewidth=2,
+    x_lambda, g_lambda,
+    'rs', mfc='none', markersize=12, markeredgewidth=2,
     label="Sampled g[k]"
 )
 
-# Set domain to [x[0], x[-1]] with integer ticks
 ax1.set_xlim(x[0], x[-1])
 ax1.set_xticks(np.arange(x[0], x[-1] + 1, 1)) 
 ax1.set_xlabel("Domain (x)")
 ax1.set_ylabel("Amplitude")
-ax1.legend()
 ax1.grid(True)
+ax1.legend()
 
-###############################################
-# Bottom-left subplot (ax2) - "Shrunken" domain
-###############################################
-ax2 = fig.add_subplot(gs[1, 0])
+###########################################
+# (2) MIDDLE ROW: Shrunken view of g
+###########################################
+ax2 = fig.add_subplot(gs[1, 0])  # bottom-left
 ax2.set_title("Shrunken View of g[k] vs. k")
 
 k_values = np.arange(num_g_points)
 
-# Vertical red lines for each sample
+# Red vertical lines for each g[k]
 ax2.vlines(
     k_values,
     ymin=0,
@@ -408,31 +403,86 @@ ax2.vlines(
     linestyle='-',
     linewidth=1
 )
-# Red hollow squares at each sample
+# Red hollow squares at each g[k]
 ax2.plot(
-    k_values,
-    g_lambda,
-    'rs',
-    mfc='none',
-    markersize=12,
-    markeredgewidth=2
+    k_values, g_lambda,
+    'rs', mfc='none',
+    markersize=12, markeredgewidth=2,
+    label="Discrete g[k]"
 )
 
-# x-limits for the "g" domain => 0..(num_g_points-1)
+# (Optional) A spline of g in purple
+new_length_for_g = (num_g_points - 1) * high_res_factor + 1
+g_spline = resize(
+    data=g_lambda,
+    output_size=(new_length_for_g,),
+    degree=degree,
+    method="interpolation"
+)
+k_high_res = np.linspace(0, num_g_points - 1, new_length_for_g)
+ax2.plot(
+    k_high_res, g_spline,
+    color='purple',
+    linewidth=2,
+    label="Spline of g[k]"
+)
+
 ax2.set_xlim(0, num_g_points - 1)
 ax2.set_xticks(np.arange(0, num_g_points, 1))
 ax2.set_xlabel("Index (k)")
 ax2.set_ylabel("Amplitude")
 ax2.grid(True)
+ax2.legend()
+ax2.set_ylim(ax1.get_ylim())  # match top plot's amplitude range
 
-# Match the y-scale to the top subplot for direct amplitude comparison
-ax2.set_ylim(ax1.get_ylim())
-
-#####################################################
-# Bottom-right subplot (ax_blank) - left blank/white
-#####################################################
+# Blank right cell
 ax_blank = fig.add_subplot(gs[1, 1])
-ax_blank.axis("off")  # Hide everything
+ax_blank.axis("off")
+
+###########################################
+# (3) BOTTOM ROW: h[k] = g_spline(k / λ)
+###########################################
+ax3 = fig.add_subplot(gs[2, :])  # spans both columns
+ax3.set_title("Expanded Function h[k] = g_spline(k / λ) Over Original Domain")
+
+# We'll sample k in [0..domain_length], i.e. 0..26
+k_full = np.arange(domain_length + 1)  # 0..26 inclusive
+k_in_g = k_full / float(lambda_val)    # fractional index in g's domain
+
+# h[k] = g_spline( k / λ )
+h_expanded = np.interp(k_in_g, k_high_res, g_spline)
+
+# Plot h in blue
+ax3.plot(
+    k_full, h_expanded,
+    color='blue',
+    linewidth=2,
+    label="h[k] = g_spline(k/λ)"
+)
+
+# ALSO overlay the original g points (red squares),
+# mapped to the same domain 0..26 (but skip those that exceed 26).
+x_lambda_in_bounds = x_lambda[x_lambda <= domain_length]
+# Matching y-values from g_lambda
+g_lambda_in_bounds = g_lambda[:len(x_lambda_in_bounds)]
+
+ax3.plot(
+    x_lambda_in_bounds, 
+    g_lambda_in_bounds,
+    'rs', mfc='none',
+    markersize=12, markeredgewidth=2,
+    label="Discrete g[k] (red squares)"
+)
+
+ax3.set_xlim(0, domain_length)  # 0..26
+ax3.set_xticks(np.arange(0, domain_length + 1, 1))
+ax3.set_xlabel("Domain (x)")
+ax3.set_ylabel("Amplitude")
+ax3.grid(True)
+ax3.legend()
+
+# Keep amplitude scale consistent
+ax3.set_ylim(ax1.get_ylim())
 
 fig.tight_layout()
 plt.show()
