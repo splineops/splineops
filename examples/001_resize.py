@@ -57,10 +57,10 @@ def adjust_image_size_for_shrink(data, shrink_factor):
     scale_factor_h = new_h / h
     scale_factor_w = new_w / w
 
-    # Zoom the image (assume color image has shape (H, W, 3))
     if c == 1:
         data_zoomed = ndi_zoom(data, (scale_factor_h, scale_factor_w), order=1)
     else:
+        # For RGB: zoom each spatial dimension, but keep channels unchanged
         data_zoomed = ndi_zoom(data, (scale_factor_h, scale_factor_w, 1), order=1)
 
     return data_zoomed
@@ -131,9 +131,17 @@ expanded_image = resize_image_splineops(
     extension_mode="mirror"
 )
 
-# 7) Plot the three images in one figure: 
-#    (Left) Adjusted original, (Center) Shrunken-on-white, (Right) Expanded
-fig, axes = plt.subplots(1, 3, figsize=(16, 6))
+# 7) Plot the three images in one figure, stacked vertically
+#    to achieve a large, clear display. We also increase font sizes.
+plt.rcParams.update({
+    "font.size": 14,     # Base font size
+    "axes.titlesize": 18,  # Title font size
+    "axes.labelsize": 16,  # Label font size
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14
+})
+
+fig, axes = plt.subplots(3, 1, figsize=(8, 18))
 
 axes[0].imshow(adjusted_data_uint8)
 axes[0].set_title("Adjusted Original")

@@ -2,8 +2,23 @@
 Resizing 1D samples
 ===================
 
-This example compares SplineOps resizing with advanced interpolation methods:
-Least-Squares, Oblique Projection, and SciPy's built-in zoom, on 1D samples.
+This example demonstrates how to perform 1D spline interpolation using the
+`splineops` library, and how to downsample and re-expand a spline to measure
+approximation quality. 
+
+Specifically, we:
+1. Interpolate an initial set of 1D samples with a B-spline to form a continuous function f(x).
+
+2. Downsample f(x) by extracting fewer samples g[k] = f(λk).
+
+3. Create a new spline g(x) from the discrete g[k].
+
+4. Re-expand g(x) to match f's domain via h(x) = g(x / λ).
+
+5. Compute the Mean Squared Error (MSE) between f and h to quantify the downsampling and re-expansion accuracy.
+
+By the end, we visualize how closely h approximates f and see the 
+effect of downsampling followed by spline-based reconstruction.
 
 You can download this example as both a Python script and as a Jupyter notebook.
 """
