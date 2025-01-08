@@ -421,14 +421,23 @@ ax3.plot(
     label="h[k] = g_spline(k/λ)"
 )
 
-# ALSO overlay the original g points (red squares),
-# mapped to the same domain 0..26 (but skip those that exceed 26).
+# Compute which g samples fit in [0..26]
 x_lambda_in_bounds = x_lambda[x_lambda <= domain_length]
-# Matching y-values from g_lambda
 g_lambda_in_bounds = g_lambda[:len(x_lambda_in_bounds)]
 
+# Overlay vertical red lines, matching the squares
+ax3.vlines(
+    x_lambda_in_bounds,
+    ymin=0,
+    ymax=g_lambda_in_bounds,
+    color='red',
+    linestyle='-',
+    linewidth=1
+)
+
+# Also overlay the discrete g squares
 ax3.plot(
-    x_lambda_in_bounds, 
+    x_lambda_in_bounds,
     g_lambda_in_bounds,
     'rs', mfc='none',
     markersize=12, markeredgewidth=2,
@@ -442,7 +451,7 @@ ax3.set_ylabel("Amplitude")
 ax3.grid(True)
 ax3.legend()
 
-# Keep amplitude scale consistent
+# Keep amplitude scale consistent with top row
 ax3.set_ylim(ax1.get_ylim())
 
 fig.tight_layout()
