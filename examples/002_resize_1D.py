@@ -238,17 +238,14 @@ def plot_universal_results(
 #
 # These are the input samples that we will interpolate.
 
-# Create a small array of about 10 samples
-x = np.linspace(0, 4 * np.pi, 10)  # Only 10 samples
-
-# Generate random samples between -1 and 1
-np.random.seed(42)  # Set seed for reproducibility
-original_samples = np.random.uniform(-1, 1, len(x))  # Random values in range [-1, 1]
+x = np.arange(13)               # integer coordinates [0, 1, 2, ..., 12]
+np.random.seed(42)              # for reproducibility
+original_samples = np.random.uniform(-1, 1, len(x))  # random in [-1, 1]
 
 plt.figure(figsize=(10, 4))
-plt.title("Original Sparse Samples")
+plt.title("Original Samples on Integer Grid")
 plt.stem(x, original_samples, basefmt=" ")
-plt.xlabel("X-axis")
+plt.xlabel("X-axis (integer grid)")
 plt.ylabel("Amplitude")
 plt.grid(True)
 plt.tight_layout()
