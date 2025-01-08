@@ -309,45 +309,6 @@ lambda_val = high_res_factor  # sample every 'high_res_factor' points
 x_lambda = np.arange(x[0], x[-1] + 1, lambda_val)
 g_lambda = np.interp(x_lambda, x_high_res, resized_signal)  # sample from the high-resolution spline
 
-plt.figure(figsize=(10, 4))
-plt.title("Original Samples with Interpolated Spline (f) and λ = high_res_factor Samples")
-
-# Plot original discrete samples
-plt.stem(x, original_samples, basefmt=" ", label="Original Samples")
-
-# Plot spline interpolation
-plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
-
-# Plot sampled points g[k] = f(λk) as red squares
-plt.plot(
-    x_lambda, 
-    g_lambda, 
-    'rs',            # 'r' for red, 's' for square
-    mfc='none',      # Marker face color = 'none' (hollow square)
-    markersize=12,   
-    markeredgewidth=2,
-    label="g[k] = f(λk)"
-)
-
-plt.xlabel("X-axis")
-plt.ylabel("Amplitude")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-# %%
-# Side-by-Side Comparison + Third Row Expanding g to h
-# ----------------------------------------------------
-#
-# We now create a figure with 3 rows:
-#   1) Full top row for f and the discrete g points
-#   2) Bottom-left (shrunken g) vs. bottom-right blank
-#   3) Another row spanning the full width for h[k] = g_spline(k / λ), 
-#      i.e. the spline of g expanded to the domain [0..26].
-#
-# On that third row, we also overlay the red squares of the discrete g samples.
-
 fig = plt.figure(figsize=(12, 9))  # increased height to accommodate 3 rows
 
 domain_length = x[-1] - x[0]        # e.g. 26 if x goes 0..26
@@ -486,3 +447,41 @@ ax3.set_ylim(ax1.get_ylim())
 
 fig.tight_layout()
 plt.show()
+
+# %%
+# Compute MSE between the original spline f and the expanded spline h
+# -------------------------------------------------------------------
+#
+# We define f(x) from (x_high_res, resized_signal) and
+# h(x) = g_spline(x / lambda_val).
+# We'll sample both over a fine grid [0..26], then perform a Riemann sum
+# to approximate the integral of (f - h)^2, and divide by the domain length.
+
+# 1) Define a fine sampling domain
+sample_count = 1000  # number of points for Riemann sum
+a, b = x[0], x[-1]   # 0..26
+fine_x = np.linspace(a, b, sample_count)
+
+# 2) Evaluate f(x) at this fine grid
+#    We already have f on (x_high_res, resized_signal), so we just interpolate:
+f_fine = np.interp(fine_x, x_high_res, resized_signal)
+
+# 3) Evaluate h(x) at this same fine grid
+#    h(x) = g_spline(x / lambda_val).
+#    Recall we have k_high_res, g_spline from the bottom subplot.
+h_fine = np.interp(fine_x / lambda_val, k_high_res, g_spline)
+
+# 4) Compute the Riemann sum for ∫(f(x)-h(x))^2 dx over [a, b]
+#    Here we use a simple rectangular rule with spacing dx:
+dx = (b - a) / (sample_count - 1)
+integral_value = np.sum((f_fine - h_fine)**2) * dx
+
+# 5) Divide by (b - a) to get the MSE
+mse_riemann = integral_value / (b - a)
+
+print(f"MSE between f and h (via Riemann sum) = {mse_riemann:.6e}")
+
+# (Optional) Quick check with a simple discrete mean of squared errors
+# over the same 1D samples (not an integral, but a discrete approximation):
+mse_check = np.mean((f_fine - h_fine)**2)
+print(f"MSE check (discrete mean over {sample_count} samples) = {mse_check:.6e}")
