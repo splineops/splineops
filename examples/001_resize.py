@@ -1,3 +1,19 @@
+"""
+Resizing basic example
+======================
+
+We use SplineOps to resize a 2D image.
+
+You can download this example as both a Python script and as a Jupyter notebook.
+"""
+
+# %%
+# Import required libraries
+# -------------------------
+#
+# We import the required libraries, including NumPy for numerical computations,
+# Matplotlib for plotting, and the custom resize function from the splineops package.
+
 import numpy as np
 import matplotlib.pyplot as plt
 import requests
@@ -7,9 +23,11 @@ from PIL import Image
 from scipy.ndimage import zoom as ndi_zoom
 from splineops.interpolate.resize import resize  # or your actual import path
 
-# ------------------------------------------------------------------------------
+# %%
 # Utility functions
-# ------------------------------------------------------------------------------
+# -----------------
+#
+# To adjust an image resolution using scipy and splineops.
 
 def adjust_image_size_for_shrink(data, shrink_factor):
     """
@@ -18,7 +36,8 @@ def adjust_image_size_for_shrink(data, shrink_factor):
 
     Steps:
       1) We want H' * shrink_factor to be integer (same for W').
-      2) Choose H' as nearest multiple of 1/shrink_factor to original H, similarly for W'.
+      2) Choose H' as nearest multiple of 1/shrink_factor to original H,
+         similarly for W'.
       3) Use ndimage.zoom to resample to (H', W').
     """
     h, w = data.shape[:2]
@@ -67,9 +86,11 @@ def resize_image_splineops(data, zoom_factor, degree=3, extension_mode="mirror")
     resized_image = np.clip(resized_image, 0.0, 1.0)
     return (resized_image * 255.0).astype(np.uint8)
 
-# ------------------------------------------------------------------------------
-# Main code
-# ------------------------------------------------------------------------------
+# %%
+# Basic resizing example
+# ----------------------
+#
+# Load a simple 2D image, shrink and expand it using splineops interpolation.
 
 # 1) Load and normalize the original image
 url = 'https://r0k.us/graphics/kodak/kodak/kodim19.png'
@@ -78,12 +99,17 @@ img = Image.open(BytesIO(response.content))
 data = np.array(img, dtype=np.float64)  # shape: (H, W, 3)
 data_normalized = data / 255.0          # Convert to [0,1]
 
-# 2) Adjust image so that shrinking and then re-expanding yields the same final shape
-shrink_factor = 0.23
-adjusted_data = adjust_image_size_for_shrink(data_normalized, shrink_factor)
+# 2) *Initially* shrink the image by 0.3 to reduce its overall size
+initial_shrink_factor = 0.3
+data_smaller = ndi_zoom(data_normalized, (initial_shrink_factor, initial_shrink_factor, 1), order=1)
+
+# 3) Next, adjust the now-smaller image so that our subsequent shrink-and-expand 
+#    steps (by shrink_factor below) will match the final shape exactly.
+shrink_factor = 0.3
+adjusted_data = adjust_image_size_for_shrink(data_smaller, shrink_factor)
 adjusted_data_uint8 = (adjusted_data * 255).astype(np.uint8)
 
-# 3) Shrink the adjusted image
+# 4) Shrink the adjusted image via splineops
 shrunken_image = resize_image_splineops(
     adjusted_data,
     zoom_factor=shrink_factor,
@@ -91,13 +117,13 @@ shrunken_image = resize_image_splineops(
     extension_mode="mirror"
 )
 
-# 4) Place the shrunken image onto a white canvas matching adjusted image size (so it appears smaller)
+# 5) Place the shrunken image onto a white canvas the size of the adjusted image
 H_adj, W_adj, _ = adjusted_data_uint8.shape
 canvas_shrunken = np.ones((H_adj, W_adj, 3), dtype=np.uint8) * 255  # white background
 H_shr, W_shr, _ = shrunken_image.shape
 canvas_shrunken[:H_shr, :W_shr, :] = shrunken_image
 
-# 5) Expand the shrunken image back to original (adjusted) dimensions
+# 6) Expand the shrunken image back to the adjusted image dimensions
 expanded_image = resize_image_splineops(
     shrunken_image.astype(np.float64) / 255.0,  # re-normalize to [0,1]
     zoom_factor=1.0 / shrink_factor,
@@ -105,8 +131,8 @@ expanded_image = resize_image_splineops(
     extension_mode="mirror"
 )
 
-# 6) Plot the three images in one figure: 
-#    (Left) Adjusted original, (Center) Shrunken-on-canvas, (Right) Expanded
+# 7) Plot the three images in one figure: 
+#    (Left) Adjusted original, (Center) Shrunken-on-white, (Right) Expanded
 fig, axes = plt.subplots(1, 3, figsize=(16, 6))
 
 axes[0].imshow(adjusted_data_uint8)
