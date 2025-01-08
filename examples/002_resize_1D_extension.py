@@ -296,17 +296,21 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Sampling the Spline at Every Third Sample
-# -----------------------------------------
+# Sampling the Spline at Every "high_res_factor" Sample
+# -----------------------------------------------------
 #
 # We re-plot the original samples along with the interpolated spline. 
-# Then we define a natural number λ = 3 and sample the spline at 
-# x = λk, i.e., at every third point in the original domain. 
+# Then we define a natural number λ = high_res_factor and sample the spline at 
+# x = λk, i.e., at every "high_res_factor" point in the original domain. 
 # These newly sampled points, g[k] = f(λk), are plotted as red squares 
 # with no fill to highlight them.
 
+lambda_val = high_res_factor  # sample every 'high_res_factor' points
+x_lambda = np.arange(x[0], x[-1] + 1, lambda_val)
+g_lambda = np.interp(x_lambda, x_high_res, resized_signal)  # sample from the high-resolution spline
+
 plt.figure(figsize=(10, 4))
-plt.title("Original Samples with Interpolated Spline (f) and λ=3 Samples")
+plt.title("Original Samples with Interpolated Spline (f) and λ = high_res_factor Samples")
 
 # Plot original discrete samples
 plt.stem(x, original_samples, basefmt=" ", label="Original Samples")
@@ -314,19 +318,14 @@ plt.stem(x, original_samples, basefmt=" ", label="Original Samples")
 # Plot spline interpolation
 plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
 
-# Define λ and sample f at x = 0, 3, 6, ...
-lambda_val = 3
-x_lambda = np.arange(x[0], x[-1] + 1, lambda_val)  # up to (and possibly including) the last integer ≤ x[-1]
-g_lambda = np.interp(x_lambda, x_high_res, resized_signal)  # sample from the high-resolution spline
-
 # Plot sampled points g[k] = f(λk) as red squares
 plt.plot(
     x_lambda, 
     g_lambda, 
     'rs',            # 'r' for red, 's' for square
     mfc='none',      # Marker face color = 'none' (hollow square)
-    markersize=12,   # Bigger squares (default is around 6–8)
-    markeredgewidth=2,  # Make the square edges a bit thicker
+    markersize=12,   
+    markeredgewidth=2,
     label="g[k] = f(λk)"
 )
 
@@ -337,72 +336,70 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-# ------------------------------------------------------------------------------
-# Example data (assumed to exist in your session):
-#    x              -> integer domain, e.g. np.arange(27)
-#    original_samples  -> 27 random samples in [-1, 1]
-#    x_high_res        -> np.linspace(0, 26, new_length)
-#    resized_signal    -> interpolated spline f
-#    x_lambda          -> np.arange(0, 27, 3)   # if λ=3
-#    g_lambda          -> np.interp(x_lambda, x_high_res, resized_signal)
-# ------------------------------------------------------------------------------
+# %%
+# Side-by-Side Comparison with Shrunken Bottom Plot
+# -------------------------------------------------
+#
+# Finally, we create a figure with a 2×2 GridSpec:
+#   - The top row spans both columns, showing the entire domain x=0..(len(x)-1)
+#   - The bottom row is split: left subplot for the "shrunken" domain of g[k] vs. k,
+#     and right subplot left blank (white space).
+#
+# The ratio of widths is chosen dynamically so that the bottom-left subplot domain 
+# visually matches g[k]’s domain length compared to the total domain length above.
+#
+# This ensures no hard-coded references (like "3", "27", or "8"); 
+# everything is derived from the data itself.
 
 fig = plt.figure(figsize=(12, 6))
 
-# --------------------------------------------------------------------
-# 1) Create a 2x2 GridSpec
-#    - top row spans both columns (full width -> x=0..26)
-#    - bottom row is split between a "shrunken" left subplot (x=0..8)
-#      and an empty right subplot
-# --------------------------------------------------------------------
-# Since the total domain width is 26, we split it as [8, 18] => 8+18=26
-# so the bottom-left subplot visually corresponds to x=0..8,
-# and the bottom-right is blank.
-gs = GridSpec(nrows=2, ncols=2, width_ratios=[8, 18], height_ratios=[1, 1])
+domain_length = x[-1] - x[0]  # e.g. 26 if x is 0..26
+num_g_points = len(g_lambda)  # e.g. 10 if x_lambda has 10 points
+g_domain_length = num_g_points - 1  # e.g. 9 => last index is 9
 
-# ----------------------
-# (A) Top subplot (ax1)
-# ----------------------
+# e.g., if domain_length=26, g_domain_length=9 => width_ratios=[9, 17]
+width_ratios = [g_domain_length, domain_length - g_domain_length]
+
+gs = GridSpec(nrows=2, ncols=2, width_ratios=width_ratios, height_ratios=[1, 1])
+
+#####################################
+# Top subplot (ax1) - Spans 2 columns
+#####################################
 ax1 = fig.add_subplot(gs[0, :])  # spans both columns
 
 ax1.set_title("Original Samples, Interpolated f, and Sampled g[k]")
 
-# Plot original discrete samples
 ax1.stem(x, original_samples, basefmt=" ", label="Original Samples")
-
-# Plot spline interpolation f
 ax1.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
 
-# Plot sampled points g[k] = f(λk) in red hollow squares
+# Plot sampled points g[k] in red hollow squares
 ax1.plot(
     x_lambda, 
     g_lambda, 
     'rs',
-    mfc='none',       # hollow square
+    mfc='none',
     markersize=12,
     markeredgewidth=2,
     label="Sampled g[k]"
 )
 
-# Full domain x=0..26, integer ticks
-ax1.set_xlim(0, 26)
-ax1.set_xticks(np.arange(0, 27, 1))  # show all integer ticks from 0..26
+# Set domain to [x[0], x[-1]] with integer ticks
+ax1.set_xlim(x[0], x[-1])
+ax1.set_xticks(np.arange(x[0], x[-1] + 1, 1)) 
 ax1.set_xlabel("Domain (x)")
 ax1.set_ylabel("Amplitude")
 ax1.legend()
 ax1.grid(True)
 
-# ---------------------------
-# (B) Bottom-left subplot
-# ---------------------------
+###############################################
+# Bottom-left subplot (ax2) - "Shrunken" domain
+###############################################
 ax2 = fig.add_subplot(gs[1, 0])
-
 ax2.set_title("Shrunken View of g[k] vs. k")
 
-# k-values for discrete g
-k_values = np.arange(len(g_lambda))
+k_values = np.arange(num_g_points)
 
-# 1) Vertical red lines for each sample
+# Vertical red lines for each sample
 ax2.vlines(
     k_values,
     ymin=0,
@@ -411,7 +408,7 @@ ax2.vlines(
     linestyle='-',
     linewidth=1
 )
-# 2) Red hollow squares at each sample
+# Red hollow squares at each sample
 ax2.plot(
     k_values,
     g_lambda,
@@ -421,24 +418,21 @@ ax2.plot(
     markeredgewidth=2
 )
 
-# x-limits: 0..(len(g_lambda)-1), integer ticks
-ax2.set_xlim(0, len(g_lambda) - 1)
-ax2.set_xticks(np.arange(0, len(g_lambda), 1))
+# x-limits for the "g" domain => 0..(num_g_points-1)
+ax2.set_xlim(0, num_g_points - 1)
+ax2.set_xticks(np.arange(0, num_g_points, 1))
 ax2.set_xlabel("Index (k)")
 ax2.set_ylabel("Amplitude")
 ax2.grid(True)
 
-# Match the y-scale to the top plot for direct amplitude comparison
+# Match the y-scale to the top subplot for direct amplitude comparison
 ax2.set_ylim(ax1.get_ylim())
 
-# --------------------------------------------
-# (C) Bottom-right subplot is left blank
-# --------------------------------------------
+#####################################################
+# Bottom-right subplot (ax_blank) - left blank/white
+#####################################################
 ax_blank = fig.add_subplot(gs[1, 1])
 ax_blank.axis("off")  # Hide everything
 
-# --------------------------------
-# Final layout and display
-# --------------------------------
 fig.tight_layout()
 plt.show()
