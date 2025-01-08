@@ -265,13 +265,23 @@ plt.show()
 # -------------------
 #
 # To quantify how well :math:`h(x)` approximates :math:`f(x)`, we compute the 
-# Mean Squared Error (MSE):
+# Mean Squared Error (MSE) over the domain :math:`[a,b] = [0, 26]`:
 #
 # .. math::
-#    \text{MSE} = \frac{1}{b - a} \int_{a}^{b} [f(x) - h(x)]^2 \, dx,
+#    \text{MSE} = \frac{1}{b - a} \int_{a}^{b} [f(x) - h(x)]^2 \, dx.
 #
-# over the domain :math:`[0, 26]`. We approximate this integral by a 
-# Riemann sum on a finer sampling grid.
+# **Riemann Sum Approximation**:
+#
+# Instead of computing this integral analytically, we discretize the interval
+# :math:`[a,b]` into :math:`N` points. At each point :math:`x_i`, we evaluate
+# :math:`(f(x_i) - h(x_i))^2` and multiply by the small width :math:`\Delta x`.
+# Summing across all points approximates the integral:
+#
+# .. math::
+#    \int_{a}^{b} [f(x) - h(x)]^2 \, dx 
+#    \;\approx\; \Delta x \sum_{i=1}^{N} [f(x_i) - h(x_i)]^2.
+#
+# Dividing by :math:`b-a` yields the MSE.
 
 # 1) Define a fine sampling domain
 sample_count = 1000  # number of points for Riemann sum
