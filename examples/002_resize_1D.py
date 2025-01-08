@@ -35,6 +35,14 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from splineops.interpolate.resize import resize
 
+plt.rcParams.update({
+    "font.size": 14,     # Base font size
+    "axes.titlesize": 18,  # Title font size
+    "axes.labelsize": 16,  # Label font size
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14
+})
+
 # %%
 # Initial 1D samples
 # ------------------
@@ -57,6 +65,13 @@ original_samples = np.random.uniform(-1, 1, len(x))  # random in [-1, 1]
 plt.figure(figsize=(10, 4))
 plt.title("Original f[k] samples")
 plt.stem(x, original_samples, basefmt=" ")
+# Add a black horizontal line at y=0:
+plt.axhline(
+    y=0,
+    color="black",
+    linewidth=1,  # make it thicker if you like
+    zorder=0      # draw behind other plot elements
+)
 plt.xlabel("x")
 plt.ylabel("Amplitude")
 plt.grid(True)
@@ -98,6 +113,13 @@ x_high_res = np.linspace(x[0], x[-1], new_length)
 plt.figure(figsize=(10, 4))
 plt.title("Original f[k] samples with interpolated f spline")
 plt.stem(x, original_samples, basefmt=" ", label="f[k] samples")
+# Add a black horizontal line at y=0:
+plt.axhline(
+    y=0,
+    color="black",
+    linewidth=1,  # make it thicker if you like
+    zorder=0      # draw behind other plot elements
+)
 plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="f spline")
 plt.xlabel("x")
 plt.ylabel("Amplitude")
@@ -271,6 +293,9 @@ ax3.legend()
 
 # Keep amplitude scale consistent with top row
 ax3.set_ylim(ax1.get_ylim())
+
+for ax in [ax1, ax2, ax3]:
+    ax.axhline(0, color='black', linewidth=1, zorder=0)
 
 fig.tight_layout()
 plt.show()
