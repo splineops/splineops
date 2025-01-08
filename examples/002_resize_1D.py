@@ -17,211 +17,8 @@ You can download this example as both a Python script and as a Jupyter notebook.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.ndimage import zoom  # For SciPy's zoom comparison
-from splineops.interpolate.resize import resize  # Unified resize function
-import requests
-from io import BytesIO
-from PIL import Image
-
-# %%
-# Helper functions
-# ----------------
-#
-# We define functions to compute Signal-to-Noise Ratio (SNR) and Mean Squared Error (MSE).
-# Additionally, we include functions to perform resizing with SciPy's zoom and to compute
-# metrics for the resized samples.
-
-def compute_snr(original, processed):
-    """Compute Signal-to-Noise Ratio between two samples."""
-    signal_power = np.mean(original ** 2)
-    noise_power = np.mean((original - processed) ** 2)
-    return 10 * np.log10(signal_power / noise_power)
-
-def compute_mse(original, processed):
-    """Compute Mean Squared Error between two samples."""
-    return np.mean((original - processed) ** 2)
-
-def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
-    """Resize using SciPy's zoom, then resize back and compute metrics."""
-    import time
-
-    start_time = time.perf_counter()
-    resized_signal = zoom(input_signal, zoom_factors, order=degree)
-    time_elapsed = time.perf_counter() - start_time
-
-    reverse_zoom_factors = 1.0 / np.array(zoom_factors)
-    resized_back_signal = zoom(resized_signal, reverse_zoom_factors, order=degree)
-
-    snr = compute_snr(input_signal, resized_back_signal)
-    mse = compute_mse(input_signal, resized_back_signal)
-
-    return resized_signal, resized_back_signal, snr, mse, time_elapsed
-
-def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
-    """Resize Samples using a given method and compute metrics."""
-    import time
-
-    if np.isscalar(zoom_factors):
-        zoom_factors = [zoom_factors] * len(input_signal.shape)
-
-    if method == "scipy":
-        (
-            resized_signal, 
-            resized_back_signal, 
-            snr, 
-            mse, 
-            time_elapsed,
-        ) = resize_with_scipy_zoom(
-            input_signal=input_signal,
-            zoom_factors=zoom_factors,
-            degree=degree
-        )
-    else:
-        start_time = time.perf_counter()
-        resized_signal = resize(
-            data=input_signal,
-            zoom_factors=zoom_factors,
-            degree=degree,
-            method=method
-        )
-        time_elapsed = time.perf_counter() - start_time
-        resized_back_signal = resize(
-            data=resized_signal,
-            output_size=input_signal.shape,
-            degree=degree,
-            method=method
-        )
-        snr = compute_snr(input_signal, resized_back_signal)
-        mse = compute_mse(input_signal, resized_back_signal)
-
-    return resized_signal, resized_back_signal, snr, mse, time_elapsed
-
-def plot_universal_results(
-    original,
-    resized,
-    resized_back,
-    method,
-    zoom_factors,
-    snr,
-    mse,
-    time_elapsed
-):
-    # Set global font size
-    plt.rcParams.update({
-        'font.size': 14,  # Base font size
-        'axes.titlesize': 18,  # Title font size
-        'axes.labelsize': 16,  # Label font size
-        'xtick.labelsize': 14,  # X-axis tick font size
-        'ytick.labelsize': 14   # Y-axis tick font size
-    })
-
-    # Compute difference
-    difference = original - resized_back
-
-    # Ensure original image is in the range [0, 255]
-    if original.ndim > 1:  # Only for 2D or 3D slices
-        original_scaled = (
-            (original - original.min()) 
-            / (original.max() - original.min()) 
-            * 255.0
-        )
-        original_scaled = original_scaled.astype(np.uint8)
-    else:
-        original_scaled = original  # Keep 1D data unchanged
-
-    # Check if zoom factors are < 1 in any direction
-    zoom_factors = (
-        [zoom_factors] 
-        if isinstance(zoom_factors, (int, float)) 
-        else zoom_factors
-    )
-    zoom_out = any(zf < 1 for zf in zoom_factors)
-
-    # Adjust resized data to overlay on white background for 2D or 3D slices
-    if original.ndim > 1 and zoom_out:
-        # Normalize resized to [0, 255] for better visibility
-        resized_normalized = (
-            (resized - resized.min()) 
-            / (resized.max() - resized.min()) 
-            * 255.0
-        )
-        resized_normalized = resized_normalized.astype(np.uint8)
-
-        # Create a white background of the original's shape
-        resized_display = np.ones_like(original_scaled) * 255  # White background
-        # Place resized data in the top-left corner
-        start_indices = [0] * len(original_scaled.shape)
-        slices = tuple(
-            slice(start, start + res_dim) 
-            for start, res_dim in zip(start_indices, resized.shape)
-        )
-        resized_display[slices] = resized_normalized
-    else:
-        resized_display = resized
-
-    # Normalize difference to [0, 255] for better visualization
-    if original.ndim > 1:
-        difference_normalized = (
-            (difference - difference.min()) 
-            / (difference.max() - difference.min()) 
-            * 255.0
-        )
-        difference_normalized = difference_normalized.astype(np.uint8)
-    else:
-        difference_normalized = difference
-
-    # Titles for 1D and 2D/3D cases
-    titles = {
-        1: [
-            "Original Signal",
-            f"Resized Signal ({method})\nTime: {time_elapsed:.4f}s",
-            f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})"
-        ],
-        2: [
-            "Original Image",
-            f"{method.capitalize()} Resized\nZoom: {zoom_factors} Time: {time_elapsed:.4f}s",
-            f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})"
-        ]
-    }
-
-    # Plotting functions for 1D and 2D/3D slices
-    plotters = {
-        1: lambda a, d, t, xv: (
-            a.plot(
-                np.linspace(0, 1, len(d)),  # Generate x-axis based on data length
-                d
-            ),
-            a.set_title(t),
-            a.set_xlabel("X-axis"),
-            a.set_ylabel("Amplitude"),
-            a.grid(True)
-        ),
-        2: lambda a, d, t, xv: (
-            a.imshow(d, cmap="gray", aspect='equal', vmin=0, vmax=255),
-            a.set_title(t),
-            a.axis("off")
-        )
-    }
-
-    dim = original.ndim
-    plot_func = plotters[dim]
-    chosen_titles = titles[dim]
-
-    # Create figure and subplots arranged vertically
-    fig, ax = plt.subplots(3, 1, figsize=(12, 24))
-
-    # Plot original (use scaled values for 2D/3D, raw for 1D)
-    plot_func(ax[0], original_scaled, chosen_titles[0], None)
-    # Plot resized (with adjustment for zoom-out)
-    plot_func(ax[1], resized_display, chosen_titles[1], None)
-    # Plot difference
-    plot_func(ax[2], difference_normalized, chosen_titles[2], None)
-
-    # Adjust spacing between plots
-    fig.subplots_adjust(hspace=0.5)  # Increase spacing between rows
-
-    plt.tight_layout()
-    plt.show()
+from matplotlib.gridspec import GridSpec
+from splineops.interpolate.resize import resize
 
 # %%
 # Initial 1D samples
@@ -238,22 +35,22 @@ def plot_universal_results(
 #
 # These are the input samples that we will interpolate.
 
-x = np.arange(13)               # integer coordinates [0, 1, 2, ..., 12]
+x = np.arange(27)               # integer coordinates [0, 1, 2, ...]
 np.random.seed(42)              # for reproducibility
 original_samples = np.random.uniform(-1, 1, len(x))  # random in [-1, 1]
 
 plt.figure(figsize=(10, 4))
-plt.title("Original Samples on Integer Grid")
+plt.title("Original f[k] samples")
 plt.stem(x, original_samples, basefmt=" ")
-plt.xlabel("X-axis (integer grid)")
+plt.xlabel("x")
 plt.ylabel("Amplitude")
 plt.grid(True)
 plt.tight_layout()
 plt.show()
 
 # %%
-# Interpolate the samples with spline f
-# -------------------------------------
+# Interpolate samples with spline f
+# ---------------------------------
 #
 # We interpolate the 1D samples with a spline to obtain a continuous function f.
 #
@@ -270,7 +67,7 @@ plt.show()
 # By choosing a sufficiently fine grid, we approximate a continuous function :math:`f` from the discrete samples.
 
 degree = 3
-high_res_factor = 10  # Upsample by a factor of 10 for smooth interpolation
+high_res_factor = 3
 new_length = len(original_samples) * high_res_factor
 
 # Interpolated signal
@@ -284,10 +81,10 @@ resized_signal = resize(
 x_high_res = np.linspace(x[0], x[-1], new_length)
 
 plt.figure(figsize=(10, 4))
-plt.title("Original Samples with Interpolated Spline (f)")
-plt.stem(x, original_samples, basefmt=" ", label="Original Samples")
-plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
-plt.xlabel("X-axis")
+plt.title("Original f[k] samples with interpolated f spline")
+plt.stem(x, original_samples, basefmt=" ", label="f[k] samples")
+plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="f spline")
+plt.xlabel("x")
 plt.ylabel("Amplitude")
 plt.legend()
 plt.grid(True)
@@ -295,75 +92,212 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Rescaled spline g
-# -----------------
+# Sampling f to get g and h
+# -------------------------
 #
-# We now create a new function g by first extracting samples of f at a coarser resolution
-# and then using these samples to construct a new continuous interpolation function g.
 #
-# Unlike a simple scaled version of f, g is defined independently from f's spline coefficients,
-# using its own spline interpolation based on the downsampled samples of f.
+# We define :math:`\lambda` as a natural number and sample :math:`f(x)` 
+# at :math:`x = \lambda k`. Mathematically:
 #
-# Specifically, let us take the high-resolution function :math:`f(x)` that was previously computed.
-# We downsample :math:`f(x)` by a known factor to obtain fewer samples. From these fewer samples,
-# we construct a new spline interpolation function :math:`g(x)` as:
+# .. math::
+#    g[k] = f(\lambda k).
+#
+# These :math:`g[k]` points form a new discrete set, which we will then treat 
+# as a separate signal to build another spline, :math:`g(x)`. Finally, to 
+# compare :math:`g` on the same domain as :math:`f`, we expand g by defining 
+# a new function :math:`h(x)`.
 #
 # .. math::
 #
-#    g(x) = \sum_{k} d_k \beta_n(x - k),
+#    h(x) = g\bigl(\tfrac{x}{\lambda}\bigr),
 #
-# where :math:`d_k` are the spline coefficients computed from the downsampled samples of f,
-# and :math:`\beta_n` is the same B-spline basis function of degree n used in f.
-#
-# To compare f and g properly, we must realign their domains. Let :math:`\lambda` be the inverse
-# of the scaling factor used to define g's resolution relative to f. Then we consider :math:`g(\lambda x)`
-# when comparing against :math:`f(x)`. To measure how closely g approximates f, we define:
-#
-# .. math::
-#
-#    h(x) = f(x) - g(\lambda x).
-#
-# By sampling h(x) on the same grid as f(x), we can compute the Mean Squared Error (MSE):
-#
-# .. math::
-#
-#    \text{MSE} = \frac{1}{N} \sum_{i=1}^{N} [f(x_i) - g(\lambda x_i)]^2.
-#
-# The MSE provides a quantitative metric of the approximation quality of g relative to f,
-# taking into account the scaling and ensuring a fair comparison.
+# where :math:`g(\cdot)` is the continuous spline built from the :math:`g[k]` 
+# discrete points. Hence, :math:`h(x)` and :math:`f(x)` share the same domain 
+# and can be directly compared (e.g., by computing an MSE).
 
-inverse_resample_factor = 1 / high_res_factor
-resampled_length = int(len(resized_signal) * inverse_resample_factor)
+lambda_val = high_res_factor  # sample every 'high_res_factor' points
+x_lambda = np.arange(x[0], x[-1] + 1, lambda_val)
+g_lambda = np.interp(x_lambda, x_high_res, resized_signal)  # sample from the high-resolution spline
 
-# Resample f to obtain g
-resampled_signal = resize(
-    data=resized_signal,
-    output_size=(resampled_length,),
+fig = plt.figure(figsize=(12, 9))  # increased height to accommodate 3 rows
+
+domain_length = x[-1] - x[0]        # e.g. 26 if x goes 0..26
+num_g_points = len(g_lambda)        # number of discrete g samples
+g_domain_length = num_g_points - 1  # e.g. 9 if len(g_lambda)=10
+
+# We'll have 3 rows × 2 columns:
+#   Row 0: entire top for f + g
+#   Row 1: left subplot for "shrunken" g, right is blank
+#   Row 2: entire bottom for h
+gs = GridSpec(nrows=3,
+    ncols=2,
+    width_ratios=[g_domain_length, domain_length - g_domain_length],
+    height_ratios=[1, 1, 1]  # three equal rows
+)
+
+# (1) TOP ROW: Original f + discrete g
+ax1 = fig.add_subplot(gs[0, :])  # spans both columns
+ax1.set_title("Original f[k] samples, f spline and g[k] samples")
+
+ax1.stem(x, original_samples, basefmt=" ", label="f[k] samples")
+ax1.plot(x_high_res, resized_signal, color="green", linewidth=2, label="f spline")
+ax1.plot(
+    x_lambda, g_lambda,
+    'rs', mfc='none', markersize=12, markeredgewidth=2,
+    label="g[k] samples"
+)
+
+ax1.set_xlim(x[0], x[-1])
+ax1.set_xticks(np.arange(x[0], x[-1] + 1, 1)) 
+ax1.set_xlabel("x")
+ax1.set_ylabel("Amplitude")
+ax1.grid(True)
+ax1.legend()
+
+# (2) MIDDLE ROW: Shrunken view of g
+
+ax2 = fig.add_subplot(gs[1, 0])  # bottom-left
+ax2.set_title("g[k] samples and interpolated g spline")
+
+k_values = np.arange(num_g_points)
+
+# Red vertical lines for each g[k]
+ax2.vlines(
+    k_values,
+    ymin=0,
+    ymax=g_lambda,
+    color='red',
+    linestyle='-',
+    linewidth=1
+)
+# Red hollow squares at each g[k]
+ax2.plot(
+    k_values, g_lambda,
+    'rs', mfc='none',
+    markersize=12, markeredgewidth=2,
+    label="g[k] samples"
+)
+
+# (Optional) A spline of g in purple
+new_length_for_g = (num_g_points - 1) * high_res_factor + 1
+g_spline = resize(
+    data=g_lambda,
+    output_size=(new_length_for_g,),
     degree=degree,
     method="interpolation"
 )
-
-x_resampled = np.linspace(x[0], x[-1], resampled_length)
-
-# Compute MSE between f and g(lambda x)
-resampled_back_signal = resize(
-    data=resampled_signal,
-    output_size=(len(resized_signal),),
-    degree=degree,
-    method="interpolation"
+k_high_res = np.linspace(0, num_g_points - 1, new_length_for_g)
+ax2.plot(
+    k_high_res, g_spline,
+    color='purple',
+    linewidth=2,
+    label="g spline"
 )
-mse_f_g = compute_mse(resized_signal, resampled_back_signal)
 
-print(f"Mean Squared Error (MSE) between f(x) and g(λx): {mse_f_g:.2e}")
+ax2.set_xlim(0, num_g_points - 1)
+ax2.set_xticks(np.arange(0, num_g_points, 1))
+ax2.set_xlabel("x")
+ax2.set_ylabel("Amplitude")
+ax2.grid(True)
+ax2.legend()
+ax2.set_ylim(ax1.get_ylim())  # match top plot's amplitude range
 
-plt.figure(figsize=(10, 4))
-plt.title("Original Samples, Interpolated Spline (f), and Resampled Spline (g)")
-plt.stem(x, original_samples, basefmt=" ", linefmt='grey', markerfmt='o', label="Original Samples")
-plt.plot(x_high_res, resized_signal, color="green", linewidth=2, label="Spline Interpolation (f)")
-plt.plot(x_resampled, resampled_signal, color="red", linewidth=2, linestyle="--", label="Resampled Spline (g)")
-plt.xlabel("X-axis")
-plt.ylabel("Amplitude")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
+# Blank right cell
+ax_blank = fig.add_subplot(gs[1, 1])
+ax_blank.axis("off")
+
+ax3 = fig.add_subplot(gs[2, :])  # spans both columns
+ax3.set_title("Interpolated h spline over f spline domain, h(x) = g(x / λ)")
+
+# We'll sample k in [0..domain_length]
+k_full = np.arange(domain_length + 1)
+k_in_g = k_full / float(lambda_val)    # fractional index in g's domain
+
+# h[k] = g( k / λ )
+h_expanded = np.interp(k_in_g, k_high_res, g_spline)
+
+# Plot h in blue
+ax3.plot(
+    k_full, h_expanded,
+    color='blue',
+    linewidth=2,
+    label="h spline"
+)
+
+# Compute which g samples fit in [0..26]
+x_lambda_in_bounds = x_lambda[x_lambda <= domain_length]
+g_lambda_in_bounds = g_lambda[:len(x_lambda_in_bounds)]
+
+# Overlay vertical red lines, matching the squares
+ax3.vlines(
+    x_lambda_in_bounds,
+    ymin=0,
+    ymax=g_lambda_in_bounds,
+    color='red',
+    linestyle='-',
+    linewidth=1
+)
+
+# Also overlay the discrete g squares
+ax3.plot(
+    x_lambda_in_bounds,
+    g_lambda_in_bounds,
+    'rs', mfc='none',
+    markersize=12, markeredgewidth=2,
+    label="g[k] samples"
+)
+
+ax3.set_xlim(0, domain_length)  # 0..26
+ax3.set_xticks(np.arange(0, domain_length + 1, 1))
+ax3.set_xlabel("x")
+ax3.set_ylabel("Amplitude")
+ax3.grid(True)
+ax3.legend()
+
+# Keep amplitude scale consistent with top row
+ax3.set_ylim(ax1.get_ylim())
+
+fig.tight_layout()
 plt.show()
+
+# %%
+# MSE Between f and h
+# -------------------
+#
+# To quantify how well :math:`h(x)` approximates :math:`f(x)`, we compute the 
+# Mean Squared Error (MSE):
+#
+# .. math::
+#    \text{MSE} = \frac{1}{b - a} \int_{a}^{b} [f(x) - h(x)]^2 \, dx,
+#
+# over the domain :math:`[0, 26]`. We approximate this integral by a 
+# Riemann sum on a finer sampling grid.
+
+# 1) Define a fine sampling domain
+sample_count = 1000  # number of points for Riemann sum
+a, b = x[0], x[-1]   # 0..26
+fine_x = np.linspace(a, b, sample_count)
+
+# 2) Evaluate f(x) at this fine grid
+#    We already have f on (x_high_res, resized_signal), so we just interpolate:
+f_fine = np.interp(fine_x, x_high_res, resized_signal)
+
+# 3) Evaluate h(x) at this same fine grid
+#    h(x) = g_spline(x / lambda_val).
+#    Recall we have k_high_res, g_spline from the bottom subplot.
+h_fine = np.interp(fine_x / lambda_val, k_high_res, g_spline)
+
+# 4) Compute the Riemann sum for ∫(f(x)-h(x))^2 dx over [a, b]
+#    Here we use a simple rectangular rule with spacing dx:
+dx = (b - a) / (sample_count - 1)
+integral_value = np.sum((f_fine - h_fine)**2) * dx
+
+# 5) Divide by (b - a) to get the MSE
+mse_riemann = integral_value / (b - a)
+
+print(f"MSE between f and h (via Riemann sum) = {mse_riemann:.6e}")
+
+# (Optional) Quick check with a simple discrete mean of squared errors
+# over the same 1D samples (not an integral, but a discrete approximation):
+mse_check = np.mean((f_fine - h_fine)**2)
+print(f"MSE check (discrete mean over {sample_count} samples) = {mse_check:.6e}")
