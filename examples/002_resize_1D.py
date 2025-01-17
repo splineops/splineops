@@ -35,6 +35,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from splineops.interpolate.resize import resize
+from splineops.interpolate.tensorspline import TensorSpline
 
 plt.rcParams.update({
     "font.size": 14,     # Base font size
@@ -50,7 +51,7 @@ plt.rcParams.update({
 #
 # We generate 1D samples and treat them as discrete signal points.
 # 
-# Let :math:`\mathbf{f} = (f[0], f[1], \dots, f[K-1])` be a 1D array of data obtained as random values within (-1, 1).
+# Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data that are uniformly i.i.d. in (-1, 1).
 #
 # These are the input samples that we will interpolate.
 
@@ -84,7 +85,7 @@ plt.show()
 #
 # .. math::
 #
-#    f(x) = \sum_{k} c[k] \beta^n(x - k),
+#    f(x) = \sum_{k\in{\mathbb{Z}}}\,c[k]\,\beta^{n}(x-k),
 #
 # where:
 #
@@ -92,7 +93,7 @@ plt.show()
 #
 # - :math:`c[k]` are the spline coefficients determined from the input samples.
 #
-# By choosing a sufficiently fine grid, we approximate a continuously defined function :math:`f` from the discrete samples.
+# Let us now plot the continuously defined :math:`f(x)`.
 
 degree = 3
 high_res_factor = 3
@@ -127,8 +128,8 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Sampling f to get g and h
-# -------------------------
+# Coarsening of f
+# ---------------
 #
 #
 # We define :math:`\lambda` as a natural number and sample :math:`f(x)` 
