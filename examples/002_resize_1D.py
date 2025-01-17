@@ -7,6 +7,7 @@ This example demonstrates how to perform 1D spline interpolation using the
 approximation quality. 
 
 Specifically, we:
+
 1. Interpolate an initial set of 1D samples with a B-spline to form a continuous function f(x).
 
 2. Downsample f(x) by extracting fewer samples g[k] = f(λk).
@@ -49,12 +50,7 @@ plt.rcParams.update({
 #
 # We generate 1D samples and treat them as discrete signal points.
 # 
-# Let :math:`\mathbf{x} = [x_1, x_2, \dots, x_N]` be a set of 1D sampled points, and let the discrete signal
-# :math:`f_{\text{samples}}(x)` be defined as random values within a specified range:
-#
-# .. math::
-#
-#    f_{\text{samples}}(x_i) \sim \text{Uniform}(-1, 1), \quad i = 1, \dots, N.
+# Let :math:`\mathbf{f} = (f[0], f[1], \dots, f[K-1])` be a 1D array of data obtained as random values within (-1, 1).
 #
 # These are the input samples that we will interpolate.
 
@@ -82,19 +78,21 @@ plt.show()
 # Interpolate samples with spline f
 # ---------------------------------
 #
-# We interpolate the 1D samples with a spline to obtain a continuous function f.
+# We interpolate the 1D samples with a spline to obtain a continuously defined function f.
 #
 # Given the discrete samples :math:`f_{\text{samples}}(x_i)`, the spline interpolation :math:`f(x)` can be expressed as:
 #
 # .. math::
 #
-#    f(x) = \sum_{k} c_k \beta_n(x - k),
+#    f(x) = \sum_{k} c[k] \beta^n(x - k),
 #
 # where:
-# - :math:`\beta_n` is the B-spline of degree :math:`n`.
-# - :math:`c_k` are the spline coefficients determined from the input samples.
 #
-# By choosing a sufficiently fine grid, we approximate a continuous function :math:`f` from the discrete samples.
+# - :math:`\beta^n` is the B-spline of degree :math:`n`.
+#
+# - :math:`c[k]` are the spline coefficients determined from the input samples.
+#
+# By choosing a sufficiently fine grid, we approximate a continuously defined function :math:`f` from the discrete samples.
 
 degree = 3
 high_res_factor = 3
