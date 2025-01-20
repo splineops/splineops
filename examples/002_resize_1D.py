@@ -49,9 +49,9 @@ plt.rcParams.update({
 #
 # These are the input samples that we will interpolate.
 
-f_support = np.arange(27)               # integer coordinates [0, 1, 2, ...]
-np.random.seed(42)              # for reproducibility
-f_samples = np.random.uniform(-1, 1, len(f_support))  # random in [-1, 1]
+f_support = np.arange(27)
+np.random.seed(42)
+f_samples = np.random.uniform(-1, 1, len(f_support))
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples")
@@ -60,8 +60,8 @@ plt.stem(f_support, f_samples, basefmt=" ")
 plt.axhline(
     y=0,
     color="black",
-    linewidth=1,  # make it thicker if you like
-    zorder=0      # draw behind other plot elements
+    linewidth=1,
+    zorder=0
 )
 plt.xlabel("k")
 plt.ylabel("f[]")
@@ -108,8 +108,8 @@ plt.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 plt.axhline(
     y=0,
     color="black",
-    linewidth=1,  # make it thicker if you like
-    zorder=0      # draw behind other plot elements
+    linewidth=1,
+    zorder=0 # draw behind other plot elements
 )
 plt.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 plt.xlabel("x")
@@ -161,7 +161,7 @@ ax_bottom_right = fig.add_subplot(gs[1, 1])
 ax_bottom_right.axis("off")  # leave right side blank
 
 # 1) TOP ROW: f[k] + f spline + discrete g[k]
-ax_top.set_title("f[k] samples, interpolated f spline, and g[k] samples")
+ax_top.set_title("Interpolated f spline")
 
 # Plot discrete f[k] as stems
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
@@ -193,7 +193,7 @@ ax_top.grid(True)
 ax_top.legend()
 
 # 2) BOTTOM LEFT: discrete g[k] + g spline
-ax_bottom_left.set_title("g[k] samples and g spline")
+ax_bottom_left.set_title("Interpolated g spline")
 
 # Plot discrete g[k] with red vertical lines and unfilled red squares
 ax_bottom_left.vlines(
@@ -265,7 +265,7 @@ gs2 = GridSpec(
 
 # TOP ROW: f + f spline + discrete g[k]
 ax_top = fig2.add_subplot(gs2[0, :])  # spans both columns
-ax_top.set_title("f[k], f spline, and g[k] samples")
+ax_top.set_title("Interpolated f spline")
 
 # Replot discrete f[k] as stems
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
@@ -296,7 +296,7 @@ ax_mid_left = fig2.add_subplot(gs2[1, 0])  # left cell
 ax_mid_right = fig2.add_subplot(gs2[1, 1]) # right cell
 ax_mid_right.axis("off")                  # keep it blank
 
-ax_mid_left.set_title("g[k] samples and g spline")
+ax_mid_left.set_title("Interpolated g spline")
 
 # Plot discrete g[k] with red stems, unfilled squares
 ax_mid_left.vlines(
