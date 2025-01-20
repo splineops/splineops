@@ -103,11 +103,11 @@ bases = "bspline3"  # Linear interpolation
 modes = "mirror"  # Mirror extension mode
 f = TensorSpline(data=f_samples, coordinates=f_support, bases=bases, modes=modes)
 
-plot_coords = np.array([q / plot_points_per_unit 
+f_plot_coords = np.array([q / plot_points_per_unit 
                         for q in range(plot_points_per_unit * len(f_support))])
 
 # The key: pass (plot_coords,) not plot_coords
-plot_data = f(coordinates=(plot_coords,), grid=False)
+f_plot_data = f(coordinates=(f_plot_coords,), grid=False)
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples with interpolated f spline")
@@ -119,7 +119,7 @@ plt.axhline(
     linewidth=1,  # make it thicker if you like
     zorder=0      # draw behind other plot elements
 )
-plt.plot(plot_coords, plot_data, color="green", linewidth=2, label="f spline")
+plt.plot(f_plot_coords, f_plot_data, color="green", linewidth=2, label="f spline")
 plt.xlabel("x")
 plt.ylabel("Amplitude")
 plt.legend()
@@ -147,8 +147,8 @@ samples_of_g = f(coordinates=(f_resampled_coords,), grid=False)
 support_of_g = np.arange(g_support_length)               # integer coordinates [0, 1, 2, ...]
 g = TensorSpline(data=samples_of_g, coordinates=support_of_g, bases=bases, modes=modes)
 
-plot_coords = np.array([q/plot_points_per_unit for q in range(plot_points_per_unit * len(support_of_g))])
-plot_data = g(coordinates=(plot_coords,), grid=False)
+g_plot_coords = np.array([q/plot_points_per_unit for q in range(plot_points_per_unit * len(support_of_g))])
+g_plot_data = g(coordinates=(g_plot_coords,), grid=False)
 
 fig = plt.figure(figsize=(12, 8))
 
@@ -179,7 +179,7 @@ ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 # Plot continuous spline f(x) over x=0..(len(f_support)-1)
 fine_x = np.linspace(0, len(f_support) - 1, 300)
 fine_f = f(coordinates=(fine_x,), grid=False)
-ax_top.plot(fine_x, fine_f, color="green", linewidth=2, label="f spline")
+ax_top.plot(f_plot_coords, f_plot_data, color="green", linewidth=2, label="f spline")
 
 # Overplot discrete g[k] as unfilled red squares at x = k * val_lambda
 x_g = np.arange(g_support_length) * val_lambda
@@ -229,11 +229,9 @@ ax_bottom_left.plot(
 )
 
 # Plot continuous g spline in purple over the same domain
-plot_coords_g = np.linspace(0, g_support_length - 1, 200)
-plot_data_g = g(coordinates=(plot_coords_g,), grid=False)
 ax_bottom_left.plot(
-    plot_coords_g, 
-    plot_data_g,
+    g_plot_coords, 
+    g_plot_data,
     color="purple", 
     linewidth=2,
     label="g spline"
@@ -289,9 +287,7 @@ ax_top.set_title("f[k], f spline, and g[k] samples")
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 
 # Replot the continuous f spline
-fine_x = np.linspace(0, len(f_support) - 1, 300)
-fine_f = f(coordinates=(fine_x,), grid=False)
-ax_top.plot(fine_x, fine_f, color="green", linewidth=2, label="f spline")
+ax_top.plot(f_plot_coords, f_plot_data, color="green", linewidth=2, label="f spline")
 
 # Overplot discrete g[k] in red squares at x = k*val_lambda
 x_g = np.arange(g_support_length) * val_lambda
@@ -363,12 +359,12 @@ ax_bottom = fig2.add_subplot(gs2[2, :])  # spans both columns
 ax_bottom.set_title("h spline, h(x) = g(x / λ)")
 
 # We'll sample h over 0..(len(f_support)-1)
-h_domain = np.linspace(0, len(f_support) - 1, 300)  # 300 points
+h_coords = f_plot_coords
 # Evaluate h(x) = g(x/val_lambda)
-h_data = g(coordinates=(h_domain / val_lambda,), grid=False)
+h_data = g(coordinates=(h_coords / val_lambda,), grid=False)
 
 # Plot h in blue
-ax_bottom.plot(h_domain, h_data, color="blue", linewidth=2, label="h(x)")
+ax_bottom.plot(h_coords, h_data, color="blue", linewidth=2, label="h(x)")
 
 # Horizontal line at 0
 ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
