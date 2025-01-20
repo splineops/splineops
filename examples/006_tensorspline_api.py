@@ -84,8 +84,8 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Function to plot bases
-# ----------------------
+# Plotting spline bases
+# ---------------------
 #
 # Define a helper function to visualize spline bases.
 
@@ -111,7 +111,7 @@ def plot_bases(names, x_values, title):
 
 # %%
 # Plot B-spline bases
-# -------------------
+# ~~~~~~~~~~~~~~~~~~~
 #
 # Plot B-spline basis functions for degrees 0 through 9.
 
@@ -123,7 +123,7 @@ plot_bases(
 
 # %%
 # Plot OMOMS bases
-# ----------------
+# ~~~~~~~~~~~~~~~~
 #
 # Plot OMOMS basis functions for degrees 0 through 5.
 
@@ -135,7 +135,7 @@ plot_bases(
 
 # %%
 # Plot Keys basis
-# ---------------
+# ~~~~~~~~~~~~~~~
 #
 # Plot the Keys spline basis function.
 
@@ -146,9 +146,11 @@ plot_bases(
 )
 
 # %%
-# Signal with a bump
-# -------------------
+# Plotting extension modes
+# ------------------------
 #
+# Visualize signal extension modes for a given mode.
+
 # Generate a signal that is mostly linear but includes a "bump."
 
 x_values = np.linspace(0, 6, 101) # Define x range
@@ -162,12 +164,6 @@ def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_heig
         0,
     )
     return linear_part + bump
-
-# %%
-# Plot extension modes
-# --------------------
-#
-# Visualize signal extension modes for a given mode.
 
 def plot_extension_modes_for_bump_function(mode_name, x_values, title):
     plt.figure(figsize=(12, 6))
@@ -189,7 +185,7 @@ def plot_extension_modes_for_bump_function(mode_name, x_values, title):
 
 # %%
 # Finite support coefficients
-# ------------------------------------
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 plot_extension_modes_for_bump_function(
     mode_name="zero",
     x_values=x_values,
@@ -198,7 +194,7 @@ plot_extension_modes_for_bump_function(
 
 # %%
 # Narrow mirroring
-# -------------------------
+# ~~~~~~~~~~~~~~~~
 plot_extension_modes_for_bump_function(
     mode_name="mirror",
     x_values=x_values,
