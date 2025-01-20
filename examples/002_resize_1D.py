@@ -73,9 +73,7 @@ plt.show()
 # Interpolate samples with spline f
 # ---------------------------------
 #
-# We interpolate the 1D samples with a spline to obtain a continuously defined function f.
-#
-# Given the discrete samples :math:`f_{\text{samples}}(x_i)`, the spline interpolation :math:`f(x)` can be expressed as:
+# We interpolate the 1D samples with a spline to obtain a continuously defined function :math:`f` be expressed as:
 #
 # .. math::
 #
@@ -87,7 +85,7 @@ plt.show()
 #
 # - :math:`c[k]` are the spline coefficients determined from the input samples.
 #
-# Let us now plot the continuously defined :math:`f(x)`.
+# Let us now plot :math:`f`.
 
 # Plot points
 plot_points_per_unit = 12
@@ -125,20 +123,20 @@ plt.show()
 # Coarsening of f
 # ---------------
 # We define :math:`\lambda` as a non-zero number and sample :math:`f(x)` 
-# at :math:`x = \lambda k`. Mathematically:
+# at :math:`x = \lambda k`:
 #
 # .. math::
 #    g[k] = f(\lambda k).
 #
 # These :math:`g[k]` points form a new discrete set, which we will then treat 
-# as a separate signal to build another spline, :math:`g(x)`. 
+# as a separate signal to build another spline, :math:`g`.
 
 val_lambda = np.pi
 
 g_support_length = round(len(f_support) // val_lambda)
 g_support = np.arange(g_support_length)  
 f_resampled_coords = np.array([q * val_lambda for q in range(g_support_length)])
-g_samples = f(coordinates=(f_resampled_coords,), grid=False)             # integer coordinates [0, 1, 2, ...]
+g_samples = f(coordinates=(f_resampled_coords,), grid=False)
 g = TensorSpline(data=g_samples, coordinates=g_support, bases=bases, modes=modes)
 
 g_coords = np.array([q/plot_points_per_unit for q in range(plot_points_per_unit * len(g_support))])
@@ -154,25 +152,21 @@ gs = GridSpec(
     height_ratios=[1, 1]
 )
 
-# -- Top row: entire row (two columns combined)
+# Top row: entire row (two columns combined)
 ax_top = fig.add_subplot(gs[0, :])
 
-# -- Bottom row: left side for g, right side blank
+# Bottom row: left side for g, right side blank
 ax_bottom_left = fig.add_subplot(gs[1, 0])
 ax_bottom_right = fig.add_subplot(gs[1, 1])
 ax_bottom_right.axis("off")  # leave right side blank
 
-#
 # 1) TOP ROW: f[k] + f spline + discrete g[k]
-#
 ax_top.set_title("f[k] samples, interpolated f spline, and g[k] samples")
 
 # Plot discrete f[k] as stems
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 
-# Plot continuous spline f(x) over x=0..(len(f_support)-1)
-fine_x = np.linspace(0, len(f_support) - 1, 300)
-fine_f = f(coordinates=(fine_x,), grid=False)
+# Plot spline f(x)
 ax_top.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 
 # Overplot discrete g[k] as unfilled red squares at x = k * val_lambda
@@ -198,9 +192,7 @@ ax_top.set_ylabel("Amplitude")
 ax_top.grid(True)
 ax_top.legend()
 
-#
 # 2) BOTTOM LEFT: discrete g[k] + g spline
-#
 ax_bottom_left.set_title("g[k] samples and g spline")
 
 # Plot discrete g[k] with red vertical lines and unfilled red squares
@@ -241,7 +233,7 @@ ax_bottom_left.set_ylabel("Amplitude")
 ax_bottom_left.grid(True)
 ax_bottom_left.legend()
 
-# (Optional) match vertical scale with the top axis
+# Match vertical scale with the top axis
 ax_bottom_left.set_ylim(ax_top.get_ylim())
 
 fig.tight_layout()
@@ -251,15 +243,15 @@ plt.show()
 # Expanding g to obtain h
 # -----------------------
 #
-# To compare :math:`g` on the same domain as :math:`f`, we expand g by defining 
-# a new function :math:`h(x)`.
+# To compare :math:`g` on the same domain as :math:`f`, we expand :math:`g` by defining 
+# a new function :math:`h`:
 #
 # .. math::
 #
 #    h(x) = g\bigl(\tfrac{x}{\lambda}\bigr),
 #
-# where :math:`g(\cdot)` is the continuous spline built from the :math:`g[k]` 
-# discrete points. Hence, :math:`h(x)` and :math:`f(x)` share the same domain 
+# where :math:`g` is the continuously defined spline built from the :math:`g[k]` 
+# discrete points. Hence, :math:`h` and :math:`f` have the same support 
 # and can be directly compared (e.g., by computing an MSE).
 
 fig2 = plt.figure(figsize=(12, 12))
@@ -271,9 +263,7 @@ gs2 = GridSpec(
     height_ratios=[1, 1, 1]  # three equal rows
 )
 
-############################################
-# (1) TOP ROW: f + f spline + discrete g[k]
-############################################
+# TOP ROW: f + f spline + discrete g[k]
 ax_top = fig2.add_subplot(gs2[0, :])  # spans both columns
 ax_top.set_title("f[k], f spline, and g[k] samples")
 
@@ -301,9 +291,7 @@ ax_top.set_ylabel("Amplitude")
 ax_top.legend()
 ax_top.grid(True)
 
-############################################
-# (2) MIDDLE ROW: discrete g + g spline
-############################################
+# MIDDLE ROW: discrete g + g spline
 ax_mid_left = fig2.add_subplot(gs2[1, 0])  # left cell
 ax_mid_right = fig2.add_subplot(gs2[1, 1]) # right cell
 ax_mid_right.axis("off")                  # keep it blank
@@ -341,12 +329,10 @@ ax_mid_left.set_ylabel("Amplitude")
 ax_mid_left.legend()
 ax_mid_left.grid(True)
 
-# (Optional) Match y-limits with top row:
+# Match y-limits with top row:
 ax_mid_left.set_ylim(ax_top.get_ylim())
 
-############################################
-# (3) BOTTOM ROW: expanded h(x) = g(x / λ)
-############################################
+# BOTTOM ROW: expanded h(x) = g(x / λ)
 ax_bottom = fig2.add_subplot(gs2[2, :])  # spans both columns
 ax_bottom.set_title("h spline, h(x) = g(x / λ)")
 
@@ -382,7 +368,7 @@ plt.show()
 # We compute the Mean Squared Error (MSE) between :math:`h(x)` and :math:`f(x)`:
 #
 # .. math::
-#    \text{MSE} = \frac{1}{b - a} \int_{a}^{b} [f(x) - h(x)]^2 \, \mathrm{d}x.
+#    \text{MSE} = \frac{1}{b - a} \int_{a}^{b} (f(x) - h(x))^2 \, \mathrm{d}x.
 #
 # **Riemann Rule Approximation**:
 #
