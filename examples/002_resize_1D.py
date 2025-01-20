@@ -142,22 +142,109 @@ g = TensorSpline(data=samples_of_g, coordinates=support_of_g, bases=bases, modes
 plot_coords = np.array([q/plot_points_per_unit for q in range(plot_points_per_unit * len(support_of_g))])
 plot_data = g(coordinates=(plot_coords,), grid=False)
 
-plt.figure(figsize=(10, 4))
-plt.title("g[k] samples with interpolated f spline")
-plt.stem(support_of_g, samples_of_g, basefmt=" ", label="g[k] samples")
-# Add a black horizontal line at y=0:
-plt.axhline(
-    y=0,
-    color="black",
-    linewidth=1,  # make it thicker if you like
-    zorder=0      # draw behind other plot elements
+fig = plt.figure(figsize=(12, 8))
+
+gs = GridSpec(
+    nrows=2, 
+    ncols=2,
+    # Match widths: first column = g_support_length, second column = leftover
+    width_ratios=[g_support_length, len(f_support) - g_support_length],
+    height_ratios=[1, 1]
 )
-plt.plot(plot_coords, plot_data, color="red", linewidth=2, label="g spline")
-plt.xlabel("x")
-plt.ylabel("Amplitude")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
+
+# -- Top row: entire row (two columns combined)
+ax_top = fig.add_subplot(gs[0, :])
+
+# -- Bottom row: left side for g, right side blank
+ax_bottom_left = fig.add_subplot(gs[1, 0])
+ax_bottom_right = fig.add_subplot(gs[1, 1])
+ax_bottom_right.axis("off")  # leave right side blank
+
+#
+# 1) TOP ROW: f[k] + f spline + discrete g[k]
+#
+ax_top.set_title("f[k] samples, interpolated f spline, and g[k] samples")
+
+# Plot discrete f[k] as stems
+ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
+
+# Plot continuous spline f(x) over x=0..(len(f_support)-1)
+fine_x = np.linspace(0, len(f_support) - 1, 300)
+fine_f = f(coordinates=(fine_x,), grid=False)
+ax_top.plot(fine_x, fine_f, color="green", linewidth=2, label="f spline")
+
+# Overplot discrete g[k] as unfilled red squares at x = k * val_lambda
+x_g = np.arange(g_support_length) * val_lambda
+ax_top.plot(
+    x_g, 
+    samples_of_g,
+    "rs",              # red squares
+    mfc='none',        # unfilled
+    markersize=12,
+    markeredgewidth=2, 
+    label="g[k] samples"
+)
+
+# Horizontal line at 0 for reference
+ax_top.axhline(0, color='black', linewidth=1, zorder=0)
+
+# Make sure the top axis goes from 0..(len(f_support)-1)
+ax_top.set_xlim(0, len(f_support) - 1)
+ax_top.set_xticks(np.arange(0, len(f_support), 1))
+ax_top.set_xlabel("x")
+ax_top.set_ylabel("Amplitude")
+ax_top.grid(True)
+ax_top.legend()
+
+#
+# 2) BOTTOM LEFT: discrete g[k] + g spline
+#
+ax_bottom_left.set_title("g[k] samples and g spline")
+
+# Plot discrete g[k] with red vertical lines and unfilled red squares
+ax_bottom_left.vlines(
+    x=support_of_g,
+    ymin=0,
+    ymax=samples_of_g,
+    color='red',
+    linestyle='-',
+    linewidth=1
+)
+ax_bottom_left.plot(
+    support_of_g,
+    samples_of_g,
+    "rs",              # red squares
+    mfc='none',        # unfilled
+    markersize=12,
+    markeredgewidth=2,
+    label="g[k] samples"
+)
+
+# Plot continuous g spline in purple over the same domain
+plot_coords_g = np.linspace(0, g_support_length - 1, 200)
+plot_data_g = g(coordinates=(plot_coords_g,), grid=False)
+ax_bottom_left.plot(
+    plot_coords_g, 
+    plot_data_g,
+    color="purple", 
+    linewidth=2,
+    label="g spline"
+)
+
+# Horizontal line at 0
+ax_bottom_left.axhline(0, color='black', linewidth=1, zorder=0)
+
+ax_bottom_left.set_xlim(0, g_support_length - 1)
+ax_bottom_left.set_xticks(np.arange(0, g_support_length, 1))
+ax_bottom_left.set_xlabel("x")
+ax_bottom_left.set_ylabel("Amplitude")
+ax_bottom_left.grid(True)
+ax_bottom_left.legend()
+
+# (Optional) match vertical scale with the top axis
+# ax_bottom_left.set_ylim(ax_top.get_ylim())
+
+fig.tight_layout()
 plt.show()
 
 # # %%
