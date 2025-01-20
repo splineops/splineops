@@ -247,6 +247,137 @@ ax_bottom_left.set_ylim(ax_top.get_ylim())
 fig.tight_layout()
 plt.show()
 
+# %%
+# Expanding h and computing MSE with f
+# ------------------------------------
+#
+# Here we define h(x) = g(x / val_lambda), so h has the same domain as f
+# (i.e., x from 0..(len(f_support)-1)). We plot all three "layers":
+#   1) Top row: f and g together
+#   2) Middle row: just g
+#   3) Bottom row: h in blue.
+
+# We'll create a new figure with 3 rows × 2 columns.
+# The top and bottom rows each span both columns.
+# The middle row is split to show g on the left, blank on the right.
+fig2 = plt.figure(figsize=(12, 12))
+
+gs2 = GridSpec(
+    nrows=3,
+    ncols=2,
+    width_ratios=[g_support_length, len(f_support) - g_support_length],
+    height_ratios=[1, 1, 1]  # three equal rows
+)
+
+############################################
+# (1) TOP ROW: f + f spline + discrete g[k]
+############################################
+ax_top = fig2.add_subplot(gs2[0, :])  # spans both columns
+ax_top.set_title("f[k], f spline, and g[k] samples")
+
+# Replot discrete f[k] as stems
+ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
+
+# Replot the continuous f spline
+fine_x = np.linspace(0, len(f_support) - 1, 300)
+fine_f = f(coordinates=(fine_x,), grid=False)
+ax_top.plot(fine_x, fine_f, color="green", linewidth=2, label="f spline")
+
+# Overplot discrete g[k] in red squares at x = k*val_lambda
+x_g = np.arange(g_support_length) * val_lambda
+ax_top.plot(
+    x_g, samples_of_g,
+    "rs", mfc='none', markersize=12, markeredgewidth=2,
+    label="g[k] samples"
+)
+
+# Horizontal line at 0
+ax_top.axhline(0, color="black", linewidth=1, zorder=0)
+
+ax_top.set_xlim(0, len(f_support) - 1)
+ax_top.set_xticks(np.arange(0, len(f_support), 1))
+ax_top.set_xlabel("x")
+ax_top.set_ylabel("Amplitude")
+ax_top.legend()
+ax_top.grid(True)
+
+############################################
+# (2) MIDDLE ROW: discrete g + g spline
+############################################
+ax_mid_left = fig2.add_subplot(gs2[1, 0])  # left cell
+ax_mid_right = fig2.add_subplot(gs2[1, 1]) # right cell
+ax_mid_right.axis("off")                  # keep it blank
+
+ax_mid_left.set_title("g[k] samples and g spline")
+
+# Plot discrete g[k] with red stems, unfilled squares
+ax_mid_left.vlines(
+    x=support_of_g,
+    ymin=0,
+    ymax=samples_of_g,
+    color='red',
+    linestyle='-',
+    linewidth=1
+)
+ax_mid_left.plot(
+    support_of_g,
+    samples_of_g,
+    "rs", mfc='none', markersize=12, markeredgewidth=2,
+    label="g[k] samples"
+)
+
+# Plot the continuous g spline in purple
+plot_coords_g = np.linspace(0, g_support_length - 1, 200)
+plot_data_g = g(coordinates=(plot_coords_g,), grid=False)
+ax_mid_left.plot(
+    plot_coords_g, plot_data_g,
+    color="purple", linewidth=2,
+    label="g spline"
+)
+
+ax_mid_left.axhline(0, color='black', linewidth=1, zorder=0)
+ax_mid_left.set_xlim(0, g_support_length - 1)
+ax_mid_left.set_xticks(np.arange(0, g_support_length, 1))
+ax_mid_left.set_xlabel("x")
+ax_mid_left.set_ylabel("Amplitude")
+ax_mid_left.legend()
+ax_mid_left.grid(True)
+
+# (Optional) Match y-limits with top row:
+ax_mid_left.set_ylim(ax_top.get_ylim())
+
+############################################
+# (3) BOTTOM ROW: expanded h(x) = g(x / λ)
+############################################
+ax_bottom = fig2.add_subplot(gs2[2, :])  # spans both columns
+ax_bottom.set_title("h spline, h(x) = g(x / λ)")
+
+# We'll sample h over 0..(len(f_support)-1)
+h_domain = np.linspace(0, len(f_support) - 1, 300)  # 300 points
+# Evaluate h(x) = g(x/val_lambda)
+h_data = g(coordinates=(h_domain / val_lambda,), grid=False)
+
+# Plot h in blue
+ax_bottom.plot(h_domain, h_data, color="blue", linewidth=2, label="h(x)")
+
+# Horizontal line at 0
+ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
+
+# The domain is the same as f
+ax_bottom.set_xlim(0, len(f_support) - 1)
+ax_bottom.set_xticks(np.arange(0, len(f_support), 1))
+ax_bottom.set_xlabel("x")
+ax_bottom.set_ylabel("Amplitude")
+ax_bottom.grid(True)
+ax_bottom.legend()
+
+# Optionally match amplitude scale with top row
+ax_bottom.set_ylim(ax_top.get_ylim())
+
+fig2.tight_layout()
+plt.show()
+
+
 # # %%
 # # Coarsening of f
 # # ---------------
