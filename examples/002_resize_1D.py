@@ -242,7 +242,7 @@ ax_bottom_left.grid(True)
 ax_bottom_left.legend()
 
 # (Optional) match vertical scale with the top axis
-# ax_bottom_left.set_ylim(ax_top.get_ylim())
+ax_bottom_left.set_ylim(ax_top.get_ylim())
 
 fig.tight_layout()
 plt.show()
