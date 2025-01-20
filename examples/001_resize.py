@@ -99,8 +99,8 @@ img = Image.open(BytesIO(response.content))
 data = np.array(img, dtype=np.float64)  # shape: (H, W, 3)
 data_normalized = data / 255.0          # Convert to [0,1]
 
-# 2) *Initially* shrink the image by 0.3 to reduce its overall size
-initial_shrink_factor = 1.0
+# 2) *Initially* shrink the image to reduce its overall size
+initial_shrink_factor = 0.8
 data_smaller = ndi_zoom(data_normalized, (initial_shrink_factor, initial_shrink_factor, 1), order=1)
 
 # 3) Next, adjust the now-smaller image so that our subsequent shrink-and-expand 
