@@ -157,3 +157,21 @@ axes[2].axis("off")
 
 plt.tight_layout()
 plt.show()
+
+# %%
+# Aliasing
+# --------
+#
+# Note that in the resulting expanded image we observe aliasing.
+#
+# **Aliasing**:
+# When we shrink an image below the Nyquist limit for its higher-frequency details,
+# those details cannot be represented adequately at the smaller sampling rate.
+# As a result, they become "aliased"—folded back into lower-frequency components.
+# When we then re-expand the image, these aliased components manifest as
+# artificial wave-like or moiré patterns, since the original high-frequency
+# content is irretrievably lost in the shrink step.
+#
+# In practice, one might mitigate aliasing by pre-filtering or low-pass filtering
+# before downsampling, but here we demonstrate straightforward interpolation,
+# which can reveal aliasing artifacts in areas with fine detail.
