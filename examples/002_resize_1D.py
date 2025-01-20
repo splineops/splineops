@@ -127,7 +127,38 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+# %%
+# Coarsening of f
+# ---------------
 
+val_lambda = np.pi
+
+g_support_length = round(len(f_support) // val_lambda)
+f_resampled_coords = np.array([q * val_lambda for q in range(g_support_length)])
+samples_of_g = f(coordinates=(f_resampled_coords,), grid=False)
+support_of_g = np.arange(g_support_length)               # integer coordinates [0, 1, 2, ...]
+g = TensorSpline(data=samples_of_g, coordinates=support_of_g, bases=bases, modes=modes)
+
+plot_coords = np.array([q/plot_points_per_unit for q in range(plot_points_per_unit * len(support_of_g))])
+plot_data = g(coordinates=(plot_coords,), grid=False)
+
+plt.figure(figsize=(10, 4))
+plt.title("g[k] samples with interpolated f spline")
+plt.stem(support_of_g, samples_of_g, basefmt=" ", label="g[k] samples")
+# Add a black horizontal line at y=0:
+plt.axhline(
+    y=0,
+    color="black",
+    linewidth=1,  # make it thicker if you like
+    zorder=0      # draw behind other plot elements
+)
+plt.plot(plot_coords, plot_data, color="red", linewidth=2, label="g spline")
+plt.xlabel("x")
+plt.ylabel("Amplitude")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
 
 # # %%
 # # Coarsening of f
