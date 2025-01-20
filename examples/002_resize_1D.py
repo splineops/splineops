@@ -73,7 +73,7 @@ plt.show()
 # Interpolate samples with spline f
 # ---------------------------------
 #
-# We interpolate the 1D samples with a spline to obtain a continuously defined function :math:`f` be expressed as:
+# We interpolate the 1D samples with a spline to obtain a continuously defined function :math:`f` expressed as:
 #
 # .. math::
 #
@@ -401,3 +401,104 @@ integral_value = np.sum(squared_diff) * dx  # approximate area
 mse_riemann = integral_value / (b - a)
 
 print(f"MSE between f and h (via Riemann rule) = {mse_riemann:.6e}")
+
+# %%
+# Variation using linear splines
+# ------------------------------
+#
+# We repeat exactly everything but using linear splines.
+
+# 1) Rebuild linear-spline version of f, then g
+f_lin = TensorSpline(data=f_samples, coordinates=f_support, bases="bspline1", modes=modes)
+g_lin_samps = f_lin(coordinates=(f_resampled_coords,), grid=False)
+g_lin = TensorSpline(data=g_lin_samps, coordinates=g_support, bases="bspline1", modes=modes)
+
+# 2) Evaluate them at the same plotting coordinates
+f_lin_f = f_lin(coordinates=(f_coords,), grid=False)               # f_lin over domain 0..(K-1)
+g_lin_g = g_lin(coordinates=(g_coords,), grid=False)               # g_lin over domain 0..(g_support_length-1)
+h_lin_h = g_lin(coordinates=(f_coords / val_lambda,), grid=False)  # h_lin(x)=g_lin(x/λ) over 0..(K-1)
+
+# 3) Create the 3×2 figure layout
+fig3 = plt.figure(figsize=(12, 12))
+gs3 = GridSpec(
+    nrows=3,
+    ncols=2,
+    width_ratios=[g_support_length, len(f_support) - g_support_length],
+    height_ratios=[1, 1, 1]
+)
+
+# TOP ROW: entire row (two columns combined) for f
+ax_top = fig3.add_subplot(gs3[0, :])
+ax_top.set_title("Linear f spline")
+
+ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
+ax_top.plot(f_coords, f_lin_f, color="green", linewidth=2, label="f_lin")
+ax_top.axhline(0, color='black', linewidth=1, zorder=0)
+ax_top.set_xlim(0, len(f_support) - 1)
+ax_top.set_xticks(np.arange(0, len(f_support), 1))
+ax_top.set_xlabel("x")
+ax_top.set_ylabel("Amplitude")
+ax_top.grid(True)
+ax_top.legend()
+
+# MIDDLE ROW: left subplot shows g domain, right subplot is blank
+ax_mid_left = fig3.add_subplot(gs3[1, 0])
+ax_mid_right = fig3.add_subplot(gs3[1, 1])
+ax_mid_right.axis("off")  # keep right side blank
+
+ax_mid_left.set_title("Linear g spline")
+
+# Discrete g[k] with stems
+ax_mid_left.vlines(
+    x=g_support,
+    ymin=0,
+    ymax=g_lin_samps,
+    color='red',
+    linewidth=1
+)
+ax_mid_left.plot(
+    g_support,
+    g_lin_samps,
+    "rs", mfc='none', markersize=8, markeredgewidth=2, 
+    label="g_lin[k]"
+)
+# Continuous g spline
+ax_mid_left.plot(
+    g_coords,
+    g_lin_g,
+    color="purple", linewidth=2,
+    label="g_lin"
+)
+ax_mid_left.axhline(0, color='black', linewidth=1, zorder=0)
+ax_mid_left.set_xlim(0, g_support_length - 1)
+ax_mid_left.set_xticks(np.arange(0, g_support_length, 1))
+ax_mid_left.set_xlabel("x")
+ax_mid_left.set_ylabel("Amplitude")
+ax_mid_left.grid(True)
+ax_mid_left.legend()
+# Match y-range with top
+ax_mid_left.set_ylim(ax_top.get_ylim())
+
+# BOTTOM ROW: entire row for h
+ax_bottom = fig3.add_subplot(gs3[2, :])
+ax_bottom.set_title("Linear h spline, h(x)=g_lin(x/λ)")
+
+ax_bottom.plot(f_coords, h_lin_h, color="blue", linewidth=2, label="h_lin")
+ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
+ax_bottom.set_xlim(0, len(f_support) - 1)
+ax_bottom.set_xticks(np.arange(0, len(f_support), 1))
+ax_bottom.set_xlabel("x")
+ax_bottom.set_ylabel("Amplitude")
+ax_bottom.grid(True)
+ax_bottom.legend()
+# Match y-range
+ax_bottom.set_ylim(ax_top.get_ylim())
+
+fig3.tight_layout()
+plt.show()
+
+# 4) (Optional) Recompute MSE with linear splines
+f_lin_fine = f_lin(coordinates=(fine_x,), grid=False)
+h_lin_fine = g_lin(coordinates=(fine_x / val_lambda,), grid=False)
+mse_lin = np.sum((f_lin_fine - h_lin_fine)**2) * dx / (b - a)
+print(f"MSE with linear splines (bspline1) = {mse_lin:.6e}")
