@@ -1,11 +1,17 @@
 .. _api-resize:
 
-Resize Module
-=============
+Resize
+======
 
-This module provides functionality for resizing N-dimensional data using TensorSpline interpolation or least-squares methods.
+Functions for resizing N-dimensional data using standard spline interpolation, 
+or specialized least-squares / oblique projection methods.
 
 .. automodule:: splineops.interpolate.resize
    :members:
    :undoc-members:
    :show-inheritance:
+
+See also
+--------
+:class:`~splineops.interpolate.tensorspline.TensorSpline`
+   The base class used internally for spline interpolation.
