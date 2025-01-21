@@ -342,17 +342,23 @@ ax_mid_left.set_ylim(ax_top.get_ylim())
 
 # BOTTOM ROW: expanded h(x) = g(x / λ)
 ax_bottom = fig2.add_subplot(gs2[2, :])  # spans both columns
-ax_bottom.set_title("h spline, h(x) = g(x / λ)")
+ax_bottom.set_title("h spline and difference f - h")
 
 # We'll sample h over 0..(f_support_length-1)
 h_coords = f_coords
 # Evaluate h(x) = g(x/val_lambda)
 h_data = g(coordinates=(h_coords / val_lambda,), grid=False)
 
+# Also evaluate f at the same coords, so we can show the difference
+f_data_for_diff = f(coordinates=(h_coords,), grid=False)
+diff_data = f_data_for_diff - h_data
+
 # Plot h in blue
 ax_bottom.plot(h_coords, h_data, color="blue", linewidth=2, label="h(x)")
 
-# Horizontal line at 0
+# Plot difference f - h in red, dashed
+ax_bottom.plot(h_coords, diff_data, color="red", linestyle="--", linewidth=2, label="f - h")
+
 ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
 
 # The domain is the same as f
@@ -496,6 +502,14 @@ ax_bottom = fig3.add_subplot(gs3[2, :])
 ax_bottom.set_title("Linear h spline, h(x)=g(x/λ)")
 
 ax_bottom.plot(f_coords, h_lin_h, color="blue", linewidth=2, label="h")
+
+# Evaluate f_lin at the same coords, then difference
+f_lin_for_diff = f_lin(coordinates=(f_coords,), grid=False)
+diff_lin = f_lin_for_diff - h_lin_h
+
+# Plot difference in red, dashed
+ax_bottom.plot(f_coords, diff_lin, color="red", linestyle="--", linewidth=2, label="f - h")
+
 ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
 ax_bottom.set_xlim(0, f_support_length - 1)
 ax_bottom.set_xticks(np.arange(0, f_support_length, 1))
@@ -503,7 +517,6 @@ ax_bottom.set_xlabel("x")
 ax_bottom.set_ylabel("h")
 ax_bottom.grid(True)
 ax_bottom.legend()
-# Match y-range
 ax_bottom.set_ylim(ax_top.get_ylim())
 
 fig3.tight_layout()
