@@ -1,4 +1,4 @@
-"""
+r"""
 Interpolating 1D samples
 ========================
 
@@ -143,7 +143,8 @@ f_resampled_coords = np.array([q * val_lambda for q in range(g_support_length)])
 g_samples = f(coordinates=(f_resampled_coords,), grid=False)
 g = TensorSpline(data=g_samples, coordinates=g_support, bases=base, modes=mode)
 
-g_coords = np.array([q/plot_points_per_unit for q in range(plot_points_per_unit * len(g_support))])
+g_coords = np.array([q/plot_points_per_unit 
+                     for q in range(plot_points_per_unit * len(g_support))])
 g_data = g(coordinates=(g_coords,), grid=False)
 
 fig = plt.figure(figsize=(12, 8))
@@ -387,24 +388,25 @@ plt.show()
 #
 # Dividing by :math:`b-a` yields the MSE.
 
-# 1) Define a fine sampling domain: [0, f_support_length-1]
-sample_count = 1000
-a, b = 0, f_support_length - 1
-fine_x = np.linspace(a, b, sample_count)
+# 1) Define a midpoint sampling domain for [a, b]
+N = 1000
+padding_fraction = 0.2 # We avoid artifacts near the edges by excluding part of the domain from each side
+a = (f_support_length - 1) * padding_fraction
+b = (f_support_length - 1) * (1 - padding_fraction)
+dx = (b - a) / N
+mid_x = np.linspace(a + dx/2, b - dx/2, N)  # midpoints
 
-# 2) Evaluate f and h on this fine grid
-f_fine = f(coordinates=(fine_x,), grid=False)
-h_fine = g(coordinates=(fine_x / val_lambda,), grid=False)  # h(x) = g(x/val_lambda)
+# 2) Evaluate f(x) and h(x) at those midpoints
+f_mid = f(coordinates=(mid_x,), grid=False)
+h_mid = g(coordinates=(mid_x / val_lambda,), grid=False)
 
-# 3) Compute the Riemann sum for ∫(f(x)-h(x))^2 dx
-dx = (b - a) / (sample_count - 1)  # spacing in the fine grid
-squared_diff = (f_fine - h_fine) ** 2
-integral_value = np.sum(squared_diff) * dx  # approximate area
+# 3) Compute the midpoint Riemann sum for ∫(f(x)-h(x))^2 dx
+squared_diff = (f_mid - h_mid) ** 2
+integral_value = np.sum(squared_diff) * dx
 
 # 4) Divide by (b - a) to get the MSE
-mse_riemann = integral_value / (b - a)
-
-print(f"MSE between f and h (via Riemann rule) = {mse_riemann:.6e}")
+mse_midpoint = integral_value / (b - a)
+print(f"MSE between f and h = {mse_midpoint:.6e}")
 
 # %%
 # Variation using linear splines
@@ -504,8 +506,24 @@ ax_bottom.set_ylim(ax_top.get_ylim())
 fig3.tight_layout()
 plt.show()
 
-# 4) (Optional) Recompute MSE with linear splines
-f_lin_fine = f_lin(coordinates=(fine_x,), grid=False)
-h_lin_fine = g_lin(coordinates=(fine_x / val_lambda,), grid=False)
-mse_lin = np.sum((f_lin_fine - h_lin_fine)**2) * dx / (b - a)
-print(f"MSE with linear splines = {mse_lin:.6e}")
+# 4) Recompute MSE with linear splines using midpoint rule
+N = 1000
+padding_fraction = 0.2 # We avoid artifacts near the edges by excluding part of the domain from each side
+a = (f_support_length - 1) * padding_fraction
+b = (f_support_length - 1) * (1 - padding_fraction)
+dx = (b - a) / N
+
+# mid_x are the midpoints of each subinterval
+mid_x = np.linspace(a + dx/2, b - dx/2, N)
+
+# Evaluate f_lin and h_lin at midpoints
+f_lin_mid = f_lin(coordinates=(mid_x,), grid=False)
+h_lin_mid = g_lin(coordinates=(mid_x / val_lambda,), grid=False)
+
+# Midpoint Riemann sum for ∫(f_lin - h_lin)²
+squared_diff_lin = (f_lin_mid - h_lin_mid) ** 2
+integral_value_lin = np.sum(squared_diff_lin) * dx
+
+# Divide by (b - a) to get MSE
+mse_lin_midpoint = integral_value_lin / (b - a)
+print(f"MSE with linear splines = {mse_lin_midpoint:.6e}")
