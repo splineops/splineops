@@ -100,6 +100,12 @@ plot_points_per_unit = 12
 base = "bspline3"
 mode = "mirror"
 
+# %%
+# Using TensorSpline
+# ~~~~~~~~~~~~~~~~~~
+#
+# Using standard interpolation.
+
 f = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
 
 f_coords = np.array([q / plot_points_per_unit 
@@ -107,6 +113,40 @@ f_coords = np.array([q / plot_points_per_unit
 
 # Syntax hint: pass (plot_coords,) not plot_coords
 f_data = f(coordinates=(f_coords,), grid=False)
+
+# %%
+# Using resize method
+# ~~~~~~~~~~~~~~~~~~~
+#
+# Using resize method with standard interpolation will yield exactly the same result.
+
+from splineops.interpolate.resize import resize
+
+# We'll produce the same number of output samples as in f_coords
+desired_length = plot_points_per_unit * f_support_length
+
+# IMPORTANT: We explicitly define a coordinate array from 0..(f_support_length - 1)
+# with `desired_length` points. This matches the domain and size that the `resize`
+# function will produce below, ensuring the two outputs are sampled at the exact
+# same x-positions, and thus comparable point-by-point.
+f_coords_resize = np.linspace(0, f_support_length - 1, desired_length)
+
+f_data_resize = resize(
+    data=f_samples,             # 1D input
+    output_size=(desired_length,),
+    degree=3,                   # matches "bspline3"
+    method="interpolation"      # ensures TensorSpline standard interpolation, not least-squares or oblique
+)
+
+# Ensure both arrays have identical shapes
+f_data_spline = f(coordinates=(f_coords_resize,), grid=False)
+assert f_data_spline.shape == f_data_resize.shape, "Arrays must match in shape."
+mse_diff = np.mean((f_data_spline - f_data_resize)**2)
+print(f"MSE between TensorSpline result and resize result = {mse_diff:.6e}")
+
+# %%
+# Plotting spline f
+# ~~~~~~~~~~~~~~~~~
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples with interpolated f spline")
@@ -118,7 +158,7 @@ plt.axhline(
     linewidth=1,
     zorder=0 # draw behind other plot elements
 )
-plt.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
+plt.plot(f_coords_resize, f_data_resize, color="green", linewidth=2, label="f spline")
 plt.xlabel("x")
 plt.ylabel("f")
 plt.legend()
