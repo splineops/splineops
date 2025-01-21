@@ -200,3 +200,40 @@ plot_extension_modes_for_bump_function(
     x_values=x_values,
     title="Extension Mode: Narrow Mirroring",
 )
+
+# %%
+# GPU Support
+# -----------
+#
+# We leverage the GPU for TensorSpline if cupy is installed.
+# If cupy is not available, we skip this section.
+
+try:
+    import cupy as cp
+    HAS_CUPY = True
+except ImportError:
+    HAS_CUPY = False
+
+if not HAS_CUPY:
+    print("CuPy is not installed, skipping GPU demonstration.")
+else:
+    # Convert existing data/coordinates to CuPy
+    data_cp = cp.asarray(data)
+    coords_cp = tuple(cp.asarray(c) for c in coordinates)
+
+    # Create CuPy-based spline
+    ts_cp = TensorSpline(data=data_cp, coordinates=coords_cp, bases=bases, modes=modes)
+
+    # Convert evaluation coordinates to CuPy
+    eval_coords_cp = tuple(cp.asarray(c) for c in eval_coords)
+
+    # Evaluate on the GPU
+    data_eval_cp = ts_cp(coordinates=eval_coords_cp)
+    
+    # Compare with NumPy evaluation
+    # (Ensure you already have data_eval from the CPU version above.)
+    data_eval_cp_np = data_eval_cp.get()  # Move from GPU to CPU
+    diff = data_eval_cp_np - data_eval  # 'data_eval' is from the CPU TensorSpline
+    mse = np.mean(diff**2)
+    print(f"Max abs diff (CPU vs GPU): {np.max(np.abs(diff)):.3e}")
+    print(f"MSE (CPU vs GPU): {mse:.3e}")
