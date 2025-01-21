@@ -2,9 +2,11 @@
 Interpolate 2D images
 =====================
 
-Interpolate 2D images with standard interpolation, least-squares and oblique projection.
+Interpolate 2D images with standard interpolation, least-squares and oblique projection,
+comparing them to SciPy's zoom.
 
-You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
+You can download this example at the tab at right, as both a Python script
+and as a Jupyter notebook.
 """
 
 # %%
@@ -16,236 +18,199 @@ You can download this example at the tab at right, as both a Python script and a
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.ndimage import zoom  # For SciPy's zoom comparison
-from splineops.interpolate.resize import resize  # Unified resize function
 import requests
 from io import BytesIO
 from PIL import Image
+from scipy.ndimage import zoom  # For SciPy's zoom comparison
+from splineops.interpolate.resize import resize  # Unified resize function
+import time
 
 # %%
 # Helper functions
 # ----------------
 #
-# We define functions to compute Signal-to-Noise Ratio (SNR) and Mean Squared Error (MSE).
-# Additionally, we include functions to perform resizing with SciPy's zoom and to compute
-# metrics for the resized signals.
+# Compute Signal-to-Noise Ratio (SNR), Mean Squared Error (MSE),
+# and perform resizing with various methods.
 
 def compute_snr(original, processed):
-    """Compute Signal-to-Noise Ratio between two signals."""
+    """Compute Signal-to-Noise Ratio (dB) between two 2D signals."""
     signal_power = np.mean(original ** 2)
     noise_power = np.mean((original - processed) ** 2)
+    if noise_power == 0:
+        return np.inf  # Perfect match
     return 10 * np.log10(signal_power / noise_power)
 
 def compute_mse(original, processed):
-    """Compute Mean Squared Error between two signals."""
+    """Compute Mean Squared Error between two 2D signals."""
     return np.mean((original - processed) ** 2)
 
-def resize_with_scipy_zoom(input_signal, zoom_factors, degree):
-    """Resize using SciPy's zoom, then resize back and compute metrics."""
-    import time
-
+def resize_with_scipy_zoom(input_image, zoom_factors, degree):
+    """
+    Resize using SciPy's zoom, then resize back and compute SNR/MSE.
+    Returns (resized_image, resized_back_image, snr, mse, time_elapsed).
+    """
     start_time = time.perf_counter()
-    resized_signal = zoom(input_signal, zoom_factors, order=degree)
+    resized_image = zoom(input_image, zoom_factors, order=degree)
     time_elapsed = time.perf_counter() - start_time
 
     reverse_zoom_factors = 1.0 / np.array(zoom_factors)
-    resized_back_signal = zoom(resized_signal, reverse_zoom_factors, order=degree)
+    resized_back_image = zoom(resized_image, reverse_zoom_factors, order=degree)
 
-    snr = compute_snr(input_signal, resized_back_signal)
-    mse = compute_mse(input_signal, resized_back_signal)
+    snr = compute_snr(input_image, resized_back_image)
+    mse = compute_mse(input_image, resized_back_image)
+    return resized_image, resized_back_image, snr, mse, time_elapsed
 
-    return resized_signal, resized_back_signal, snr, mse, time_elapsed
+def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
+    """
+    Resize a 2D image using the specified method, then resize back
+    to original size and compute SNR, MSE, and timing.
 
-def resize_and_compute_metrics(input_signal, method, degree, zoom_factors):
-    """Resize a signal using a given method and compute metrics."""
-    import time
-
+    Returns (resized_image, resized_back_image, snr, mse, time_elapsed).
+    """
     if np.isscalar(zoom_factors):
-        zoom_factors = [zoom_factors] * len(input_signal.shape)
+        zoom_factors = (zoom_factors, zoom_factors)
 
     if method == "scipy":
-        (
-            resized_signal, 
-            resized_back_signal, 
-            snr, 
-            mse, 
-            time_elapsed,
-        ) = resize_with_scipy_zoom(
-            input_signal=input_signal,
-            zoom_factors=zoom_factors,
-            degree=degree
+        return resize_with_scipy_zoom(
+            input_image, zoom_factors, degree
         )
     else:
         start_time = time.perf_counter()
-        resized_signal = resize(
-            data=input_signal,
+        resized_image = resize(
+            data=input_image,
             zoom_factors=zoom_factors,
             degree=degree,
             method=method
         )
         time_elapsed = time.perf_counter() - start_time
-        resized_back_signal = resize(
-            data=resized_signal,
-            output_size=input_signal.shape,
+
+        # Resize back to original shape:
+        original_shape = input_image.shape
+        resized_back_image = resize(
+            data=resized_image,
+            output_size=original_shape,
             degree=degree,
             method=method
         )
-        snr = compute_snr(input_signal, resized_back_signal)
-        mse = compute_mse(input_signal, resized_back_signal)
 
-    return resized_signal, resized_back_signal, snr, mse, time_elapsed
+        snr = compute_snr(input_image, resized_back_image)
+        mse = compute_mse(input_image, resized_back_image)
+        return resized_image, resized_back_image, snr, mse, time_elapsed
 
-def plot_universal_results(
-    original,
-    resized,
-    resized_back,
-    method,
-    zoom_factors,
-    snr,
-    mse,
-    time_elapsed
-):
-    # Set global font size
-    plt.rcParams.update({
-        'font.size': 14,  # Base font size
-        'axes.titlesize': 18,  # Title font size
-        'axes.labelsize': 16,  # Label font size
-        'xtick.labelsize': 14,  # X-axis tick font size
-        'ytick.labelsize': 14   # Y-axis tick font size
-    })
+# %%
+# Plotting function (vertical subplots)
+# -------------------------------------
+#
+# We define a simpler plotting function that displays three images in one column:
+# (1) Original, (2) Resized, (3) Difference (Original - ResizedBack).
 
-    # Compute difference
+def plot_2d_results(original, resized, resized_back, method, zoom_factors, snr, mse, time_elapsed):
+    """
+    Display three vertical 2D images: original, resized, and difference (original - resized_back).
+    If any zoom factor < 1, we place the resized image on a white canvas matching the original shape.
+
+    Parameters
+    ----------
+    original : np.ndarray
+        2D array of the original image data (e.g., floats in [0..1]).
+    resized : np.ndarray
+        2D array of the resized image (floats in [0..1]).
+    resized_back : np.ndarray
+        2D array of the resized-back image, same shape as `original`.
+    method : str
+        Resizing method ("interpolation", "least-squares", "oblique", or "scipy").
+    zoom_factors : tuple
+        The (zoom_y, zoom_x) factors used.
+    snr : float
+        Computed SNR in dB.
+    mse : float
+        Computed mean squared error.
+    time_elapsed : float
+        Elapsed time for the forward resizing step.
+    """
+    # 1) Compute the difference for the bottom subplot
     difference = original - resized_back
 
-    # Ensure original image is in the range [0, 255]
-    if original.ndim > 1:  # Only for 2D or 3D slices
-        original_scaled = (
-            (original - original.min()) 
-            / (original.max() - original.min()) 
-            * 255.0
-        )
-        original_scaled = original_scaled.astype(np.uint8)
-    else:
-        original_scaled = original  # Keep 1D data unchanged
+    # 2) Decide if we need a white-canvas approach for the "resized" image
+    #    That is, if either dimension was zoomed out (< 1), we'll embed it in a white background
+    zoom_out = any(zf < 1.0 for zf in zoom_factors)
 
-    # Check if zoom factors are < 1 in any direction
-    zoom_factors = (
-        [zoom_factors] 
-        if isinstance(zoom_factors, (int, float)) 
-        else zoom_factors
+    # 3) Convert arrays to [0..255] for display
+    def to_uint8(arr):
+        arr_min, arr_max = arr.min(), arr.max()
+        if arr_max > arr_min:
+            arr_scaled = (arr - arr_min) / (arr_max - arr_min)
+        else:
+            # constant image
+            arr_scaled = arr * 0.0
+        return (arr_scaled * 255).astype(np.uint8)
+
+    orig_8 = to_uint8(original)
+    resized_8 = to_uint8(resized)
+    diff_8 = to_uint8(difference)
+
+    # 4) If zoom_out is True, place `resized_8` in a white canvas
+    if zoom_out:
+        canvas_8 = np.ones_like(orig_8, dtype=np.uint8) * 255  # white background
+        rh, rw = resized_8.shape
+        # Place top-left corner at (0,0):
+        canvas_8[:rh, :rw] = resized_8
+        resized_display = canvas_8
+    else:
+        resized_display = resized_8
+
+    # 5) Make vertical subplots
+    fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(6, 14))
+
+    # --- (a) Original ---
+    axes[0].imshow(orig_8, cmap='gray', aspect='equal')
+    axes[0].set_title("Original Image")
+    axes[0].axis("off")
+
+    # --- (b) Resized (possibly on white canvas) ---
+    axes[1].imshow(resized_display, cmap='gray', aspect='equal')
+    axes[1].set_title(
+        f"{method.capitalize()} Resized\n"
+        f"Zoom: {zoom_factors}\n"
+        f"Time: {time_elapsed:.4f}s"
     )
-    zoom_out = any(zf < 1 for zf in zoom_factors)
+    axes[1].axis("off")
 
-    # Adjust resized data to overlay on white background for 2D or 3D slices
-    if original.ndim > 1 and zoom_out:
-        # Normalize resized to [0, 255] for better visibility
-        resized_normalized = (
-            (resized - resized.min()) 
-            / (resized.max() - resized.min()) 
-            * 255.0
-        )
-        resized_normalized = resized_normalized.astype(np.uint8)
-
-        # Create a white background of the original's shape
-        resized_display = np.ones_like(original_scaled) * 255  # White background
-        # Place resized data in the top-left corner
-        start_indices = [0] * len(original_scaled.shape)
-        slices = tuple(
-            slice(start, start + res_dim) 
-            for start, res_dim in zip(start_indices, resized.shape)
-        )
-        resized_display[slices] = resized_normalized
-    else:
-        resized_display = resized
-
-    # Normalize difference to [0, 255] for better visualization
-    if original.ndim > 1:
-        difference_normalized = (
-            (difference - difference.min()) 
-            / (difference.max() - difference.min()) 
-            * 255.0
-        )
-        difference_normalized = difference_normalized.astype(np.uint8)
-    else:
-        difference_normalized = difference
-
-    # Titles for 1D and 2D/3D cases
-    titles = {
-        1: [
-            "Original Signal",
-            f"Resized Signal ({method})\nTime: {time_elapsed:.4f}s",
-            f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})"
-        ],
-        2: [
-            "Original Image",
-            f"{method.capitalize()} Resized\nZoom: {zoom_factors} Time: {time_elapsed:.4f}s",
-            f"Difference (SNR: {snr:.2f} dB, MSE: {mse:.2e})"
-        ]
-    }
-
-    # Plotting functions for 1D and 2D/3D slices
-    plotters = {
-        1: lambda a, d, t, xv: (
-            a.plot(
-                np.linspace(0, 1, len(d)),  # Generate x-axis based on data length
-                d
-            ),
-            a.set_title(t),
-            a.set_xlabel("X-axis"),
-            a.set_ylabel("Amplitude"),
-            a.grid(True)
-        ),
-        2: lambda a, d, t, xv: (
-            a.imshow(d, cmap="gray", aspect='equal', vmin=0, vmax=255),
-            a.set_title(t),
-            a.axis("off")
-        )
-    }
-
-    dim = original.ndim
-    plot_func = plotters[dim]
-    chosen_titles = titles[dim]
-
-    # Create figure and subplots arranged vertically
-    fig, ax = plt.subplots(3, 1, figsize=(12, 24))
-
-    # Plot original (use scaled values for 2D/3D, raw for 1D)
-    plot_func(ax[0], original_scaled, chosen_titles[0], None)
-    # Plot resized (with adjustment for zoom-out)
-    plot_func(ax[1], resized_display, chosen_titles[1], None)
-    # Plot difference
-    plot_func(ax[2], difference_normalized, chosen_titles[2], None)
-
-    # Adjust spacing between plots
-    fig.subplots_adjust(hspace=0.5)  # Increase spacing between rows
+    # --- (c) Difference (original - resizedBack) ---
+    axes[2].imshow(diff_8, cmap='gray', aspect='equal')
+    axes[2].set_title(
+        f"Difference (Original - ResizedBack)\n"
+        f"SNR: {snr:.2f} dB, MSE: {mse:.2e}"
+    )
+    axes[2].axis("off")
 
     plt.tight_layout()
     plt.show()
 
 # %%
-# Process 2D images
-# -----------------
+# Load and normalize a 2D image
+# -----------------------------
 #
-# We load a 2D image and resize it using interpolation, least-squares and oblique projections.
+# Here, we load an example Kodak image from an online repository.
+# We convert it to grayscale in [0..1].
 
-# Load the 'kodim23.png' image
 url = 'https://r0k.us/graphics/kodak/kodak/kodim23.png'
 response = requests.get(url)
 img = Image.open(BytesIO(response.content))
 data = np.array(img, dtype=np.float64)
 
-# Normalize the image to [0,1]
+# Convert to [0..1]
 input_image_normalized = data / 255.0
 
+# Convert to grayscale via simple weighting
 input_image_normalized = (
     input_image_normalized[:, :, 0] * 0.2989 +  # Red channel
     input_image_normalized[:, :, 1] * 0.5870 +  # Green channel
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
 
-# Display the original image
 plt.imshow(input_image_normalized, cmap='gray')
-plt.title("Original 2D Image")
+plt.title("Original 2D Image (Grayscale)")
 plt.axis('off')
 plt.show()
 
@@ -254,115 +219,112 @@ plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 degree = 3
-
 zoom_factors_2d = (0.25, 0.25)
 
 (
-    resized_signal_2D_interp, 
-    resized_back_signal_2D_interp, 
-    snr_2D_interp, mse_2D_interp, 
-    time_elapsed_2D_interp
+    resized_2d_interp, 
+    resized_back_2d_interp, 
+    snr_2d_interp, 
+    mse_2d_interp, 
+    time_2d_interp
 ) = resize_and_compute_metrics(
-    input_image_normalized, 
-    "interpolation",
-    degree, 
-    zoom_factors_2d
+    input_image_normalized,
+    method="interpolation",
+    degree=degree,
+    zoom_factors=zoom_factors_2d
 )
 
-# Plot results
-plot_universal_results(
+plot_2d_results(
     original=input_image_normalized,
-    resized=resized_signal_2D_interp,
-    resized_back=resized_back_signal_2D_interp,
+    resized=resized_2d_interp,
+    resized_back=resized_back_2d_interp,
     method="interpolation",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2D_interp,
-    mse=mse_2D_interp,
-    time_elapsed=time_elapsed_2D_interp
+    snr=snr_2d_interp,
+    mse=mse_2d_interp,
+    time_elapsed=time_2d_interp
 )
 
 # %%
-# 2D resizing: least-squares projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 2D resizing: least-squares
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_signal_2D_ls, 
-    resized_back_signal_2D_ls, 
-    snr_2D_ls, 
-    mse_2D_ls, 
-    time_elapsed_2D_ls
+    resized_2d_ls,
+    resized_back_2d_ls,
+    snr_2d_ls,
+    mse_2d_ls,
+    time_2d_ls
 ) = resize_and_compute_metrics(
-    input_image_normalized, 
-    "least-squares", 
-    degree, 
-    zoom_factors_2d
+    input_image_normalized,
+    method="least-squares",
+    degree=degree,
+    zoom_factors=zoom_factors_2d
 )
 
-# Plot results
-plot_universal_results(
+plot_2d_results(
     original=input_image_normalized,
-    resized=resized_signal_2D_ls,
-    resized_back=resized_back_signal_2D_ls,
+    resized=resized_2d_ls,
+    resized_back=resized_back_2d_ls,
     method="least-squares",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2D_ls,
-    mse=mse_2D_ls,
-    time_elapsed=time_elapsed_2D_ls
+    snr=snr_2d_ls,
+    mse=mse_2d_ls,
+    time_elapsed=time_2d_ls
 )
 
 # %%
-# 2D resizing: oblique projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 2D resizing: oblique
+# ~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_signal_2D_ob, 
-    resized_back_signal_2D_ob, 
-    snr_2D_ob, 
-    mse_2D_ob, 
-    time_elapsed_2D_ob
+    resized_2d_ob,
+    resized_back_2d_ob,
+    snr_2d_ob,
+    mse_2d_ob,
+    time_2d_ob
 ) = resize_and_compute_metrics(
-    input_image_normalized, 
-    "oblique", 
-    degree, 
-    zoom_factors_2d
+    input_image_normalized,
+    method="oblique",
+    degree=degree,
+    zoom_factors=zoom_factors_2d
 )
 
-# Plot results
-plot_universal_results(
+plot_2d_results(
     original=input_image_normalized,
-    resized=resized_signal_2D_ob,
-    resized_back=resized_back_signal_2D_ob,
+    resized=resized_2d_ob,
+    resized_back=resized_back_2d_ob,
     method="oblique",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2D_ob,
-    mse=mse_2D_ob,
-    time_elapsed=time_elapsed_2D_ob
+    snr=snr_2d_ob,
+    mse=mse_2d_ob,
+    time_elapsed=time_2d_ob
 )
 
 # %%
-# 2D resizing: scipy interpolation
+# 2D resizing: SciPy interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (
-    resized_signal_2D_scipy, 
-    resized_back_signal_2D_scipy, 
-    snr_2D_scipy, mse_2D_scipy, 
-    time_elapsed_2D_scipy
+    resized_2d_scipy,
+    resized_back_2d_scipy,
+    snr_2d_scipy,
+    mse_2d_scipy,
+    time_2d_scipy
 ) = resize_and_compute_metrics(
-    input_image_normalized, 
-    "scipy", 
-    degree, 
-    zoom_factors_2d
+    input_image_normalized,
+    method="scipy",
+    degree=degree,
+    zoom_factors=zoom_factors_2d
 )
 
-# Plot results
-plot_universal_results(
+plot_2d_results(
     original=input_image_normalized,
-    resized=resized_signal_2D_scipy,
-    resized_back=resized_back_signal_2D_scipy,
+    resized=resized_2d_scipy,
+    resized_back=resized_back_2d_scipy,
     method="scipy",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2D_scipy,
-    mse=mse_2D_scipy,
-    time_elapsed=time_elapsed_2D_scipy
+    snr=snr_2d_scipy,
+    mse=mse_2d_scipy,
+    time_elapsed=time_2d_scipy
 )
