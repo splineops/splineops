@@ -8,11 +8,11 @@ Specifically, we:
 
 1. Interpolate an initial set of 1D samples f[k], placed on a unit grid with a B-spline to form a continuously defined function f(x).
 
-2. Resample f(x) to have g[k] = f(λk), with λ non-zero.
+2. Resample :math:`f(x)` to get :math:`g[k] = f(\lambda k)`, with :math:`|\lambda| > 1`.
 
 3. Create a new spline g(x).
 
-4. Match the support of f with h(x) = g(x / λ).
+4. We define h(x) = g(x / λ).
 
 5. Compute the Mean Squared Error (MSE) between f and h.
 
@@ -49,9 +49,12 @@ plt.rcParams.update({
 #
 # These are the input samples that we will interpolate.
 
-f_support = np.arange(27)
+number_of_samples = 27
+
+f_support = np.arange(number_of_samples)
+f_support_length = len(f_support) # It's equal to number_of_samples
 np.random.seed(42)
-f_samples = np.random.uniform(-1, 1, len(f_support))
+f_samples = np.random.uniform(-1, 1, f_support_length)
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples")
@@ -73,7 +76,7 @@ plt.show()
 # Interpolate samples with spline f
 # ---------------------------------
 #
-# We interpolate the 1D samples with a spline to obtain a continuously defined function :math:`f` expressed as:
+# We interpolate the 1D samples with a spline to obtain the continuously defined function
 #
 # .. math::
 #
@@ -83,7 +86,7 @@ plt.show()
 #
 # - :math:`\beta^n` is the B-spline of degree :math:`n`.
 #
-# - :math:`c[k]` are the spline coefficients determined from the input samples.
+# - :math:`c[k]` are the spline coefficients determined from the input samples, such that :math:`f(k) = f[k]`
 #
 # Let us now plot :math:`f`.
 
@@ -91,14 +94,15 @@ plt.show()
 plot_points_per_unit = 12
 
 # Interpolated signal
-bases = "bspline3"  # Linear interpolation
-modes = "mirror"  # Mirror extension mode
-f = TensorSpline(data=f_samples, coordinates=f_support, bases=bases, modes=modes)
+base = "bspline3"
+mode = "mirror"
+
+f = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
 
 f_coords = np.array([q / plot_points_per_unit 
-                        for q in range(plot_points_per_unit * len(f_support))])
+                        for q in range(plot_points_per_unit * f_support_length)])
 
-# The key: pass (plot_coords,) not plot_coords
+# Syntax hint: pass (plot_coords,) not plot_coords
 f_data = f(coordinates=(f_coords,), grid=False)
 
 plt.figure(figsize=(10, 4))
@@ -113,7 +117,7 @@ plt.axhline(
 )
 plt.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 plt.xlabel("x")
-plt.ylabel("Amplitude")
+plt.ylabel("f")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -133,11 +137,11 @@ plt.show()
 
 val_lambda = np.pi
 
-g_support_length = round(len(f_support) // val_lambda)
+g_support_length = round(f_support_length // val_lambda)
 g_support = np.arange(g_support_length)  
 f_resampled_coords = np.array([q * val_lambda for q in range(g_support_length)])
 g_samples = f(coordinates=(f_resampled_coords,), grid=False)
-g = TensorSpline(data=g_samples, coordinates=g_support, bases=bases, modes=modes)
+g = TensorSpline(data=g_samples, coordinates=g_support, bases=base, modes=mode)
 
 g_coords = np.array([q/plot_points_per_unit for q in range(plot_points_per_unit * len(g_support))])
 g_data = g(coordinates=(g_coords,), grid=False)
@@ -148,7 +152,7 @@ gs = GridSpec(
     nrows=2, 
     ncols=2,
     # Match widths: first column = g_support_length, second column = leftover
-    width_ratios=[g_support_length, len(f_support) - g_support_length],
+    width_ratios=[g_support_length, f_support_length - g_support_length],
     height_ratios=[1, 1]
 )
 
@@ -184,11 +188,11 @@ ax_top.plot(
 # Horizontal line at 0 for reference
 ax_top.axhline(0, color='black', linewidth=1, zorder=0)
 
-# Make sure the top axis goes from 0..(len(f_support)-1)
-ax_top.set_xlim(0, len(f_support) - 1)
-ax_top.set_xticks(np.arange(0, len(f_support), 1))
+# Make sure the top axis goes from 0..(f_support_length-1)
+ax_top.set_xlim(0, f_support_length - 1)
+ax_top.set_xticks(np.arange(0, f_support_length, 1))
 ax_top.set_xlabel("x")
-ax_top.set_ylabel("Amplitude")
+ax_top.set_ylabel("f")
 ax_top.grid(True)
 ax_top.legend()
 
@@ -214,7 +218,7 @@ ax_bottom_left.plot(
     label="g[k] samples"
 )
 
-# Plot continuous g spline in purple over the same domain
+# Plot g spline in purple over the same domain
 ax_bottom_left.plot(
     g_coords, 
     g_data,
@@ -229,7 +233,7 @@ ax_bottom_left.axhline(0, color='black', linewidth=1, zorder=0)
 ax_bottom_left.set_xlim(0, g_support_length - 1)
 ax_bottom_left.set_xticks(np.arange(0, g_support_length, 1))
 ax_bottom_left.set_xlabel("x")
-ax_bottom_left.set_ylabel("Amplitude")
+ax_bottom_left.set_ylabel("g")
 ax_bottom_left.grid(True)
 ax_bottom_left.legend()
 
@@ -259,7 +263,7 @@ fig2 = plt.figure(figsize=(12, 12))
 gs2 = GridSpec(
     nrows=3,
     ncols=2,
-    width_ratios=[g_support_length, len(f_support) - g_support_length],
+    width_ratios=[g_support_length, f_support_length - g_support_length],
     height_ratios=[1, 1, 1]  # three equal rows
 )
 
@@ -270,7 +274,7 @@ ax_top.set_title("Interpolated f spline")
 # Replot discrete f[k] as stems
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 
-# Replot the continuous f spline
+# Replot f spline
 ax_top.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 
 # Overplot discrete g[k] in red squares at x = k*val_lambda
@@ -284,10 +288,10 @@ ax_top.plot(
 # Horizontal line at 0
 ax_top.axhline(0, color="black", linewidth=1, zorder=0)
 
-ax_top.set_xlim(0, len(f_support) - 1)
-ax_top.set_xticks(np.arange(0, len(f_support), 1))
+ax_top.set_xlim(0, f_support_length - 1)
+ax_top.set_xticks(np.arange(0, f_support_length, 1))
 ax_top.set_xlabel("x")
-ax_top.set_ylabel("Amplitude")
+ax_top.set_ylabel("f")
 ax_top.legend()
 ax_top.grid(True)
 
@@ -314,7 +318,7 @@ ax_mid_left.plot(
     label="g[k] samples"
 )
 
-# Plot the continuous g spline in purple
+# Plot g spline
 ax_mid_left.plot(
     g_coords, g_data,
     color="purple", linewidth=2,
@@ -325,7 +329,7 @@ ax_mid_left.axhline(0, color='black', linewidth=1, zorder=0)
 ax_mid_left.set_xlim(0, g_support_length - 1)
 ax_mid_left.set_xticks(np.arange(0, g_support_length, 1))
 ax_mid_left.set_xlabel("x")
-ax_mid_left.set_ylabel("Amplitude")
+ax_mid_left.set_ylabel("g")
 ax_mid_left.legend()
 ax_mid_left.grid(True)
 
@@ -336,7 +340,7 @@ ax_mid_left.set_ylim(ax_top.get_ylim())
 ax_bottom = fig2.add_subplot(gs2[2, :])  # spans both columns
 ax_bottom.set_title("h spline, h(x) = g(x / λ)")
 
-# We'll sample h over 0..(len(f_support)-1)
+# We'll sample h over 0..(f_support_length-1)
 h_coords = f_coords
 # Evaluate h(x) = g(x/val_lambda)
 h_data = g(coordinates=(h_coords / val_lambda,), grid=False)
@@ -348,14 +352,14 @@ ax_bottom.plot(h_coords, h_data, color="blue", linewidth=2, label="h(x)")
 ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
 
 # The domain is the same as f
-ax_bottom.set_xlim(0, len(f_support) - 1)
-ax_bottom.set_xticks(np.arange(0, len(f_support), 1))
+ax_bottom.set_xlim(0, f_support_length - 1)
+ax_bottom.set_xticks(np.arange(0, f_support_length, 1))
 ax_bottom.set_xlabel("x")
-ax_bottom.set_ylabel("Amplitude")
+ax_bottom.set_ylabel("h")
 ax_bottom.grid(True)
 ax_bottom.legend()
 
-# Optionally match amplitude scale with top row
+# Match y axis with top row
 ax_bottom.set_ylim(ax_top.get_ylim())
 
 fig2.tight_layout()
@@ -373,19 +377,19 @@ plt.show()
 # **Riemann Rule Approximation**:
 #
 # Instead of computing this integral analytically, we discretize the interval
-# :math:`[a,b]` into :math:`N` points. At each point :math:`x_i`, we evaluate
-# :math:`(f(x_i) - h(x_i))^2` and multiply by the small width :math:`\Delta x`.
+# :math:`[a,b]` into :math:`K` points. At each point :math:`x_k`, we evaluate
+# :math:`(f(x_k) - h(x_k))^2` and multiply by the small width :math:`\Delta x`.
 # Summing across all points approximates the integral:
 #
 # .. math::
-#    \int_{a}^{b} [f(x) - h(x)]^2 \, \mathrm{d}x 
-#    \;\approx\; \Delta x \sum_{i=1}^{N} [f(x_i) - h(x_i)]^2.
+#    \int_{a}^{b} (f(x) - h(x))^2 \, \mathrm{d}x 
+#    \;\approx\; \Delta x \sum_{k=1}^{K} (f(x_k) - h(x_k))^2.
 #
 # Dividing by :math:`b-a` yields the MSE.
 
-# 1) Define a fine sampling domain: [0, len(f_support)-1]
+# 1) Define a fine sampling domain: [0, f_support_length-1]
 sample_count = 1000
-a, b = 0, len(f_support) - 1
+a, b = 0, f_support_length - 1
 fine_x = np.linspace(a, b, sample_count)
 
 # 2) Evaluate f and h on this fine grid
@@ -408,10 +412,13 @@ print(f"MSE between f and h (via Riemann rule) = {mse_riemann:.6e}")
 #
 # We repeat exactly everything but using linear splines.
 
+base = "bspline1"
+mode = "mirror"
+
 # 1) Rebuild linear-spline version of f, then g
-f_lin = TensorSpline(data=f_samples, coordinates=f_support, bases="bspline1", modes=modes)
+f_lin = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
 g_lin_samps = f_lin(coordinates=(f_resampled_coords,), grid=False)
-g_lin = TensorSpline(data=g_lin_samps, coordinates=g_support, bases="bspline1", modes=modes)
+g_lin = TensorSpline(data=g_lin_samps, coordinates=g_support, bases=base, modes=mode)
 
 # 2) Evaluate them at the same plotting coordinates
 f_lin_f = f_lin(coordinates=(f_coords,), grid=False)               # f_lin over domain 0..(K-1)
@@ -423,7 +430,7 @@ fig3 = plt.figure(figsize=(12, 12))
 gs3 = GridSpec(
     nrows=3,
     ncols=2,
-    width_ratios=[g_support_length, len(f_support) - g_support_length],
+    width_ratios=[g_support_length, f_support_length - g_support_length],
     height_ratios=[1, 1, 1]
 )
 
@@ -432,12 +439,12 @@ ax_top = fig3.add_subplot(gs3[0, :])
 ax_top.set_title("Linear f spline")
 
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
-ax_top.plot(f_coords, f_lin_f, color="green", linewidth=2, label="f_lin")
+ax_top.plot(f_coords, f_lin_f, color="green", linewidth=2, label="f")
 ax_top.axhline(0, color='black', linewidth=1, zorder=0)
-ax_top.set_xlim(0, len(f_support) - 1)
-ax_top.set_xticks(np.arange(0, len(f_support), 1))
+ax_top.set_xlim(0, f_support_length - 1)
+ax_top.set_xticks(np.arange(0, f_support_length, 1))
 ax_top.set_xlabel("x")
-ax_top.set_ylabel("Amplitude")
+ax_top.set_ylabel("f")
 ax_top.grid(True)
 ax_top.legend()
 
@@ -460,20 +467,20 @@ ax_mid_left.plot(
     g_support,
     g_lin_samps,
     "rs", mfc='none', markersize=8, markeredgewidth=2, 
-    label="g_lin[k]"
+    label="g[k]"
 )
-# Continuous g spline
+# g spline
 ax_mid_left.plot(
     g_coords,
     g_lin_g,
     color="purple", linewidth=2,
-    label="g_lin"
+    label="g"
 )
 ax_mid_left.axhline(0, color='black', linewidth=1, zorder=0)
 ax_mid_left.set_xlim(0, g_support_length - 1)
 ax_mid_left.set_xticks(np.arange(0, g_support_length, 1))
 ax_mid_left.set_xlabel("x")
-ax_mid_left.set_ylabel("Amplitude")
+ax_mid_left.set_ylabel("g")
 ax_mid_left.grid(True)
 ax_mid_left.legend()
 # Match y-range with top
@@ -481,14 +488,14 @@ ax_mid_left.set_ylim(ax_top.get_ylim())
 
 # BOTTOM ROW: entire row for h
 ax_bottom = fig3.add_subplot(gs3[2, :])
-ax_bottom.set_title("Linear h spline, h(x)=g_lin(x/λ)")
+ax_bottom.set_title("Linear h spline, h(x)=g(x/λ)")
 
-ax_bottom.plot(f_coords, h_lin_h, color="blue", linewidth=2, label="h_lin")
+ax_bottom.plot(f_coords, h_lin_h, color="blue", linewidth=2, label="h")
 ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
-ax_bottom.set_xlim(0, len(f_support) - 1)
-ax_bottom.set_xticks(np.arange(0, len(f_support), 1))
+ax_bottom.set_xlim(0, f_support_length - 1)
+ax_bottom.set_xticks(np.arange(0, f_support_length, 1))
 ax_bottom.set_xlabel("x")
-ax_bottom.set_ylabel("Amplitude")
+ax_bottom.set_ylabel("h")
 ax_bottom.grid(True)
 ax_bottom.legend()
 # Match y-range
@@ -501,4 +508,4 @@ plt.show()
 f_lin_fine = f_lin(coordinates=(fine_x,), grid=False)
 h_lin_fine = g_lin(coordinates=(fine_x / val_lambda,), grid=False)
 mse_lin = np.sum((f_lin_fine - h_lin_fine)**2) * dx / (b - a)
-print(f"MSE with linear splines (bspline1) = {mse_lin:.6e}")
+print(f"MSE with linear splines = {mse_lin:.6e}")
