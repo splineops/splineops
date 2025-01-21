@@ -54,7 +54,10 @@ number_of_samples = 27
 f_support = np.arange(number_of_samples)
 f_support_length = len(f_support) # It's equal to number_of_samples
 np.random.seed(42)
-f_samples = np.random.uniform(-1, 1, f_support_length)
+f_samples = np.array([
+    np.sin(k * 2.0 * np.pi / (number_of_samples - 1))
+    for k in f_support
+])
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples")
