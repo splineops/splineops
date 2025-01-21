@@ -1,11 +1,10 @@
 """
-Resizing 2D images
-==================
+Interpolate 2D images
+=====================
 
-This example compares SplineOps resizing with advanced interpolation methods:
-Least-Squares, Oblique Projection, and SciPy's built-in zoom, on 2D images.
+Interpolate 2D images with standard interpolation, least-squares and oblique projection.
 
-You can download this example as both a Python script and as a Jupyter notebook.
+You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
 """
 
 # %%
