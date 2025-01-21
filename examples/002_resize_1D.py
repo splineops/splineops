@@ -6,15 +6,15 @@ Interpolate 1D samples with standard interpolation.
 
 Specifically, we:
 
-1. Interpolate an initial set of 1D samples f[k], placed on a unit grid with a B-spline to form a continuously defined function f(x).
+1. Interpolate an initial set of 1D samples :math:`f[k]`, placed on a unit grid with a B-spline to form a continuously defined function :math:`f(x)`.
 
 2. Resample :math:`f(x)` to get :math:`g[k] = f(\lambda k)`, with :math:`|\lambda| > 1`.
 
-3. Create a new spline g(x).
+3. Create a new spline :math:`g(x)`.
 
-4. We define h(x) = g(x / λ).
+4. We define :math:`h(x) = g(x / \lambda)`.
 
-5. Compute the Mean Squared Error (MSE) between f and h.
+5. Compute the Mean Squared Error (MSE) between :math:`f` and :math:`h`.
 
 You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
 """
@@ -45,7 +45,7 @@ plt.rcParams.update({
 #
 # We generate 1D samples and treat them as discrete signal points.
 # 
-# Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data that are uniformly i.i.d. in (-1, 1).
+# Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data that are uniformly i.i.d. in :math:`(-1, 1)`.
 #
 # These are the input samples that we will interpolate.
 
@@ -84,9 +84,9 @@ plt.show()
 #
 # where:
 #
-# - :math:`\beta^n` is the B-spline of degree :math:`n`.
+# - :math:`\beta^n` is the B-spline of degree :math:`n`;
 #
-# - :math:`c[k]` are the spline coefficients determined from the input samples, such that :math:`f(k) = f[k]`
+# - :math:`c[k]` are the spline coefficients determined from the input samples, such that :math:`f(k) = f[k]`.
 #
 # Let us now plot :math:`f`.
 
@@ -126,7 +126,7 @@ plt.show()
 # %%
 # Coarsening of f
 # ---------------
-# We define :math:`\lambda` as a non-zero number and sample :math:`f(x)` 
+# We define :math:`\lambda` with :math:`|\lambda| > 1` and sample :math:`f(x)` 
 # at :math:`x = \lambda k`:
 #
 # .. math::
