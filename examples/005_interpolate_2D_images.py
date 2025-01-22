@@ -190,7 +190,7 @@ def plot_2d_results(original, resized, resized_back, method, zoom_factors, snr, 
     )
     axes[2].axis("off")
 
-    plt.tight_layout()
+    plt.tight_layout(pad=3.0)  # Increase padding between subplots
     plt.show()
 
 # %%
