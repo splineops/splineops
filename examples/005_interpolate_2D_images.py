@@ -35,7 +35,7 @@ import time
 #   - SNR and MSE on that central cropped area
 #   - resizing functions
 
-def crop_to_central_region(image, border_fraction=0.3):
+def crop_to_central_region(image, border_fraction):
     """
     Return a central sub-region of 'image', skipping 'border_fraction'
     of the width/height on all sides.
@@ -52,7 +52,7 @@ def crop_to_central_region(image, border_fraction=0.3):
     right = min(right, W)
     return image[top:bottom, left:right]
 
-def compute_snr_and_mse_cropped(original, processed, border_fraction=0.2):
+def compute_snr_and_mse_cropped(original, processed, border_fraction):
     """
     Compute SNR and MSE on the 'central' cropped area, ignoring border_fraction
     of the image on each side.
@@ -73,7 +73,7 @@ def compute_snr_and_mse_cropped(original, processed, border_fraction=0.2):
 
     return snr_val, mse_val
 
-def resize_with_scipy_zoom(input_image, zoom_factors, degree):
+def resize_with_scipy_zoom(input_image, zoom_factors, degree, border_fraction):
     """
     Resize using SciPy's zoom, then resize back and compute SNR/MSE
     *only on a central region* to avoid boundary artifacts.
@@ -88,11 +88,11 @@ def resize_with_scipy_zoom(input_image, zoom_factors, degree):
     snr = 0.0
     mse = 0.0
     # Compute SNR/MSE on central region
-    snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction=0.2)
+    snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction)
 
     return resized_image, resized_back_image, snr, mse, time_elapsed
 
-def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
+def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border_fraction):
     """
     Resize a 2D image using the specified method, then resize back
     to original size and compute SNR, MSE, and timing *only on a central region*.
@@ -102,7 +102,7 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
 
     if method == "scipy":
         return resize_with_scipy_zoom(
-            input_image, zoom_factors, degree
+            input_image, zoom_factors, degree, border_fraction
         )
     else:
         start_time = time.perf_counter()
@@ -124,7 +124,7 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
         )
 
         # Compute SNR/MSE on central region
-        snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction=0.2)
+        snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction)
 
         return resized_image, resized_back_image, snr, mse, time_elapsed
 
@@ -185,7 +185,7 @@ def plot_2d_results(original, resized, resized_back, method, zoom_factors, snr, 
     # Difference
     axes[2].imshow(diff_8, cmap='gray', aspect='equal')
     axes[2].set_title(
-        f"Difference (central metrics)\n"
+        f"Difference\n"
         f"SNR: {snr:.2f} dB, MSE: {mse:.2e}"
     )
     axes[2].axis("off")
@@ -215,17 +215,13 @@ input_image_normalized = (
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
 
-plt.imshow(input_image_normalized, cmap='gray')
-plt.title("Original 2D Image (Grayscale)")
-plt.axis('off')
-plt.show()
+degree = 3
+zoom_factors_2d = (0.25, 0.25)
+border_fraction = 0.3
 
 # %%
 # 2D resizing: interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-degree = 3
-zoom_factors_2d = (0.25, 0.25)
 
 (
     resized_2d_interp, 
@@ -237,7 +233,8 @@ zoom_factors_2d = (0.25, 0.25)
     input_image_normalized,
     method="interpolation",
     degree=degree,
-    zoom_factors=zoom_factors_2d
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction
 )
 
 plot_2d_results(
@@ -265,7 +262,8 @@ plot_2d_results(
     input_image_normalized,
     method="least-squares",
     degree=degree,
-    zoom_factors=zoom_factors_2d
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction
 )
 
 plot_2d_results(
@@ -293,7 +291,8 @@ plot_2d_results(
     input_image_normalized,
     method="oblique",
     degree=degree,
-    zoom_factors=zoom_factors_2d
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction
 )
 
 plot_2d_results(
@@ -321,7 +320,8 @@ plot_2d_results(
     input_image_normalized,
     method="scipy",
     degree=degree,
-    zoom_factors=zoom_factors_2d
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction
 )
 
 plot_2d_results(
