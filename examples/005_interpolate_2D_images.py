@@ -3,7 +3,8 @@ Interpolate 2D images
 =====================
 
 Interpolate 2D images with standard interpolation, least-squares and oblique projection,
-comparing them to SciPy's zoom.
+comparing them to SciPy's zoom. We compute SNR and MSE only on a central region 
+to exclude boundary artifacts.
 
 You can download this example at the tab at right, as both a Python script
 and as a Jupyter notebook.
@@ -29,25 +30,53 @@ import time
 # Helper functions
 # ----------------
 #
-# Compute Signal-to-Noise Ratio (SNR), Mean Squared Error (MSE),
-# and perform resizing with various methods.
+# We define:
+#   - a utility to crop out ~20% borders around the image
+#   - SNR and MSE on that central cropped area
+#   - resizing functions
 
-def compute_snr(original, processed):
-    """Compute Signal-to-Noise Ratio (dB) between two 2D signals."""
-    signal_power = np.mean(original ** 2)
-    noise_power = np.mean((original - processed) ** 2)
-    if noise_power == 0:
-        return np.inf  # Perfect match
-    return 10 * np.log10(signal_power / noise_power)
+def crop_to_central_region(image, border_fraction=0.3):
+    """
+    Return a central sub-region of 'image', skipping 'border_fraction'
+    of the width/height on all sides.
+    """
+    H, W = image.shape
+    top = int(H * border_fraction)
+    bottom = int(H * (1 - border_fraction))
+    left = int(W * border_fraction)
+    right = int(W * (1 - border_fraction))
+    # Guard against degenerate cases
+    top = max(top, 0)
+    left = max(left, 0)
+    bottom = min(bottom, H)
+    right = min(right, W)
+    return image[top:bottom, left:right]
 
-def compute_mse(original, processed):
-    """Compute Mean Squared Error between two 2D signals."""
-    return np.mean((original - processed) ** 2)
+def compute_snr_and_mse_cropped(original, processed, border_fraction=0.2):
+    """
+    Compute SNR and MSE on the 'central' cropped area, ignoring border_fraction
+    of the image on each side.
+    """
+    # Crop both images consistently
+    orig_cropped = crop_to_central_region(original, border_fraction)
+    proc_cropped = crop_to_central_region(processed, border_fraction)
+
+    # Now compute SNR and MSE on that region
+    signal_power = np.mean(orig_cropped**2)
+    noise_power = np.mean((orig_cropped - proc_cropped)**2)
+    mse_val = noise_power
+
+    if noise_power <= 1e-30:  # near-zero difference
+        snr_val = float('inf')
+    else:
+        snr_val = 10 * np.log10(signal_power / noise_power)
+
+    return snr_val, mse_val
 
 def resize_with_scipy_zoom(input_image, zoom_factors, degree):
     """
-    Resize using SciPy's zoom, then resize back and compute SNR/MSE.
-    Returns (resized_image, resized_back_image, snr, mse, time_elapsed).
+    Resize using SciPy's zoom, then resize back and compute SNR/MSE
+    *only on a central region* to avoid boundary artifacts.
     """
     start_time = time.perf_counter()
     resized_image = zoom(input_image, zoom_factors, order=degree)
@@ -56,16 +85,17 @@ def resize_with_scipy_zoom(input_image, zoom_factors, degree):
     reverse_zoom_factors = 1.0 / np.array(zoom_factors)
     resized_back_image = zoom(resized_image, reverse_zoom_factors, order=degree)
 
-    snr = compute_snr(input_image, resized_back_image)
-    mse = compute_mse(input_image, resized_back_image)
+    snr = 0.0
+    mse = 0.0
+    # Compute SNR/MSE on central region
+    snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction=0.2)
+
     return resized_image, resized_back_image, snr, mse, time_elapsed
 
 def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
     """
     Resize a 2D image using the specified method, then resize back
-    to original size and compute SNR, MSE, and timing.
-
-    Returns (resized_image, resized_back_image, snr, mse, time_elapsed).
+    to original size and compute SNR, MSE, and timing *only on a central region*.
     """
     if np.isscalar(zoom_factors):
         zoom_factors = (zoom_factors, zoom_factors)
@@ -93,55 +123,34 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors):
             method=method
         )
 
-        snr = compute_snr(input_image, resized_back_image)
-        mse = compute_mse(input_image, resized_back_image)
+        # Compute SNR/MSE on central region
+        snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction=0.2)
+
         return resized_image, resized_back_image, snr, mse, time_elapsed
 
 # %%
 # Plotting function (vertical subplots)
 # -------------------------------------
 #
-# We define a simpler plotting function that displays three images in one column:
+# We display three images in one column:
 # (1) Original, (2) Resized, (3) Difference (Original - ResizedBack).
+# If zoom < 1, we embed the resized image on a white canvas matching original's shape.
 
 def plot_2d_results(original, resized, resized_back, method, zoom_factors, snr, mse, time_elapsed):
     """
     Display three vertical 2D images: original, resized, and difference (original - resized_back).
     If any zoom factor < 1, we place the resized image on a white canvas matching the original shape.
 
-    Parameters
-    ----------
-    original : np.ndarray
-        2D array of the original image data (e.g., floats in [0..1]).
-    resized : np.ndarray
-        2D array of the resized image (floats in [0..1]).
-    resized_back : np.ndarray
-        2D array of the resized-back image, same shape as `original`.
-    method : str
-        Resizing method ("interpolation", "least-squares", "oblique", or "scipy").
-    zoom_factors : tuple
-        The (zoom_y, zoom_x) factors used.
-    snr : float
-        Computed SNR in dB.
-    mse : float
-        Computed mean squared error.
-    time_elapsed : float
-        Elapsed time for the forward resizing step.
+    SNR/MSE are computed only on the central region (by the prior functions).
     """
-    # 1) Compute the difference for the bottom subplot
     difference = original - resized_back
-
-    # 2) Decide if we need a white-canvas approach for the "resized" image
-    #    That is, if either dimension was zoomed out (< 1), we'll embed it in a white background
     zoom_out = any(zf < 1.0 for zf in zoom_factors)
 
-    # 3) Convert arrays to [0..255] for display
     def to_uint8(arr):
         arr_min, arr_max = arr.min(), arr.max()
         if arr_max > arr_min:
             arr_scaled = (arr - arr_min) / (arr_max - arr_min)
         else:
-            # constant image
             arr_scaled = arr * 0.0
         return (arr_scaled * 255).astype(np.uint8)
 
@@ -149,37 +158,34 @@ def plot_2d_results(original, resized, resized_back, method, zoom_factors, snr, 
     resized_8 = to_uint8(resized)
     diff_8 = to_uint8(difference)
 
-    # 4) If zoom_out is True, place `resized_8` in a white canvas
+    # White canvas if zoomed out
     if zoom_out:
-        canvas_8 = np.ones_like(orig_8, dtype=np.uint8) * 255  # white background
+        canvas_8 = np.full_like(orig_8, 255, dtype=np.uint8)  # white
         rh, rw = resized_8.shape
-        # Place top-left corner at (0,0):
         canvas_8[:rh, :rw] = resized_8
         resized_display = canvas_8
     else:
         resized_display = resized_8
 
-    # 5) Make vertical subplots
     fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(6, 14))
 
-    # --- (a) Original ---
+    # Original
     axes[0].imshow(orig_8, cmap='gray', aspect='equal')
     axes[0].set_title("Original Image")
     axes[0].axis("off")
 
-    # --- (b) Resized (possibly on white canvas) ---
+    # Resized
     axes[1].imshow(resized_display, cmap='gray', aspect='equal')
     axes[1].set_title(
         f"{method.capitalize()} Resized\n"
-        f"Zoom: {zoom_factors}\n"
-        f"Time: {time_elapsed:.4f}s"
+        f"Zoom: {zoom_factors}, Time: {time_elapsed:.4f}s"
     )
     axes[1].axis("off")
 
-    # --- (c) Difference (original - resizedBack) ---
+    # Difference
     axes[2].imshow(diff_8, cmap='gray', aspect='equal')
     axes[2].set_title(
-        f"Difference (Original - ResizedBack)\n"
+        f"Difference (central metrics)\n"
         f"SNR: {snr:.2f} dB, MSE: {mse:.2e}"
     )
     axes[2].axis("off")
