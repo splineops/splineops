@@ -141,7 +141,7 @@ This method is particularly effective for scenarios requiring fast computation w
 Resize Example
 --------------
 
-* :ref:`sphx_glr_auto_examples_001_resize.py`
+* :ref:`sphx_glr_auto_examples_002_using_resize_module.py`
 
 References
 ----------
