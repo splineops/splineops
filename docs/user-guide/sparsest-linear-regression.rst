@@ -13,9 +13,9 @@ Key features of this method:
 - Guarantees **piecewise-linear** solutions with minimal knots.
 - Provides a systematic analysis of **unique vs. non-unique solutions**.
 - Introduces a fast **two-step algorithm** to compute sparsest solutions efficiently.
-- Can be applied to both **interpolation (exact fit)** and **regression (data fitting with noise).**
+- Supports both **interpolation (exact fit)** and **regression (data fitting with noise).**
 
-This technique is particularly relevant in **machine learning**, where sparsity promotes better **generalization**, and in **signal processing**, where minimal knots lead to **simpler models**.
+This technique is particularly relevant in **machine learning**, where sparsity improves **generalization**, and in **signal processing**, where minimal knots lead to **simpler models**.
 
 Mathematical Background
 ------------------------
@@ -34,9 +34,9 @@ where:
 - :math:`E(f(x_m), y_m)` is a **data-fidelity** term (e.g., quadratic loss :math:`(f(x_m) - y_m)^2/2`).
 - :math:`\lambda` is a **regularization parameter** that controls the sparsity.
 - :math:`D^2 f` is the **second derivative**, ensuring the solution is **piecewise-linear**.
-- :math:`\| \cdot \|_M` is the **total-variation norm** for measures, which enforces sparsity.
+- :math:`\| \cdot \|_M` is the **total-variation norm**, which promotes sparsity.
 
-This is called the **generalized Beurling LASSO (g-BLASSO)**, an extension of the classical LASSO regression to continuous functions.
+This is called the **generalized Beurling LASSO (g-BLASSO)**, extending classical LASSO regression to continuous functions.
 
 Representer Theorem
 ~~~~~~~~~~~~~~~~~~~
@@ -56,9 +56,9 @@ where:
 This theorem guarantees that the solutions are **adaptive splines** with the fewest possible knots.
 
 Uniqueness and Sparsity
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
-While the **g-BLASSO** problem always has solutions, it is generally **non-unique**. The paper provides a full **characterization of the solution set**, identifying:
+While the **g-BLASSO** problem always has solutions, it is generally **non-unique**. This module provides a full **characterization of the solution set**, identifying:
 
 - **Cases where the solution is unique** (e.g., when certain convexity conditions hold).
 - **Cases where multiple solutions exist**, and how to select the **sparsest** one.
@@ -114,6 +114,16 @@ This example demonstrates:
 - **Denoising** noisy data using **total-variation regularization**.
 - **Finding the sparsest linear spline** with minimal knots.
 - **Visualizing the results** to compare noisy, denoised, and sparse regression outputs.
+
+Regularization Parameter
+------------------------
+
+The regularization parameter :math:`\lambda` controls the trade-off between **data fidelity** and **sparsity**:
+
+- **Small** :math:`\lambda` → Interpolates the data, but may overfit.
+- **Large** :math:`\lambda` → Produces smoother results, eventually converging to a linear fit.
+
+A practical way to **tune** :math:`\lambda` is by plotting **sparsity vs. data fidelity** and selecting a balanced value.
 
 References
 ----------
