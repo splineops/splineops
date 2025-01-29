@@ -10,4 +10,5 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
 
    resize
    rotate
+   sparsest-linear-regression
 
