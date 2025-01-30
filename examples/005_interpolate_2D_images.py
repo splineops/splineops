@@ -129,11 +129,13 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border
         return resized_image, resized_back_image, snr, mse, time_elapsed
 
 # %%
-# Plotting function (vertical subplots)
-# -------------------------------------
+# Plotting function
+# -----------------
 #
 # We display three images in one column:
-# (1) Original, (2) Resized, (3) Difference (Original - ResizedBack).
+# (1) Original, 
+# (2) Resized, 
+# (3) Difference (Original - ResizedBack).
 # If zoom < 1, we embed the resized image on a white canvas matching original's shape.
 
 def plot_2d_results(original, resized, resized_back, method, zoom_factors, snr, mse, time_elapsed):

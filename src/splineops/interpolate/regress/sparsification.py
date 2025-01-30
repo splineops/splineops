@@ -1,3 +1,23 @@
+"""
+Sparsest Piecewise-Linear Interpolation
+=======================================
+
+This Python implementation computes the sparsest piecewise-linear spline that interpolates 
+given data points using total variation regularization on the second derivative. This method 
+promotes solutions with the fewest number of knots while maintaining fidelity to the data.
+
+Author: Thomas Debarre
+        Swiss Federal Institute of Technology Lausanne
+        Biomedical Imaging Group
+        BM-Ecublens
+        CH-1015 Lausanne EPFL, Switzerland
+
+This script provides functionality for computing optimal sparse splines, evaluating them, 
+and performing operations such as sparsification of amplitudes and identification of 
+saturation zones.
+
+"""
+
 from typing import Tuple
 import numpy as np
 
