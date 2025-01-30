@@ -133,11 +133,13 @@ Regression Example
 References
 ----------
 
-The method is based on the following paper:
-
 - **Debarre, T., Denoyelle, Q., Unser, M., & Fageot, J.** (2022). *Sparsest Piecewise-Linear Regression of One-Dimensional Data*.  
   Journal of Computational and Applied Mathematics, 406, 114044.  
   `DOI: 10.1016/j.cam.2021.114044 <https://doi.org/10.1016/j.cam.2021.114044>`_.
+- **Boyd, S., Parikh, N., Chu, E., Peleato, B., & Eckstein, J.** (2011).  
+  *Distributed Optimization and Statistical Learning via the Alternating Direction Method of Multipliers*.  
+  Foundations and Trends in Machine Learning, 3(1), 1-122.  
+  `DOI: 10.1561/2200000016 <https://doi.org/10.1561/2200000016>`_.
 
 .. note::
     This method is closely related to **ReLU neural networks**, which also produce **piecewise-linear functions**.

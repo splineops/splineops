@@ -2,8 +2,14 @@ from typing import Tuple
 import numpy as np
 import scipy.sparse as sp
 
-def denoise_y(x: np.ndarray, y: np.ndarray, lamb: float, rho: float = 1.0, max_iter: int = int(1e4),
-                       relative_tol: float = 1e-7) -> np.ndarray:
+def denoise_y(
+    x: np.ndarray, 
+    y: np.ndarray, 
+    lamb: float, 
+    rho: float = 1.0, 
+    max_iter: int = int(1e4),
+    relative_tol: float = 1e-7
+) -> np.ndarray:
     """ 
     Solve Problem (36) in [1]_ using ADMM [2]_.
 
@@ -20,20 +26,12 @@ def denoise_y(x: np.ndarray, y: np.ndarray, lamb: float, rho: float = 1.0, max_i
     max_iter : int
         Maximum number of iterations for ADMM
     relative_tol : float
-        Tolerance parameter for ADMM stopping criterion (:math:`\epsilon^\mathrm{abs}` in [2]_)
+        Tolerance parameter for ADMM stopping criterion (:math:`\\epsilon^\\mathrm{abs}` in [2]_)
 
     Returns
     -------
     y_lambda : ndarray
-        Array of denoised y-coordinates of data points (:math:`\mathbf{y}_\lambda` in [1]_)
-
-    References
-    ----------
-    .. [1] Debarre, T., Denoyelle, Q., Unser, M., and Fageot, J. "Sparsest Continuous Piecewise-Linear Spline
-           Representation of One-Dimensional Data." Journal of Computational and Applied Mathematics, 2022.
-
-    .. [2] Boyd, S., et al. “Distributed Optimization and Statistical Learning via the Alternating Direction
-           Method of Multipliers.” Foundations and Trends in Machine Learning, 2011.
+        Array of denoised y-coordinates of data points (:math:`\\mathbf{y}_\\lambda` in [1]_)
     """
     if x.size != y.size:
         raise Exception("x and y must be of the same size")
@@ -73,7 +71,10 @@ def denoise_y(x: np.ndarray, y: np.ndarray, lamb: float, rho: float = 1.0, max_i
         y_denoised = y
     return y_denoised
 
-def _lambda_max(x: np.ndarray, y: np.ndarray) -> Tuple[float, np.ndarray]:
+def _lambda_max(
+    x: np.ndarray, 
+    y: np.ndarray
+) -> Tuple[float, np.ndarray]:
     """ 
     Compute maximum regularization parameter lambda above which the problem amounts to linear regression.
      Returns maximum lambda and the linear regression solution. 
@@ -91,7 +92,9 @@ def _lambda_max(x: np.ndarray, y: np.ndarray) -> Tuple[float, np.ndarray]:
     lamb_max = max(np.abs(x[1:-1] * np.cumsum(h)[:-2] - np.cumsum(h * x)[:-2]))
     return lamb_max, polynomial
 
-def _regularization_matrix(x: np.ndarray) -> sp.diags:
+def _regularization_matrix(
+    x: np.ndarray
+) -> sp.diags:
     """ 
     Compute the L matrix defined in Equation (37) in Debarre et al. 2022.
     """
@@ -99,7 +102,10 @@ def _regularization_matrix(x: np.ndarray) -> sp.diags:
     v = 1 / (x[1:] - x[:-1])
     return sp.diags([v[:-1], -(v[:-1] + v[1:]), v[1:]], [0, 1, 2], shape=(M-2, M))
 
-def _prox_L1(x: np.ndarray, sigma: float):
+def _prox_L1(
+    x: np.ndarray, 
+    sigma: float
+):
     """ 
     Compute proximal operator of the L1 norm. 
     """
