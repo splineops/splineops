@@ -40,7 +40,7 @@ def smoothing_spline(
     gamma: float
 ) -> Tuple[npt.NDArray, npt.NDArray]:
     """
-    Compute the fractional smoothing spline at `m`x upsampling of the input.
+    Compute the fractional smoothing spline at m-times upsampling of the input.
 
     This function returns samples of the smoothing spline for a given input
     sequence, sampled at `m` times the rate of the input. The input is assumed
@@ -73,6 +73,7 @@ def smoothing_spline(
     >>> t.shape, ys.shape
     ((6,), (6,))
     """
+
     y = np.asarray(y).flatten()
     N = len(y)
 
