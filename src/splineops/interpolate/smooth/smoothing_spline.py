@@ -1,26 +1,49 @@
+from typing import Tuple
 import numpy as np
+import numpy.typing as npt
 from splineops.interpolate.smooth.fractsplineautocorr import fractsplineautocorr
 from scipy.fft import fftn, ifftn
 
-def periodize(x, m):
+
+def periodize(x: npt.NDArray, m: int) -> npt.NDArray:
     """
-    Periodizes the input array by concatenating 'm' copies of it.
+    Periodize the input array by concatenating `m` copies of it.
 
-    Parameters:
-    x (numpy array): Input array.
-    m (int): Number of times to concatenate.
+    Parameters
+    ----------
+    x : ndarray
+        Input array to be periodized.
+    m : int
+        Number of times to concatenate the array.
 
-    Returns:
-    xp (numpy array): Periodized array.
+    Returns
+    -------
+    xp : ndarray
+        The periodized array, which has its size multiplied by `m` along the
+        concatenation axis.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from splineops.interpolate.smooth.smoothing_spline import periodize
+    >>> x = np.array([1, 2, 3])
+    >>> periodize(x, 2)
+    array([1, 2, 3, 1, 2, 3])
     """
     return np.tile(x, m)
 
-def smoothing_spline(y, lamb, m, gamma):
+
+def smoothing_spline(
+    y: npt.NDArray,
+    lamb: float,
+    m: int,
+    gamma: float
+) -> Tuple[npt.NDArray, npt.NDArray]:
     """
-    Compute the fractional smoothing spline at m× upsampling of the input.
+    Compute the fractional smoothing spline at `m`x upsampling of the input.
 
     This function returns samples of the smoothing spline for a given input
-    sequence, sampled at m times the rate of the input. The input is assumed
+    sequence, sampled at `m` times the rate of the input. The input is assumed
     to be sampled at integer locations 0..N-1.
 
     Parameters
@@ -37,10 +60,18 @@ def smoothing_spline(y, lamb, m, gamma):
     Returns
     -------
     t : ndarray
-        The upsampled time vector, length ~ N x m.
+        The upsampled time vector, of length approximately `N * m`.
     ys : ndarray
-        The smoothing spline samples, length ~ N x m.
+        The smoothing spline samples, of length approximately `N * m`.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from splineops.interpolate.smooth.smoothing_spline import smoothing_spline
+    >>> y = np.array([1., 2., 3.])
+    >>> t, ys = smoothing_spline(y, lamb=0.1, m=2, gamma=1.5)
+    >>> t.shape, ys.shape
+    ((6,), (6,))
     """
     y = np.asarray(y).flatten()
     N = len(y)
@@ -63,12 +94,14 @@ def smoothing_spline(y, lamb, m, gamma):
     # Calculate A_gamma(m * omega)
     Agm = fractsplineautocorr(alpha, np.concatenate(([0], m * omega / (2 * np.pi))))
 
+    # Drop the first element after concatenation (used for shift)
     Ag = Ag[1:]
     Agm = Agm[1:]
 
     # Compute the smoothing spline filter H_m
     Hm = (m ** (-2 * gamma + 1) * (sinm2g / sin2g) * Ag /
           (Agm + lamb * sinm2g))
+    # Insert the DC term at the beginning
     Hm = np.concatenate(([m], Hm))
 
     # Generate outputs
@@ -76,7 +109,11 @@ def smoothing_spline(y, lamb, m, gamma):
     t = np.arange(0, N, 1 / m)
     return t, ys
 
-def recursive_smoothing_spline(signal, lamb=1.0):
+
+def recursive_smoothing_spline(
+    signal: npt.NDArray,
+    lamb: float = 1.0
+) -> npt.NDArray:
     """
     Apply a recursive smoothing spline filter to the input signal.
 
@@ -97,6 +134,8 @@ def recursive_smoothing_spline(signal, lamb=1.0):
 
     Examples
     --------
+    >>> import numpy as np
+    >>> from splineops.interpolate.smooth.smoothing_spline import recursive_smoothing_spline
     >>> x = np.array([1., 2., 2., 3., 5.])
     >>> xs = recursive_smoothing_spline(x, lamb=1.0)
     >>> xs
@@ -107,30 +146,50 @@ def recursive_smoothing_spline(signal, lamb=1.0):
     K = len(signal)
     
     # Causal filtering (forward pass)
-    y_causal = np.zeros(K)
+    y_causal = np.zeros(K, dtype=signal.dtype)
     y_causal[0] = signal[0]
     for k in range(1, K):
         y_causal[k] = signal[k] + z1 * y_causal[k - 1]
 
     # Anticausal filtering (backward pass)
-    smoothed_signal = np.zeros(K)
+    smoothed_signal = np.zeros(K, dtype=signal.dtype)
     smoothed_signal[-1] = y_causal[-1]
     for k in range(K - 2, -1, -1):
         smoothed_signal[k] = y_causal[k] + z1 * smoothed_signal[k + 1]
         
     return smoothed_signal
 
-def smoothing_spline_nd(data, lamb, gamma):
+
+def smoothing_spline_nd(
+    data: npt.NDArray,
+    lamb: float,
+    gamma: float
+) -> npt.NDArray:
     """
-    Applies multi-dimensional fractional smoothing spline to the input data.
+    Apply multi-dimensional fractional smoothing spline to the input data.
 
-    Parameters:
-    data (ndarray): Multi-dimensional input data (e.g., image, volume).
-    lamb (float): Regularization parameter.
-    gamma (float): Order of the spline operator (gamma = H + 0.5).
+    Parameters
+    ----------
+    data : ndarray
+        Multi-dimensional input data (e.g., image or volume).
+    lamb : float
+        Regularization parameter.
+    gamma : float
+        Order of the spline operator (gamma = H + 0.5).
 
-    Returns:
-    data_smooth (ndarray): Smoothed data.
+    Returns
+    -------
+    data_smooth : ndarray
+        Smoothed data of the same shape as `data`.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from splineops.interpolate.smooth.smoothing_spline import smoothing_spline_nd
+    >>> x = np.random.rand(4, 4)
+    >>> x_smooth = smoothing_spline_nd(x, lamb=0.5, gamma=1.0)
+    >>> x_smooth.shape
+    (4, 4)
     """
     data = np.asarray(data)
     dims = data.shape
@@ -142,8 +201,8 @@ def smoothing_spline_nd(data, lamb, gamma):
     freq_grids_stacked = np.stack(freq_grids, axis=0)  # Shape: (ndim, dims...)
     omega_squared = np.sum((2 * np.pi * freq_grids_stacked) ** 2, axis=0)
 
-    # Compute the Butterworth-like filter in Fourier domain
-    H = 1 / (1 + lamb * omega_squared ** gamma)
+    # Compute the Butterworth-like filter in the Fourier domain
+    H = 1 / (1 + lamb * (omega_squared ** gamma))
 
     # Apply the filter
     data_fft = fftn(data)
