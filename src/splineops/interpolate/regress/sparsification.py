@@ -6,29 +6,34 @@ def sparsest_interpolant(
     y: np.ndarray, 
     sparsity_tol: float = 1e-5
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """ 
-    Algorithm 1 in [1]_ to compute the linear spline that connects given data points with the fewest knots.
+    """
+    Computes the sparsest piecewise-linear spline that interpolates the given data points.
+
+    This function implements a method for finding the sparsest linear spline, based on 
+    total variation regularization on the second derivative. This approach promotes 
+    solutions with the fewest number of knots while maintaining fidelity to the data.
 
     The optimal spline can be evaluated using the `linear_spline()` function with the outputs of this function.
 
     Parameters
     ----------
     x : ndarray
-        Array of x-coordinates of data points
+        Array of x-coordinates of data points.
     y : ndarray
-        Array of y-coordinates of data points
-    sparsity_tol : float
-        Knots whose amplitude is smaller in absolute value than this tolerance parameter are discarded.
+        Array of y-coordinates of data points.
+    sparsity_tol : float, optional
+        Threshold for eliminating knots with small amplitude (default is 1e-5).
 
     Returns
     -------
     knots : ndarray
-        Array of knots of the optimal spline
+        Array of knot locations for the optimal sparse spline.
     amplitudes : ndarray
-        Array of amplitudes of these knots
+        Corresponding amplitudes of the knots.
     polynomial : ndarray
-        Size-2 array (b, a) parametrizing the linear component p(t) = at + b of the optimal spline
+        Coefficients (b, a) of the linear component p(t) = at + b.
     """
+
     if x.size != y.size:
         raise Exception("x and y must be of the same size")
 
@@ -75,28 +80,32 @@ def linear_spline(
     polynomial: np.ndarray
 ) -> np.ndarray:
     """
-    Evaluate a parametrized linear spline at location(s) t.
+    Evaluates a parametrized linear spline at specified location(s).
 
-    The mathematical expression of the spline is :math:`s(t) = at + b + \\sum_{k=0}^{K} a_k (t - \\tau_k)_+`, where
-    a and b are the parameters of the linear component and a_k and \\tau_k are the amplitudes and the locations of the
-    knots, respectively.
+    The spline is represented as:
+
+        s(t) = at + b + sum_{k=0}^{K} a_k (t - τ_k)_+
+
+    where `a` and `b` are the parameters of the linear component, and `a_k` and `τ_k` 
+    are the amplitudes and locations of the knots, respectively.
 
     Parameters
     ----------
     t : float or ndarray
-        Evaluation point(s) of the spline
+        The location(s) where the spline should be evaluated.
     knots : ndarray
-        Array of knots of the linear spline
+        Knot locations of the spline.
     amplitudes : ndarray
-        Array of amplitudes of these knots
+        Amplitudes of the knots.
     polynomial : ndarray
-        Size-2 array (b, a) parametrizing the linear component p(t) = at + b of the spline
+        Coefficients (b, a) of the linear component.
 
     Returns
     -------
     values : float or ndarray
-        Value(s) of the spline at the evaluation point(s)
+        The evaluated spline values at `t`.
     """
+
     values = polynomial[0] + polynomial[1] * t
     for i in range(len(knots)):
         values = values + amplitudes[i] * (t - knots[i]) * ((t - knots[i]) > 0)
@@ -106,10 +115,25 @@ def _sparsify_amplitudes(
     amplitudes: np.ndarray, 
     sparsity_tol: float = 1e-5
 ) -> np.ndarray:
-    """ 
-    Adjust amplitudes by setting those below the tolerance to zero while conserving the linear spline exactly
-    outside areas with phantom knots. 
     """
+    Adjusts amplitudes by setting values below the threshold to zero.
+
+    This operation ensures that the linear spline remains unchanged outside
+    regions containing phantom knots.
+
+    Parameters
+    ----------
+    amplitudes : ndarray
+        Array of knot amplitudes.
+    sparsity_tol : float, optional
+        Threshold below which amplitudes are set to zero (default is 1e-5).
+
+    Returns
+    -------
+    amplitudes_sparsified : ndarray
+        Modified amplitudes after thresholding.
+    """
+
     zero_indices = np.nonzero(np.abs(amplitudes) <= sparsity_tol)
     amplitudes_sparsified = amplitudes
     amplitudes_sparsified[zero_indices] = 0  # Set knots below tolerance to zero
@@ -131,9 +155,25 @@ def _saturation_zones(
     amplitudes: np.ndarray, 
     sparsity_tol: float = 1e-5
 ) -> np.ndarray:
-    """ 
-    Return array specifying number of consecutive saturation zones (limit points included). 
     """
+    Identifies saturation zones in the sequence of amplitudes.
+
+    Saturation zones correspond to consecutive segments where the amplitudes 
+    are small and should be pruned to maintain sparsity.
+
+    Parameters
+    ----------
+    amplitudes : ndarray
+        Array of knot amplitudes.
+    sparsity_tol : float, optional
+        Threshold for detecting phantom knots (default is 1e-5).
+
+    Returns
+    -------
+    saturations : ndarray
+        Array indicating the number of consecutive saturation zones.
+    """
+
     saturations = np.zeros_like(amplitudes)
     nz_idx = np.nonzero(np.abs(amplitudes) > sparsity_tol)[0]
     if len(nz_idx) > 0:
@@ -150,9 +190,27 @@ def _connect_points(
     x: np.ndarray, 
     y: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """ 
-    Return parametrization of the canonical linear-spline solution that connects the data points (x[i], y[i]). 
     """
+    Computes the canonical linear spline solution that connects given data points.
+
+    This function determines the piecewise-linear spline that interpolates the 
+    given points with minimal complexity.
+
+    Parameters
+    ----------
+    x : ndarray
+        Array of x-coordinates.
+    y : ndarray
+        Array of y-coordinates.
+
+    Returns
+    -------
+    amplitudes : ndarray
+        Amplitudes of the knots.
+    polynomial : ndarray
+        Coefficients (b, a) of the linear component.
+    """
+
     slopes = (y[1:] - y[:-1]) / (x[1:] - x[:-1])
     polynomial = np.array([y[0] - slopes[0] * x[0], slopes[0]])
     amplitudes = slopes[1:] - slopes[:-1]

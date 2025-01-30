@@ -10,29 +10,40 @@ def denoise_y(
     max_iter: int = int(1e4),
     relative_tol: float = 1e-7
 ) -> np.ndarray:
-    """ 
-    Solve Problem (36) in [1]_ using ADMM [2]_.
+    """
+    Performs total variation denoising on the y-coordinates using ADMM.
+
+    This function solves a convex optimization problem to smooth noisy data while 
+    preserving sharp transitions. The method is based on the Alternating Direction Method 
+    of Multipliers (ADMM), a powerful approach for distributed optimization.
+
+    The optimization problem solved is:
+
+        minimize  || y - y_lambda ||_2^2 + λ || Dy ||_1
+
+    where `D` is a discrete difference operator, enforcing piecewise smoothness.
 
     Parameters
     ----------
     x : ndarray
-        Array of x-coordinates of data points
+        Array of x-coordinates of data points.
     y : ndarray
-        Array of y-coordinates of data points
+        Array of y-coordinates (possibly noisy).
     lamb : float
-        Regularization parameter lambda
-    rho : float
-        Internal ADMM parameter [2]_
-    max_iter : int
-        Maximum number of iterations for ADMM
-    relative_tol : float
-        Tolerance parameter for ADMM stopping criterion (:math:`\\epsilon^\\mathrm{abs}` in [2]_)
+        Regularization parameter controlling the trade-off between data fidelity and smoothness.
+    rho : float, optional
+        ADMM penalty parameter (default is 1.0).
+    max_iter : int, optional
+        Maximum number of ADMM iterations (default is 1e4).
+    relative_tol : float, optional
+        Tolerance for stopping criterion (default is 1e-7).
 
     Returns
     -------
     y_lambda : ndarray
-        Array of denoised y-coordinates of data points (:math:`\\mathbf{y}_\\lambda` in [1]_)
+        Array of denoised y-coordinates.
     """
+
     if x.size != y.size:
         raise Exception("x and y must be of the same size")
     lamb_max, polynomial = _lambda_max(x, y)
@@ -75,10 +86,27 @@ def _lambda_max(
     x: np.ndarray, 
     y: np.ndarray
 ) -> Tuple[float, np.ndarray]:
-    """ 
-    Compute maximum regularization parameter lambda above which the problem amounts to linear regression.
-     Returns maximum lambda and the linear regression solution. 
-     """
+    """
+    Computes the maximum regularization parameter lambda.
+
+    If lambda exceeds this value, the denoising problem reduces to simple 
+    linear regression.
+
+    Parameters
+    ----------
+    x : ndarray
+        Array of x-coordinates.
+    y : ndarray
+        Array of y-coordinates.
+
+    Returns
+    -------
+    lamb_max : float
+        Maximum lambda value before regression takes over.
+    polynomial : ndarray
+        Coefficients (b, a) of the optimal linear regression.
+    """
+
     if x.size != y.size:
         raise Exception("x and y must be of the same size")
     m = len(x)
@@ -95,9 +123,23 @@ def _lambda_max(
 def _regularization_matrix(
     x: np.ndarray
 ) -> sp.diags:
-    """ 
-    Compute the L matrix defined in Equation (37) in Debarre et al. 2022.
     """
+    Constructs the second-order difference matrix for total variation regularization.
+
+    This matrix enforces smoothness constraints by penalizing large variations
+    in adjacent y-values.
+
+    Parameters
+    ----------
+    x : ndarray
+        Array of x-coordinates.
+
+    Returns
+    -------
+    L : scipy.sparse.diags
+        Regularization matrix enforcing smoothness constraints.
+    """
+
     M = len(x)
     v = 1 / (x[1:] - x[:-1])
     return sp.diags([v[:-1], -(v[:-1] + v[1:]), v[1:]], [0, 1, 2], shape=(M-2, M))
@@ -106,7 +148,23 @@ def _prox_L1(
     x: np.ndarray, 
     sigma: float
 ):
-    """ 
-    Compute proximal operator of the L1 norm. 
     """
+    Computes the proximal operator of the L1 norm.
+
+    This function applies soft thresholding, which is the key step in total variation 
+    denoising.
+
+    Parameters
+    ----------
+    x : ndarray
+        Input vector.
+    sigma : float
+        Regularization parameter.
+
+    Returns
+    -------
+    prox : ndarray
+        Soft-thresholded output.
+    """
+
     return np.sign(x) * np.maximum(np.abs(x) - sigma, 0)
