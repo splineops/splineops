@@ -8,8 +8,8 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
    :caption: Modules
    :titlesonly:
 
-   resize
-   rotate
-   sparsest-linear-regression
-   smooth
+   01_resize
+   02_rotate
+   03_regress
+   04_smooth
 

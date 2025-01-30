@@ -1,12 +1,12 @@
-Sparsest Linear Regression
-==========================
+Regress
+=======
 
 .. currentmodule:: splineops
 
 Overview
 --------
 
-The `sparsest linear regression` module in `splineops` provides a method for performing one-dimensional regression using **total-variation (TV) regularization** on the second derivative. This approach promotes solutions that are **piecewise-linear with the minimum number of knots**, making it ideal for applications requiring **sparse representations**.
+The `regress` module in `splineops` provides a method for performing one-dimensional regression using **total-variation (TV) regularization** on the second derivative. This approach promotes solutions that are **piecewise-linear with the minimum number of knots**, making it ideal for applications requiring **sparse representations**.
 
 Key features of this method:
 
@@ -128,7 +128,7 @@ A practical way to **tune** :math:`\lambda` is by plotting **sparsity vs. data f
 Regression Example
 ------------------
 
-* :ref:`sphx_glr_auto_examples_007_using_sparsest_linear_module.py`
+* :ref:`sphx_glr_auto_examples_007_using_regress_module.py`
 
 References
 ----------

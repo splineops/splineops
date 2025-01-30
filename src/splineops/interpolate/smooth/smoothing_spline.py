@@ -1,5 +1,5 @@
 import numpy as np
-from splineops.interpolate.smoothing_spline.fractsplineautocorr import fractsplineautocorr
+from splineops.interpolate.smooth.fractsplineautocorr import fractsplineautocorr
 from scipy.fft import fftn, ifftn
 
 def periodize(x, m):

@@ -1,18 +1,10 @@
 """
-Using Smoothing Spline module
-=============================
+Using smooth module
+===================
 
-Use the smoothing spline module to smooth N-dimensional data.
+Use the smooth module to smooth N-dimensional data.
 
 You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
-
-References:
-    [1] M. Unser and T. Blu, "Self-Similarity: Part I -- Splines and Operators",
-        IEEE Trans. Signal Processing, vol. 55, no. 4, pp. 1352-1363, April 2007.
-    [2] T. Blu and M. Unser, "Self-Similarity: Part II -- Optimal Estimation of Fractal Processes",
-        IEEE Trans. Signal Processing, vol. 55, no. 4, pp. 1364-1378, April 2007.
-    [3] M. Unser and T. Blu, "Fractional Splines and Wavelets," SIAM Review,
-        vol. 42, no. 1, pp. 43-67, March 2000.
 """
 
 # %%
@@ -24,10 +16,10 @@ References:
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.interpolate.smoothing_spline.fBmper import fBmper
-from splineops.interpolate.smoothing_spline.smoothing_spline import smoothing_spline
-from splineops.interpolate.smoothing_spline.smoothing_spline import smoothing_spline_nd
-from splineops.interpolate.smoothing_spline.smoothing_spline import recursive_smoothing_spline
+from splineops.interpolate.smooth.fBmper import fBmper
+from splineops.interpolate.smooth.smoothing_spline import smoothing_spline
+from splineops.interpolate.smooth.smoothing_spline import smoothing_spline_nd
+from splineops.interpolate.smooth.smoothing_spline import recursive_smoothing_spline
 
 # Define program constants
 m = 4       # Upsampling factor
@@ -361,7 +353,7 @@ plt.plot(x, smoothed_fractional, label="Fractional Smoothing Spline", color="red
 
 # Apply and plot recursive smoothing spline for each lambda value
 for lam_recursive in lam_values:
-    smoothed_recursive = recursive_smoothing_spline(signal, lam=lam_recursive)
+    smoothed_recursive = recursive_smoothing_spline(signal, lamb=lam_recursive)
     plt.plot(x, smoothed_recursive, label=f"Recursive Smoothing (λ={lam_recursive})")
 
 plt.legend()

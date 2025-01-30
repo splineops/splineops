@@ -13,17 +13,17 @@ API Reference
      - Resize using splines or LS/Oblique projection.
    * - :ref:`Rotate <api-rotate>`
      - Rotate 2D/3D data about a user-defined center.
+   * - :ref:`Regress <api-regress>`
+     - Perform sparsest linear regression on 1D data.
    * - :ref:`Smooth <api-smooth>`
      - Smooth N-D data.
-   * - :ref:`Sparsest Linear Regression <api-sparsest-linear-regression>`
-     - Perform sparsest linear regression around 1D data.
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   tensorspline
-   resize
-   rotate
-   sparsest-linear-regression
-   smooth
+   00_tensorspline
+   01_resize
+   02_rotate
+   03_regress
+   04_smooth

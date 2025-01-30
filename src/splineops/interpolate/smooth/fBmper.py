@@ -1,5 +1,5 @@
 import numpy as np
-from splineops.interpolate.smoothing_spline.fractsplineautocorr import fractsplineautocorr
+from splineops.interpolate.smooth.fractsplineautocorr import fractsplineautocorr
 
 def fBmper(epsH, H, m, N):
     """
