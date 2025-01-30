@@ -12,6 +12,8 @@ You can download this example at the tab at right, as both a Python script and a
 # --------------------------
 #
 # Fractional Brownian motion in 1D.
+# In this demo, a realization of an fBm process of length {N} is generated and corrupted with noise.
+# # The sequence is then denoised and oversampled by a factor of {m} using the optimal fractional spline estimator
 
 import math
 import numpy as np
@@ -25,48 +27,15 @@ from splineops.interpolate.smooth.smoothing_spline import recursive_smoothing_sp
 m = 4       # Upsampling factor
 N = 256     # Number of samples
 
-print('fsdemo.py')
-print('--------')
-print('Optimal estimation of fractional Brownian motion (fBm)')
-print('using fractional splines.\n')
-print('Biomedical Imaging Group, EPFL, 2006.\n')
-
-print(f'In this demo, a realization of an fBm process of length {N} is generated and corrupted with noise.')
-print(f'The sequence is then denoised and oversampled by a factor of {m} using the optimal fractional spline estimator.\n')
-
 # Default values
 default_H = 0.7
 default_SNRmeas = 20.0
 default_verify = '0'
 
-# Read parameters H, epsH, sigma
-# while True:
-#     H_input = input('Enter Hurst parameter [0 < H < 1] (default: 0.7) > ')
-#     if H_input == '':
-#         H = default_H
-#         break
-#     else:
-#         try:
-#             H = float(H_input)
-#             if 0 < H < 1:
-#                 break
-#             else:
-#                 print('Please enter a value between 0 and 1.')
-#         except ValueError:
-#             print('Invalid input. Please enter a numerical value.')
-
+# Enter Hurst parameter [0 < H < 1] (default: 0.7) >
 H = 0.7
 
-# SNRmeas_input = input(f'Enter measurement SNR at the mid-point (t = {N/2}) [dB] (default: 20.0) > ')
-# if SNRmeas_input == '':
-#     SNRmeas = default_SNRmeas
-# else:
-#     try:
-#         SNRmeas = float(SNRmeas_input)
-#     except ValueError:
-#         print('Invalid input. Using default value.')
-#         SNRmeas = default_SNRmeas
-
+# Enter measurement SNR at the mid-point (t = {N/2}) [dB] (default: 20.0) >
 SNRmeas = 20.0
 
 # Create pseudo-fBm signal
@@ -103,7 +72,6 @@ SNR0 = 10 * np.log10(POWmid / MSE0)
 SNR = 10 * np.log10(POWmid / MSE)
 SNRm = 10 * np.log10(POWmid / MSEm)
 
-print('\n')
 print(f'Number of measurements is {N}, oversampling factor is {m}.')
 print(f'mSNR (SNR at the mid-point) of the measured sequence      is {SNR0:.2f} dB.')
 print(f'mSNR improvement of the denoised sequence                 is {SNR - SNR0:.2f} dB.')
@@ -122,18 +90,12 @@ plt.ylabel('B_H')
 plt.tight_layout()
 plt.show()
 
-# Verification (Optional)
-print('\n')
-print('NOTE: To verify the optimality of the estimator we compare the MSE for estimators with different values of gamma and lambda.')
-print('To avoid excessive computation, verification is performed using only one realization of fBm.\n')
-
-# verify = input('Enter 1 to verify results (may take some time) or 0 to end (default: 0) > ')
-# if verify == '':
-#     verify = default_verify
-
-# if verify != '1':
-#     print('\nDone.')
-#     exit()
+# %%
+# Verification of estimator
+# -------------------------
+#
+# To verify the optimality of the estimator we compare the MSE for estimators with different values of gamma and lambda.
+# To avoid excessive computation, verification is performed using only one realization of fBm.
 
 # Check for optimality of lambda
 Lambda = lambda_ * np.arange(0, 3.1, 0.1)
@@ -171,14 +133,12 @@ plt.xlabel('γ')
 plt.ylabel('MSE')
 plt.show()
 
-print('\nDone.')
-
 
 # %%
 # Sinusoid data
 # -------------
 #
-# Sinusoid data in 2D and 3D.
+# Sinusoid data in 2D.
 
 def create_sinusoid_image(size=(256, 256)):
     """
@@ -262,6 +222,16 @@ def demo_sinusoid_image():
     plt.tight_layout()
     plt.show()
 
+# Run the sinusoid image demo
+demo_sinusoid_image()
+
+
+# %%
+# Sinusoid 3D data
+# ----------------
+#
+# Sinusoid data in 3D.
+
 def demo_3d_sinusoid():
     # Desired cutoff frequency
     cutoff_freq = 0.1  # Adjusted cutoff frequency
@@ -322,8 +292,6 @@ def demo_3d_sinusoid():
     plt.tight_layout()
     plt.show()
 
-# Run the sinusoid image demo
-demo_sinusoid_image()
 # Run the 3D sinusoid demo
 demo_3d_sinusoid()
 
@@ -363,8 +331,8 @@ plt.title("Comparison of Recursive Smoothing with Different λ Values")
 plt.show()
 
 # %%
-# Using smoothing spline on 2D image
-# ----------------------------------
+# Smoothing a 2D image
+# --------------------
 #
 # Using smoothing spline on a 2D image.
 
