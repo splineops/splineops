@@ -13,27 +13,27 @@ def rotate(
     mode: str = "zero"
 ) -> npt.NDArray:
     """
-    Rotate 2D or 3D data around a specified center using TensorSpline interpolation.
+    Rotate 2D or 3D data around a specified center using spline interpolation.
 
     Parameters
     ----------
     data : ndarray
-        The input 2D or 3D data array to rotate.
+        2D or 3D input data array to rotate.
     angle : float
-        The rotation angle in degrees.
-    axis : Optional[Tuple[float, float, float]], optional
-        The rotation axis vector for 3D data. Default is None, which implies the z-axis (0, 0, 1).
-    center : Optional[Tuple[float, float, float]], optional
-        The center of rotation as a tuple of coordinates. Default is the center of the array.
+        Rotation angle in degrees.
+    axis : tuple of float, optional
+        The axis of rotation for 3D data. Defaults to (0, 0, 1).
+    center : tuple of float, optional
+        The center of rotation. Defaults to the array center.
     degree : int, optional
-        The degree of the spline (0 to 7). Default is 3.
+        B-spline degree (0 to 7). Default is 3.
     mode : str, optional
-        The mode for handling boundaries. Default is "zero".
+        Boundary handling mode (e.g., "zero", "mirror"). Default is "zero".
 
     Returns
     -------
-    npt.NDArray
-        The rotated data as a numpy array.
+    rotated_data : ndarray
+        The data array after rotation.
 
     Examples
     --------

@@ -20,31 +20,27 @@ def resize(
 
     Parameters
     ----------
-    data : npt.NDArray
+    data : ndarray
         The input data to resize.
-    zoom_factors : Optional[Union[float, Sequence[float]]], optional
+    zoom_factors : float or sequence of float, optional
         Scaling factors for each axis. Ignored if `output_size` is provided.
-    output : Optional[Union[npt.NDArray, np.dtype]], optional
-        Array in which to place the output, or the dtype of the returned array.
-    output_size : Optional[Tuple[int, ...]], optional
+    output : ndarray or numpy.dtype, optional
+        If an ndarray, the result is copied into it. If a dtype, a new array
+        of that dtype is returned. Default is None.
+    output_size : tuple of int, optional
         Desired output shape. If provided, `zoom_factors` is ignored.
     degree : int, optional
         Degree of the B-spline interpolation (0 to 9). Default is 3.
-    modes : Union[str, Sequence[str]], optional
-        Extension modes or a list of modes for each dimension. Default is "mirror".
-    method : str, optional
-        Interpolation method: "interpolation" (default), "least-squares", or "oblique".
+    modes : str or sequence of str, optional
+        Extension mode(s) for each dimension. Default is "mirror".
+    method : {'interpolation', 'least-squares', 'oblique'}, optional
+        Resizing method. Default is "interpolation".
 
     Returns
     -------
-    npt.NDArray
-        Resized data in `output` if specified, otherwise a new array.
-
-    Raises
-    ------
-    ValueError
-        If neither `output_size` nor `zoom_factors` is provided.
-        If `degree` is not an integer between 0 and 9.
+    resized_data : ndarray
+        Resized data. If `output` is an ndarray, the function writes the
+        result in-place and returns `output`.
 
     Examples
     --------

@@ -17,23 +17,30 @@ def periodize(x, m):
 
 def smoothing_spline(y, lamb, m, gamma):
     """
-    Computes the fractional smoothing spline of an input signal.
-    Returns samples of the smoothing spline for a given input sequence,
-    sampled at "m" times the rate of input. The input is assumed to be
-    sampled at integers 0..N-1.
+    Compute the fractional smoothing spline at m× upsampling of the input.
 
-    Parameters:
-    y (array-like): Input signal.
-    lamb (float): Regularization parameter.
-    m (int): Upsampling factor.
-    gamma (float): Order of the spline operator (gamma = H + 0.5).
+    This function returns samples of the smoothing spline for a given input
+    sequence, sampled at m times the rate of the input. The input is assumed
+    to be sampled at integer locations 0..N-1.
 
-    Returns:
-    t (numpy array): Time vector.
-    ys (numpy array): Smoothing spline sequence.
+    Parameters
+    ----------
+    y : ndarray
+        Input signal of length N.
+    lamb : float
+        Regularization parameter.
+    m : int
+        Upsampling factor (integer).
+    gamma : float
+        Order of the spline operator. Typically gamma = H + 0.5.
 
-    References:
-        See above.
+    Returns
+    -------
+    t : ndarray
+        The upsampled time vector, length ~ N x m.
+    ys : ndarray
+        The smoothing spline samples, length ~ N x m.
+
     """
     y = np.asarray(y).flatten()
     N = len(y)
@@ -71,15 +78,29 @@ def smoothing_spline(y, lamb, m, gamma):
 
 def recursive_smoothing_spline(signal, lamb=1.0):
     """
-    Applies recursive smoothing spline filtering to the input signal using
-    a causal and anticausal IIR filter.
-    
-    Parameters:
-    - signal: 1D array of data points to smooth
-    - lamb: Smoothing parameter controlling the amount of smoothing (lamb)
+    Apply a recursive smoothing spline filter to the input signal.
 
-    Returns:
-    - smoothed_signal: 1D array of smoothed data
+    Implements a causal and anticausal IIR filter based on the smoothing
+    parameter `lamb`.
+
+    Parameters
+    ----------
+    signal : ndarray
+        1D array of data points to smooth.
+    lamb : float, optional
+        Smoothing parameter controlling the amount of smoothing. Default is 1.0.
+
+    Returns
+    -------
+    smoothed_signal : ndarray
+        1D array of smoothed data, same length as `signal`.
+
+    Examples
+    --------
+    >>> x = np.array([1., 2., 2., 3., 5.])
+    >>> xs = recursive_smoothing_spline(x, lamb=1.0)
+    >>> xs
+    array([...])
     """
     # Define the filter pole (z1) based on the regularization parameter lamb
     z1 = -lamb / (1 + np.sqrt(1 + 4 * lamb))

@@ -18,14 +18,15 @@ class TensorSpline:
     """
     A class to handle a tensor spline for multi-dimensional interpolation and approximation.
 
-    This class allows you to store N-dimensional data and perform interpolation using a variety of spline bases
-    and extension modes. It is flexible and can handle different extension modes and spline bases.
+    This class handles N-dimensional data and allows interpolation with a variety
+    of spline bases and extension modes. It supports different bases/modes along
+    each axis.
 
     Parameters
     ----------
-    data : array_like
+    data : ndarray
         The input N-dimensional array to be interpolated.
-    coordinates : array_like
+    coordinates : ndarray
         The coordinates corresponding to the input data.
     bases : str or sequence of str
         The spline bases used for interpolation. It can be a single basis applied across all axes or a sequence of bases for each axis.
@@ -255,7 +256,7 @@ class TensorSpline:
 
         Parameters
         ----------
-        coordinates : array_like
+        coordinates : ndarray
             The coordinates at which to evaluate the tensor spline. If `grid` is True, must be a sequence of 1-D arrays
             representing the grid points along each axis. If `grid` is False, must be a sequence of N-D arrays of the same shape.
         grid : bool, optional
