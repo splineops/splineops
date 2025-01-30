@@ -8,8 +8,9 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
    :caption: Modules
    :titlesonly:
 
-   01_resize
-   02_rotate
-   03_regress
-   04_smooth
+   01_interpolate
+   02_resize
+   03_rotate
+   04_regress
+   05_smooth
 

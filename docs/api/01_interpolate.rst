@@ -1,7 +1,7 @@
-.. _api-tensorspline:
+.. _api-interpolate:
 
-TensorSpline
-============
+Interpolate
+===========
 
 The :class:`splineops.interpolate.tensorspline.TensorSpline` class is the core spline-based interpolator.
 Users can construct a spline model for their N-dimensional data (with custom boundary extension modes, spline degrees, etc.) 

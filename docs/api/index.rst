@@ -7,7 +7,7 @@ API Reference
 
    * - **Module**
      - **Description**
-   * - :ref:`TensorSpline <api-tensorspline>`
+   * - :ref:`Interpolate <api-interpolate>`
      - Core interpolation class for N-D data.
    * - :ref:`Resize <api-resize>`
      - Resize using splines or LS/Oblique projection.
@@ -22,8 +22,8 @@ API Reference
    :maxdepth: 1
    :hidden:
 
-   00_tensorspline
-   01_resize
-   02_rotate
-   03_regress
-   04_smooth
+   01_interpolate
+   02_resize
+   03_rotate
+   04_regress
+   05_smooth
