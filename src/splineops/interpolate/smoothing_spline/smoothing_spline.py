@@ -1,25 +1,3 @@
-"""
-smoothspline.py
-
-Fractional smoothing spline.
-
-Returns samples of the smoothing spline for a given input sequence,
-sampled at "m" times the rate of input. The input is assumed to be
-sampled at integers 0..N-1.
-
-References:
-    [1] M. Unser and T. Blu, "Self-Similarity: Part I -- Splines and Operators",
-        IEEE Trans. Signal Processing, vol. 55, no. 4, pp. 1352-1363, April 2007.
-    [2] T. Blu and M. Unser, "Self-Similarity: Part II -- Optimal Estimation of Fractal Processes",
-        IEEE Trans. Signal Processing, vol. 55, no. 4, pp. 1364-1378, April 2007.
-    [3] M. Unser and T. Blu, "Fractional Splines and Wavelets," SIAM Review,
-        vol. 42, no. 1, pp. 43-67, March 2000.
-
-Author: Assistant, based on code by Dr. Thierry Blu.
-
-This software can be downloaded at <http://bigwww.epfl.ch/>.
-"""
-
 import numpy as np
 from splineops.interpolate.smoothing_spline.fractsplineautocorr import fractsplineautocorr
 from scipy.fft import fftn, ifftn
@@ -37,13 +15,16 @@ def periodize(x, m):
     """
     return np.tile(x, m)
 
-def smoothing_spline(y, lambda_, m, gamma):
+def smoothing_spline(y, lamb, m, gamma):
     """
     Computes the fractional smoothing spline of an input signal.
+    Returns samples of the smoothing spline for a given input sequence,
+    sampled at "m" times the rate of input. The input is assumed to be
+    sampled at integers 0..N-1.
 
     Parameters:
     y (array-like): Input signal.
-    lambda_ (float): Regularization parameter.
+    lamb (float): Regularization parameter.
     m (int): Upsampling factor.
     gamma (float): Order of the spline operator (gamma = H + 0.5).
 
@@ -80,7 +61,7 @@ def smoothing_spline(y, lambda_, m, gamma):
 
     # Compute the smoothing spline filter H_m
     Hm = (m ** (-2 * gamma + 1) * (sinm2g / sin2g) * Ag /
-          (Agm + lambda_ * sinm2g))
+          (Agm + lamb * sinm2g))
     Hm = np.concatenate(([m], Hm))
 
     # Generate outputs
@@ -88,20 +69,20 @@ def smoothing_spline(y, lambda_, m, gamma):
     t = np.arange(0, N, 1 / m)
     return t, ys
 
-def recursive_smoothing_spline(signal, lam=1.0):
+def recursive_smoothing_spline(signal, lamb=1.0):
     """
     Applies recursive smoothing spline filtering to the input signal using
     a causal and anticausal IIR filter.
     
     Parameters:
     - signal: 1D array of data points to smooth
-    - lam: Smoothing parameter controlling the amount of smoothing (lambda)
+    - lamb: Smoothing parameter controlling the amount of smoothing (lamb)
 
     Returns:
     - smoothed_signal: 1D array of smoothed data
     """
-    # Define the filter pole (z1) based on the regularization parameter lambda
-    z1 = -lam / (1 + np.sqrt(1 + 4 * lam))
+    # Define the filter pole (z1) based on the regularization parameter lamb
+    z1 = -lamb / (1 + np.sqrt(1 + 4 * lamb))
     K = len(signal)
     
     # Causal filtering (forward pass)
@@ -118,13 +99,13 @@ def recursive_smoothing_spline(signal, lam=1.0):
         
     return smoothed_signal
 
-def smoothing_spline_nd(data, lambda_, gamma):
+def smoothing_spline_nd(data, lamb, gamma):
     """
     Applies multi-dimensional fractional smoothing spline to the input data.
 
     Parameters:
     data (ndarray): Multi-dimensional input data (e.g., image, volume).
-    lambda_ (float): Regularization parameter.
+    lamb (float): Regularization parameter.
     gamma (float): Order of the spline operator (gamma = H + 0.5).
 
     Returns:
@@ -141,7 +122,7 @@ def smoothing_spline_nd(data, lambda_, gamma):
     omega_squared = np.sum((2 * np.pi * freq_grids_stacked) ** 2, axis=0)
 
     # Compute the Butterworth-like filter in Fourier domain
-    H = 1 / (1 + lambda_ * omega_squared ** gamma)
+    H = 1 / (1 + lamb * omega_squared ** gamma)
 
     # Apply the filter
     data_fft = fftn(data)

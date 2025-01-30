@@ -1,17 +1,3 @@
-"""
-fractsplineautocorr.py
-
-Frequency domain computation of fractional spline autocorrelation.
-
-References:
-    [1] M. Unser and T. Blu, "Fractional Splines and Wavelets," SIAM Review,
-        vol. 42, no. 1, pp. 43-67, March 2000.
-
-Author: Assistant, based on original code by Dr. Thierry Blu.
-
-This software can be downloaded at <http://bigwww.epfl.ch/>.
-"""
-
 import numpy as np
 
 def fractsplineautocorr(alpha, nu):

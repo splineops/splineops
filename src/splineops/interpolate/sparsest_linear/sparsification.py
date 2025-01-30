@@ -1,7 +1,5 @@
 from typing import Tuple
-
 import numpy as np
-
 
 def sparsest_interpolant(x: np.ndarray, y: np.ndarray, sparsity_tol: float = 1e-5) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """ 
@@ -71,7 +69,6 @@ def sparsest_interpolant(x: np.ndarray, y: np.ndarray, sparsity_tol: float = 1e-
 
     return knots_sparsest, amplitudes_sparsest, polynomial_cano
 
-
 def linear_spline(t: np.ndarray, knots: np.ndarray, amplitudes: np.ndarray, polynomial: np.ndarray) -> np.ndarray:
     """
     Evaluate a parametrized linear spline at location(s) t.
@@ -101,7 +98,6 @@ def linear_spline(t: np.ndarray, knots: np.ndarray, amplitudes: np.ndarray, poly
         values = values + amplitudes[i] * (t - knots[i]) * ((t - knots[i]) > 0)
     return values
 
-
 def _sparsify_amplitudes(amplitudes: np.ndarray, sparsity_tol: float = 1e-5) -> np.ndarray:
     """ 
     Adjust amplitudes by setting those below the tolerance to zero while conserving the linear spline exactly
@@ -124,7 +120,6 @@ def _sparsify_amplitudes(amplitudes: np.ndarray, sparsity_tol: float = 1e-5) -> 
         i += j + 1
     return amplitudes_sparsified
 
-
 def _saturation_zones(amplitudes: np.ndarray, sparsity_tol: float = 1e-5) -> np.ndarray:
     """ 
     Return array specifying number of consecutive saturation zones (limit points included). 
@@ -140,7 +135,6 @@ def _saturation_zones(amplitudes: np.ndarray, sparsity_tol: float = 1e-5) -> np.
         saturations[sat_idx_start:nz_idx[-1]+1] = nz_idx[-1] - sat_idx_start
 
     return saturations.astype(int)
-
 
 def _connect_points(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """ 

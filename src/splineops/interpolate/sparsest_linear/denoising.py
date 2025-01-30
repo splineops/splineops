@@ -1,8 +1,6 @@
 from typing import Tuple
-
 import numpy as np
 import scipy.sparse as sp
-
 
 def denoise_y(x: np.ndarray, y: np.ndarray, lamb: float, rho: float = 1.0, max_iter: int = int(1e4),
                        relative_tol: float = 1e-7) -> np.ndarray:
@@ -75,7 +73,6 @@ def denoise_y(x: np.ndarray, y: np.ndarray, lamb: float, rho: float = 1.0, max_i
         y_denoised = y
     return y_denoised
 
-
 def _lambda_max(x: np.ndarray, y: np.ndarray) -> Tuple[float, np.ndarray]:
     """ 
     Compute maximum regularization parameter lambda above which the problem amounts to linear regression.
@@ -94,7 +91,6 @@ def _lambda_max(x: np.ndarray, y: np.ndarray) -> Tuple[float, np.ndarray]:
     lamb_max = max(np.abs(x[1:-1] * np.cumsum(h)[:-2] - np.cumsum(h * x)[:-2]))
     return lamb_max, polynomial
 
-
 def _regularization_matrix(x: np.ndarray) -> sp.diags:
     """ 
     Compute the L matrix defined in Equation (37) in Debarre et al. 2022.
@@ -102,7 +98,6 @@ def _regularization_matrix(x: np.ndarray) -> sp.diags:
     M = len(x)
     v = 1 / (x[1:] - x[:-1])
     return sp.diags([v[:-1], -(v[:-1] + v[1:]), v[1:]], [0, 1, 2], shape=(M-2, M))
-
 
 def _prox_L1(x: np.ndarray, sigma: float):
     """ 

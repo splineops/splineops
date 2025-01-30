@@ -1,21 +1,3 @@
-"""
-fBmper.py
-
-Fractional (pseudo-)Brownian motion generator.
-
-References:
-    [1] M. Unser and T. Blu, "Self-Similarity: Part I -- Splines and Operators",
-        IEEE Trans. Signal Processing, vol. 55, no. 4, pp. 1352-1363, April 2007.
-    [2] T. Blu and M. Unser, "Self-Similarity: Part II -- Optimal Estimation of Fractal Processes",
-        IEEE Trans. Signal Processing, vol. 55, no. 4, pp. 1364-1378, April 2007.
-    [3] M. Unser and T. Blu, "Fractional Splines and Wavelets," SIAM Review,
-        vol. 42, no. 1, pp. 43-67, March 2000.
-
-Author: Assistant, based on original code by Dr. Thierry Blu.
-
-This software can be downloaded at <http://bigwww.epfl.ch/>.
-"""
-
 import numpy as np
 from splineops.interpolate.smoothing_spline.fractsplineautocorr import fractsplineautocorr
 

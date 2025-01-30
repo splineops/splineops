@@ -18,7 +18,7 @@ Key features of this method:
 This technique is particularly relevant in **machine learning**, where sparsity improves **generalization**, and in **signal processing**, where minimal knots lead to **simpler models**.
 
 Mathematical Background
-------------------------
+-----------------------
 
 Problem Formulation
 ~~~~~~~~~~~~~~~~~~~
@@ -124,6 +124,11 @@ The regularization parameter :math:`\lambda` controls the trade-off between **da
 - **Large** :math:`\lambda` → Produces smoother results, eventually converging to a linear fit.
 
 A practical way to **tune** :math:`\lambda` is by plotting **sparsity vs. data fidelity** and selecting a balanced value.
+
+Regression Example
+------------------
+
+* :ref:`sphx_glr_auto_examples_007_using_sparsest_linear_module.py`
 
 References
 ----------
