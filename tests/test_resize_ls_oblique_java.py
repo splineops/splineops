@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from splineops.interpolate.resize import resize
+from splineops.resize.resize import resize
 
 # Hardcoded Java-generated images for comparison
 DOWNSCALED_0_5_JAVA_SQUARE_LS_3_3_3 = np.array([

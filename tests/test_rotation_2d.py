@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from splineops.interpolate.rotate import rotate
+from splineops.rotate.rotate import rotate
 
 def generate_rotated_data_and_mask(data_shape, custom_center, margin, angle, k):
     ndim = 2

@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from splineops.interpolate.resize import resize
+from splineops.resize.resize import resize
 
 # Mathematical functions for expected values in each pattern
 def expected_gradient_value(coords, shape):
