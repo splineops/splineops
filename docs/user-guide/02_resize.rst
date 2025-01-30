@@ -25,83 +25,71 @@ Oblique projection provides better balance of performance, speed and accuracy.
 
 The `resize` module is suitable for a wide range of applications, including Image processing, Scientific visualization and Medical imaging.
 
-B-Splines Interpolation
------------------------
+Mathematical Details
+--------------------
 
-B-splines are piecewise polynomial functions with compact support, often used 
-for interpolation. A B-spline of degree :math:`n`, denoted as :math:`\beta_n(x)`, is defined recursively:
+Standard Interpolation
+~~~~~~~~~~~~~~~~~~~~~~
 
-.. math::
-
-   \beta_0(x) =
-   \begin{cases}
-   1, & 0 \leq x < 1, \\
-   0, & \text{otherwise},
-   \end{cases}
-
-and for :math:`n > 0`,
+B-spline interpolation is a method for reconstructing a smooth function from discrete data points using B-splines as basis functions. Given a discrete sequence :math:`\{f_k\}`, 
+the interpolation function is defined as:
 
 .. math::
 
-   \beta_n(x) = \frac{x}{n} \beta_{n-1}(x) + \frac{n+1-x}{n} \beta_{n-1}(x-1).
+    s(x) = \sum_k c_k \beta_n(x - k),
 
-Alternatively, the :math:`n`-degree B-spline can be expressed using truncated power functions and binomial coefficients:
+where:
 
-.. math::
+- :math:`\beta_n(x)` is the B-spline of degree :math:`n`,
+- :math:`c_k` are the interpolation coefficients obtained by applying a prefilter to the input samples.
 
-   \beta_n(x) = \frac{1}{n!} \sum_{k=0}^{n+1} \binom{n+1}{k} (-1)^k (x-k)_+^n,
-
-where :math:`(x-k)_+^n` is the truncated power function defined as:
-
-.. math::
-
-   (x-k)_+^n =
-   \begin{cases}
-   (x-k)^n, & x \geq k, \\
-   0, & \text{otherwise}.
-   \end{cases}
-
-The spline interpolation process approximates a function :math:`f(\mathbf{x})` using a linear combination of shifted B-splines:
+The key property of B-splines is their **compact support**, which ensures efficient computation while maintaining high smoothness. The interpolation requirement,
 
 .. math::
 
-   s(\mathbf{x}) = \sum_{\mathbf{k}} c_{\mathbf{k}} \beta_n(\mathbf{x} - \mathbf{k}),
+    s(k) = f_k,
 
-where :math:`c_{\mathbf{k}}` are the spline coefficients determined from the input data.
+is satisfied by computing the coefficients :math:`c_k` through a **digital prefiltering step** using a recursive IIR implementation.
 
 Least-Squares Projection
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Least-squares resizing minimizes the squared error between the original data :math:`f(\mathbf{x})` and the resized data :math:`\tilde{f}(\mathbf{T}^{-1}\mathbf{x})`, where :math:`\mathbf{T}` is the transformation matrix defining the scaling:
+Least-squares projection provides an **optimal approximation** of a function in a given space by minimizing the squared error. Instead of direct interpolation, 
+the least-squares approach seeks to find the function :math:`s(x)` in a spline space :math:`V_n` that best approximates a given function :math:`f(x)` in the sense of:
 
 .. math::
 
-   \min_{\tilde{f}} \int_{\Omega} \|f(\mathbf{x}) - \tilde{f}(\mathbf{T}^{-1} \mathbf{x})\|^2 \, d\mathbf{x}.
+    \min_{s \in V_n} \int |f(x) - s(x)|^2 dx.
 
-Key Insights:
+The least-squares approximation is obtained by **projecting** :math:`f(x)` onto the space spanned by the basis functions. This projection is given by:
 
-- The projection is computed using finite differences to solve for the spline coefficients in a way that preserves the :math:`L_2`-norm.
+.. math::
 
-- Pre-filtering is necessary to compute coefficients :math:`c_{\mathbf{k}}` accurately, which involves solving a linear system or applying recursive filtering. These filters minimize aliasing and improve stability.
+    s(x) = \sum_k \langle f, \varphi_k \rangle \tilde{\varphi}_k(x),
 
-- This approach is slower than direct interpolation but provides superior quality by minimizing artifacts and preserving fine details.
+where:
+
+- :math:`\varphi_k(x)` are the basis functions (typically B-splines),
+- :math:`\tilde{\varphi}_k(x)` are their duals, ensuring biorthogonality.
+
+This method effectively reduces aliasing and blocking artifacts, improving image quality, especially for downsampling.
 
 Oblique Projection
 ~~~~~~~~~~~~~~~~~~
 
-The oblique projection generalizes the least-squares method by relaxing orthogonality constraints. It maps the input data onto a biorthogonal basis formed by the scaling and wavelet functions:
+Oblique projection is a generalization of least-squares projection where the approximation space and the analysis space are different. Instead of computing an **orthogonal** 
+projection, we use an auxiliary analysis function :math:`\psi(x)`, leading to an approximation:
 
 .. math::
 
-   c_{\mathbf{k}} = \int_{\Omega} f(\mathbf{x}) \phi(\mathbf{x} - \mathbf{k}) \, d\mathbf{x},
+    s(x) = \sum_k \langle f, \psi_k \rangle \tilde{\varphi}_k(x).
 
-where :math:`\phi` represents the biorthogonal dual basis. Unlike least-squares, the oblique projection:
+If :math:`\psi_k = \tilde{\varphi}_k`, we obtain the **orthogonal projection** (least-squares solution). Otherwise, when :math:`\psi_k` differs from :math:`\tilde{\varphi}_k`, 
+the projection is **oblique**.
 
-- Reduces computational cost by approximating the exact solution.
+The oblique projection has lower computational complexity than the least-squares projection, as it avoids explicit computation of the optimal prefilter. 
+However, it introduces a slight approximation error depending on the angle between the analysis and synthesis spaces.
 
-- Results in slightly lower interpolation quality compared to least-squares.
-
-This method is particularly effective for scenarios requiring fast computation with acceptable trade-offs in accuracy.
 
 Resize Example
 --------------
