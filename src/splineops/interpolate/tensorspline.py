@@ -112,9 +112,9 @@ class TensorSpline:
 
         Parameters
         ----------
-        data : array_like
+        data : ndarray
             The input N-dimensional array to be interpolated.
-        coordinates : array_like
+        coordinates : ndarray
             The coordinates corresponding to the input data.
         bases : str or sequence of str
             The spline bases used for interpolation. It can be a single basis applied across all axes or a sequence of bases for each axis.

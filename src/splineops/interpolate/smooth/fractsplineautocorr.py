@@ -14,12 +14,6 @@ def fractsplineautocorr(alpha, nu):
 
     Returns:
     A (numpy array): Frequency response of the autocorrelation filter.
-
-    See also: fftsplinefilters
-
-    Author: Thierry Blu, October 1999
-    Biomedical Imaging Group, EPFL, Lausanne, Switzerland.
-    This software is downloadable at http://bigwww.epfl.ch/
     """
     N = 100  # Number of terms in the summation
 

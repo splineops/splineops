@@ -24,11 +24,6 @@ def sparsest_interpolant(x: np.ndarray, y: np.ndarray, sparsity_tol: float = 1e-
         Array of amplitudes of these knots
     polynomial : ndarray
         Size-2 array (b, a) parametrizing the linear component p(t) = at + b of the optimal spline
-
-    References
-    ----------
-    .. [1] Debarre, T., Denoyelle, Q., Unser, M., and Fageot, J. "Sparsest Continuous Piecewise-Linear Spline
-           Representation of One-Dimensional Data." Journal of Computational and Applied Mathematics, 2022.
     """
     if x.size != y.size:
         raise Exception("x and y must be of the same size")

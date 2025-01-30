@@ -17,7 +17,7 @@ def rotate(
 
     Parameters
     ----------
-    data : npt.NDArray
+    data : ndarray
         The input 2D or 3D data array to rotate.
     angle : float
         The rotation angle in degrees.
@@ -34,11 +34,6 @@ def rotate(
     -------
     npt.NDArray
         The rotated data as a numpy array.
-
-    Raises
-    ------
-    ValueError
-        If the input data is not 2D or 3D.
 
     Examples
     --------
