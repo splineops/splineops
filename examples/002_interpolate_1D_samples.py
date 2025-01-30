@@ -120,7 +120,7 @@ f_data = f(coordinates=(f_coords,), grid=False)
 #
 # Using resize method with standard interpolation will yield exactly the same result.
 
-from splineops.interpolate.resize import resize
+from splineops.resize.resize import resize
 
 # We'll produce the same number of output samples as in f_coords
 desired_length = plot_points_per_unit * f_support_length

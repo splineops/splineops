@@ -16,8 +16,8 @@ You can download this example at the tab at right, as both a Python script and a
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from splineops.interpolate.rotate import rotate
-from splineops.interpolate.resize import resize
+from splineops.rotate.rotate import rotate
+from splineops.resize.resize import resize
 import requests
 from io import BytesIO
 from PIL import Image

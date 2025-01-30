@@ -23,7 +23,7 @@ import requests
 from io import BytesIO
 from PIL import Image
 from scipy.ndimage import zoom  # For SciPy's zoom comparison
-from splineops.interpolate.resize import resize  # Unified resize function
+from splineops.resize.resize import resize  # Unified resize function
 import time
 
 # %%

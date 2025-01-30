@@ -5,7 +5,7 @@ Rotate
 
 Functions for rotating 2D or 3D data around a specified axis/center using spline interpolation.
 
-.. automodule:: splineops.interpolate.rotate
+.. automodule:: splineops.rotate.rotate
    :members:
    :undoc-members:
    :show-inheritance:

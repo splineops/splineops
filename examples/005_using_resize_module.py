@@ -21,7 +21,7 @@ from io import BytesIO
 from PIL import Image
 
 from scipy.ndimage import zoom as ndi_zoom
-from splineops.interpolate.resize import resize  # or your actual import path
+from splineops.resize.resize import resize  # or your actual import path
 
 # %%
 # Utility functions

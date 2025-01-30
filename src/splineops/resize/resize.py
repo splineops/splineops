@@ -3,7 +3,7 @@ import numpy.typing as npt
 from typing import Optional, Union, Sequence, Tuple
 from splineops.interpolate.tensorspline import TensorSpline
 from splineops.bases.utils import asbasis
-from splineops.interpolate.ls_oblique.ls_oblique_resize import ls_oblique_resize
+from splineops.resize.ls_oblique_resize import ls_oblique_resize
 
 
 def resize(

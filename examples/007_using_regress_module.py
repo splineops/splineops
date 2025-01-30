@@ -16,8 +16,8 @@ You can download this example at the tab at right, as both a Python script and a
 import numpy as np
 from matplotlib import pyplot as plt
 
-from splineops.interpolate.regress.denoising import denoise_y
-from splineops.interpolate.regress.sparsification import sparsest_interpolant, linear_spline
+from splineops.regress.denoising import denoise_y
+from splineops.regress.sparsification import sparsest_interpolant, linear_spline
 
 # %%
 # Data Preparation

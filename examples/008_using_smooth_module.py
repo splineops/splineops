@@ -18,10 +18,10 @@ You can download this example at the tab at right, as both a Python script and a
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.interpolate.smooth.fBmper import fBmper
-from splineops.interpolate.smooth.smoothing_spline import smoothing_spline
-from splineops.interpolate.smooth.smoothing_spline import smoothing_spline_nd
-from splineops.interpolate.smooth.smoothing_spline import recursive_smoothing_spline
+from splineops.smooth.fBmper import fBmper
+from splineops.smooth.smoothing_spline import smoothing_spline
+from splineops.smooth.smoothing_spline import smoothing_spline_nd
+from splineops.smooth.smoothing_spline import recursive_smoothing_spline
 
 # Define program constants
 m = 4       # Upsampling factor

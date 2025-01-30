@@ -1,23 +1,21 @@
-"""
-Total Variation Denoising with ADMM
-====================================
+# Total Variation Denoising with ADMM
+# ====================================
 
-This Python implementation applies total variation (TV) denoising using the Alternating 
-Direction Method of Multipliers (ADMM). The method smooths noisy data while preserving 
-sharp transitions by solving a convex optimization problem that enforces piecewise smoothness.
+# This Python implementation applies total variation (TV) denoising using the Alternating 
+# Direction Method of Multipliers (ADMM). The method smooths noisy data while preserving 
+# sharp transitions by solving a convex optimization problem that enforces piecewise smoothness.
 
-Author: Thomas Debarre
-        Swiss Federal Institute of Technology Lausanne
-        Biomedical Imaging Group
-        BM-Ecublens
-        CH-1015 Lausanne EPFL, Switzerland
+# Author: Thomas Debarre
+#         Swiss Federal Institute of Technology Lausanne
+#         Biomedical Imaging Group
+#         BM-Ecublens
+#         CH-1015 Lausanne EPFL, Switzerland
 
-This script provides functions for computing the TV-denoised signal, determining 
-the maximum regularization parameter for which linear regression dominates, 
-constructing the second-order difference matrix for regularization, and computing 
-the L1 proximal operator for sparsity constraints.
+# This script provides functions for computing the TV-denoised signal, determining 
+# the maximum regularization parameter for which linear regression dominates, 
+# constructing the second-order difference matrix for regularization, and computing 
+# the L1 proximal operator for sparsity constraints.
 
-"""
 
 from typing import Tuple
 import numpy as np
