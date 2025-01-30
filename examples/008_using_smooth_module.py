@@ -135,20 +135,19 @@ plt.show()
 
 
 # %%
-# Sinusoid data
-# -------------
+# Smoothing a 2D image
+# --------------------
 #
-# Sinusoid data in 2D.
+# Using smoothing spline on a 2D image.
 
-def create_sinusoid_image(size=(256, 256)):
+from skimage import data
+
+def create_camera_image():
     """
-    Creates a synthetic 2D sinusoid image.
+    Loads a real grayscale image (cameraman).
     """
-    x = np.linspace(0, 1, size[1])
-    y = np.linspace(0, 1, size[0])
-    X, Y = np.meshgrid(x, y)
-    img = np.sin(8 * np.pi * X) + np.sin(8 * np.pi * Y)
-    img = (img - img.min()) / (img.max() - img.min())  # Normalize to [0, 1]
+    img = data.camera().astype(np.float64)
+    img /= 255.0  # Normalize to [0, 1]
     return img
 
 def add_noise(img, snr_db):
@@ -177,54 +176,49 @@ def compute_snr(clean_signal, noisy_signal):
     snr = 10 * np.log10(signal_power / noise_power)
     return snr
 
-def demo_sinusoid_image():
-    # Desired cutoff frequency
-    cutoff_freq = 0.01  # Adjusted cutoff frequency
-    gamma = 3.0        # Order of the spline operator
-
-    # Compute lambda_ based on cutoff frequency
-    lambda_ = (1 / (2 * np.pi * cutoff_freq)) ** (2 * gamma)
-
+def demo_cameraman_image():
+    # Parameters
+    lambda_ = 0.1  # Regularization parameter
+    gamma = 2.0     # Order of the spline operator
     snr_db = 10.0   # Desired SNR in dB
 
-    # Sinusoid image
-    img_sinusoid = create_sinusoid_image()
-    noisy_img_sinusoid = add_noise(img_sinusoid, snr_db)
-    smoothed_img_sinusoid = smoothing_spline_nd(noisy_img_sinusoid, lambda_, gamma)
+    # Load cameraman image
+    img_camera = create_camera_image()
+    noisy_img_camera = add_noise(img_camera, snr_db)
+    smoothed_img_camera = smoothing_spline_nd(noisy_img_camera, lambda_, gamma)
 
     # Compute SNRs
-    snr_noisy_sinusoid = compute_snr(img_sinusoid, noisy_img_sinusoid)
-    snr_smooth_sinusoid = compute_snr(img_sinusoid, smoothed_img_sinusoid)
-    snr_improvement_sinusoid = snr_smooth_sinusoid - snr_noisy_sinusoid
+    snr_noisy_camera = compute_snr(img_camera, noisy_img_camera)
+    snr_smooth_camera = compute_snr(img_camera, smoothed_img_camera)
+    snr_improvement_camera = snr_smooth_camera - snr_noisy_camera
 
-    print("Sinusoid Image:")
-    print(f"SNR of noisy image: {snr_noisy_sinusoid:.2f} dB")
-    print(f"SNR after smoothing: {snr_smooth_sinusoid:.2f} dB")
-    print(f"SNR improvement: {snr_improvement_sinusoid:.2f} dB\n")
+    print("Cameraman Image:")
+    print(f"SNR of noisy image: {snr_noisy_camera:.2f} dB")
+    print(f"SNR after smoothing: {snr_smooth_camera:.2f} dB")
+    print(f"SNR improvement: {snr_improvement_camera:.2f} dB\n")
 
-    # Visualization for Sinusoid Image
+    # Visualization for Cameraman Image
     plt.figure(figsize=(12, 4))
     plt.subplot(1, 3, 1)
-    plt.imshow(img_sinusoid, cmap='gray')
-    plt.title('Original Sinusoid Image')
+    plt.imshow(img_camera, cmap='gray')
+    plt.title('Original Cameraman Image')
     plt.axis('off')
 
     plt.subplot(1, 3, 2)
-    plt.imshow(noisy_img_sinusoid, cmap='gray')
-    plt.title(f'Noisy Image (SNR={snr_noisy_sinusoid:.2f} dB)')
+    plt.imshow(noisy_img_camera, cmap='gray')
+    plt.title(f'Noisy Image (SNR={snr_noisy_camera:.2f} dB)')
     plt.axis('off')
 
     plt.subplot(1, 3, 3)
-    plt.imshow(smoothed_img_sinusoid, cmap='gray')
-    plt.title(f'Smoothed Image (SNR={snr_smooth_sinusoid:.2f} dB)')
+    plt.imshow(smoothed_img_camera, cmap='gray')
+    plt.title(f'Smoothed Image (SNR={snr_smooth_camera:.2f} dB)')
     plt.axis('off')
 
     plt.tight_layout()
     plt.show()
 
-# Run the sinusoid image demo
-demo_sinusoid_image()
-
+# Run the cameraman image demo
+demo_cameraman_image()
 
 # %%
 # Sinusoid 3D data
@@ -329,89 +323,3 @@ plt.xlabel("x")
 plt.ylabel("Signal Value")
 plt.title("Comparison of Recursive Smoothing with Different λ Values")
 plt.show()
-
-# %%
-# Smoothing a 2D image
-# --------------------
-#
-# Using smoothing spline on a 2D image.
-
-from skimage import data
-
-def create_camera_image():
-    """
-    Loads a real grayscale image (cameraman).
-    """
-    img = data.camera().astype(np.float64)
-    img /= 255.0  # Normalize to [0, 1]
-    return img
-
-def add_noise(img, snr_db):
-    """
-    Adds Gaussian noise to the image based on the desired SNR in dB.
-    """
-    signal_power = np.mean(img ** 2)
-    sigma = np.sqrt(signal_power / (10 ** (snr_db / 10)))
-    noise = np.random.randn(*img.shape) * sigma
-    noisy_img = img + noise
-    return noisy_img
-
-def compute_snr(clean_signal, noisy_signal):
-    """
-    Compute the Signal-to-Noise Ratio (SNR).
-
-    Parameters:
-    clean_signal (np.ndarray): Original clean signal.
-    noisy_signal (np.ndarray): Noisy signal.
-
-    Returns:
-    float: SNR value in decibels (dB).
-    """
-    signal_power = np.mean(clean_signal ** 2)
-    noise_power = np.mean((noisy_signal - clean_signal) ** 2)
-    snr = 10 * np.log10(signal_power / noise_power)
-    return snr
-
-def demo_cameraman_image():
-    # Parameters
-    lambda_ = 0.1  # Regularization parameter
-    gamma = 2.0     # Order of the spline operator
-    snr_db = 10.0   # Desired SNR in dB
-
-    # Load cameraman image
-    img_camera = create_camera_image()
-    noisy_img_camera = add_noise(img_camera, snr_db)
-    smoothed_img_camera = smoothing_spline_nd(noisy_img_camera, lambda_, gamma)
-
-    # Compute SNRs
-    snr_noisy_camera = compute_snr(img_camera, noisy_img_camera)
-    snr_smooth_camera = compute_snr(img_camera, smoothed_img_camera)
-    snr_improvement_camera = snr_smooth_camera - snr_noisy_camera
-
-    print("Cameraman Image:")
-    print(f"SNR of noisy image: {snr_noisy_camera:.2f} dB")
-    print(f"SNR after smoothing: {snr_smooth_camera:.2f} dB")
-    print(f"SNR improvement: {snr_improvement_camera:.2f} dB\n")
-
-    # Visualization for Cameraman Image
-    plt.figure(figsize=(12, 4))
-    plt.subplot(1, 3, 1)
-    plt.imshow(img_camera, cmap='gray')
-    plt.title('Original Cameraman Image')
-    plt.axis('off')
-
-    plt.subplot(1, 3, 2)
-    plt.imshow(noisy_img_camera, cmap='gray')
-    plt.title(f'Noisy Image (SNR={snr_noisy_camera:.2f} dB)')
-    plt.axis('off')
-
-    plt.subplot(1, 3, 3)
-    plt.imshow(smoothed_img_camera, cmap='gray')
-    plt.title(f'Smoothed Image (SNR={snr_smooth_camera:.2f} dB)')
-    plt.axis('off')
-
-    plt.tight_layout()
-    plt.show()
-
-# Run the cameraman image demo
-demo_cameraman_image()
