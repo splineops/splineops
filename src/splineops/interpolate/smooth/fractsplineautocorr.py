@@ -8,7 +8,7 @@ def fractsplineautocorr(
     nu: npt.NDArray
 ) -> npt.NDArray:
     """
-    Compute the frequency response of the autocorrelation filter A(exp(2iπν))
+    Compute the frequency response of the autocorrelation filter
     of a fractional spline of degree `alpha`.
 
     It uses an acceleration technique to improve the convergence of the infinite
@@ -18,12 +18,12 @@ def fractsplineautocorr(
     ----------
     alpha : float
         Fractional degree parameter (must be > -0.5).
-    nu : ndarray of floats
+    nu : ndarray
         Frequency values (in cycles per sample).
 
     Returns
     -------
-    A : ndarray of floats
+    A : ndarray
         Frequency response of the autocorrelation filter. Its length matches
         that of `nu`. If `alpha <= -0.5`, an empty array is returned (and a
         warning is printed).
@@ -49,15 +49,16 @@ def fractsplineautocorr(
     if alpha <= -0.5:
         print("The autocorrelation of the fractional splines exists only for "
               "degrees strictly larger than -0.5!")
-        # Return an empty array instead of a Python list (for type consistency)
+        # Return an empty array to keep the same ndarray return type
         return np.array([])
 
+    # Initialize sum
     S = np.zeros(len(nu))
     for n in range(-N, N + 1):
         # np.sinc(x) = sin(pi*x)/(pi*x) in NumPy
         S += np.abs(np.sinc(nu + n)) ** (2 * alpha + 2)
 
-    # Acceleration term
+    # Acceleration term U
     U = 2 / ((2 * alpha + 1) * N ** (2 * alpha + 1))
     U -= 1 / N ** (2 * alpha + 2)
     U += (alpha + 1) * (1 / 3 + 2 * nu**2) / N ** (2 * alpha + 3)

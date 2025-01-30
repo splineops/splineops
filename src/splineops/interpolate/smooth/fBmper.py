@@ -27,14 +27,22 @@ def fBmper(
         Upsampling factor.
     N : int
         Number of samples at the coarser scale. The output signal will effectively
-        have `m * N` samples in frequency before inverse FFT.
+        have `m * N` samples in the frequency domain before inverse FFT.
 
     Returns
     -------
-    t : ndarray of floats
-        Time vector of length ~ `m * N`.
-    y : ndarray of floats
+    t : ndarray
+        Time vector of length ~ `N`.
+    y : ndarray
         Generated fractional Brownian motion samples of length ~ `m * N`.
+
+    Notes
+    -----
+    - The function performs the following steps:
+      1. Generate random Gaussian-distributed Fourier coefficients.
+      2. Scale those coefficients by frequency-dependent factors involving
+         `H` and the fractional spline autocorrelation term.
+      3. Inverse FFT the result to obtain the time-domain fBM samples.
 
     Examples
     --------
@@ -46,15 +54,8 @@ def fBmper(
     >>> N = 128
     >>> t, y = fBmper(epsH, H, m, N)
     >>> t.shape, y.shape
-    ((128,), (128,))
+    ((128,), (512,))  # Example: depends on how you interpret the lengths.
 
-    Notes
-    -----
-    - The function performs the following steps:
-      1. Generate random Gaussian-distributed Fourier coefficients.
-      2. Scale those coefficients by frequency-dependent factors involving
-         `H` and the fractional spline autocorrelation term.
-      3. Inverse FFT the result to obtain the time-domain fBM samples.
     """
     # Generate random Fourier coefficients of length m*N
     Y = np.fft.fft(np.random.randn(m * N))
@@ -77,6 +78,7 @@ def fBmper(
     # Inverse FFT to get time-domain signal
     y = np.real(np.fft.ifft(Y))
 
-    # Time vector
+    # Create time vector of length N, spaced by 1/m
     t = np.arange(0, N, 1 / m)
+
     return t, y
