@@ -94,8 +94,8 @@ lamb = 1e-2
 y_denoised = denoise_y(x, y, lamb, rho=lamb)
 
 # %%
-# Sparsest Linear Spline Computation
-# ----------------------------------
+# Sparsest Linear Regression
+# --------------------------
 #
 # The `sparsest_interpolant` function computes the sparsest set of knots that
 # fit the denoised data.

@@ -26,6 +26,7 @@ from scipy.ndimage import zoom  # For SciPy's zoom comparison
 from splineops.resize.resize import resize  # Unified resize function
 import time
 
+
 # %%
 # Helper functions
 # ----------------
@@ -52,6 +53,7 @@ def crop_to_central_region(image, border_fraction):
     right = min(right, W)
     return image[top:bottom, left:right]
 
+
 def compute_snr_and_mse_cropped(original, processed, border_fraction):
     """
     Compute SNR and MSE on the 'central' cropped area, ignoring border_fraction
@@ -61,7 +63,7 @@ def compute_snr_and_mse_cropped(original, processed, border_fraction):
     orig_cropped = crop_to_central_region(original, border_fraction)
     proc_cropped = crop_to_central_region(processed, border_fraction)
 
-    # Now compute SNR and MSE on that region
+    # Now compute SNR/MSE on that region
     signal_power = np.mean(orig_cropped**2)
     noise_power = np.mean((orig_cropped - proc_cropped)**2)
     mse_val = noise_power
@@ -72,6 +74,7 @@ def compute_snr_and_mse_cropped(original, processed, border_fraction):
         snr_val = 10 * np.log10(signal_power / noise_power)
 
     return snr_val, mse_val
+
 
 def resize_with_scipy_zoom(input_image, zoom_factors, degree, border_fraction):
     """
@@ -85,12 +88,11 @@ def resize_with_scipy_zoom(input_image, zoom_factors, degree, border_fraction):
     reverse_zoom_factors = 1.0 / np.array(zoom_factors)
     resized_back_image = zoom(resized_image, reverse_zoom_factors, order=degree)
 
-    snr = 0.0
-    mse = 0.0
     # Compute SNR/MSE on central region
     snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction)
 
     return resized_image, resized_back_image, snr, mse, time_elapsed
+
 
 def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border_fraction):
     """
@@ -128,26 +130,24 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border
 
         return resized_image, resized_back_image, snr, mse, time_elapsed
 
+
 # %%
-# Plotting function
-# -----------------
+# Plotting helpers
+# ----------------
 #
-# We display three images in one column:
-# (1) Original, 
-# (2) Resized, 
-# (3) Difference (Original - ResizedBack).
-# If zoom < 1, we embed the resized image on a white canvas matching original's shape.
+# We now define two separate plotting helpers:
+#    1) `plot_resized_image()`: Show only the resized result
+#    2) `plot_difference_image()`: Show only the difference (original - resizedBack)
+#       plus a colorbar to indicate the scale.
 
-def plot_2d_results(original, resized, resized_back, method, zoom_factors, snr, mse, time_elapsed):
+def plot_resized_image(original, resized, method, zoom_factors, time_elapsed):
     """
-    Display three vertical 2D images: original, resized, and difference (original - resized_back).
-    If any zoom factor < 1, we place the resized image on a white canvas matching the original shape.
-
-    SNR/MSE are computed only on the central region (by the prior functions).
+    Display the resized 2D image. If any zoom factor < 1, we place
+    the resized image on a white canvas matching the original shape.
     """
-    difference = original - resized_back
     zoom_out = any(zf < 1.0 for zf in zoom_factors)
 
+    # Convert images to 0..255 for visualization
     def to_uint8(arr):
         arr_min, arr_max = arr.min(), arr.max()
         if arr_max > arr_min:
@@ -158,42 +158,57 @@ def plot_2d_results(original, resized, resized_back, method, zoom_factors, snr, 
 
     orig_8 = to_uint8(original)
     resized_8 = to_uint8(resized)
-    diff_8 = to_uint8(difference)
 
-    # White canvas if zoomed out
     if zoom_out:
-        canvas_8 = np.full_like(orig_8, 255, dtype=np.uint8)  # white
+        canvas_8 = np.full_like(orig_8, 255, dtype=np.uint8)  # white canvas
         rh, rw = resized_8.shape
         canvas_8[:rh, :rw] = resized_8
         resized_display = canvas_8
     else:
         resized_display = resized_8
 
-    fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(6, 14))
-
-    # Original
-    axes[0].imshow(orig_8, cmap='gray', aspect='equal')
-    axes[0].set_title("Original Image")
-    axes[0].axis("off")
-
-    # Resized
-    axes[1].imshow(resized_display, cmap='gray', aspect='equal')
-    axes[1].set_title(
+    plt.figure(figsize=(5, 5))
+    plt.imshow(resized_display, cmap='gray', aspect='equal')
+    plt.title(
         f"{method.capitalize()} Resized\n"
         f"Zoom: {zoom_factors}, Time: {time_elapsed:.4f}s"
     )
-    axes[1].axis("off")
-
-    # Difference
-    axes[2].imshow(diff_8, cmap='gray', aspect='equal')
-    axes[2].set_title(
-        f"Difference\n"
-        f"SNR: {snr:.2f} dB, MSE: {mse:.2e}"
-    )
-    axes[2].axis("off")
-
-    plt.tight_layout(pad=3.0)  # Increase padding between subplots
+    plt.axis('off')
     plt.show()
+
+
+def plot_difference_image(original, resized_back, snr, mse):
+    """
+    Display the difference (original - resized_back) with a colorbar.
+    The difference is shown in the *original numeric range*, not uint8, 
+    so the colorbar reflects the actual difference scale.
+
+    We fix the color scale to [-0.8, +0.8] for consistency across plots.
+
+    The `fraction` parameter to colorbar determines the fraction of
+    the axes area occupied by the colorbar. A common default is ~0.15,
+    but we reduce it to 0.046 so the colorbar is narrower, and we set
+    `pad=0.04` to leave a bit of padding between the main image and
+    the colorbar.
+    """
+    difference = original - resized_back
+
+    plt.figure(figsize=(6, 5))
+    im = plt.imshow(
+        difference,
+        cmap='bwr',
+        aspect='equal',
+        vmin=-0.8,    # lower bound of color scale
+        vmax=0.8      # upper bound of color scale
+    )
+    # We choose fraction=0.046 to make the colorbar relatively thin, 
+    # and pad=0.04 to add spacing from the main image.
+    plt.colorbar(im, fraction=0.046, pad=0.04, label='Difference (units)')
+    plt.title(f"Difference\nSNR: {snr:.2f} dB, MSE: {mse:.2e}")
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+
 
 # %%
 # Load and normalize a 2D image
@@ -221,9 +236,19 @@ degree = 3
 zoom_factors_2d = (0.25, 0.25)
 border_fraction = 0.3
 
+# We plot the original grayscale image.
+
+plt.figure(figsize=(6, 5))
+plt.imshow(input_image_normalized, cmap='gray', aspect='equal')
+plt.title("Original Image")
+plt.axis("off")
+plt.show()
+
 # %%
 # 2D resizing: interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~
+# -----------------------------
+#
+# We use the standard interpolation method.
 
 (
     resized_2d_interp, 
@@ -239,20 +264,32 @@ border_fraction = 0.3
     border_fraction=border_fraction
 )
 
-plot_2d_results(
+# Display the resized image
+
+plot_resized_image(
     original=input_image_normalized,
     resized=resized_2d_interp,
-    resized_back=resized_back_2d_interp,
     method="interpolation",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2d_interp,
-    mse=mse_2d_interp,
     time_elapsed=time_2d_interp
 )
 
 # %%
-# 2D resizing: least-squares
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Display the difference image (original - resizedBack) with colorbar
+
+plot_difference_image(
+    original=input_image_normalized,
+    resized_back=resized_back_2d_interp,
+    snr=snr_2d_interp,
+    mse=mse_2d_interp
+)
+
+
+# %%
+# 2D resizing: least-squares projection
+# -------------------------------------
+#
+# We use the least-squares projection method.
 
 (
     resized_2d_ls,
@@ -268,20 +305,32 @@ plot_2d_results(
     border_fraction=border_fraction
 )
 
-plot_2d_results(
+# Display the resized image
+
+plot_resized_image(
     original=input_image_normalized,
     resized=resized_2d_ls,
-    resized_back=resized_back_2d_ls,
     method="least-squares",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2d_ls,
-    mse=mse_2d_ls,
     time_elapsed=time_2d_ls
 )
 
 # %%
-# 2D resizing: oblique
-# ~~~~~~~~~~~~~~~~~~~~
+# Display the difference image (original - resizedBack) with colorbar
+
+plot_difference_image(
+    original=input_image_normalized,
+    resized_back=resized_back_2d_ls,
+    snr=snr_2d_ls,
+    mse=mse_2d_ls
+)
+
+
+# %%
+# 2D resizing: oblique projection
+# -------------------------------
+#
+# We use the oblique projection method.
 
 (
     resized_2d_ob,
@@ -297,20 +346,32 @@ plot_2d_results(
     border_fraction=border_fraction
 )
 
-plot_2d_results(
+# Display the resized image
+
+plot_resized_image(
     original=input_image_normalized,
     resized=resized_2d_ob,
-    resized_back=resized_back_2d_ob,
     method="oblique",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2d_ob,
-    mse=mse_2d_ob,
     time_elapsed=time_2d_ob
 )
 
 # %%
+# Display the difference image (original - resizedBack) with colorbar
+
+plot_difference_image(
+    original=input_image_normalized,
+    resized_back=resized_back_2d_ob,
+    snr=snr_2d_ob,
+    mse=mse_2d_ob
+)
+
+
+# %%
 # 2D resizing: SciPy interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# -----------------------------------
+#
+# For comparison purposes, we also use SciPy's zoom method for resizing.
 
 (
     resized_2d_scipy,
@@ -326,13 +387,22 @@ plot_2d_results(
     border_fraction=border_fraction
 )
 
-plot_2d_results(
+# Display the resized image
+
+plot_resized_image(
     original=input_image_normalized,
     resized=resized_2d_scipy,
-    resized_back=resized_back_2d_scipy,
     method="scipy",
     zoom_factors=zoom_factors_2d,
-    snr=snr_2d_scipy,
-    mse=mse_2d_scipy,
     time_elapsed=time_2d_scipy
+)
+
+# %%
+# Display the difference image (original - resizedBack) with colorbar
+
+plot_difference_image(
+    original=input_image_normalized,
+    resized_back=resized_back_2d_scipy,
+    snr=snr_2d_scipy,
+    mse=mse_2d_scipy
 )
