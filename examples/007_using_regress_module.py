@@ -88,7 +88,7 @@ x, y = data[:, 0], data[:, 1]
 # The function `denoise_y` applies a regularized least-squares method to smooth the noisy data.
 
 # Regularization parameter
-lamb = 1e-1
+lamb = 1e-2
 
 # Compute denoised y
 y_denoised = denoise_y(x, y, lamb, rho=lamb)
