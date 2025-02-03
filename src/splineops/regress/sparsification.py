@@ -64,7 +64,7 @@ def sparsest_interpolant(
     knots_pruned = knots[pruned_bool]
     amplitudes_pruned = amplitudes_cano[pruned_bool]
     saturations_pruned = saturations[pruned_bool]
-    #amplitudes_pruned = sparsify_amplitudes(amplitudes_pruned, sparsity_tol)  # Set knots below tolerance to exactly zero
+    #amplitudes_pruned = _sparsify_amplitudes(amplitudes_pruned, sparsity_tol)  # Set knots below tolerance to exactly zero
 
     # Sparsification of saturation zones
     amplitudes_sparsest = np.array([])
@@ -87,6 +87,9 @@ def sparsest_interpolant(
         i += num_saturations + 1
         last_nz_idx += 1
         num_saturations = 0
+
+        idx = np.argsort(knots_sparsest)
+        knots_sparsest, amplitudes_sparsest = knots_sparsest[idx], amplitudes_sparsest[idx]
 
     return knots_sparsest, amplitudes_sparsest, polynomial_cano
 
