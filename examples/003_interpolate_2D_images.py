@@ -245,8 +245,8 @@ plt.axis("off")
 plt.show()
 
 # %%
-# 2D resizing: interpolation
-# -----------------------------
+# Standard interpolation
+# ----------------------
 #
 # We use the standard interpolation method.
 
@@ -286,8 +286,8 @@ plot_difference_image(
 
 
 # %%
-# 2D resizing: least-squares projection
-# -------------------------------------
+# Least-squares projection
+# ------------------------
 #
 # We use the least-squares projection method.
 
@@ -327,8 +327,8 @@ plot_difference_image(
 
 
 # %%
-# 2D resizing: oblique projection
-# -------------------------------
+# Oblique projection
+# ------------------
 #
 # We use the oblique projection method.
 
@@ -368,8 +368,8 @@ plot_difference_image(
 
 
 # %%
-# 2D resizing: SciPy interpolation
-# -----------------------------------
+# SciPy interpolation
+# -------------------
 #
 # For comparison purposes, we also use SciPy's zoom method for resizing.
 
