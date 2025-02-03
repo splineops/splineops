@@ -284,6 +284,68 @@ plot_difference_image(
     mse=mse_2d_interp
 )
 
+# %%
+# Alternative using TensorSpline
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# As an alternative, we can replicate the same interpolation manually using the 
+# ``TensorSpline`` class, which underpins the `resize()` function behind the scenes.
+
+from splineops.interpolate.tensorspline import TensorSpline
+
+# 1) Build uniform coordinate arrays that match the shape of 'input_image_normalized'
+
+height, width = input_image_normalized.shape
+x_coords = np.linspace(0, height - 1, height)
+y_coords = np.linspace(0, width - 1, width)
+coordinates_2d = (x_coords, y_coords)
+
+# 2) For "cubic interpolation", pick "bspline3".
+#    For boundary handling, we can pick "mirror", "zero", etc.
+
+ts = TensorSpline(
+    data=input_image_normalized,
+    coordinates=coordinates_2d,
+    bases="bspline3",  # cubic B-splines
+    modes="mirror"     # handles boundaries with mirroring
+)
+
+# 3) Define new coordinate grids for the "zoomed" shape. 
+
+zoomed_height = int(height * zoom_factors_2d[0])
+zoomed_width = int(width * zoom_factors_2d[1])
+
+x_coords_zoomed = np.linspace(0, height - 1, zoomed_height)
+y_coords_zoomed = np.linspace(0, width - 1, zoomed_width)
+coords_zoomed_2d = (x_coords_zoomed, y_coords_zoomed)
+
+# Evaluate (forward pass): zoom in or out
+
+resized_direct_ts = ts(coordinates=coords_zoomed_2d)
+
+# 4) Define coordinate grids for returning to the original shape
+x_coords_orig = np.linspace(0, height - 1, height)
+y_coords_orig = np.linspace(0, width - 1, width)
+coords_orig_2d = (x_coords_orig, y_coords_orig)
+
+# Evaluate (backward pass): from zoomed shape back to original
+
+ts_zoomed = TensorSpline(
+    data=resized_direct_ts,
+    coordinates=coords_zoomed_2d,
+    bases="bspline3",
+    modes="mirror"
+)
+resized_back_direct_ts = ts_zoomed(coordinates=coords_orig_2d)
+
+# Now, resized_direct_ts / resized_back_direct_ts should be very similar 
+# to 'resized_2d_interp' / 'resized_back_2d_interp' from the high-level "resize()" approach.
+# Let's compute MSE to confirm:
+
+mse_forward = np.mean((resized_direct_ts - resized_2d_interp) ** 2)
+mse_backward = np.mean((resized_back_direct_ts - resized_back_2d_interp) ** 2)
+print(f"MSE (TensorSpline vs. resize()) forward pass:  {mse_forward:.6e}")
+print(f"MSE (TensorSpline vs. resize()) backward pass: {mse_backward:.6e}")
 
 # %%
 # Least-squares projection
