@@ -45,7 +45,7 @@ plt.rcParams.update({
 #
 # We generate 1D samples and treat them as discrete signal points.
 # 
-# Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data that are uniformly i.i.d. in :math:`(-1, 1)`.
+# Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data.
 #
 # These are the input samples that we will interpolate.
 
@@ -53,10 +53,13 @@ number_of_samples = 27
 
 f_support = np.arange(number_of_samples)
 f_support_length = len(f_support) # It's equal to number_of_samples
-np.random.seed(42)
+
 f_samples = np.array([
-    np.sin(k * 2.0 * np.pi / (number_of_samples - 1))
-    for k in f_support
+    -0.657391, -0.641319, -0.613081, -0.518523, -0.453829, -0.385138,
+    -0.270688, -0.179849, -0.11805, -0.0243016, 0.0130667, 0.0355389,
+    0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
+    -0.00811776, 0.0153119, 0.106126, 0.21688, 0.347629, 0.419532,
+    0.50695, 0.544767, 0.555373
 ])
 
 plt.figure(figsize=(10, 4))
@@ -74,6 +77,7 @@ plt.ylabel("f[]")
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
 
 # %%
 # Interpolate samples with spline f
