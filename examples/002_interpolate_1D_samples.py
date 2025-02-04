@@ -493,8 +493,23 @@ gs3 = GridSpec(
 ax_top = fig3.add_subplot(gs3[0, :])
 ax_top.set_title("Linear f spline")
 
+# Plot f[k] as stems
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
-ax_top.plot(f_coords, f_lin_f, color="green", linewidth=2, label="f")
+
+# Plot f spline
+ax_top.plot(f_coords, f_lin_f, color="green", linewidth=2, label="f spline")
+
+# Overplot discrete g[k] as unfilled red squares at x = k * val_lambda
+x_g = np.arange(g_support_length) * val_lambda
+ax_top.plot(
+    x_g, g_lin_samps,
+    "rs",              # red squares
+    mfc='none',        # unfilled
+    markersize=12,
+    markeredgewidth=2, 
+    label="g[k] samples"
+)
+
 ax_top.axhline(0, color='black', linewidth=1, zorder=0)
 ax_top.set_xlim(0, f_support_length - 1)
 ax_top.set_xticks(np.arange(0, f_support_length, 1))
