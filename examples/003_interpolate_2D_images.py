@@ -364,6 +364,27 @@ plot_difference_image(
 )
 
 # %%
+# Difference with SciPy
+# ~~~~~~~~~~~~~~~~~~~~~
+#
+# Now we compute the difference between the recovered image from the
+# trivial interpolation and SciPy interpolation. We also compute
+# SNR and MSE on the central region and display the difference.
+# We observe that the difference is extremely small, hence the two interpolation 
+# methods are identical.
+
+snr_scipy_vs_interp, mse_scipy_vs_interp = compute_snr_and_mse_cropped(
+    recovered_2d_scipy, recovered_2d_interp, border_fraction
+)
+
+plot_difference_image(
+    original=recovered_2d_scipy,
+    recovered=recovered_2d_interp,
+    snr=snr_scipy_vs_interp,
+    mse=mse_scipy_vs_interp
+)
+
+# %%
 # Alternative using TensorSpline
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
