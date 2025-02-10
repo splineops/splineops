@@ -214,10 +214,10 @@ def plot_difference_image(original, resized_back, snr, mse):
 # Load and normalize a 2D image
 # -----------------------------
 #
-# Here, we load an example Kodak image from an online repository.
+# Here, we load an example image from an online repository.
 # We convert it to grayscale in [0..1].
 
-url = 'https://r0k.us/graphics/kodak/kodak/kodim23.png'
+url = 'https://people.math.sc.edu/Burkardt/data/tif/columns.tif'
 response = requests.get(url)
 img = Image.open(BytesIO(response.content))
 data = np.array(img, dtype=np.float64)
