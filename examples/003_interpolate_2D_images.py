@@ -558,10 +558,16 @@ plot_difference_image(
 )
 
 # %%
-# Comparison table
-# ----------------
+# Comparison
+# ----------
 #
-# We print the SNR, MSE, and timing data for each method
+# We compare the performance of the different methods analysed.
+
+# %%
+# Comparison table
+# ~~~~~~~~~~~~~~~~
+#
+# We print the SNR, MSE, and timing data for each method.
 
 methods = [
     ("SciPy Interpolation", snr_2d_scipy, mse_2d_scipy, time_2d_scipy),
@@ -571,9 +577,94 @@ methods = [
 ]
 
 # Print the table header
-print(f"{'Method':<25} {'SNR (dB)':>12} {'MSE':>16} {'Time (s)':>12}")
-print("-" * 70)
+print(f"{'Method':<24} {'SNR (dB)':>12} {'MSE':>15} {'Time (s)':>11}")
+print("-" * 67)
 
 # Print each row with some spacing/formatting
 for method_name, snr_val, mse_val, time_val in methods:
     print(f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_val:>12.4f}")
+
+# %%
+# Comparison plot
+# ~~~~~~~~~~~~~~~
+#
+# Here, we compare how SciPy, Least-Squares, and Oblique projection perform
+# (in terms of SNR and MSE) across multiple zoom factors in [0.1, 0.9].
+# As before, we compute SNR/MSE between the recovered image and the
+# original for each method at each zoom factor, and plot the results on
+# dual y-axes (SNR on the left, MSE on the right). The x-axis is in log scale.
+# Note that we don't compare with trivial interpolation as it virtually gives
+# the same values as the SciPy interpolation.
+
+zoom_values = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9])
+
+snr_scipy_list = []
+mse_scipy_list = []
+snr_ls_list = []
+mse_ls_list = []
+snr_ob_list = []
+mse_ob_list = []
+
+for z in zoom_values:
+    # SciPy
+    _, recovered_scipy, snr_scipy_z, mse_scipy_z, _ = resize_and_compute_metrics(
+        input_image_normalized,
+        method="scipy",
+        degree=degree,
+        zoom_factors=z,
+        border_fraction=border_fraction
+    )
+    snr_scipy_list.append(snr_scipy_z)
+    mse_scipy_list.append(mse_scipy_z)
+
+    # Least-Squares
+    _, recovered_ls, snr_ls_z, mse_ls_z, _ = resize_and_compute_metrics(
+        input_image_normalized,
+        method="least-squares",
+        degree=degree,
+        zoom_factors=z,
+        border_fraction=border_fraction
+    )
+    snr_ls_list.append(snr_ls_z)
+    mse_ls_list.append(mse_ls_z)
+
+    # Oblique
+    _, recovered_ob, snr_ob_z, mse_ob_z, _ = resize_and_compute_metrics(
+        input_image_normalized,
+        method="oblique",
+        degree=degree,
+        zoom_factors=z,
+        border_fraction=border_fraction
+    )
+    snr_ob_list.append(snr_ob_z)
+    mse_ob_list.append(mse_ob_z)
+
+# Now we plot both SNR and MSE in the same figure using dual y-axes
+fig, ax1 = plt.subplots(figsize=(7, 5))
+ax2 = ax1.twinx()
+
+# Plot SNR (dB) on ax1
+p1 = ax1.plot(zoom_values, snr_scipy_list, 'bo-', label='SciPy SNR (dB)')
+p2 = ax1.plot(zoom_values, snr_ls_list,    'go-', label='LS SNR (dB)')
+p3 = ax1.plot(zoom_values, snr_ob_list,    'ro-', label='Oblique SNR (dB)')
+
+# Plot MSE on ax2
+p4 = ax2.plot(zoom_values, mse_scipy_list, 'b^--', label='SciPy MSE')
+p5 = ax2.plot(zoom_values, mse_ls_list,    'g^--', label='LS MSE')
+p6 = ax2.plot(zoom_values, mse_ob_list,    'r^--', label='Oblique MSE')
+
+# Set the zoom factor axis to log scale
+ax1.set_xscale('log')
+ax1.set_xlabel('Zoom factor (log scale)')
+ax1.set_ylabel('SNR (dB)')
+ax2.set_ylabel('MSE')
+
+ax1.set_title('SciPy, Least-Squares, and Oblique\nSNR and MSE vs. Zoom Factor')
+
+# Combine all line references to show a single legend
+lines = p1 + p2 + p3 + p4 + p5 + p6
+labels = [l.get_label() for l in lines]
+ax1.legend(lines, labels, loc='best')
+
+plt.tight_layout()
+plt.show()
