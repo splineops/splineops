@@ -135,10 +135,10 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border
 # Plotting helpers
 # ----------------
 #
-# We now define two separate plotting helpers:
-#    1) `plot_resized_image()`: Show only the resized result
-#    2) `plot_difference_image()`: Show only the difference (original - recovered)
-#       plus a colorbar to indicate the scale.
+# We define three plotting helpers now:
+#   1) plot_resized_image(): Show the resized 2D image
+#   2) plot_recovered_image(): Show the image after resizing back
+#   3) plot_difference_image(): Show the difference (original - recovered)
 
 def plot_resized_image(original, resized, method, zoom_factors, time_elapsed):
     """
@@ -176,6 +176,15 @@ def plot_resized_image(original, resized, method, zoom_factors, time_elapsed):
     plt.axis('off')
     plt.show()
 
+def plot_recovered_image(recovered):
+    """
+    Display the recovered image after resizing back to the original shape.
+    """
+    plt.figure(figsize=(6, 5))
+    plt.imshow(recovered, cmap='gray', aspect='equal')
+    plt.title("Recovered Image")
+    plt.axis('off')
+    plt.show()
 
 def plot_difference_image(original, recovered, snr, mse):
     """
@@ -215,7 +224,7 @@ def plot_difference_image(original, recovered, snr, mse):
 # -----------------------------
 #
 # Here, we load an example image from an online repository.
-# We convert it to grayscale in [0..1].
+# We convert it to grayscale in [0, 1].
 
 url = 'https://people.math.sc.edu/Burkardt/data/tif/columns.tif'
 response = requests.get(url)
@@ -279,6 +288,14 @@ plot_resized_image(
 )
 
 # %%
+# Recovered image
+# ~~~~~~~~~~~~~~~
+#
+# We plot the recovered image after reversing zoom factors.
+
+plot_recovered_image(recovered_2d_scipy)
+
+# %%
 # Difference image
 # ~~~~~~~~~~~~~~~~
 #
@@ -324,6 +341,14 @@ plot_resized_image(
     zoom_factors=zoom_factors_2d,
     time_elapsed=time_2d_interp
 )
+
+# %%
+# Recovered image
+# ~~~~~~~~~~~~~~~
+#
+# We plot the recovered image after reversing zoom factors.
+
+plot_recovered_image(recovered_2d_interp)
 
 # %%
 # Difference image
@@ -398,8 +423,8 @@ recovered_direct_ts = ts_zoomed(coordinates=coords_orig_2d)
 
 mse_forward = np.mean((resized_direct_ts - resized_2d_interp) ** 2)
 mse_backward = np.mean((recovered_direct_ts - recovered_2d_interp) ** 2)
-print(f"MSE (TensorSpline vs. resize()) forward pass:  {mse_forward:.6e}")
-print(f"MSE (TensorSpline vs. resize()) backward pass: {mse_backward:.6e}")
+print(f"MSE (TensorSpline vs. resize()) resized:  {mse_forward:.6e}")
+print(f"MSE (TensorSpline vs. resize()) recovered: {mse_backward:.6e}")
 
 # %%
 # Least-squares projection
@@ -434,6 +459,14 @@ plot_resized_image(
     zoom_factors=zoom_factors_2d,
     time_elapsed=time_2d_ls
 )
+
+# %%
+# Recovered image
+# ~~~~~~~~~~~~~~~
+#
+# We plot the recovered image after reversing zoom factors.
+
+plot_recovered_image(recovered_2d_ls)
 
 # %%
 # Difference image
@@ -482,6 +515,14 @@ plot_resized_image(
     zoom_factors=zoom_factors_2d,
     time_elapsed=time_2d_ob
 )
+
+# %%
+# Recovered image
+# ~~~~~~~~~~~~~~~
+#
+# We plot the recovered image after reversing zoom factors.
+
+plot_recovered_image(recovered_2d_ob)
 
 # %%
 # Difference image
