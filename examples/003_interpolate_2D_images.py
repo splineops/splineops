@@ -86,12 +86,12 @@ def resize_with_scipy_zoom(input_image, zoom_factors, degree, border_fraction):
     time_elapsed = time.perf_counter() - start_time
 
     reverse_zoom_factors = 1.0 / np.array(zoom_factors)
-    resized_back_image = zoom(resized_image, reverse_zoom_factors, order=degree)
+    recovered_image = zoom(resized_image, reverse_zoom_factors, order=degree)
 
     # Compute SNR/MSE on central region
-    snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction)
+    snr, mse = compute_snr_and_mse_cropped(input_image, recovered_image, border_fraction)
 
-    return resized_image, resized_back_image, snr, mse, time_elapsed
+    return resized_image, recovered_image, snr, mse, time_elapsed
 
 
 def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border_fraction):
@@ -118,7 +118,7 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border
 
         # Resize back to original shape:
         original_shape = input_image.shape
-        resized_back_image = resize(
+        recovered_image = resize(
             data=resized_image,
             output_size=original_shape,
             degree=degree,
@@ -126,9 +126,9 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border
         )
 
         # Compute SNR/MSE on central region
-        snr, mse = compute_snr_and_mse_cropped(input_image, resized_back_image, border_fraction)
+        snr, mse = compute_snr_and_mse_cropped(input_image, recovered_image, border_fraction)
 
-        return resized_image, resized_back_image, snr, mse, time_elapsed
+        return resized_image, recovered_image, snr, mse, time_elapsed
 
 
 # %%
@@ -137,7 +137,7 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border
 #
 # We now define two separate plotting helpers:
 #    1) `plot_resized_image()`: Show only the resized result
-#    2) `plot_difference_image()`: Show only the difference (original - resizedBack)
+#    2) `plot_difference_image()`: Show only the difference (original - recovered)
 #       plus a colorbar to indicate the scale.
 
 def plot_resized_image(original, resized, method, zoom_factors, time_elapsed):
@@ -177,9 +177,9 @@ def plot_resized_image(original, resized, method, zoom_factors, time_elapsed):
     plt.show()
 
 
-def plot_difference_image(original, resized_back, snr, mse):
+def plot_difference_image(original, recovered, snr, mse):
     """
-    Display the difference (original - resized_back) with a colorbar.
+    Display the difference (original - recovered) with a colorbar.
     The difference is shown in the *original numeric range*, not uint8, 
     so the colorbar reflects the actual difference scale.
 
@@ -191,7 +191,7 @@ def plot_difference_image(original, resized_back, snr, mse):
     `pad=0.04` to leave a bit of padding between the main image and
     the colorbar.
     """
-    difference = original - resized_back
+    difference = original - recovered
 
     plt.figure(figsize=(6, 5))
     im = plt.imshow(
@@ -245,14 +245,54 @@ plt.axis("off")
 plt.show()
 
 # %%
-# Standard interpolation
-# ----------------------
+# SciPy interpolation
+# -------------------
 #
-# We use the standard interpolation method.
+# For comparison purposes, we also use SciPy's zoom method for resizing.
+
+(
+    resized_2d_scipy,
+    recovered_2d_scipy,
+    snr_2d_scipy,
+    mse_2d_scipy,
+    time_2d_scipy
+) = resize_and_compute_metrics(
+    input_image_normalized,
+    method="scipy",
+    degree=degree,
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction
+)
+
+# Display the resized image
+
+plot_resized_image(
+    original=input_image_normalized,
+    resized=resized_2d_scipy,
+    method="scipy",
+    zoom_factors=zoom_factors_2d,
+    time_elapsed=time_2d_scipy
+)
+
+# %%
+# Display the difference image (original - recovered) with colorbar
+
+plot_difference_image(
+    original=input_image_normalized,
+    recovered=recovered_2d_scipy,
+    snr=snr_2d_scipy,
+    mse=mse_2d_scipy
+)
+
+# %%
+# Trivial interpolation
+# ---------------------
+#
+# We our standard interpolation method.
 
 (
     resized_2d_interp, 
-    resized_back_2d_interp, 
+    recovered_2d_interp, 
     snr_2d_interp, 
     mse_2d_interp, 
     time_2d_interp
@@ -275,11 +315,11 @@ plot_resized_image(
 )
 
 # %%
-# Display the difference image (original - resizedBack) with colorbar
+# Display the difference image (original - recovered) with colorbar
 
 plot_difference_image(
     original=input_image_normalized,
-    resized_back=resized_back_2d_interp,
+    recovered=recovered_2d_interp,
     snr=snr_2d_interp,
     mse=mse_2d_interp
 )
@@ -336,14 +376,14 @@ ts_zoomed = TensorSpline(
     bases="bspline3",
     modes="mirror"
 )
-resized_back_direct_ts = ts_zoomed(coordinates=coords_orig_2d)
+recovered_direct_ts = ts_zoomed(coordinates=coords_orig_2d)
 
-# Now, resized_direct_ts / resized_back_direct_ts should be very similar 
-# to 'resized_2d_interp' / 'resized_back_2d_interp' from the high-level "resize()" approach.
+# Now, resized_direct_ts / recovered_direct_ts should be very similar 
+# to 'resized_2d_interp' / 'recovered_2d_interp' from the high-level "resize()" approach.
 # Let's compute MSE to confirm:
 
 mse_forward = np.mean((resized_direct_ts - resized_2d_interp) ** 2)
-mse_backward = np.mean((resized_back_direct_ts - resized_back_2d_interp) ** 2)
+mse_backward = np.mean((recovered_direct_ts - recovered_2d_interp) ** 2)
 print(f"MSE (TensorSpline vs. resize()) forward pass:  {mse_forward:.6e}")
 print(f"MSE (TensorSpline vs. resize()) backward pass: {mse_backward:.6e}")
 
@@ -355,7 +395,7 @@ print(f"MSE (TensorSpline vs. resize()) backward pass: {mse_backward:.6e}")
 
 (
     resized_2d_ls,
-    resized_back_2d_ls,
+    recovered_2d_ls,
     snr_2d_ls,
     mse_2d_ls,
     time_2d_ls
@@ -378,11 +418,11 @@ plot_resized_image(
 )
 
 # %%
-# Display the difference image (original - resizedBack) with colorbar
+# Display the difference image (original - recovered) with colorbar
 
 plot_difference_image(
     original=input_image_normalized,
-    resized_back=resized_back_2d_ls,
+    recovered=recovered_2d_ls,
     snr=snr_2d_ls,
     mse=mse_2d_ls
 )
@@ -396,7 +436,7 @@ plot_difference_image(
 
 (
     resized_2d_ob,
-    resized_back_2d_ob,
+    recovered_2d_ob,
     snr_2d_ob,
     mse_2d_ob,
     time_2d_ob
@@ -419,52 +459,11 @@ plot_resized_image(
 )
 
 # %%
-# Display the difference image (original - resizedBack) with colorbar
+# Display the difference image (original - recovered) with colorbar
 
 plot_difference_image(
     original=input_image_normalized,
-    resized_back=resized_back_2d_ob,
+    recovered=recovered_2d_ob,
     snr=snr_2d_ob,
     mse=mse_2d_ob
-)
-
-
-# %%
-# SciPy interpolation
-# -------------------
-#
-# For comparison purposes, we also use SciPy's zoom method for resizing.
-
-(
-    resized_2d_scipy,
-    resized_back_2d_scipy,
-    snr_2d_scipy,
-    mse_2d_scipy,
-    time_2d_scipy
-) = resize_and_compute_metrics(
-    input_image_normalized,
-    method="scipy",
-    degree=degree,
-    zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction
-)
-
-# Display the resized image
-
-plot_resized_image(
-    original=input_image_normalized,
-    resized=resized_2d_scipy,
-    method="scipy",
-    zoom_factors=zoom_factors_2d,
-    time_elapsed=time_2d_scipy
-)
-
-# %%
-# Display the difference image (original - resizedBack) with colorbar
-
-plot_difference_image(
-    original=input_image_normalized,
-    resized_back=resized_back_2d_scipy,
-    snr=snr_2d_scipy,
-    mse=mse_2d_scipy
 )
