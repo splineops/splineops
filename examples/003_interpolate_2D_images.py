@@ -264,7 +264,11 @@ plt.show()
     border_fraction=border_fraction
 )
 
-# Display the resized image
+# %%
+# Resized image
+# ~~~~~~~~~~~~~
+#
+# We plot the resized image with SciPy interpolation.
 
 plot_resized_image(
     original=input_image_normalized,
@@ -275,7 +279,10 @@ plot_resized_image(
 )
 
 # %%
-# Display the difference image (original - recovered) with colorbar
+# Difference image
+# ~~~~~~~~~~~~~~~~
+#
+# Display the difference image (original - recovered) with colorbar.
 
 plot_difference_image(
     original=input_image_normalized,
@@ -304,7 +311,11 @@ plot_difference_image(
     border_fraction=border_fraction
 )
 
-# Display the resized image
+# %%
+# Resized image
+# ~~~~~~~~~~~~~
+#
+# We plot the resized image with standard interpolation.
 
 plot_resized_image(
     original=input_image_normalized,
@@ -315,7 +326,10 @@ plot_resized_image(
 )
 
 # %%
-# Display the difference image (original - recovered) with colorbar
+# Difference image
+# ~~~~~~~~~~~~~~~~
+#
+# Display the difference image (original - recovered) with colorbar.
 
 plot_difference_image(
     original=input_image_normalized,
@@ -407,7 +421,11 @@ print(f"MSE (TensorSpline vs. resize()) backward pass: {mse_backward:.6e}")
     border_fraction=border_fraction
 )
 
-# Display the resized image
+# %%
+# Resized image
+# ~~~~~~~~~~~~~
+#
+# We plot the resized image with least-squares projection method.
 
 plot_resized_image(
     original=input_image_normalized,
@@ -418,7 +436,10 @@ plot_resized_image(
 )
 
 # %%
-# Display the difference image (original - recovered) with colorbar
+# Difference image
+# ~~~~~~~~~~~~~~~~
+#
+# Display the difference image (original - recovered) with colorbar.
 
 plot_difference_image(
     original=input_image_normalized,
@@ -448,7 +469,11 @@ plot_difference_image(
     border_fraction=border_fraction
 )
 
-# Display the resized image
+# %%
+# Resized image
+# ~~~~~~~~~~~~~
+#
+# We plot the resized image with oblique projection method.
 
 plot_resized_image(
     original=input_image_normalized,
@@ -459,7 +484,10 @@ plot_resized_image(
 )
 
 # %%
-# Display the difference image (original - recovered) with colorbar
+# Difference image
+# ~~~~~~~~~~~~~~~~
+#
+# Display the difference image (original - recovered) with colorbar.
 
 plot_difference_image(
     original=input_image_normalized,
