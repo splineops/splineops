@@ -576,13 +576,16 @@ methods = [
     ("Oblique Projection", snr_2d_ob, mse_2d_ob, time_2d_ob),
 ]
 
-# Print the table header
-print(f"{'Method':<24} {'SNR (dB)':>12} {'MSE':>15} {'Time (s)':>11}")
-print("-" * 67)
+# Print the table header using the same widths as we'll use for data
+header_line = f"{'Method':<25} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
+print(header_line)
+print("-" * len(header_line))  # or manually set a dash length, e.g. 67
 
-# Print each row with some spacing/formatting
+# Now print each row with the matching format
 for method_name, snr_val, mse_val, time_val in methods:
-    print(f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_val:>12.4f}")
+    row_line = f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_val:>12.4f}"
+    print(row_line)
+
 
 # %%
 # Comparison plot
