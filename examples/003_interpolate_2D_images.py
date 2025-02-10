@@ -481,7 +481,6 @@ plot_difference_image(
     mse=mse_2d_ls
 )
 
-
 # %%
 # Oblique projection
 # ------------------
