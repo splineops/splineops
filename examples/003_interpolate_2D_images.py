@@ -495,3 +495,24 @@ plot_difference_image(
     snr=snr_2d_ob,
     mse=mse_2d_ob
 )
+
+# %%
+# Comparison table
+# ----------------
+#
+# We print the SNR, MSE, and timing data for each method
+
+methods = [
+    ("SciPy Interpolation", snr_2d_scipy, mse_2d_scipy, time_2d_scipy),
+    ("Trivial Interpolation", snr_2d_interp, mse_2d_interp, time_2d_interp),
+    ("Least-Squares Projection", snr_2d_ls, mse_2d_ls, time_2d_ls),
+    ("Oblique Projection", snr_2d_ob, mse_2d_ob, time_2d_ob),
+]
+
+# Print the table header
+print(f"{'Method':<25} {'SNR (dB)':>12} {'MSE':>16} {'Time (s)':>12}")
+print("-" * 70)
+
+# Print each row with some spacing/formatting
+for method_name, snr_val, mse_val, time_val in methods:
+    print(f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_val:>12.4f}")
