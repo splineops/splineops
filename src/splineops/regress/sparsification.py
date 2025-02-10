@@ -56,6 +56,7 @@ def sparsest_interpolant(
 
     knots = x[1:-1]
     amplitudes_cano, polynomial_cano = _connect_points(x, y)
+    amplitudes_cano = _sparsify_amplitudes(amplitudes_cano, sparsity_tol)  # Set knots below tolerance to exactly zero
 
     # Identify phantom knots (amplitude = 0) which are outside of saturation zones
     saturations = _saturation_zones(amplitudes_cano, sparsity_tol)
@@ -64,7 +65,6 @@ def sparsest_interpolant(
     knots_pruned = knots[pruned_bool]
     amplitudes_pruned = amplitudes_cano[pruned_bool]
     saturations_pruned = saturations[pruned_bool]
-    #amplitudes_pruned = _sparsify_amplitudes(amplitudes_pruned, sparsity_tol)  # Set knots below tolerance to exactly zero
 
     # Sparsification of saturation zones
     amplitudes_sparsest = np.array([])
@@ -76,9 +76,12 @@ def sparsest_interpolant(
         if saturations_pruned[i] != 0:
             num_saturations = saturations_pruned[i]
         for j in range(int(np.ceil(num_saturations / 2))):
-            amplitudes_sparsest = np.append(amplitudes_sparsest, amplitudes_pruned[i+2*j] + amplitudes_pruned[i+2*j+1])
-            knots_sparsest = np.append(knots_sparsest, (amplitudes_pruned[i+2*j] * knots_pruned[i+2*j] +
-                                   amplitudes_pruned[i+2*j+1] * knots_pruned[i+2*j+1]) / amplitudes_sparsest[-1])
+            new_amp = amplitudes_pruned[i+2*j] + amplitudes_pruned[i+2*j+1]
+            if new_amp != 0:
+                amplitudes_sparsest = np.append(amplitudes_sparsest, new_amp)
+                barycenter = (amplitudes_pruned[i+2*j] * knots_pruned[i+2*j] +
+                              amplitudes_pruned[i+2*j+1] * knots_pruned[i+2*j+1]) / new_amp
+                knots_sparsest = np.append(knots_sparsest, barycenter)
         if (num_saturations % 2) == 0:
             # Keep last existing knot if even number of saturations (including 0)
             amplitudes_sparsest = np.append(amplitudes_sparsest, amplitudes_pruned[i+num_saturations])
@@ -100,7 +103,7 @@ def linear_spline(
     polynomial: np.ndarray
 ) -> np.ndarray:
     """
-    Evaluates a parametrized linear spline at specified location(s).
+    Evaluates a parametrized linear spline at specified location(s) t.
 
     The spline is represented as:
 
