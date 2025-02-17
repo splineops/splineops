@@ -194,7 +194,7 @@ For **images and high-dimensional data**, a typical choice is :math:`\lambda \ap
 Smooth Example
 --------------
 
-* :ref:`sphx_glr_auto_examples_008_using_smooth_module.py`
+* :ref:`sphx_glr_auto_examples_007_using_smooth_module.py`
 
 References
 ----------
