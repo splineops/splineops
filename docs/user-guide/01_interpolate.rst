@@ -58,7 +58,6 @@ Interpolate Examples
 * :ref:`sphx_glr_auto_examples_001_using_tensorspline_class.py`
 * :ref:`sphx_glr_auto_examples_002_interpolate_1D_samples.py`
 * :ref:`sphx_glr_auto_examples_003_interpolate_2D_images.py`
-* :ref:`sphx_glr_auto_examples_004_interpolate_3D_volumes.py`
 
 References
 ----------
