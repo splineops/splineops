@@ -56,10 +56,15 @@ image_gray = (
 
 # %%
 # Create a helper function to visualize results with a colorbar:
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 def show_result_with_colorbar(title, result, units="Value"):
     """
-    Displays a 2D result with a colorbar indicating min/max values.
-    
+    Displays a 2D result with a colorbar that has the same height as the image,
+    preserving the original aspect ratio.
+
     Parameters
     ----------
     title : str
@@ -69,14 +74,34 @@ def show_result_with_colorbar(title, result, units="Value"):
     units : str
         Label for the colorbar (e.g., 'Intensity', 'Radians', etc.).
     """
-    plt.figure(figsize=(6, 5))
-    im = plt.imshow(result, cmap='gray', aspect='equal')
-    cbar = plt.colorbar(im, fraction=0.046, pad=0.04)
-    # Show numeric range in colorbar label
+    # 1) Compute the aspect ratio based on image shape
+    #    shape = (height, width)
+    h, w = result.shape
+    aspect_ratio = h / float(w)  # e.g. 0.75 means the image is wider than it is tall
+    
+    # 2) Choose a reference figure width in inches, then compute figure height
+    #    so that h:w is respected. (Feel free to adjust fig_width.)
+    fig_width = 6.0
+    fig_height = fig_width * aspect_ratio
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+    # 3) Display the image with aspect='equal', ensuring each data cell is square
+    im = ax.imshow(result, cmap='gray', aspect='equal')
+    ax.set_title(title)
+    ax.axis('off')
+
+    # 4) Use make_axes_locatable so the colorbar axis has the same height as the image axis
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+
+    # 5) Add the colorbar. The label includes the numeric min/max of the data.
+    cbar = plt.colorbar(im, cax=cax)
     vmin, vmax = result.min(), result.max()
     cbar.set_label(f"{units} range [{vmin:.3f}, {vmax:.3f}]")
-    plt.title(title)
-    plt.axis('off')
+
+    # 6) Make sure everything fits nicely within the figure bounding box.
+    plt.tight_layout()
     plt.show()
 
 # Show the original grayscale image with a colorbar

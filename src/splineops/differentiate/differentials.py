@@ -2,6 +2,33 @@ import numpy as np
 import time
 
 class differentials:
+    """
+    Class for computing image differentials using cubic B-spline interpolation.
+
+    This class provides methods to compute first- and second-order derivatives
+    of a grayscale image by reconstructing the image as a continuous function
+    using cubic B-spline interpolation. Supported operations include gradient
+    magnitude, gradient direction, Laplacian, largest and smallest Hessian
+    eigenvalues, and Hessian orientation.
+
+    Attributes
+    ----------
+    GRADIENT_DIRECTION : int
+        Constant representing the gradient direction operation.
+    GRADIENT_MAGNITUDE : int
+        Constant representing the gradient magnitude operation.
+    HESSIAN_ORIENTATION : int
+        Constant representing the Hessian orientation operation.
+    LAPLACIAN : int
+        Constant representing the Laplacian operation.
+    LARGEST_HESSIAN : int
+        Constant representing the largest Hessian eigenvalue operation.
+    SMALLEST_HESSIAN : int
+        Constant representing the smallest Hessian eigenvalue operation.
+    FLT_EPSILON : float
+        Machine epsilon for single precision floats.
+    """
+
     GRADIENT_DIRECTION = 1
     GRADIENT_MAGNITUDE = 0
     HESSIAN_ORIENTATION = 5
@@ -12,6 +39,14 @@ class differentials:
     FLT_EPSILON = np.finfo(np.float32).eps
 
     def __init__(self, image):
+        """
+        Initialize a new differentials instance.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input grayscale image as a 2D numpy array.
+        """
         self.image = image.astype(np.float32)
         self.height, self.width = image.shape
         self.operation = self.LAPLACIAN
@@ -21,6 +56,14 @@ class differentials:
         self.last_time = time.time()
 
     def run(self, operation=None):
+        """
+        Execute the selected differential operation on the image.
+
+        Parameters
+        ----------
+        operation : int, optional
+            Operation to perform. If None, the default operation (Laplacian) is used.
+        """
         if operation is not None:
             self.operation = operation
 
@@ -44,11 +87,41 @@ class differentials:
         print(f"Completed in {time.time() - start_time:.2f} seconds")
 
     def get_cross_hessian(self, image, tolerance):
+        """
+        Compute the cross (mixed) Hessian term of the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image array.
+        tolerance : float
+            Tolerance parameter for spline coefficient computation.
+
+        Returns
+        -------
+        ndarray
+            Element-wise product of horizontal and vertical gradients.
+        """
         h_grad = self.get_horizontal_gradient(image, tolerance)
         v_grad = self.get_vertical_gradient(image, tolerance)
         return h_grad * v_grad
 
     def get_horizontal_gradient(self, image, tolerance):
+        """
+        Compute the horizontal gradient of the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image array.
+        tolerance : float
+            Tolerance parameter for spline coefficient computation.
+
+        Returns
+        -------
+        ndarray
+            Horizontal gradient of the image.
+        """
         output = np.zeros_like(image)
         for y in range(self.height):
             line = image[y, :]
@@ -58,6 +131,21 @@ class differentials:
         return output
 
     def get_horizontal_hessian(self, image, tolerance):
+        """
+        Compute the horizontal second derivative (Hessian) of the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image array.
+        tolerance : float
+            Tolerance parameter for spline coefficient computation.
+
+        Returns
+        -------
+        ndarray
+            Horizontal Hessian of the image.
+        """
         output = np.zeros_like(image)
         for y in range(self.height):
             line = image[y, :]
@@ -67,6 +155,21 @@ class differentials:
         return output
 
     def get_vertical_gradient(self, image, tolerance):
+        """
+        Compute the vertical gradient of the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image array.
+        tolerance : float
+            Tolerance parameter for spline coefficient computation.
+
+        Returns
+        -------
+        ndarray
+            Vertical gradient of the image.
+        """
         output = np.zeros_like(image)
         for x in range(self.width):
             line = image[:, x]
@@ -76,6 +179,21 @@ class differentials:
         return output
 
     def get_vertical_hessian(self, image, tolerance):
+        """
+        Compute the vertical second derivative (Hessian) of the image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Input image array.
+        tolerance : float
+            Tolerance parameter for spline coefficient computation.
+
+        Returns
+        -------
+        ndarray
+            Vertical Hessian of the image.
+        """
         output = np.zeros_like(image)
         for x in range(self.width):
             line = image[:, x]
@@ -85,6 +203,21 @@ class differentials:
         return output
 
     def anti_symmetric_fir_mirror_on_bounds(self, h, c):
+        """
+        Apply an anti-symmetric FIR filter with mirror boundary extension.
+
+        Parameters
+        ----------
+        h : ndarray
+            Filter coefficients (expected length 2, with h[0] == 0.0).
+        c : ndarray
+            Signal (or coefficient array) to be filtered.
+
+        Returns
+        -------
+        ndarray
+            Filtered signal.
+        """
         if len(h) != 2:
             raise IndexError("The half-length filter size should be 2")
         if h[0] != 0.0:
@@ -97,6 +230,21 @@ class differentials:
         return s
 
     def symmetric_fir_mirror_on_bounds(self, h, c):
+        """
+        Apply a symmetric FIR filter with mirror boundary extension.
+
+        Parameters
+        ----------
+        h : ndarray
+            Filter coefficients (expected length 2).
+        c : ndarray
+            Signal (or coefficient array) to be filtered.
+
+        Returns
+        -------
+        ndarray
+            Filtered signal.
+        """
         if len(h) != 2:
             raise IndexError("The half-length filter size should be 2")
         if len(c) < 2:
@@ -109,14 +257,53 @@ class differentials:
         return s
 
     def get_gradient(self, c):
+        """
+        Compute the first derivative (gradient) of a 1D signal using an anti-symmetric filter.
+
+        Parameters
+        ----------
+        c : ndarray
+            1D array of spline coefficients.
+
+        Returns
+        -------
+        ndarray
+            Computed gradient of the input signal.
+        """
         h = np.array([0.0, -1.0 / 2.0])
         return self.anti_symmetric_fir_mirror_on_bounds(h, c)
 
     def get_hessian(self, c):
+        """
+        Compute the second derivative (Hessian) of a 1D signal using a symmetric filter.
+
+        Parameters
+        ----------
+        c : ndarray
+            1D array of spline coefficients.
+
+        Returns
+        -------
+        ndarray
+            Computed Hessian of the input signal.
+        """
         h = np.array([-2.0, 1.0])
         return self.symmetric_fir_mirror_on_bounds(h, c)
 
     def get_spline_interpolation_coefficients(self, c, tolerance):
+        """
+        Compute the cubic B-spline interpolation coefficients for a 1D signal.
+
+        This method adjusts the input signal `c` in place using a recursive scheme
+        based on a cubic B-spline and a specified tolerance.
+
+        Parameters
+        ----------
+        c : ndarray
+            1D array representing the signal to be interpolated.
+        tolerance : float
+            Tolerance parameter controlling the trade-off between speed and accuracy.
+        """
         z = [np.sqrt(3.0) - 2.0]
         lambda_ = 1.0
         for zk in z:
@@ -131,6 +318,23 @@ class differentials:
                 c[n] = zk * (c[n + 1] - c[n])
 
     def get_initial_causal_coefficient_mirror_on_bounds(self, c, z, tolerance):
+        """
+        Compute the initial causal coefficient for spline interpolation with mirror boundary conditions.
+
+        Parameters
+        ----------
+        c : ndarray
+            1D array of spline coefficients.
+        z : float
+            Pole of the filter.
+        tolerance : float
+            Tolerance parameter to limit the recursion depth.
+
+        Returns
+        -------
+        float
+            The initial causal coefficient.
+        """
         z1 = z
         zn = z ** (len(c) - 1)
         sum_ = c[0] + zn * c[-1]
@@ -145,36 +349,101 @@ class differentials:
         return sum_ / (1.0 - z ** (2 * len(c) - 2))
 
     def get_initial_anti_causal_coefficient_mirror_on_bounds(self, c, z, tolerance):
+        """
+        Compute the initial anti-causal coefficient for spline interpolation with mirror boundary conditions.
+
+        Parameters
+        ----------
+        c : ndarray
+            1D array of spline coefficients.
+        z : float
+            Pole of the filter.
+        tolerance : float
+            Tolerance parameter.
+
+        Returns
+        -------
+        float
+            The initial anti-causal coefficient.
+        """
         return (z * c[-2] + c[-1]) * z / (z ** 2 - 1.0)
 
     def gradient_magnitude(self):
+        """
+        Compute the gradient magnitude of the image.
+
+        Returns
+        -------
+        ndarray
+            Image representing the gradient magnitude.
+        """
         h_grad = self.get_horizontal_gradient(self.image.copy(), self.FLT_EPSILON)
         v_grad = self.get_vertical_gradient(self.image.copy(), self.FLT_EPSILON)
         return np.sqrt(h_grad ** 2 + v_grad ** 2)
 
     def gradient_direction(self):
+        """
+        Compute the gradient direction of the image.
+
+        Returns
+        -------
+        ndarray
+            Image representing the gradient direction (in radians).
+        """
         h_grad = self.get_horizontal_gradient(self.image.copy(), self.FLT_EPSILON)
         v_grad = self.get_vertical_gradient(self.image.copy(), self.FLT_EPSILON)
         return np.arctan2(v_grad, h_grad)
 
     def laplacian(self):
+        """
+        Compute the Laplacian of the image.
+
+        Returns
+        -------
+        ndarray
+            Image representing the Laplacian.
+        """
         h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
         v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
         return h_hess + v_hess
 
     def largest_hessian(self):
+        """
+        Compute the largest eigenvalue of the Hessian matrix of the image.
+
+        Returns
+        -------
+        ndarray
+            Image representing the largest Hessian eigenvalue.
+        """
         h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
         v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
         hv_hess = self.get_cross_hessian(self.image.copy(), self.FLT_EPSILON)
         return 0.5 * (h_hess + v_hess + np.sqrt(4.0 * hv_hess ** 2 + (h_hess - v_hess) ** 2))
 
     def smallest_hessian(self):
+        """
+        Compute the smallest eigenvalue of the Hessian matrix of the image.
+
+        Returns
+        -------
+        ndarray
+            Image representing the smallest Hessian eigenvalue.
+        """
         h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
         v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
         hv_hess = self.get_cross_hessian(self.image.copy(), self.FLT_EPSILON)
         return 0.5 * (h_hess + v_hess - np.sqrt(4.0 * hv_hess ** 2 + (h_hess - v_hess) ** 2))
 
     def hessian_orientation(self):
+        """
+        Compute the orientation of the Hessian of the image.
+
+        Returns
+        -------
+        ndarray
+            Image representing the Hessian orientation (in radians).
+        """
         h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
         v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
         hv_hess = self.get_cross_hessian(self.image.copy(), self.FLT_EPSILON)

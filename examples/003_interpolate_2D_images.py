@@ -186,38 +186,51 @@ def plot_recovered_image(recovered):
     plt.axis('off')
     plt.show()
 
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 def plot_difference_image(original, recovered, snr, mse):
     """
-    Display the difference (original - recovered) with a colorbar.
-    The difference is shown in the *original numeric range*, not uint8, 
+    Display the difference (original - recovered) with a colorbar
+    that fits the image height and preserves aspect ratio.
+
+    The difference is shown in the *original numeric range*, not uint8,
     so the colorbar reflects the actual difference scale.
 
-    We fix the color scale to [-0.8, +0.8] for consistency across plots.
-
-    The `fraction` parameter to colorbar determines the fraction of
-    the axes area occupied by the colorbar. A common default is ~0.15,
-    but we reduce it to 0.046 so the colorbar is narrower, and we set
-    `pad=0.04` to leave a bit of padding between the main image and
-    the colorbar.
+    Color scale is fixed to [-0.8, +0.8] for consistency across plots.
     """
     difference = original - recovered
+    h, w = difference.shape  # shape of the difference image
 
-    plt.figure(figsize=(6, 5))
-    im = plt.imshow(
+    # Compute aspect ratio (height / width).
+    aspect_ratio = h / float(w)
+
+    # Choose a reference figure width and derive the figure height
+    # to preserve the aspect ratio. Adjust fig_width as needed.
+    fig_width = 6.0
+    fig_height = fig_width * aspect_ratio
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+    im = ax.imshow(
         difference,
         cmap='bwr',
-        aspect='equal',
-        vmin=-0.8,    # lower bound of color scale
-        vmax=0.8      # upper bound of color scale
+        aspect='equal',  # ensure each pixel is square
+        vmin=-0.8,
+        vmax=0.8
     )
-    # We choose fraction=0.046 to make the colorbar relatively thin, 
-    # and pad=0.04 to add spacing from the main image.
-    plt.colorbar(im, fraction=0.046, pad=0.04, label='Difference (units)')
-    plt.title(f"Difference\nSNR: {snr:.2f} dB, MSE: {mse:.2e}")
-    plt.axis('off')
+
+    ax.set_title(f"Difference\nSNR: {snr:.2f} dB, MSE: {mse:.2e}")
+    ax.axis('off')
+
+    # Use make_axes_locatable to create a colorbar axis matching the image height
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)  # colorbar is 5% width, 0.05 pad
+
+    cb = plt.colorbar(im, cax=cax)
+    cb.set_label('Difference (units)')
+
     plt.tight_layout()
     plt.show()
-
 
 # %%
 # Load and normalize a 2D image
