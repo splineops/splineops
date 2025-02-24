@@ -13,4 +13,5 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
    03_rotate
    04_regress
    05_smooth
+   06_differentiate
 

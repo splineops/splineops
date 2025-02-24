@@ -2,7 +2,8 @@
 Using differentiate module
 ==========================
 
-In this example, we demonstrate how to use the differentiate module to compute various differential operations on an image. We will perform:
+In this example, we demonstrate how to use the differentiate module to compute various
+differential operations on an image. We will perform:
 
 - Gradient Magnitude
 - Gradient Direction
@@ -29,7 +30,7 @@ from io import BytesIO
 from PIL import Image
 
 # Import the Differentials class from your module (adjust import path as needed)
-from splineops.differentiate.differentials import Differentials
+from splineops.differentiate.differentials import differentials
 
 # %%
 # Data preparation
@@ -53,18 +54,33 @@ image_gray = (
     image_normalized[:, :, 2] * 0.1140
 )
 
-# Create a helper function to visualize results:
-def show_result(title, result):
+# %%
+# Create a helper function to visualize results with a colorbar:
+def show_result_with_colorbar(title, result, units="Value"):
     """
-    Helper function to display an image result in a new figure.
+    Displays a 2D result with a colorbar indicating min/max values.
+    
+    Parameters
+    ----------
+    title : str
+        Title for the plot.
+    result : ndarray
+        2D array representing the image or field to display.
+    units : str
+        Label for the colorbar (e.g., 'Intensity', 'Radians', etc.).
     """
     plt.figure(figsize=(6, 5))
+    im = plt.imshow(result, cmap='gray', aspect='equal')
+    cbar = plt.colorbar(im, fraction=0.046, pad=0.04)
+    # Show numeric range in colorbar label
+    vmin, vmax = result.min(), result.max()
+    cbar.set_label(f"{units} range [{vmin:.3f}, {vmax:.3f}]")
     plt.title(title)
-    plt.imshow(result, cmap='gray')
     plt.axis('off')
     plt.show()
 
-show_result("Original Image", image_gray)
+# Show the original grayscale image with a colorbar
+show_result_with_colorbar("Original Image", image_gray, units="Intensity")
 
 # %%
 # Gradient Magnitude
@@ -73,17 +89,11 @@ show_result("Original Image", image_gray)
 # the rate of change of intensity at each pixel. High values
 # indicate edges or sharp transitions in the image.
 
-# Create a fresh Differentials object with the grayscale image
-diff = Differentials(image_gray.copy())
-
-# Perform the Gradient Magnitude operation
-diff.run(Differentials.GRADIENT_MAGNITUDE)
-
-# Retrieve the result from diff.image
+diff = differentials(image_gray.copy())
+diff.run(differentials.GRADIENT_MAGNITUDE)
 grad_magnitude_result = diff.image
 
-# Visualize
-show_result("Gradient Magnitude", grad_magnitude_result)
+show_result_with_colorbar("Gradient Magnitude", grad_magnitude_result, units="Value")
 
 # %%
 # Gradient Direction
@@ -92,14 +102,12 @@ show_result("Gradient Magnitude", grad_magnitude_result)
 # vector at each pixel (in radians). This can be useful for edge
 # orientation detection and directional filtering.
 
-diff = Differentials(image_gray.copy())
-diff.run(Differentials.GRADIENT_DIRECTION)
+diff = differentials(image_gray.copy())
+diff.run(differentials.GRADIENT_DIRECTION)
 grad_direction_result = diff.image
 
-# Visualize
 # Note that gradient direction ranges from -π to π (arctan2).
-# We'll display as grayscale just to showcase the variety of angles.
-show_result("Gradient Direction", grad_direction_result)
+show_result_with_colorbar("Gradient Direction", grad_direction_result, units="Direction (radians)")
 
 # %%
 # Laplacian
@@ -108,12 +116,11 @@ show_result("Gradient Direction", grad_direction_result)
 # It is computed here by adding the second derivatives along
 # both the horizontal (x) and vertical (y) directions.
 
-diff = Differentials(image_gray.copy())
-diff.run(Differentials.LAPLACIAN)
+diff = differentials(image_gray.copy())
+diff.run(differentials.LAPLACIAN)
 laplacian_result = diff.image
 
-# Visualize
-show_result("Laplacian", laplacian_result)
+show_result_with_colorbar("Laplacian", laplacian_result, units="Value")
 
 # %%
 # Largest Hessian
@@ -123,12 +130,11 @@ show_result("Laplacian", laplacian_result)
 # principal directions. Here, we compute the *largest eigenvalue* of
 # the Hessian, which often highlights tube-like or ridge-like structures.
 
-diff = Differentials(image_gray.copy())
-diff.run(Differentials.LARGEST_HESSIAN)
+diff = differentials(image_gray.copy())
+diff.run(differentials.LARGEST_HESSIAN)
 largest_hessian_result = diff.image
 
-# Visualize
-show_result("Largest Hessian Eigenvalue", largest_hessian_result)
+show_result_with_colorbar("Largest Hessian Eigenvalue", largest_hessian_result, units="Value")
 
 # %%
 # Smallest Hessian
@@ -136,13 +142,12 @@ show_result("Largest Hessian Eigenvalue", largest_hessian_result)
 # The *smallest eigenvalue* of the Hessian matrix can highlight
 # features orthogonal to those emphasized by the largest eigenvalue.
 # It can be useful for detecting certain types of structures.
-    
-diff = Differentials(image_gray.copy())
-diff.run(Differentials.SMALLEST_HESSIAN)
+
+diff = differentials(image_gray.copy())
+diff.run(differentials.SMALLEST_HESSIAN)
 smallest_hessian_result = diff.image
 
-# Visualize
-show_result("Smallest Hessian Eigenvalue", smallest_hessian_result)
+show_result_with_colorbar("Smallest Hessian Eigenvalue", smallest_hessian_result, units="Value")
 
 # %%
 # Hessian Orientation
@@ -155,10 +160,9 @@ show_result("Smallest Hessian Eigenvalue", smallest_hessian_result)
 # to understand how image structures are oriented locally. Values range
 # roughly from -π/2 to +π/2 in this particular definition.
 
-diff = Differentials(image_gray.copy())
-diff.run(Differentials.HESSIAN_ORIENTATION)
+diff = differentials(image_gray.copy())
+diff.run(differentials.HESSIAN_ORIENTATION)
 hessian_orientation_result = diff.image
 
-# Visualize
-# These values may be negative, so a gray colormap helps see the differences.
-show_result("Hessian Orientation", hessian_orientation_result)
+# The resulting range is approximately [-π/2, +π/2].
+show_result_with_colorbar("Hessian Orientation", hessian_orientation_result, units="Orientation (radians)")

@@ -17,6 +17,8 @@ API Reference
      - Perform sparsest linear regression on 1D data.
    * - :ref:`Smooth <api-smooth>`
      - Smooth N-D data.
+   * - :ref:`Differentiate <api-differentiate>`
+     - Differentiate 2D images.
 
 .. toctree::
    :maxdepth: 1
@@ -27,3 +29,4 @@ API Reference
    03_rotate
    04_regress
    05_smooth
+   06_differentiate

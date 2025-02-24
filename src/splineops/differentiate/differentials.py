@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-class Differentials:
+class differentials:
     GRADIENT_DIRECTION = 1
     GRADIENT_MAGNITUDE = 0
     HESSIAN_ORIENTATION = 5
@@ -55,7 +55,6 @@ class Differentials:
             self.get_spline_interpolation_coefficients(line, tolerance)
             gradient = self.get_gradient(line)
             output[y, :] = gradient
-            self.step_progress_bar()
         return output
 
     def get_horizontal_hessian(self, image, tolerance):
@@ -65,7 +64,6 @@ class Differentials:
             self.get_spline_interpolation_coefficients(line, tolerance)
             hessian = self.get_hessian(line)
             output[y, :] = hessian
-            self.step_progress_bar()
         return output
 
     def get_vertical_gradient(self, image, tolerance):
@@ -75,7 +73,6 @@ class Differentials:
             self.get_spline_interpolation_coefficients(line, tolerance)
             gradient = self.get_gradient(line)
             output[:, x] = gradient
-            self.step_progress_bar()
         return output
 
     def get_vertical_hessian(self, image, tolerance):
@@ -85,7 +82,6 @@ class Differentials:
             self.get_spline_interpolation_coefficients(line, tolerance)
             hessian = self.get_hessian(line)
             output[:, x] = hessian
-            self.step_progress_bar()
         return output
 
     def anti_symmetric_fir_mirror_on_bounds(self, h, c):
@@ -99,20 +95,6 @@ class Differentials:
         for i in range(1, len(c) - 1):
             s[i] = h[1] * (c[i + 1] - c[i - 1])
         return s
-
-    def clean_up_progress_bar(self):
-        self.completed = 0
-        self.show_progress(1.0)
-
-    def show_progress(self, progress):
-        print(f"Progress: {progress:.2%}")
-
-    def step_progress_bar(self):
-        self.completed += 1
-        current_time = time.time()
-        if current_time - self.last_time > 0.05:
-            self.last_time = current_time
-            self.show_progress(self.completed / self.process_duration)
 
     def symmetric_fir_mirror_on_bounds(self, h, c):
         if len(h) != 2:

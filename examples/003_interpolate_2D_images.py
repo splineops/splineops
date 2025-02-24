@@ -598,7 +598,7 @@ for method_name, snr_val, mse_val, time_val in methods:
 # Note that we don't compare with Scipy interpolation as it virtually gives
 # the same values as the trivial interpolation.
 
-zoom_values = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9])
+zoom_values = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
 
 snr_scipy_list = []
 snr_ls_list = []
