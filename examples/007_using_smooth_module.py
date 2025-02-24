@@ -140,15 +140,21 @@ plt.show()
 #
 # Using smoothing spline on a 2D image.
 
-from skimage import data
+import requests
+from io import BytesIO
+from PIL import Image
 
 def create_camera_image():
     """
     Loads a real grayscale image (cameraman).
     """
-    img = data.camera().astype(np.float64)
-    img /= 255.0  # Normalize to [0, 1]
-    return img
+    url = 'https://people.math.sc.edu/Burkardt/data/tif/cameraman.tif'
+    response = requests.get(url)
+    img = Image.open(BytesIO(response.content))
+    data = np.array(img, dtype=np.float64)
+    data /= 255.0  # Normalize to [0, 1]
+
+    return data
 
 def add_noise(img, snr_db):
     """
@@ -296,7 +302,7 @@ demo_3d_sinusoid()
 # Using recursive smoothing spline.
 
 # Example signal: A noisy sine wave
-x = np.linspace(0, 2 * np.pi, 100)
+x = np.linspace(0, np.pi, 100)
 signal = np.sin(x) + 0.1 * np.random.normal(size=x.shape)
 
 # Different values for the smoothing parameter in recursive smoothing spline

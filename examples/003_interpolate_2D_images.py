@@ -312,7 +312,7 @@ plot_difference_image(
 # Trivial interpolation
 # ---------------------
 #
-# We our standard interpolation method.
+# We use our standard interpolation method.
 
 (
     resized_2d_interp, 
