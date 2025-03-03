@@ -1,94 +1,120 @@
 """
-haar.py
--------
-Modified version that handles single-row or single-column inputs gracefully
-by skipping the degenerate pass. 
+haar2d.py
+---------
+Implements a 2D-only Haar wavelet transform using row->column decomposition 
+(analysis) and column->row synthesis. Raises an error if ny<2 or nx<2.
 """
 
 import numpy as np
 from .abstractwavelets import AbstractWavelets
 
 class HaarWavelets(AbstractWavelets):
+    """
+    A pure 2D Haar wavelet transform class for images with shape (ny, nx),
+    where ny >= 2, nx >= 2.
+
+    Analysis (single-scale):
+      1) row-wise split
+      2) column-wise split
+    Synthesis (single-scale):
+      1) column-wise merge
+      2) row-wise merge
+
+    If ny < 2 or nx < 2, it raises ValueError. 
+    """
 
     def __init__(self, scales=3):
         super().__init__(scales=scales)
         self.q = np.sqrt(2.0)
 
     def get_name(self):
-        return "Haar"
+        return "Haar2D"
 
     def get_documentation(self):
-        return "Haar Wavelets Decomposition (with 2D row->col transform)."
+        return "Pure 2D Haar wavelets, requiring ny>=2 and nx>=2."
 
+    # -------------------------
+    # Single-scale analysis
+    # -------------------------
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
         """
-        Single-scale analysis pass:
-         1) Row transform (split),
-         2) Column transform (split),
-        skipping any dimension=1 to avoid degenerate transforms.
+        Single-scale 2D Haar analysis.
+
+        inp: shape=(ny, nx), both >=2
+        Returns a new array of the same shape with row+col splits.
         """
+        ny, nx = inp.shape
+        if ny < 2 or nx < 2:
+            raise ValueError(f"Haar2D requires both ny>=2 and nx>=2, got shape=({ny},{nx}).")
+
+        # Make a copy so we don't overwrite the input
         out = np.copy(inp)
-        ny, nx = out.shape
 
-        # 1) Row pass if more than 1 column
-        if nx > 1:
-            for r in range(ny):
-                out[r, :] = self._split(out[r, :])
+        # 1) row-wise split
+        for r in range(ny):
+            out[r, :] = self._split(out[r, :])
 
-        # 2) Column pass if more than 1 row
-        if ny > 1:
-            for c in range(nx):
-                col = out[:, c]
-                out[:, c] = self._split(col)
+        # 2) column-wise split
+        for c in range(nx):
+            col = out[:, c]
+            out[:, c] = self._split(col)
 
         return out
 
+    # -------------------------
+    # Single-scale synthesis
+    # -------------------------
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
         """
-        Single-scale synthesis pass:
-         1) Column inverse transform (merge),
-         2) Row inverse transform (merge),
-        skipping any dimension=1.
+        Single-scale 2D Haar synthesis (inverse of analysis1).
         """
+        ny, nx = inp.shape
+        if ny < 2 or nx < 2:
+            raise ValueError(f"Haar2D requires both ny>=2 and nx>=2, got shape=({ny},{nx}).")
+
         out = np.copy(inp)
-        ny, nx = out.shape
 
-        # 1) Column pass if ny > 1
-        if ny > 1:
-            for c in range(nx):
-                col = out[:, c]
-                out[:, c] = self._merge(col)
+        # 1) column-wise merge (inverse of column-wise split)
+        for c in range(nx):
+            col = out[:, c]
+            out[:, c] = self._merge(col)
 
-        # 2) Row pass if nx > 1
-        if nx > 1:
-            for r in range(ny):
-                out[r, :] = self._merge(out[r, :])
+        # 2) row-wise merge
+        for r in range(ny):
+            out[r, :] = self._merge(out[r, :])
 
         return out
 
-    def _split(self, v):
+    # -------------------------
+    # Haar 1D split/merge
+    # -------------------------
+    def _split(self, v: np.ndarray) -> np.ndarray:
         """
-        'Split' step of Haar transform on a 1D vector:
-          approximate = (v[2i] + v[2i+1]) / sqrt(2)
-          detail      = (v[2i] - v[2i+1]) / sqrt(2)
+        1D Haar split transform on vector v of length >= 2:
+          A[i] = (v[2i] + v[2i+1]) / sqrt(2)
+          D[i] = (v[2i] - v[2i+1]) / sqrt(2)
+        concatenated as [A0..A_{n/2 -1} | D0..D_{n/2 -1}]
+        If v has odd length, the last element can be handled in various ways.
+        Here we assume v has even length => because nx, ny >= 2, 
+        but if you want to handle any length, you can adapt this code.
         """
         n = v.shape[0]
         half = n // 2
         out = np.zeros(n, dtype=v.dtype)
         for i in range(half):
-            j = 2*i
-            out[i]       = (v[j] + v[j+1]) / self.q
-            out[i+half]  = (v[j] - v[j+1]) / self.q
-
-        # If n is odd, the last sample has no pair => you might keep it as is or do something else
-        if (n % 2) == 1:
-            # For safety, replicate last sample in the last position
-            out[-1] = v[-1]
+            j = 2 * i
+            a = (v[j] + v[j+1]) / self.q
+            d = (v[j] - v[j+1]) / self.q
+            out[i]        = a
+            out[i + half] = d
+        # If n is odd, you'd handle the leftover element, 
+        # but let's assume n is even for simplicity.
         return out
 
-    def _merge(self, v):
+    def _merge(self, v: np.ndarray) -> np.ndarray:
         """
-        'Merge' step (inverse of 'split') on a 1D vector.
+        1D Haar merge (inverse of _split) on vector v.
+        First half is approximate, second half is detail.
         """
         n = v.shape[0]
         half = n // 2
@@ -98,8 +124,4 @@ class HaarWavelets(AbstractWavelets):
             d = v[i + half]
             out[2*i]   = (a + d) / self.q
             out[2*i+1] = (a - d) / self.q
-
-        # handle odd length similarly
-        if (n % 2) == 1:
-            out[-1] = v[-1]
         return out
