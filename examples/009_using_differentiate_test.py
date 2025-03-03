@@ -537,7 +537,7 @@ def test_smallest_hessian_smooth(rtol, atol):
 def main():
     # Define a single tolerance for all tests here:
     RTOL = 1e-2
-    ATOL = 1
+    ATOL = 1.0
 
     print("Running all tests with rtol=", RTOL, "and atol=", ATOL)
 
