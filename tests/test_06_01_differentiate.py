@@ -1,6 +1,5 @@
-# 009_using_differentiate_test.py
-
 import numpy as np
+import pytest
 from splineops.differentiate.differentials import differentials
 
 ##############################################################################
@@ -31,7 +30,7 @@ class differentialsNoNorm(differentials):
         elif self.operation == self.HESSIAN_ORIENTATION:
             self.image = self.hessian_orientation()
 
-        # BUT DO NOT normalize:
+        # DO NOT normalize here:
         # self.image -= self.image.min()
         # self.image /= self.image.max()
 
@@ -103,6 +102,7 @@ java_gradient_magnitude_of_noise_width_10_by_height_15 = [
 	[0.195, 1.236, 2.047, 0.411, 1.176, 0.683, 0.840, 0.819, 0.970, 0.380],
 	[0.000, 0.300, 1.230, 1.990, 0.468, 0.268, 0.876, 1.934, 0.128, 0.000]
 ]
+
 java_gradient_magnitude_of_smooth_width_19_by_height_20 = [
 	[0.000, 0.093, 0.021, 0.039, 0.119, 0.169, 0.152, 0.066, 0.045, 0.126, 0.140, 0.083, 0.015, 0.096, 0.120, 0.096, 0.056, 0.049, 0.000],
 	[0.050, 0.120, 0.030, 0.035, 0.109, 0.148, 0.142, 0.097, 0.056, 0.084, 0.108, 0.102, 0.083, 0.072, 0.079, 0.098, 0.092, 0.120, 0.070],
@@ -144,6 +144,7 @@ java_gradient_direction_of_noise_width_10_by_height_15 = [
 	[0.000, -1.363, 0.795, -0.457, 3.043, -2.422, 2.634, 2.762, -1.259, 0.000],
 	[0.000, 1.571, 1.571, -1.571, 1.571, 1.571, -1.571, 1.571, 1.571, 0.000]
 ]
+
 java_gradient_direction_of_smooth_width_19_by_height_20 = [
 	[0.000, 1.571, 1.571, -1.571, -1.571, -1.571, -1.571, -1.571, 1.571, 1.571, 1.571, 1.571, -1.571, -1.571, -1.571, -1.571, -1.571, -1.571, 0.000],
 	[3.142, 1.776, 1.789, -1.609, -1.539, -1.410, -1.182, -0.767, 0.326, 1.458, 1.977, 2.473, -3.129, -2.263, -1.432, -1.014, -1.016, -1.570, 3.142],
@@ -185,6 +186,7 @@ java_laplacian_of_noise_width_10_by_height_15 = [
 	[14.088, -10.954, -0.332, 0.580, -0.406, -1.861, -5.389, 4.656, -11.597, -6.749],
 	[3.017, -3.432, 10.895, 2.187, -9.474, 9.906, -4.579, -3.088, 15.169, 2.941]
 ]
+
 java_laplacian_of_smooth_width_19_by_height_20 = [
 	[-0.145, 0.191, 0.060, 0.088, 0.055, -0.056, -0.220, -0.311, -0.254, -0.067, 0.168, 0.349, 0.377, 0.232, 0.014, -0.117, -0.090, 0.132, 0.199],
 	[-0.421, 0.103, 0.029, 0.086, 0.073, 0.049, 0.010, -0.026, -0.047, -0.050, -0.044, -0.038, -0.039, -0.042, -0.039, -0.021, -0.063, -0.009, -0.520],
@@ -226,6 +228,7 @@ java_largest_hessian_of_noise_width_10_by_height_15 = [
 	[10.349, -2.885, 2.613, 2.302, 0.927, 2.465, -1.164, 4.480, -1.841, 0.051],
 	[6.366, 3.534, 5.788, 1.331, -3.227, 6.647, -0.221, -1.262, 10.294, 7.561]
 ]
+
 java_largest_hessian_of_smooth_width_19_by_height_20 = [
 	[0.151, 0.111, 0.034, 0.085, 0.075, 0.025, -0.058, -0.114, -0.109, -0.014, 0.143, 0.258, 0.272, 0.174, 0.023, -0.039, -0.040, 0.107, 0.322],
 	[-0.051, 0.140, 0.043, 0.087, 0.062, 0.054, 0.061, 0.059, 0.046, 0.031, 0.038, 0.063, 0.070, 0.059, 0.041, 0.015, -0.003, 0.127, -0.183],
@@ -267,6 +270,7 @@ java_smallest_hessian_of_noise_width_10_by_height_15 = [
 	[3.739, -8.069, -2.944, -1.722, -1.333, -4.326, -4.225, 0.177, -9.757, -6.800],
 	[-3.349, -6.966, 5.107, 0.855, -6.247, 3.258, -4.359, -1.827, 4.875, -4.619]
 ]
+
 java_smallest_hessian_of_smooth_width_19_by_height_20 = [
 	[-0.297, 0.080, 0.026, 0.003, -0.020, -0.081, -0.162, -0.198, -0.145, -0.053, 0.025, 0.091, 0.104, 0.058, -0.009, -0.078, -0.049, 0.025, -0.123],
 	[-0.369, -0.037, -0.015, -0.000, 0.010, -0.005, -0.051, -0.085, -0.093, -0.081, -0.082, -0.101, -0.109, -0.101, -0.080, -0.036, -0.059, -0.136, -0.337],
@@ -308,6 +312,7 @@ java_hessian_orientation_of_noise_width_10_by_height_15 = [
 	[float("nan"), -1.406, -0.067, 0.683, 1.436, -0.078, 1.404, -0.173, -0.085, float("nan")],
 	[0.000, float("nan"), float("nan"), 0.000, float("nan"), float("nan"), float("nan"), float("nan"), float("nan"), float("nan")]
 ]
+
 java_hessian_orientation_of_smooth_width_19_by_height_20 = [
 	[float("nan"), float("nan"), 0.000, float("nan"), 0.000, 0.000, 0.000, float("nan"), float("nan"), float("nan"), float("nan"), 1.571, float("nan"), 1.571, 1.571, float("nan"), float("nan"), 1.571, float("nan")],
 	[float("nan"), -0.175, -0.161, -0.027, -0.222, -0.942, -1.319, -1.565, 1.329, 0.973, 0.473, 0.137, -0.103, -0.351, -0.575, -0.458, 0.480, 0.340, float("nan")],
@@ -332,19 +337,19 @@ java_hessian_orientation_of_smooth_width_19_by_height_20 = [
 ]
 
 ##############################################################################
-# 4) Helper to make reliable comparisons
+# 4) Helper to compare angles, allowing certain offsets
 ##############################################################################
 
 def assert_angle_allclose(actual, expected, offsets, rtol, atol, period=2*np.pi):
     """
-    Compare two angle arrays (in radians) allowing each pixel’s difference to be 
-    near one of the given offsets. The difference is wrapped into the interval 
-    [-period/2, period/2].
+    Compare two angle arrays (in radians) allowing each pixel’s difference
+    to be near one of the given offsets. The difference is wrapped to
+    [-period/2, period/2] to handle circular equivalences.
     """
     best_diff = None
     for off in offsets:
         alt = expected + off
-        # Wrap differences to the interval [-period/2, period/2]
+        # Wrap differences to [-period/2, period/2]
         delta = actual - alt
         delta_wrapped = (delta + period/2) % period - period/2
         this_diff = np.abs(delta_wrapped)
@@ -352,168 +357,111 @@ def assert_angle_allclose(actual, expected, offsets, rtol, atol, period=2*np.pi)
             best_diff = this_diff
         else:
             best_diff = np.minimum(best_diff, this_diff)
+
     valid_mask = ~np.isnan(expected)
     np.testing.assert_allclose(best_diff[valid_mask], 0.0, rtol=rtol, atol=atol)
 
-
 ##############################################################################
-# 5) TEST FUNCTIONS (accept rtol, atol from main)
+# 5) Individual test functions
+#    We define a single tolerance (rtol, atol) at module scope,
+#    then each test uses them.
 ##############################################################################
 
-def test_gradient_magnitude_noise(rtol, atol):
-    diff = differentialsNoNorm(np.array(noise_width_10_by_height_15, dtype=np.float32))
+RTOL = 1e-2
+ATOL = 1.0
+
+@pytest.mark.parametrize("image_data, expected_data", [
+    (noise_width_10_by_height_15,  java_gradient_magnitude_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, java_gradient_magnitude_of_smooth_width_19_by_height_20),
+])
+def test_gradient_magnitude(image_data, expected_data):
+    """Test gradient magnitude for both 'noise' and 'smooth' images."""
+    diff = differentialsNoNorm(np.array(image_data, dtype=np.float32))
     diff.run(differentials.GRADIENT_MAGNITUDE)
     computed = diff.image
-    expected = np.array(java_gradient_magnitude_of_noise_width_10_by_height_15, dtype=np.float32)
-    np.testing.assert_allclose(computed, expected, rtol=rtol, atol=atol)
-    print("Gradient Magnitude (noise) PASS")
+    expected = np.array(expected_data, dtype=np.float32)
+    np.testing.assert_allclose(computed, expected, rtol=RTOL, atol=ATOL)
 
 
-def test_gradient_magnitude_smooth(rtol, atol):
-    diff = differentialsNoNorm(np.array(smooth_width_19_by_height_20, dtype=np.float32))
-    diff.run(differentials.GRADIENT_MAGNITUDE)
-    computed = diff.image
-    expected = np.array(java_gradient_magnitude_of_smooth_width_19_by_height_20, dtype=np.float32)
-    np.testing.assert_allclose(computed, expected, rtol=rtol, atol=atol)
-    print("Gradient Magnitude (smooth) PASS")
-
-def test_gradient_direction_noise(rtol, atol):
-    diff = differentialsNoNorm(np.array(noise_width_10_by_height_15, dtype=np.float32))
+@pytest.mark.parametrize("image_data, expected_data", [
+    (noise_width_10_by_height_15,  java_gradient_direction_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, java_gradient_direction_of_smooth_width_19_by_height_20),
+])
+def test_gradient_direction(image_data, expected_data):
+    """
+    Test gradient direction for both 'noise' and 'smooth' images.
+    We adjust computed angles to match the Java convention:
+      angle_java = (pi/2) - angle_python
+    Then allow offsets (0, π/2) in assert_angle_allclose.
+    """
+    diff = differentialsNoNorm(np.array(image_data, dtype=np.float32))
     diff.run(differentials.GRADIENT_DIRECTION)
     computed = diff.image
-    # Adjust computed angles to match Java’s convention:
     computed_adjusted = np.pi/2 - computed
-    expected = np.array(java_gradient_direction_of_noise_width_10_by_height_15, dtype=np.float32)
-    # Allow differences of 0 or π/2 (90°) to pass:
+    expected = np.array(expected_data, dtype=np.float32)
     offsets = [0.0, np.pi/2]
-    assert_angle_allclose(computed_adjusted, expected, offsets, rtol, atol)
-    print("Gradient Direction (noise) PASS")
+    assert_angle_allclose(computed_adjusted, expected, offsets, RTOL, ATOL)
 
-def test_gradient_direction_smooth(rtol, atol):
-    diff = differentialsNoNorm(np.array(smooth_width_19_by_height_20, dtype=np.float32))
-    diff.run(differentials.GRADIENT_DIRECTION)
-    computed = diff.image
-    # Adjust computed angles to match Java's convention:
-    computed_adjusted = np.pi/2 - computed
-    expected = np.array(java_gradient_direction_of_smooth_width_19_by_height_20, dtype=np.float32)
-    offsets = [0.0, np.pi/2]
-    assert_angle_allclose(computed_adjusted, expected, offsets, rtol, atol)
-    print("Gradient Direction (smooth) PASS")
 
-def test_hessian_orientation_noise(rtol, atol):
-    diff = differentialsNoNorm(np.array(noise_width_10_by_height_15, dtype=np.float32))
-    diff.run(differentials.HESSIAN_ORIENTATION)
-    computed = diff.image
-    expected = np.array(java_hessian_orientation_of_noise_width_10_by_height_15, dtype=np.float32)
-    # For Hessian orientation, allow a candidate offset of 0 and π/2.
-    offsets = [
-        0.0,
-        np.pi/2, -np.pi/2,
-        np.pi,   -np.pi,
-        3*np.pi/2, -3*np.pi/2
-    ]
-    assert_angle_allclose(computed, expected, period=2 * np.pi, offsets=offsets, rtol=rtol, atol=atol)
-    print("Hessian Orientation (noise) PASS")
-
-def test_hessian_orientation_smooth(rtol, atol):
-    diff = differentialsNoNorm(np.array(smooth_width_19_by_height_20, dtype=np.float32))
-    diff.run(differentials.HESSIAN_ORIENTATION)
-    computed = diff.image
-    expected = np.array(java_hessian_orientation_of_smooth_width_19_by_height_20, dtype=np.float32)
-    offsets = [
-        0.0,
-        np.pi/2, -np.pi/2,
-        np.pi,   -np.pi,
-        3*np.pi/2, -3*np.pi/2
-    ]
-    assert_angle_allclose(computed, expected, period=2 * np.pi, offsets=offsets, rtol=rtol, atol=atol)
-    print("Hessian Orientation (smooth) PASS")
-
-def test_laplacian_noise(rtol, atol):
-    diff = differentialsNoNorm(np.array(noise_width_10_by_height_15, dtype=np.float32))
+@pytest.mark.parametrize("image_data, expected_data", [
+    (noise_width_10_by_height_15,  java_laplacian_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, java_laplacian_of_smooth_width_19_by_height_20),
+])
+def test_laplacian(image_data, expected_data):
+    """Test Laplacian for both 'noise' and 'smooth' images."""
+    diff = differentialsNoNorm(np.array(image_data, dtype=np.float32))
     diff.run(differentials.LAPLACIAN)
     computed = diff.image
-    expected = np.array(java_laplacian_of_noise_width_10_by_height_15, dtype=np.float32)
-    np.testing.assert_allclose(computed, expected, rtol=rtol, atol=atol)
-    print("Laplacian (noise) PASS")
+    expected = np.array(expected_data, dtype=np.float32)
+    np.testing.assert_allclose(computed, expected, rtol=RTOL, atol=ATOL)
 
 
-def test_laplacian_smooth(rtol, atol):
-    diff = differentialsNoNorm(np.array(smooth_width_19_by_height_20, dtype=np.float32))
-    diff.run(differentials.LAPLACIAN)
-    computed = diff.image
-    expected = np.array(java_laplacian_of_smooth_width_19_by_height_20, dtype=np.float32)
-    np.testing.assert_allclose(computed, expected, rtol=rtol, atol=atol)
-    print("Laplacian (smooth) PASS")
-
-
-def test_largest_hessian_noise(rtol, atol):
-    diff = differentialsNoNorm(np.array(noise_width_10_by_height_15, dtype=np.float32))
+@pytest.mark.parametrize("image_data, expected_data", [
+    (noise_width_10_by_height_15,  java_largest_hessian_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, java_largest_hessian_of_smooth_width_19_by_height_20),
+])
+def test_largest_hessian(image_data, expected_data):
+    """Test the largest Hessian eigenvalue for both 'noise' and 'smooth'."""
+    diff = differentialsNoNorm(np.array(image_data, dtype=np.float32))
     diff.run(differentials.LARGEST_HESSIAN)
     computed = diff.image
-    expected = np.array(java_largest_hessian_of_noise_width_10_by_height_15, dtype=np.float32)
-    np.testing.assert_allclose(computed, expected, rtol=rtol, atol=atol)
-    print("Largest Hessian (noise) PASS")
+    expected = np.array(expected_data, dtype=np.float32)
+    np.testing.assert_allclose(computed, expected, rtol=RTOL, atol=ATOL)
 
 
-def test_largest_hessian_smooth(rtol, atol):
-    diff = differentialsNoNorm(np.array(smooth_width_19_by_height_20, dtype=np.float32))
-    diff.run(differentials.LARGEST_HESSIAN)
-    computed = diff.image
-    expected = np.array(java_largest_hessian_of_smooth_width_19_by_height_20, dtype=np.float32)
-    np.testing.assert_allclose(computed, expected, rtol=rtol, atol=atol)
-    print("Largest Hessian (smooth) PASS")
-
-
-def test_smallest_hessian_noise(rtol, atol):
-    diff = differentialsNoNorm(np.array(noise_width_10_by_height_15, dtype=np.float32))
+@pytest.mark.parametrize("image_data, expected_data", [
+    (noise_width_10_by_height_15,  java_smallest_hessian_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, java_smallest_hessian_of_smooth_width_19_by_height_20),
+])
+def test_smallest_hessian(image_data, expected_data):
+    """Test the smallest Hessian eigenvalue for both 'noise' and 'smooth'."""
+    diff = differentialsNoNorm(np.array(image_data, dtype=np.float32))
     diff.run(differentials.SMALLEST_HESSIAN)
     computed = diff.image
-    expected = np.array(java_smallest_hessian_of_noise_width_10_by_height_15, dtype=np.float32)
-    np.testing.assert_allclose(computed, expected, rtol=rtol, atol=atol)
-    print("Smallest Hessian (noise) PASS")
+    expected = np.array(expected_data, dtype=np.float32)
+    np.testing.assert_allclose(computed, expected, rtol=RTOL, atol=ATOL)
 
 
-def test_smallest_hessian_smooth(rtol, atol):
-    diff = differentialsNoNorm(np.array(smooth_width_19_by_height_20, dtype=np.float32))
-    diff.run(differentials.SMALLEST_HESSIAN)
+@pytest.mark.parametrize("image_data, expected_data", [
+    (noise_width_10_by_height_15,  java_hessian_orientation_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, java_hessian_orientation_of_smooth_width_19_by_height_20),
+])
+def test_hessian_orientation(image_data, expected_data):
+    """
+    Test Hessian orientation for both 'noise' and 'smooth' images.
+    We allow offsets of 0, ±π/2, ±π, ±3π/2 because eigenvectors
+    can flip direction or swap sign, leading to these shifts in angle.
+    """
+    diff = differentialsNoNorm(np.array(image_data, dtype=np.float32))
+    diff.run(differentials.HESSIAN_ORIENTATION)
     computed = diff.image
-    expected = np.array(java_smallest_hessian_of_smooth_width_19_by_height_20, dtype=np.float32)
-    np.testing.assert_allclose(computed, expected, rtol=rtol, atol=atol)
-    print("Smallest Hessian (smooth) PASS")
+    expected = np.array(expected_data, dtype=np.float32)
 
-
-##############################################################################
-# 6) MAIN
-##############################################################################
-
-def main():
-    # Define a single tolerance for all tests here:
-    RTOL = 1e-2
-    ATOL = 1.0
-
-    print("Running all tests with rtol=", RTOL, "and atol=", ATOL)
-
-    test_gradient_magnitude_noise(RTOL, ATOL)
-    test_gradient_magnitude_smooth(RTOL, ATOL)
-
-    test_gradient_direction_noise(RTOL, ATOL)
-    test_gradient_direction_smooth(RTOL, ATOL)
-
-    test_hessian_orientation_noise(RTOL, ATOL)
-    test_hessian_orientation_smooth(RTOL, ATOL)
-
-    test_laplacian_noise(RTOL, ATOL)
-    test_laplacian_smooth(RTOL, ATOL)
-
-    test_largest_hessian_noise(RTOL, ATOL)
-    test_largest_hessian_smooth(RTOL, ATOL)
-
-    test_smallest_hessian_noise(RTOL, ATOL)
-    test_smallest_hessian_smooth(RTOL, ATOL)
-
-
-    print("\nAll tests completed.")
-
-if __name__ == "__main__":
-    main()
+    # Potential offsets for orientation equivalences
+    offsets = [
+        0.0,
+        np.pi/2,  -np.pi/2,
+        np.pi,    -np.pi,
+        3*np.pi/2, -3*np.pi/2
+    ]
+    assert_angle_allclose(computed, expected, offsets=offsets, rtol=RTOL, atol=ATOL)
