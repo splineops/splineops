@@ -25,6 +25,7 @@ You can download this example at the tab at right, as both a Python script and a
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import requests
 from io import BytesIO
 from PIL import Image
@@ -57,14 +58,10 @@ image_gray = (
 # %%
 # Create a helper function to visualize results with a colorbar:
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-def show_result_with_colorbar(title, result, units="Value"):
+def show_result_with_colorbar(title, result, units="Value", percentile_range=(5, 95)):
     """
-    Displays a 2D result with a colorbar that has the same height as the image,
-    preserving the original aspect ratio.
-
+    Displays a 2D result with a colorbar scaled using the given percentile range.
+    
     Parameters
     ----------
     title : str
@@ -73,34 +70,36 @@ def show_result_with_colorbar(title, result, units="Value"):
         2D array representing the image or field to display.
     units : str
         Label for the colorbar (e.g., 'Intensity', 'Radians', etc.).
+    percentile_range : tuple or None
+        Percentiles to use for scaling the colormap. If None, use the min and max of the data.
     """
-    # 1) Compute the aspect ratio based on image shape
-    #    shape = (height, width)
+
+    # Compute aspect ratio and set figure dimensions
     h, w = result.shape
-    aspect_ratio = h / float(w)  # e.g. 0.75 means the image is wider than it is tall
-    
-    # 2) Choose a reference figure width in inches, then compute figure height
-    #    so that h:w is respected. (Feel free to adjust fig_width.)
+    aspect_ratio = h / float(w)
     fig_width = 6.0
     fig_height = fig_width * aspect_ratio
-
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-
-    # 3) Display the image with aspect='equal', ensuring each data cell is square
-    im = ax.imshow(result, cmap='gray', aspect='equal')
+    
+    # Determine vmin and vmax based on percentiles if provided
+    if percentile_range is not None:
+        pmin, pmax = np.percentile(result, percentile_range)
+        im = ax.imshow(result, cmap='gray', aspect='equal', vmin=pmin, vmax=pmax)
+        cbar_label = f"{units} range [{pmin:.3f}, {pmax:.3f}]"
+    else:
+        im = ax.imshow(result, cmap='gray', aspect='equal')
+        vmin, vmax = result.min(), result.max()
+        cbar_label = f"{units} range [{vmin:.3f}, {vmax:.3f}]"
+    
     ax.set_title(title)
     ax.axis('off')
 
-    # 4) Use make_axes_locatable so the colorbar axis has the same height as the image axis
+    # Create a colorbar with matching height using make_axes_locatable
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-
-    # 5) Add the colorbar. The label includes the numeric min/max of the data.
     cbar = plt.colorbar(im, cax=cax)
-    vmin, vmax = result.min(), result.max()
-    cbar.set_label(f"{units} range [{vmin:.3f}, {vmax:.3f}]")
+    cbar.set_label(cbar_label)
 
-    # 6) Make sure everything fits nicely within the figure bounding box.
     plt.tight_layout()
     plt.show()
 
