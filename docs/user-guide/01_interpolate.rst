@@ -9,7 +9,7 @@ Overview
 Tedious Construction of Polynomial Splines
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A polynomial spline is a continuously defined function made of polynomial pieces of degree :math:`N`. What makes such a spline special is that all pieces connect smoothly when :math:`N\geq1`. In one dimension, let some piece be defined over :math:`x_{-1}\leq x\leq x_{0}` by the polynomial
+A polynomial spline is a continuously defined function made of polynomial pieces of nonnegative integer degree :math:`N`. What makes such a spline special is that all pieces connect smoothly when :math:`N\geq1`. In one dimension, let some piece be defined over :math:`x_{-1}\leq x\leq x_{0}` by the polynomial
 
 .. math::
    a(x)=a_{0}+\sum_{n=1}^{N}\,a_{n}\,x^{n}
@@ -31,7 +31,7 @@ Then, to be a legitimate part of a polynomial spline, the two pieces :math:`a` a
    {\mathrm{d}}^{N-1}a(x_{0})/{\mathrm{d}}x^{N-1}={\mathrm{d}}^{N-1}b(x_{0})/{\mathrm{d}}x^{N-1}.
 
 
-In one dimension, each polynomial piece has a left neighbor and a right neighbor. With many pieces and a large polynomial degree, the explicit construction of a spline would make for a complicated task that must honor many constraints of continuity. In the interpolation context, one additionally asks that the spline, which we now call :math:`f`, reproduces 
+In one dimension, each polynomial piece has a left neighbor and a right neighbor. With many pieces and a large polynomial degree, the explicit construction of a spline would make for a tedious task that must honor many constraints of continuity. In the interpolation context, one additionally asks that the spline, which we now call :math:`f`, reproduces 
 the list :math:`\{y[k]\}_{k=0}^{K-1}` of :math:`K` samples at the set :math:`\{x[k]\}_{k=0}^{K-1}` of :math:`K` sampling locations, with
 
 .. math::
@@ -68,7 +68,7 @@ while :math:`k_{1}\in[0\ldots W-1]` and :math:`k_{2}\in[0\ldots H-1]` are intege
    f({\mathbf{x}})=\sum_{q_{3}\in{\mathbb{Z}}}\,\left(\sum_{q_{2}\in{\mathbb{Z}}}\,\left(\sum_{q_{1}\in{\mathbb{Z}}}\,c[{\mathbf{q}}]\,\beta^{N}(x_{1}-q_{1})\right)\,\beta^{N}(x_{2}-q_{2})\right)\,\beta^{N}(x_{3}-q_{3}).
 
 
-Extension of Splines Beyond their Known Support
+Extension of Splines Beyond Their Known Support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is remarkable that splines can be interrogated at any coordinate, not only at a non-integer one, but also at one that would be far remote from the support of the samples that define, say, an image. This is achieved by imposing some structural organization to the spline coefficients. Typically, this organization takes some form of periodicity, possibly combined with local reversals of chunks of samples. It allows us to predict the value of a spline coefficient :math:`c[{\mathbf{k}}]` for any :math:`{\mathbf{k}}\in{\mathbb{Z}}^{2}` from the sole knowledge 
