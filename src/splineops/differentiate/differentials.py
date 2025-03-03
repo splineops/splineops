@@ -100,11 +100,13 @@ class differentials:
         Returns
         -------
         ndarray
-            Element-wise product of horizontal and vertical gradients.
+            Element-wise cross hessian.
         """
-        h_grad = self.get_horizontal_gradient(image, tolerance)
-        v_grad = self.get_vertical_gradient(image, tolerance)
-        return h_grad * v_grad
+        # 1) partial f / partial x
+        intermediate = self.get_horizontal_gradient(image, tolerance)
+        # 2) partial/partial y of that
+        f_xy = self.get_vertical_gradient(intermediate, tolerance)
+        return f_xy
 
     def get_horizontal_gradient(self, image, tolerance):
         """
@@ -418,8 +420,8 @@ class differentials:
         """
         h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
         v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
-        hv_hess = self.get_cross_hessian(self.image.copy(), self.FLT_EPSILON)
-        return 0.5 * (h_hess + v_hess + np.sqrt(4.0 * hv_hess ** 2 + (h_hess - v_hess) ** 2))
+        hv_hess = self.get_cross_hessian(self.image.copy(), self.FLT_EPSILON)  # Now the real f_xy
+        return 0.5 * (h_hess + v_hess + np.sqrt(4.0 * hv_hess**2 + (h_hess - v_hess)**2))
 
     def smallest_hessian(self):
         """

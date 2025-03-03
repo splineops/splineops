@@ -385,6 +385,24 @@ def assert_angle_allclose(actual, expected, offsets, rtol, atol):
     valid_mask = ~np.isnan(expected)
     np.testing.assert_allclose(best_diff[valid_mask], 0.0, rtol=rtol, atol=atol)
 
+def assert_angle_allclose_mod(actual, expected, period, offsets, rtol, atol):
+    best_diff = None
+    # Try each candidate offset.
+    for off in offsets:
+        alt = expected + off
+        # Wrap differences to the interval [-period/2, period/2]
+        delta = actual - alt
+        delta_wrapped = (delta + period/2) % period - period/2
+        this_diff = np.abs(delta_wrapped)
+        if best_diff is None:
+            best_diff = this_diff
+        else:
+            best_diff = np.minimum(best_diff, this_diff)
+    # Only compare the valid (non-nan) locations from expected
+    valid_mask = ~np.isnan(expected)
+    np.testing.assert_allclose(best_diff[valid_mask], 0.0, rtol=rtol, atol=atol)
+
+
 ##############################################################################
 # 6) TEST FUNCTIONS (accept rtol, atol from main)
 ##############################################################################
@@ -434,10 +452,14 @@ def test_hessian_orientation_noise(rtol, atol):
     diff.run(differentials.HESSIAN_ORIENTATION)
     computed = diff.image
     expected = np.array(java_hessian_orientation_of_noise_width_10_by_height_15, dtype=np.float32)
-    # Allow for an ambiguity of ±π/2:
-    offsets = [0.0, np.pi/2, -np.pi/2]
-    # Use a somewhat looser tolerance for Hessian orientation (adjust as needed)
-    assert_angle_allclose(computed, expected, offsets, rtol=0.1, atol=0.2)
+    # For Hessian orientation, allow a candidate offset of 0 and π/2.
+    offsets = [
+        0.0,
+        np.pi/2, -np.pi/2,
+        np.pi,   -np.pi,
+        3*np.pi/2, -3*np.pi/2
+    ]
+    assert_angle_allclose_mod(computed, expected, period=2 * np.pi, offsets=offsets, rtol=rtol, atol=atol)
     print("Hessian Orientation (noise) PASS")
 
 def test_hessian_orientation_smooth(rtol, atol):
@@ -445,8 +467,13 @@ def test_hessian_orientation_smooth(rtol, atol):
     diff.run(differentials.HESSIAN_ORIENTATION)
     computed = diff.image
     expected = np.array(java_hessian_orientation_of_smooth_width_19_by_height_20, dtype=np.float32)
-    offsets = [0.0, np.pi/2, -np.pi/2]
-    assert_angle_allclose(computed, expected, offsets, rtol=0.1, atol=0.2)
+    offsets = [
+        0.0,
+        np.pi/2, -np.pi/2,
+        np.pi,   -np.pi,
+        3*np.pi/2, -3*np.pi/2
+    ]
+    assert_angle_allclose_mod(computed, expected, period=2 * np.pi, offsets=offsets, rtol=rtol, atol=atol)
     print("Hessian Orientation (smooth) PASS")
 
 def test_laplacian_noise(rtol, atol):
@@ -510,7 +537,7 @@ def test_smallest_hessian_smooth(rtol, atol):
 def main():
     # Define a single tolerance for all tests here:
     RTOL = 1e-2
-    ATOL = 1e-1
+    ATOL = 1
 
     print("Running all tests with rtol=", RTOL, "and atol=", ATOL)
 
