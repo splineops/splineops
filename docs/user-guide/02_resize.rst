@@ -16,9 +16,9 @@ The `resize` function in the `splineops` library enables resizing (scaling) of N
 
 Three resizing methods can be called:
 
-- **Standard Interpolation**: Smooth, continuous interpolation.
-- **Least-Squares Projection**: Optimal resizing with minimal approximation error. Slower than standard interpolation but with better interpolation quality. It requires float64 precision.
-- **Oblique Projection**: Similar to Least-Squares projection, but faster and lower quality. It works well with with float32 precision
+- Standard Interpolation: Smooth, continuous interpolation.
+- Least-Squares Projection: Optimal resizing with minimal approximation error. Slower than standard interpolation but with better interpolation quality. It requires float64 precision.
+- Oblique Projection: Similar to Least-Squares projection, but faster and lower quality. It works well with with float32 precision
 
 In general, it is recommended to use standard interpolation for most cases; in case higher accuracy is required and float64 precision is used, least-squares projection is recommended.
 Oblique projection provides better balance of performance, speed and accuracy.
@@ -43,25 +43,25 @@ where:
 - :math:`\beta_n(x)` is the B-spline of degree :math:`n`,
 - :math:`c_k` are the interpolation coefficients obtained by applying a prefilter to the input samples.
 
-The key property of B-splines is their **compact support**, which ensures efficient computation while maintaining high smoothness. The interpolation requirement,
+The key property of B-splines is their compact support, which ensures efficient computation while maintaining high smoothness. The interpolation requirement,
 
 .. math::
 
     s(k) = f_k,
 
-is satisfied by computing the coefficients :math:`c_k` through a **digital prefiltering step** using a recursive IIR implementation.
+is satisfied by computing the coefficients :math:`c_k` through a digital prefiltering step using a recursive IIR implementation.
 
 Least-Squares Projection
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Least-squares projection provides an **optimal approximation** of a function in a given space by minimizing the squared error. Instead of direct interpolation, 
+Least-squares projection provides an optimal approximation of a function in a given space by minimizing the squared error. Instead of direct interpolation, 
 the least-squares approach seeks to find the function :math:`s(x)` in a spline space :math:`V_n` that best approximates a given function :math:`f(x)` in the sense of:
 
 .. math::
 
     \min_{s \in V_n} \int |f(x) - s(x)|^2 dx.
 
-The least-squares approximation is obtained by **projecting** :math:`f(x)` onto the space spanned by the basis functions. This projection is given by:
+The least-squares approximation is obtained by projecting :math:`f(x)` onto the space spanned by the basis functions. This projection is given by:
 
 .. math::
 
@@ -77,15 +77,15 @@ This method effectively reduces aliasing and blocking artifacts, improving image
 Oblique Projection
 ~~~~~~~~~~~~~~~~~~
 
-Oblique projection is a generalization of least-squares projection where the approximation space and the analysis space are different. Instead of computing an **orthogonal** 
+Oblique projection is a generalization of least-squares projection where the approximation space and the analysis space are different. Instead of computing an orthogonal 
 projection, we use an auxiliary analysis function :math:`\psi(x)`, leading to an approximation:
 
 .. math::
 
     s(x) = \sum_k \langle f, \psi_k \rangle \tilde{\varphi}_k(x).
 
-If :math:`\psi_k = \tilde{\varphi}_k`, we obtain the **orthogonal projection** (least-squares solution). Otherwise, when :math:`\psi_k` differs from :math:`\tilde{\varphi}_k`, 
-the projection is **oblique**.
+If :math:`\psi_k = \tilde{\varphi}_k`, we obtain the orthogonal projection (least-squares solution). Otherwise, when :math:`\psi_k` differs from :math:`\tilde{\varphi}_k`, 
+the projection is oblique.
 
 The oblique projection has lower computational complexity than the least-squares projection, as it avoids explicit computation of the optimal prefilter. 
 However, it introduces a slight approximation error depending on the angle between the analysis and synthesis spaces.

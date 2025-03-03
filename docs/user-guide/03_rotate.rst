@@ -95,18 +95,18 @@ Interpolation
 
 The rotation often results in coordinates that do not align with the original data grid. To compute the data values at these rotated coordinates, spline interpolation is used:
 
-- **TensorSpline Interpolation**: This method uses tensor-product B-splines for smooth and accurate interpolation in multiple dimensions, minimizing artifacts such as aliasing and ensuring high-quality results.
+- TensorSpline Interpolation: This method uses tensor-product B-splines for smooth and accurate interpolation in multiple dimensions, minimizing artifacts such as aliasing and ensuring high-quality results.
 
 Implementation Details
 ----------------------
 
-1. **Centering Coordinates**: The coordinates are shifted such that the center of rotation aligns with the origin.
+1. Centering Coordinates: The coordinates are shifted such that the center of rotation aligns with the origin.
    
-2. **Applying Rotation Matrix**: The appropriate rotation matrix (2D or 3D) is applied to the centered coordinates.
+2. Applying Rotation Matrix: The appropriate rotation matrix (2D or 3D) is applied to the centered coordinates.
 
-3. **Translating Back**: The rotated coordinates are shifted back to their original location by adding the center coordinates.
+3. Translating Back: The rotated coordinates are shifted back to their original location by adding the center coordinates.
 
-4. **Interpolation**: Spline interpolation is applied to evaluate the rotated data values at the new coordinates.
+4. Interpolation: Spline interpolation is applied to evaluate the rotated data values at the new coordinates.
 
 Rotate Example
 --------------

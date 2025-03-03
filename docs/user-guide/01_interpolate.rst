@@ -12,22 +12,35 @@ Tedious Construction of Polynomial Splines
 A polynomial spline is a continuously defined function made of polynomial pieces of nonnegative integer degree :math:`N`. What makes such a spline special is that all pieces connect smoothly when :math:`N\geq1`. In one dimension, let some piece be defined over :math:`x_{-1}\leq x\leq x_{0}` by the polynomial
 
 .. math::
+   
    a(x)=a_{0}+\sum_{n=1}^{N}\,a_{n}\,x^{n}
+
 and let an adjacent piece be defined over :math:`x_{0}\leq x\leq x_{1}` as
 
 .. math::
+
    b(x)=b_{0}+\sum_{n=1}^{N}\,b_{n}\,x^{n}.
+
 Then, to be a legitimate part of a polynomial spline, the two pieces :math:`a` and :math:`b` must join continuously at :math:`x_{0}`. The first derivatives must also be in agreement; likewise, the next derivatives are in agreement, too, up to the :math:`\left(N-1\right)` th derivative. (However, the derivatives of order :math:`N` of :math:`a` and :math:`b` are allowed to disagree at :math:`x_{0}`.)
 
 .. math::
+
    a(x_{0})=b(x_{0})
+
 .. math::
+
    \dot{a}(x_{0})=\dot{b}(x_{0})
+
 .. math::
+
    \ddot{a}(x_{0})=\ddot{b}(x_{0})
+
 .. math::
+
    \vdots
+
 .. math::
+
    {\mathrm{d}}^{N-1}a(x_{0})/{\mathrm{d}}x^{N-1}={\mathrm{d}}^{N-1}b(x_{0})/{\mathrm{d}}x^{N-1}.
 
 
@@ -35,6 +48,7 @@ In one dimension, each polynomial piece has a left neighbor and a right neighbor
 the list :math:`\{y[k]\}_{k=0}^{K-1}` of :math:`K` samples at the set :math:`\{x[k]\}_{k=0}^{K-1}` of :math:`K` sampling locations, with
 
 .. math::
+
    f(x[k])=y[k].
 
 
@@ -56,15 +70,20 @@ Tensor Product of Splines
 In one dimension, we write a generic spline in terms of :math:`x\in{\mathbb{R}}` as
 
 .. math::
+
    f(x)=\sum_{k\in{\mathbb{Z}}}\,c[k]\,\beta^{N}(x-k).
+
 In multiple dimensions, we consider tensor-product splines. For instance, a continuously defined grayscale spline image that interpolates the array :math:`y[k_{1},k_{2}]` of width :math:`W` and height :math:`H` writes
 
 .. math::
+
    f(x_{1},x_{2})=\sum_{q_{2}\in{\mathbb{Z}}}\,\left(\sum_{q_{1}\in{\mathbb{Z}}}\,c[q_{1},q_{2}]\,\beta^{N}(x_{1}-q_{1})\right)\,\beta^{N}(x_{2}-q_{2})
+
 and satisfies that :math:`f(k_{1},k_{2})=y[k_{1},k_{2}]`. Pay attention that :math:`(x_{1},x_{2})\in{\mathbb{R}}^{2}` is a continuously defined two-component vector, 
 while :math:`k_{1}\in[0\ldots W-1]` and :math:`k_{2}\in[0\ldots H-1]` are integers. Similarly, a spline volume would write
 
 .. math::
+
    f({\mathbf{x}})=\sum_{q_{3}\in{\mathbb{Z}}}\,\left(\sum_{q_{2}\in{\mathbb{Z}}}\,\left(\sum_{q_{1}\in{\mathbb{Z}}}\,c[{\mathbf{q}}]\,\beta^{N}(x_{1}-q_{1})\right)\,\beta^{N}(x_{2}-q_{2})\right)\,\beta^{N}(x_{3}-q_{3}).
 
 
