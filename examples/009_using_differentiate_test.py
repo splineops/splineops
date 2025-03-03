@@ -332,62 +332,16 @@ java_hessian_orientation_of_smooth_width_19_by_height_20 = [
 ]
 
 ##############################################################################
-# 4) Orientation arrays with "nan", plus a helper to convert them
+# 4) Helper to make reliable comparisons
 ##############################################################################
 
-def convert_raw_list_with_nans(raw_list_2d):
-    arr = []
-    for row in raw_list_2d:
-        new_row = []
-        for val in row:
-            if isinstance(val, str) and val.lower() == "nan":
-                new_row.append(np.nan)
-            else:
-                new_row.append(float(val))
-        arr.append(new_row)
-    return np.array(arr, dtype=np.float32)
-
-# E.g.:
-# java_hessian_orientation_of_noise_width_10_by_height_15_raw = [...]
-# java_hessian_orientation_of_smooth_width_19_by_height_20_raw = [...]
-
-# Then convert them:
-# java_hessian_orientation_of_noise_width_10_by_height_15 = convert_raw_list_with_nans(...)
-# java_hessian_orientation_of_smooth_width_19_by_height_20 = convert_raw_list_with_nans(...)
-
-
-##############################################################################
-# 5) Helper to make reliable comparisons
-##############################################################################
-
-def assert_allclose_ignore_nan(actual, expected, rtol, atol):
-    if actual.shape != expected.shape:
-        raise AssertionError(f"Shape mismatch: {actual.shape} vs {expected.shape}")
-    valid_mask = ~np.isnan(expected)
-    np.testing.assert_allclose(actual[valid_mask], expected[valid_mask], rtol=rtol, atol=atol)
-
-def assert_angle_allclose(actual, expected, offsets, rtol, atol):
+def assert_angle_allclose(actual, expected, offsets, rtol, atol, period=2*np.pi):
     """
-    Compares two angle arrays (in radians) and allows each pixel’s difference
-    to be near one of the given offsets.
+    Compare two angle arrays (in radians) allowing each pixel’s difference to be 
+    near one of the given offsets. The difference is wrapped into the interval 
+    [-period/2, period/2].
     """
     best_diff = None
-    for off in offsets:
-        alt = expected + off
-        delta = actual - alt
-        delta_wrapped = (delta + np.pi) % (2.0 * np.pi) - np.pi
-        this_diff = np.abs(delta_wrapped)
-        if best_diff is None:
-            best_diff = this_diff
-        else:
-            best_diff = np.minimum(best_diff, this_diff)
-    # Only compare at locations where expected is not NaN.
-    valid_mask = ~np.isnan(expected)
-    np.testing.assert_allclose(best_diff[valid_mask], 0.0, rtol=rtol, atol=atol)
-
-def assert_angle_allclose_mod(actual, expected, period, offsets, rtol, atol):
-    best_diff = None
-    # Try each candidate offset.
     for off in offsets:
         alt = expected + off
         # Wrap differences to the interval [-period/2, period/2]
@@ -398,13 +352,12 @@ def assert_angle_allclose_mod(actual, expected, period, offsets, rtol, atol):
             best_diff = this_diff
         else:
             best_diff = np.minimum(best_diff, this_diff)
-    # Only compare the valid (non-nan) locations from expected
     valid_mask = ~np.isnan(expected)
     np.testing.assert_allclose(best_diff[valid_mask], 0.0, rtol=rtol, atol=atol)
 
 
 ##############################################################################
-# 6) TEST FUNCTIONS (accept rtol, atol from main)
+# 5) TEST FUNCTIONS (accept rtol, atol from main)
 ##############################################################################
 
 def test_gradient_magnitude_noise(rtol, atol):
@@ -459,7 +412,7 @@ def test_hessian_orientation_noise(rtol, atol):
         np.pi,   -np.pi,
         3*np.pi/2, -3*np.pi/2
     ]
-    assert_angle_allclose_mod(computed, expected, period=2 * np.pi, offsets=offsets, rtol=rtol, atol=atol)
+    assert_angle_allclose(computed, expected, period=2 * np.pi, offsets=offsets, rtol=rtol, atol=atol)
     print("Hessian Orientation (noise) PASS")
 
 def test_hessian_orientation_smooth(rtol, atol):
@@ -473,7 +426,7 @@ def test_hessian_orientation_smooth(rtol, atol):
         np.pi,   -np.pi,
         3*np.pi/2, -3*np.pi/2
     ]
-    assert_angle_allclose_mod(computed, expected, period=2 * np.pi, offsets=offsets, rtol=rtol, atol=atol)
+    assert_angle_allclose(computed, expected, period=2 * np.pi, offsets=offsets, rtol=rtol, atol=atol)
     print("Hessian Orientation (smooth) PASS")
 
 def test_laplacian_noise(rtol, atol):
@@ -531,7 +484,7 @@ def test_smallest_hessian_smooth(rtol, atol):
 
 
 ##############################################################################
-# 7) MAIN
+# 6) MAIN
 ##############################################################################
 
 def main():
