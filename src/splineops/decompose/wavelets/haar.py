@@ -1,7 +1,8 @@
 """
 haar.py
 -------
-Implementation of Haar wavelets using the AbstractWavelets interface.
+Modified version that handles single-row or single-column inputs gracefully
+by skipping the degenerate pass. 
 """
 
 import numpy as np
@@ -17,54 +18,88 @@ class HaarWavelets(AbstractWavelets):
         return "Haar"
 
     def get_documentation(self):
-        return "Haar Wavelets Decomposition"
+        return "Haar Wavelets Decomposition (with 2D row->col transform)."
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
-        # Expect 2D array. We'll do a row-wise transform, then col-wise
-        # For brevity, let's define a helper:
-        def split(v):
-            n = v.shape[0]
-            half = n//2
-            a = np.zeros(n, dtype=v.dtype)
-            for i in range(half):
-                j = 2*i
-                a[i] = (v[j] + v[j+1]) / self.q
-                a[i+half] = (v[j] - v[j+1]) / self.q
-            return a
-
-        # 1) row transform
+        """
+        Single-scale analysis pass:
+         1) Row transform (split),
+         2) Column transform (split),
+        skipping any dimension=1 to avoid degenerate transforms.
+        """
         out = np.copy(inp)
-        for r in range(out.shape[0]):
-            out[r, :] = split(out[r, :])
+        ny, nx = out.shape
 
-        # 2) column transform
-        for c in range(out.shape[1]):
-            col = out[:, c]
-            col_split = split(col)
-            out[:, c] = col_split
+        # 1) Row pass if more than 1 column
+        if nx > 1:
+            for r in range(ny):
+                out[r, :] = self._split(out[r, :])
+
+        # 2) Column pass if more than 1 row
+        if ny > 1:
+            for c in range(nx):
+                col = out[:, c]
+                out[:, c] = self._split(col)
 
         return out
 
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
-        # inverse transform
-        def merge(v):
-            n = v.shape[0]
-            half = n//2
-            a = np.zeros(n, dtype=v.dtype)
-            for i in range(half):
-                a[2*i]   = (v[i] + v[i+half]) / self.q
-                a[2*i+1] = (v[i] - v[i+half]) / self.q
-            return a
-
+        """
+        Single-scale synthesis pass:
+         1) Column inverse transform (merge),
+         2) Row inverse transform (merge),
+        skipping any dimension=1.
+        """
         out = np.copy(inp)
-        # inverse column transform
-        for c in range(out.shape[1]):
-            col = out[:, c]
-            col_merged = merge(col)
-            out[:, c] = col_merged
+        ny, nx = out.shape
 
-        # inverse row transform
-        for r in range(out.shape[0]):
-            out[r, :] = merge(out[r, :])
+        # 1) Column pass if ny > 1
+        if ny > 1:
+            for c in range(nx):
+                col = out[:, c]
+                out[:, c] = self._merge(col)
 
+        # 2) Row pass if nx > 1
+        if nx > 1:
+            for r in range(ny):
+                out[r, :] = self._merge(out[r, :])
+
+        return out
+
+    def _split(self, v):
+        """
+        'Split' step of Haar transform on a 1D vector:
+          approximate = (v[2i] + v[2i+1]) / sqrt(2)
+          detail      = (v[2i] - v[2i+1]) / sqrt(2)
+        """
+        n = v.shape[0]
+        half = n // 2
+        out = np.zeros(n, dtype=v.dtype)
+        for i in range(half):
+            j = 2*i
+            out[i]       = (v[j] + v[j+1]) / self.q
+            out[i+half]  = (v[j] - v[j+1]) / self.q
+
+        # If n is odd, the last sample has no pair => you might keep it as is or do something else
+        if (n % 2) == 1:
+            # For safety, replicate last sample in the last position
+            out[-1] = v[-1]
+        return out
+
+    def _merge(self, v):
+        """
+        'Merge' step (inverse of 'split') on a 1D vector.
+        """
+        n = v.shape[0]
+        half = n // 2
+        out = np.zeros(n, dtype=v.dtype)
+        for i in range(half):
+            a = v[i]
+            d = v[i + half]
+            out[2*i]   = (a + d) / self.q
+            out[2*i+1] = (a - d) / self.q
+
+        # handle odd length similarly
+        if (n % 2) == 1:
+            out[-1] = v[-1]
         return out
