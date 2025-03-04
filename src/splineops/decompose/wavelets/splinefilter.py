@@ -73,11 +73,7 @@ class SplineFilter:
             h[43] = -0.00000000000004
             h[44] = 0.00000000000002
             h[45] = 0.00000000000001
-            # The code in your snippet doesn't show h[46], presumably zero
-            # or uninitialized. We'll assume zero is fine for the remainder.
-            # If there's a missing line, fill it here:
-            # h[46] = ???
-
+            h[46] = 0.00000000000000 # We assume last element is zero
             self.h = h
 
         elif self.order == 3:
