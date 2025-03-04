@@ -1,62 +1,60 @@
-#!/usr/bin/env python3
 """
-009_using_decompose_module.py
+Using decompose module
+======================
 
 Demonstrates how to use the 'decompose' module for:
 - Pyramid decomposition (reduce & expand) in 1D and 2D
-- Wavelet decomposition (analysis & synthesis), specifically:
-  * Spline wavelets in 1D
-  * Haar wavelets in 2D
+- Wavelet decomposition (analysis & synthesis) in 2D:
+  * Haar wavelets (2D)
+  * Spline wavelets (2D) of orders 1,3,5
 
-We replicate and visualize the test logic from:
-  - test_1d.c (creating a 1D signal, reducing, expanding, checking error)
-  - test_2d.c (creating a 2D signal, reducing, expanding, checking error)
+You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Pyramid functionality
+# ----------------------------------------------------------------------
+# 1) Pyramid decomposition examples
+# ----------------------------------------------------------------------
 from splineops.decompose.pyramid import (
     get_pyramid_filter,
     reduce_1d, expand_1d,
     reduce_2d, expand_2d
 )
 
-# Wavelets:
-#  - HaarWavelets is your 2D Haar wavelet class that requires shape (ny,nx) with ny>=2,nx>=2
-#  - SplineWavelets is your Spline wavelet code, which can handle shape (1,N) but 
-#    also is typically 2D. We'll demonstrate Spline in 1D for convenience.
-from splineops.decompose.wavelets.haar import HaarWavelets  # the 2D version
-from splineops.decompose.wavelets.splinewavelets import SplineWavelets
-
+# ----------------------------------------------------------------------
+# 2) Wavelets (all in 2D):
+#    - HaarWavelets requires ny>=2, nx>=2
+#    - Spline wavelets also do row->column for analysis, col->row for synthesis
+# ----------------------------------------------------------------------
+from splineops.decompose.wavelets.haar import HaarWavelets
+from splineops.decompose.wavelets.splinewavelets import (
+    Spline1Wavelets,
+    Spline3Wavelets,
+    Spline5Wavelets
+)
 
 ##############################################################################
-# 1. Test 1D Pyramid (replicates logic of test_1d.c)
+# 1A. Test 1D Pyramid (Replicates logic of test_1d.c)
 ##############################################################################
 
 def test_1d_pyramid():
     """
-    Build a 1D signal, reduce & expand it using a pyramid filter, then
-    plot the results and print the error.
+    Build a 1D signal (length=10) and do a pyramid reduce+expand. 
+    Just for demonstration. 
     """
+    x = np.array([0.0, 1.0, 2.0, 3.0, 2.0, 1.0, 0.0, -2.0, -4.0, -6.0], 
+                 dtype=np.float64)
 
-    # 1) Create an input 1D signal (length=10, as in test_1d.c)
-    x = np.array([0.0, 1.0, 2.0, 3.0, 2.0, 1.0, 0.0, -2.0, -4.0, -6.0], dtype=np.float64)
-
-    # 2) Get a filter (example: "Centered Spline" of order 3)
     filter_name = "Centered Spline"
     order = 3
     g, h, is_centered = get_pyramid_filter(filter_name, order)
 
-    # 3) Reduce and expand
     reduced = reduce_1d(x, g, is_centered)
     expanded = expand_1d(reduced, h, is_centered)
-
-    # 4) Compute error
     error = expanded - x
 
-    # 5) Print results
     print("[1D Pyramid Test]")
     print(f"Filter: '{filter_name}' (order={order}), is_centered={is_centered}")
     print("Input   x:", x)
@@ -64,7 +62,6 @@ def test_1d_pyramid():
     print("Expanded  :", expanded)
     print("Error     :", error)
 
-    # 6) Plot
     fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(8,6))
     axs[0].plot(x, 'o-', label='Input')
     axs[0].set_title("1D Input Signal")
@@ -82,14 +79,13 @@ def test_1d_pyramid():
     plt.tight_layout()
     plt.show()
 
-
 ##############################################################################
-# 2. Test 2D Pyramid (replicates logic of test_2d.c)
+# 1B. Test 2D Pyramid (Replicates logic of test_2d.c)
 ##############################################################################
 
 def test_2d_pyramid():
     """
-    Build a small 4x4 image, reduce & expand it using a pyramid filter, 
+    Build a small 4x4 image, reduce & expand it using a pyramid filter,
     then display the results and print the error.
     """
     arr = np.array([
@@ -131,50 +127,17 @@ def test_2d_pyramid():
     plt.tight_layout()
     plt.show()
 
-
 ##############################################################################
-# 3. Demonstrate Wavelets usage
+# 2. Demonstrate Wavelets in 2D
 ##############################################################################
-
-def test_wavelets_1d_spline():
-    """
-    Simple test of wavelet analysis/synthesis in 1D using only Spline wavelets.
-    (We skip Haar in 1D because HaarWavelets is purely 2D.)
-    """
-    x = np.linspace(0, 10, 16, dtype=np.float32)
-    x[8:] -= 5.0  # partial negative
-
-    # Use Spline wavelet
-    spline3 = SplineWavelets(scales=2, order=3)
-    # shape (1,16) so the wavelet code sees (ny=1, nx=16)
-    w_spl3 = spline3.analysis(x.reshape(1,-1))
-    x_spl3_rec = spline3.synthesis(w_spl3)[0,:]
-    err_spl3 = x_spl3_rec - x
-
-    print("[Wavelets 1D Spline Test]")
-    print("Spline3 reconstruction error (max):", np.abs(err_spl3).max())
-
-    fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(7,5))
-    axs[0].plot(x, 'o-', label='Original 1D Signal')
-    axs[0].set_title("Original 1D Signal")
-    axs[0].legend()
-
-    axs[1].plot(x_spl3_rec, 'o--', label='Reconstructed (Spline3)')
-    axs[1].plot(x, color='k', alpha=0.3)
-    axs[1].set_title(f"Spline3: max error={np.abs(err_spl3).max():.3g}")
-    axs[1].legend()
-
-    plt.tight_layout()
-    plt.show()
-
 
 def test_wavelets_2d_haar():
     """
     Simple test of wavelet analysis/synthesis in 2D using Haar wavelets
     (the 2D version that requires ny>=2, nx>=2).
     """
-    # Create a random 2D signal of shape (32,32), both dims >=2
-    image = np.random.rand(32,32).astype(np.float32)*2 - 1.0  # negative & positive
+    ny, nx = 32, 32
+    image = np.random.rand(ny, nx).astype(np.float32)*2 - 1.0  # negative & positive
 
     haar2d = HaarWavelets(scales=3)
     coeffs = haar2d.analysis(image)
@@ -190,11 +153,64 @@ def test_wavelets_2d_haar():
     ax[0].set_title("Original 32x32")
 
     ax[1].imshow(recon, cmap='gray')
-    ax[1].set_title("Reconstructed from Wavelets")
+    ax[1].set_title("Reconstructed from Haar Wavelets")
 
     diffim = ax[2].imshow(err, cmap='bwr')
     ax[2].set_title(f"Error (max={max_err:.3g})")
     plt.colorbar(diffim, ax=ax[2], fraction=0.046, pad=0.04)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def test_wavelets_2d_splines():
+    """
+    Demonstrate 2D wavelet analysis/synthesis using Spline wavelets 
+    of orders 1, 3, and 5 on a (32,32) image. 
+    Each wavelet does row->column analysis, then column->row synthesis.
+    """
+    ny, nx = 32, 32
+    image = np.random.rand(ny, nx).astype(np.float32)*2 - 1.0
+
+    # We'll test 3 different spline wavelets: Spline1, Spline3, Spline5
+    # Each must have ny>=2, nx>=2 to do row+column passes.
+    wavelets_dict = {
+        "Spline1": Spline1Wavelets(scales=3),
+        "Spline3": Spline3Wavelets(scales=3),
+        "Spline5": Spline5Wavelets(scales=3),
+    }
+
+    fig, axarr = plt.subplots(3, 3, figsize=(9,9))
+    # We'll show each wavelet's reconstruction & difference side by side
+
+    for idx, (name, wavelet) in enumerate(wavelets_dict.items()):
+        coeffs = wavelet.analysis(image)
+        recon = wavelet.synthesis(coeffs)
+        err = recon - image
+        max_err = np.abs(err).max()
+
+        print(f"[Wavelets 2D {name} Test]")
+        print(f"Max error after 3-scale decomposition: {max_err}")
+
+        # Show original, recon, difference
+        if idx == 0:
+            # Original only once at top left
+            axarr[0,0].imshow(image, cmap='gray')
+            axarr[0,0].set_title("Original 32x32")
+
+        # Recon in row=idx, col=1
+        axarr[idx,1].imshow(recon, cmap='gray')
+        axarr[idx,1].set_title(f"{name} Reconstructed\nErr={max_err:.3g}")
+
+        # Diff in row=idx, col=2
+        im2 = axarr[idx,2].imshow(err, cmap='bwr')
+        axarr[idx,2].set_title("Difference")
+        plt.colorbar(im2, ax=axarr[idx,2], fraction=0.046, pad=0.04)
+
+    # Just handle the first row first column for original
+    axarr[0,0].axis('off')
+    axarr[1,0].axis('off')
+    axarr[2,0].axis('off')
 
     plt.tight_layout()
     plt.show()
@@ -209,7 +225,6 @@ if __name__ == "__main__":
     test_1d_pyramid()
     test_2d_pyramid()
 
-    # 2) Wavelets tests
-    #    We do a 1D Spline test, and a 2D Haar test
-    test_wavelets_1d_spline()
-    test_wavelets_2d_haar()
+    # 2) Wavelets tests, all in 2D:
+    test_wavelets_2d_haar()      # Haar2D
+    test_wavelets_2d_splines()  # Spline wavelets 2D (orders 1,3,5)
