@@ -3,8 +3,7 @@
 Differentiate
 =============
 
-The :class:`splineops.differentiate.differentials` class implements a suite of functions to compute image differentials using cubic B‑spline interpolation.  
-Users can construct a spline-based model for their grayscale image and evaluate a variety of differential operators, including:
+The :class:`splineops.differentiate.differentials` class implements a suite of functions to compute image differentials using cubic B‑spline interpolation, including:
 
 - **Gradient Magnitude** – the rate of intensity change.
 - **Gradient Direction** – the orientation of maximum change.

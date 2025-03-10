@@ -14,19 +14,19 @@ class differentials:
     Attributes
     ----------
     GRADIENT_DIRECTION : int
-        Constant representing the gradient direction operation.
+        The gradient direction operation.
     GRADIENT_MAGNITUDE : int
-        Constant representing the gradient magnitude operation.
+        The gradient magnitude operation.
     HESSIAN_ORIENTATION : int
-        Constant representing the Hessian orientation operation.
+        The Hessian orientation operation.
     LAPLACIAN : int
-        Constant representing the Laplacian operation.
+        The Laplacian operation.
     LARGEST_HESSIAN : int
-        Constant representing the largest Hessian eigenvalue operation.
+        The largest Hessian eigenvalue operation.
     SMALLEST_HESSIAN : int
-        Constant representing the smallest Hessian eigenvalue operation.
+        The smallest Hessian eigenvalue operation.
     FLT_EPSILON : float
-        Machine epsilon for single precision floats.
+        Constant for single precision floats.
     """
 
     GRADIENT_DIRECTION = 1
