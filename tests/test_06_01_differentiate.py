@@ -85,7 +85,7 @@ smooth_width_19_by_height_20 = [
 # 3) Java ground-truth arrays (UNNORMALIZED)
 ##############################################################################
 
-java_gradient_magnitude_of_noise_width_10_by_height_15 = [
+gradient_magnitude_of_noise_width_10_by_height_15 = [
 	[0.000, 1.614, 1.542, 1.270, 1.320, 0.027, 0.278, 1.054, 1.022, 0.000],
 	[1.072, 1.236, 1.396, 1.400, 1.190, 2.409, 1.097, 0.659, 1.730, 1.040],
 	[3.531, 0.885, 1.409, 1.695, 2.928, 0.396, 1.681, 0.801, 1.350, 2.539],
@@ -103,7 +103,7 @@ java_gradient_magnitude_of_noise_width_10_by_height_15 = [
 	[0.000, 0.300, 1.230, 1.990, 0.468, 0.268, 0.876, 1.934, 0.128, 0.000]
 ]
 
-java_gradient_magnitude_of_smooth_width_19_by_height_20 = [
+gradient_magnitude_of_smooth_width_19_by_height_20 = [
 	[0.000, 0.093, 0.021, 0.039, 0.119, 0.169, 0.152, 0.066, 0.045, 0.126, 0.140, 0.083, 0.015, 0.096, 0.120, 0.096, 0.056, 0.049, 0.000],
 	[0.050, 0.120, 0.030, 0.035, 0.109, 0.148, 0.142, 0.097, 0.056, 0.084, 0.108, 0.102, 0.083, 0.072, 0.079, 0.098, 0.092, 0.120, 0.070],
 	[0.018, 0.138, 0.032, 0.038, 0.104, 0.126, 0.111, 0.072, 0.030, 0.050, 0.070, 0.058, 0.032, 0.019, 0.044, 0.087, 0.114, 0.179, 0.040],
@@ -127,7 +127,7 @@ java_gradient_magnitude_of_smooth_width_19_by_height_20 = [
 ]
 
 # Gradient Direction
-java_gradient_direction_of_noise_width_10_by_height_15 = [
+gradient_direction_of_noise_width_10_by_height_15 = [
 	[0.000, -1.571, 1.571, 1.571, -1.571, 1.571, -1.571, 1.571, -1.571, 0.000],
 	[3.142, -1.315, 1.174, -3.098, -2.932, 2.071, -1.833, -1.559, -2.973, 3.142],
 	[0.000, -0.142, -0.069, 0.166, -0.476, 3.099, 1.086, -1.362, -0.853, 0.000],
@@ -145,7 +145,7 @@ java_gradient_direction_of_noise_width_10_by_height_15 = [
 	[0.000, 1.571, 1.571, -1.571, 1.571, 1.571, -1.571, 1.571, 1.571, 0.000]
 ]
 
-java_gradient_direction_of_smooth_width_19_by_height_20 = [
+gradient_direction_of_smooth_width_19_by_height_20 = [
 	[0.000, 1.571, 1.571, -1.571, -1.571, -1.571, -1.571, -1.571, 1.571, 1.571, 1.571, 1.571, -1.571, -1.571, -1.571, -1.571, -1.571, -1.571, 0.000],
 	[3.142, 1.776, 1.789, -1.609, -1.539, -1.410, -1.182, -0.767, 0.326, 1.458, 1.977, 2.473, -3.129, -2.263, -1.432, -1.014, -1.016, -1.570, 3.142],
 	[3.142, 1.601, 1.523, -1.654, -1.646, -1.565, -1.388, -1.078, -0.090, 1.382, 1.773, 2.109, 2.720, -2.018, -0.881, -0.785, -0.864, -1.211, 0.000],
@@ -169,7 +169,7 @@ java_gradient_direction_of_smooth_width_19_by_height_20 = [
 ]
 
 # Laplacian
-java_laplacian_of_noise_width_10_by_height_15 = [
+laplacian_of_noise_width_10_by_height_15 = [
 	[9.220, 11.347, 0.063, 18.639, 10.303, 1.161, -1.909, 5.725, 15.877, -4.990],
 	[-10.272, -3.155, -21.237, 7.497, -25.763, 11.521, -0.941, -5.788, -9.005, 0.983],
 	[-4.921, 10.658, 5.852, 1.957, 6.254, -8.505, -2.324, 10.341, -1.322, -5.614],
@@ -187,7 +187,7 @@ java_laplacian_of_noise_width_10_by_height_15 = [
 	[3.017, -3.432, 10.895, 2.187, -9.474, 9.906, -4.579, -3.088, 15.169, 2.941]
 ]
 
-java_laplacian_of_smooth_width_19_by_height_20 = [
+laplacian_of_smooth_width_19_by_height_20 = [
 	[-0.145, 0.191, 0.060, 0.088, 0.055, -0.056, -0.220, -0.311, -0.254, -0.067, 0.168, 0.349, 0.377, 0.232, 0.014, -0.117, -0.090, 0.132, 0.199],
 	[-0.421, 0.103, 0.029, 0.086, 0.073, 0.049, 0.010, -0.026, -0.047, -0.050, -0.044, -0.038, -0.039, -0.042, -0.039, -0.021, -0.063, -0.009, -0.520],
 	[-0.449, 0.151, 0.049, 0.093, 0.052, 0.014, -0.021, -0.046, -0.054, -0.036, 0.002, 0.033, 0.039, 0.028, 0.023, 0.048, 0.006, 0.133, -0.525],
@@ -211,7 +211,7 @@ java_laplacian_of_smooth_width_19_by_height_20 = [
 ]
 
 # Largest Hessian
-java_largest_hessian_of_noise_width_10_by_height_15 = [
+largest_hessian_of_noise_width_10_by_height_15 = [
 	[9.260, 8.078, 9.644, 10.125, 15.250, 2.253, -0.265, 6.745, 10.705, 2.226],
 	[-3.156, 5.718, -9.193, 13.267, -12.516, 8.138, 1.238, 1.161, -1.669, 1.129],
 	[-2.090, 8.201, 9.038, 2.752, 5.852, -2.875, 0.845, 6.589, 2.718, 1.397],
@@ -229,7 +229,7 @@ java_largest_hessian_of_noise_width_10_by_height_15 = [
 	[6.366, 3.534, 5.788, 1.331, -3.227, 6.647, -0.221, -1.262, 10.294, 7.561]
 ]
 
-java_largest_hessian_of_smooth_width_19_by_height_20 = [
+largest_hessian_of_smooth_width_19_by_height_20 = [
 	[0.151, 0.111, 0.034, 0.085, 0.075, 0.025, -0.058, -0.114, -0.109, -0.014, 0.143, 0.258, 0.272, 0.174, 0.023, -0.039, -0.040, 0.107, 0.322],
 	[-0.051, 0.140, 0.043, 0.087, 0.062, 0.054, 0.061, 0.059, 0.046, 0.031, 0.038, 0.063, 0.070, 0.059, 0.041, 0.015, -0.003, 0.127, -0.183],
 	[-0.012, 0.161, 0.052, 0.090, 0.042, 0.024, 0.020, 0.013, 0.012, 0.015, 0.022, 0.037, 0.041, 0.046, 0.050, 0.054, 0.010, 0.156, -0.037],
@@ -253,7 +253,7 @@ java_largest_hessian_of_smooth_width_19_by_height_20 = [
 ]
 
 # Smallest Hessian
-java_smallest_hessian_of_noise_width_10_by_height_15 = [
+smallest_hessian_of_noise_width_10_by_height_15 = [
 	[-0.041, 3.269, -9.581, 8.513, -4.946, -1.092, -1.644, -1.020, 5.172, -7.216],
 	[-7.116, -8.873, -12.044, -5.769, -13.247, 3.383, -2.178, -6.949, -7.335, -0.146],
 	[-2.831, 2.457, -3.186, -0.795, 0.402, -5.629, -3.169, 3.752, -4.040, -7.011],
@@ -271,7 +271,7 @@ java_smallest_hessian_of_noise_width_10_by_height_15 = [
 	[-3.349, -6.966, 5.107, 0.855, -6.247, 3.258, -4.359, -1.827, 4.875, -4.619]
 ]
 
-java_smallest_hessian_of_smooth_width_19_by_height_20 = [
+smallest_hessian_of_smooth_width_19_by_height_20 = [
 	[-0.297, 0.080, 0.026, 0.003, -0.020, -0.081, -0.162, -0.198, -0.145, -0.053, 0.025, 0.091, 0.104, 0.058, -0.009, -0.078, -0.049, 0.025, -0.123],
 	[-0.369, -0.037, -0.015, -0.000, 0.010, -0.005, -0.051, -0.085, -0.093, -0.081, -0.082, -0.101, -0.109, -0.101, -0.080, -0.036, -0.059, -0.136, -0.337],
 	[-0.437, -0.010, -0.003, 0.003, 0.010, -0.010, -0.041, -0.059, -0.066, -0.051, -0.021, -0.004, -0.002, -0.018, -0.027, -0.006, -0.004, -0.023, -0.488],
@@ -295,7 +295,7 @@ java_smallest_hessian_of_smooth_width_19_by_height_20 = [
 ]
 
 # Hessian Orientation
-java_hessian_orientation_of_noise_width_10_by_height_15 = [
+hessian_orientation_of_noise_width_10_by_height_15 = [
 	[float("nan"), 1.571, 1.571, float("nan"), float("nan"), 0.000, float("nan"), 1.571, float("nan"), float("nan")],
 	[float("nan"), -0.108, 0.749, 0.053, -0.730, -0.062, -1.219, 0.153, 0.085, 0.000],
 	[1.571, 1.235, -1.507, -0.329, 1.275, 0.532, -0.226, 1.343, -1.266, 0.000],
@@ -313,7 +313,7 @@ java_hessian_orientation_of_noise_width_10_by_height_15 = [
 	[0.000, float("nan"), float("nan"), 0.000, float("nan"), float("nan"), float("nan"), float("nan"), float("nan"), float("nan")]
 ]
 
-java_hessian_orientation_of_smooth_width_19_by_height_20 = [
+hessian_orientation_of_smooth_width_19_by_height_20 = [
 	[float("nan"), float("nan"), 0.000, float("nan"), 0.000, 0.000, 0.000, float("nan"), float("nan"), float("nan"), float("nan"), 1.571, float("nan"), 1.571, 1.571, float("nan"), float("nan"), 1.571, float("nan")],
 	[float("nan"), -0.175, -0.161, -0.027, -0.222, -0.942, -1.319, -1.565, 1.329, 0.973, 0.473, 0.137, -0.103, -0.351, -0.575, -0.458, 0.480, 0.340, float("nan")],
 	[float("nan"), -0.088, 0.023, 0.080, -0.018, -0.950, -1.225, -1.494, 1.389, 1.165, 0.761, 0.220, -0.264, -0.665, -0.764, -0.479, -0.126, 0.146, 1.571],
@@ -371,8 +371,8 @@ RTOL = 1e-2
 ATOL = 1.0
 
 @pytest.mark.parametrize("image_data, expected_data", [
-    (noise_width_10_by_height_15,  java_gradient_magnitude_of_noise_width_10_by_height_15),
-    (smooth_width_19_by_height_20, java_gradient_magnitude_of_smooth_width_19_by_height_20),
+    (noise_width_10_by_height_15,  gradient_magnitude_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, gradient_magnitude_of_smooth_width_19_by_height_20),
 ])
 def test_gradient_magnitude(image_data, expected_data):
     """Test gradient magnitude for both 'noise' and 'smooth' images."""
@@ -384,8 +384,8 @@ def test_gradient_magnitude(image_data, expected_data):
 
 
 @pytest.mark.parametrize("image_data, expected_data", [
-    (noise_width_10_by_height_15,  java_gradient_direction_of_noise_width_10_by_height_15),
-    (smooth_width_19_by_height_20, java_gradient_direction_of_smooth_width_19_by_height_20),
+    (noise_width_10_by_height_15,  gradient_direction_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, gradient_direction_of_smooth_width_19_by_height_20),
 ])
 def test_gradient_direction(image_data, expected_data):
     """
@@ -404,8 +404,8 @@ def test_gradient_direction(image_data, expected_data):
 
 
 @pytest.mark.parametrize("image_data, expected_data", [
-    (noise_width_10_by_height_15,  java_laplacian_of_noise_width_10_by_height_15),
-    (smooth_width_19_by_height_20, java_laplacian_of_smooth_width_19_by_height_20),
+    (noise_width_10_by_height_15,  laplacian_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, laplacian_of_smooth_width_19_by_height_20),
 ])
 def test_laplacian(image_data, expected_data):
     """Test Laplacian for both 'noise' and 'smooth' images."""
@@ -417,8 +417,8 @@ def test_laplacian(image_data, expected_data):
 
 
 @pytest.mark.parametrize("image_data, expected_data", [
-    (noise_width_10_by_height_15,  java_largest_hessian_of_noise_width_10_by_height_15),
-    (smooth_width_19_by_height_20, java_largest_hessian_of_smooth_width_19_by_height_20),
+    (noise_width_10_by_height_15,  largest_hessian_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, largest_hessian_of_smooth_width_19_by_height_20),
 ])
 def test_largest_hessian(image_data, expected_data):
     """Test the largest Hessian eigenvalue for both 'noise' and 'smooth'."""
@@ -430,8 +430,8 @@ def test_largest_hessian(image_data, expected_data):
 
 
 @pytest.mark.parametrize("image_data, expected_data", [
-    (noise_width_10_by_height_15,  java_smallest_hessian_of_noise_width_10_by_height_15),
-    (smooth_width_19_by_height_20, java_smallest_hessian_of_smooth_width_19_by_height_20),
+    (noise_width_10_by_height_15,  smallest_hessian_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, smallest_hessian_of_smooth_width_19_by_height_20),
 ])
 def test_smallest_hessian(image_data, expected_data):
     """Test the smallest Hessian eigenvalue for both 'noise' and 'smooth'."""
@@ -443,8 +443,8 @@ def test_smallest_hessian(image_data, expected_data):
 
 
 @pytest.mark.parametrize("image_data, expected_data", [
-    (noise_width_10_by_height_15,  java_hessian_orientation_of_noise_width_10_by_height_15),
-    (smooth_width_19_by_height_20, java_hessian_orientation_of_smooth_width_19_by_height_20),
+    (noise_width_10_by_height_15,  hessian_orientation_of_noise_width_10_by_height_15),
+    (smooth_width_19_by_height_20, hessian_orientation_of_smooth_width_19_by_height_20),
 ])
 def test_hessian_orientation(image_data, expected_data):
     """
