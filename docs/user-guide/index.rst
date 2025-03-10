@@ -14,4 +14,5 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
    04_regress
    05_smooth
    06_differentiate
+   07_decompose
 

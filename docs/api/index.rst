@@ -19,6 +19,8 @@ API Reference
      - Smooth N-D data.
    * - :ref:`Differentiate <api-differentiate>`
      - Differentiate 2D images.
+   * - :ref:`Decompose <api-decompose>`
+     - Decompose 1D signals and 2D images.
 
 .. toctree::
    :maxdepth: 1
@@ -30,3 +32,4 @@ API Reference
    04_regress
    05_smooth
    06_differentiate
+   07_decompose
