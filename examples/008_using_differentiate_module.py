@@ -13,8 +13,6 @@ differential operations on an image. We will perform:
 - Hessian Orientation
 
 and visualize the results.
-
-You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
 """
 
 # %%
@@ -56,7 +54,8 @@ image_gray = (
 )
 
 # %%
-# Create a helper function to visualize results with a colorbar:
+# Create helper functions to visualize results
+# --------------------------------------------
 
 def show_result_with_colorbar(title, result, units="Value", percentile_range=(5, 95)):
     """
@@ -73,8 +72,6 @@ def show_result_with_colorbar(title, result, units="Value", percentile_range=(5,
     percentile_range : tuple or None
         Percentiles to use for scaling the colormap. If None, use the min and max of the data.
     """
-
-    # Compute aspect ratio and set figure dimensions
     h, w = result.shape
     aspect_ratio = h / float(w)
     fig_width = 6.0
@@ -87,8 +84,8 @@ def show_result_with_colorbar(title, result, units="Value", percentile_range=(5,
         im = ax.imshow(result, cmap='gray', aspect='equal', vmin=pmin, vmax=pmax)
         cbar_label = f"{units} range [{pmin:.3f}, {pmax:.3f}]"
     else:
-        im = ax.imshow(result, cmap='gray', aspect='equal')
         vmin, vmax = result.min(), result.max()
+        im = ax.imshow(result, cmap='gray', aspect='equal', vmin=vmin, vmax=vmax)
         cbar_label = f"{units} range [{vmin:.3f}, {vmax:.3f}]"
     
     ax.set_title(title)
@@ -103,16 +100,53 @@ def show_result_with_colorbar(title, result, units="Value", percentile_range=(5,
     plt.tight_layout()
     plt.show()
 
+
+def show_angle_result(title, angle_data, vmin, vmax, units="Radians"):
+    """
+    Displays angle data in a cyclical color map (hsv), with vmin and vmax specifying
+    the circular range.
+    
+    Parameters
+    ----------
+    title : str
+        Title for the plot.
+    angle_data : ndarray
+        2D array of angles (in radians).
+    vmin : float
+        Minimum of angle range (e.g., 0).
+    vmax : float
+        Maximum of angle range (e.g., 2*pi).
+    units : str
+        Label for the colorbar (e.g., 'Direction (radians)', etc.).
+    """
+    h, w = angle_data.shape
+    aspect_ratio = h / float(w)
+    fig_width = 6.0
+    fig_height = fig_width * aspect_ratio
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+    # Plot with an HSV cyclical colormap
+    im = ax.imshow(angle_data, cmap='hsv', aspect='equal', vmin=vmin, vmax=vmax)
+    ax.set_title(title)
+    ax.axis('off')
+
+    # Add colorbar
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = plt.colorbar(im, cax=cax, ticks=[vmin, (vmin+vmax)/2, vmax])
+    cbar.set_label(f"{units} range [{vmin:.2f}, {vmax:.2f}]")
+
+    plt.tight_layout()
+    plt.show()
+
+
+# %%
 # Show the original grayscale image with a colorbar
 show_result_with_colorbar("Original Image", image_gray, units="Intensity")
 
 # %%
 # Gradient Magnitude
 # ------------------
-# The gradient magnitude provides an intensity image indicating
-# the rate of change of intensity at each pixel. High values
-# indicate edges or sharp transitions in the image.
-
 diff = differentials(image_gray.copy())
 diff.run(differentials.GRADIENT_MAGNITUDE)
 grad_magnitude_result = diff.image
@@ -122,24 +156,27 @@ show_result_with_colorbar("Gradient Magnitude", grad_magnitude_result, units="Va
 # %%
 # Gradient Direction
 # ------------------
-# The gradient direction indicates the angle of the local gradient
-# vector at each pixel (in radians). This can be useful for edge
-# orientation detection and directional filtering.
+# By default, gradient direction (using arctan2) often ranges from -π to +π.
+# We shift it to the [0..2π] range for a cyclical visualization.
 
 diff = differentials(image_gray.copy())
 diff.run(differentials.GRADIENT_DIRECTION)
 grad_direction_result = diff.image
 
-# Note that gradient direction ranges from -π to π (arctan2).
-show_result_with_colorbar("Gradient Direction", grad_direction_result, units="Direction (radians)")
+# Shift from [-π, π] to [0, 2π]
+grad_direction_result_0_2pi = (grad_direction_result + 2.0*np.pi) % (2.0*np.pi)
+
+# Visualize with HSV colormap, removing percentile clipping
+show_angle_result(
+    "Gradient Direction",
+    grad_direction_result_0_2pi,
+    vmin=0.0, vmax=2.0*np.pi,
+    units="Direction (radians)"
+)
 
 # %%
 # Laplacian
 # ---------
-# The Laplacian of an image highlights regions of rapid intensity change.
-# It is computed here by adding the second derivatives along
-# both the horizontal (x) and vertical (y) directions.
-
 diff = differentials(image_gray.copy())
 diff.run(differentials.LAPLACIAN)
 laplacian_result = diff.image
@@ -149,11 +186,6 @@ show_result_with_colorbar("Laplacian", laplacian_result, units="Value")
 # %%
 # Largest Hessian
 # ---------------
-# The Hessian matrix at each pixel contains second-order partial derivatives
-# of the image intensity. Its eigenvalues indicate curvature along
-# principal directions. Here, we compute the *largest eigenvalue* of
-# the Hessian, which often highlights tube-like or ridge-like structures.
-
 diff = differentials(image_gray.copy())
 diff.run(differentials.LARGEST_HESSIAN)
 largest_hessian_result = diff.image
@@ -163,10 +195,6 @@ show_result_with_colorbar("Largest Hessian Eigenvalue", largest_hessian_result, 
 # %%
 # Smallest Hessian
 # ----------------
-# The *smallest eigenvalue* of the Hessian matrix can highlight
-# features orthogonal to those emphasized by the largest eigenvalue.
-# It can be useful for detecting certain types of structures.
-
 diff = differentials(image_gray.copy())
 diff.run(differentials.SMALLEST_HESSIAN)
 smallest_hessian_result = diff.image
@@ -176,17 +204,20 @@ show_result_with_colorbar("Smallest Hessian Eigenvalue", smallest_hessian_result
 # %%
 # Hessian Orientation
 # -------------------
-# The Hessian orientation encodes the principal directions of curvature
-# in the neighborhood of each pixel. Formally, it's the orientation of
-# the eigenvectors of the Hessian matrix. 
-#
-# Positive or negative signs (and the values themselves) can be interpreted
-# to understand how image structures are oriented locally. Values range
-# roughly from -π/2 to +π/2 in this particular definition.
+# The default orientation may lie in [-π/2, +π/2], but we map it to [0..π]
+# so 0 and π visualize as the same direction in a cyclical colormap.
 
 diff = differentials(image_gray.copy())
 diff.run(differentials.HESSIAN_ORIENTATION)
 hessian_orientation_result = diff.image
 
-# The resulting range is approximately [-π/2, +π/2].
-show_result_with_colorbar("Hessian Orientation", hessian_orientation_result, units="Orientation (radians)")
+# Shift from [-π/2..+π/2] to [0..π]
+# (If your code produces a slightly different base range, adjust as needed.)
+hessian_orientation_result_0_pi = (hessian_orientation_result + np.pi/2.0) % np.pi
+
+show_angle_result(
+    "Hessian Orientation",
+    hessian_orientation_result_0_pi,
+    vmin=0.0, vmax=np.pi,
+    units="Orientation (radians)"
+)
