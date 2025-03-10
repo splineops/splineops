@@ -3,16 +3,9 @@ Using differentiate module
 ==========================
 
 In this example, we demonstrate how to use the differentiate module to compute various
-differential operations on an image. We will perform:
+differential operations on an image.
 
-- Gradient Magnitude
-- Gradient Direction
-- Laplacian
-- Largest Hessian Eigenvalue
-- Smallest Hessian Eigenvalue
-- Hessian Orientation
-
-and visualize the results.
+You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
 """
 
 # %%
