@@ -1,31 +1,34 @@
 """
 splinefilter.py
----------------
-Holds the lowpass (h) and highpass (g) arrays for the Spline wavelet transform,
-mirroring the logic from SplineFilter.java in DeconvolutionLab2.
+----------
+Holds numeric arrays for various spline filters used in wavelets transformations,
+mirroring your Java SplineFilter code for orders 1, 3, 5.
 """
 
 import numpy as np
 
 class SplineFilter:
     """
-    Replicates SplineFilter.java logic:
+    Python translation of SplineFilter.java from DeconvolutionLab2.
     For each order in {1,3,5}, we define h[] taps and then 
-    compute g[] by flipping signs of odd indices, etc.
+    compute g[] by flipping signs of odd indices.
     """
 
-    def __init__(self, order: int):
+    def __init__(self, order:int):
         self.order = order
-        # We fill self.h with the known taps from your Java code. 
-        # Then we derive self.g automatically.
         self.h = None
         self.g = None
-        self._init_filters()
+        self._init_filters()  # fill self.h with correct numeric array
+        self._compute_g()     # build self.g from self.h
 
     def _init_filters(self):
+        """
+        Populate self.h with the numeric coefficients for each order
+        exactly as in SplineFilter.java
+        """
         if self.order == 1:
-            # The code in SplineFilter.java sets a big array of length=47
-            # plus any leftover sign flipping for g.
+            # The code in SplineFilter.java sets a big array (length=47).
+            # The last index can be zero or uninitialized if your snippet didn't show it.
             h = np.zeros(47, dtype=float)
             h[0]  = 0.81764640621546
             h[1]  = 0.39729708810751
@@ -73,15 +76,12 @@ class SplineFilter:
             h[43] = -0.00000000000004
             h[44] = 0.00000000000002
             h[45] = 0.00000000000001
-            h[46] = 0.00000000000000 # We assume last element is zero
+            # h[46] left as 0.0, if needed
             self.h = h
 
         elif self.order == 3:
-            # We take the array 'temp' from your Java code (some 70+ elements).
-            # But your snippet is partial with lots of trailing values 
-            # and some "???" near the end. 
-            # We'll put a short demonstration or note that you'd fill the entire array:
-            temp = [
+            # A long array from your snippet.
+            hvals = [
                 0.76613005375980, 0.43392263358931, -0.05020172467149, -0.11003701838811,
                 0.03208089747022, 0.04206835144072, -0.01717631549201, -0.01798232098097,
                 0.00868529481309, 0.00820147720600, -0.00435383945777, -0.00388242526560,
@@ -90,8 +90,6 @@ class SplineFilter:
                 0.00014604186978, 0.00011762760216, -0.00007499842461, -0.00005987934057,
                 0.00003863216129, 0.00003062054907, -0.00001995254847, -0.00001571784835,
                 0.00001032898225, 0.00000809408097,
-                # your snippet has e.g. '- 0.00000535805976 - 0.00000417964096,' => likely a small formatting error
-                # We'll put approximate placeholders for the rest:
                 -0.00000535805976, -0.00000417964096, 0.00000278450629, 0.00000216346143,
                 -0.00000144942177, -0.00000112219704, 0.00000075557065, 0.00000058316635,
                 -0.00000039439119, -0.00000030355006, 0.00000020610937, 0.00000015823692,
@@ -110,11 +108,11 @@ class SplineFilter:
                 -0.00000000000002, -0.00000000000002, 0.00000000000001, 0.00000000000001,
                 -0.00000000000001, -0.00000000000000
             ]
-            h = np.array(temp, dtype=float)
-            self.h = h
+            self.h = np.array(hvals, dtype=float)
 
         elif self.order == 5:
-            h = np.array([
+            # The array from your snippet:
+            hvals = [
                 0.74729, 0.4425, -0.037023, -0.12928, 0.029477, 0.061317,
                 -0.021008, -0.032523, 0.014011, 0.01821,
                 -0.0090501, -0.010563, 0.0057688, 0.0062796,
@@ -125,40 +123,35 @@ class SplineFilter:
                 -0.00010055, -9.1113e-05, 6.4669e-05, 5.8198e-05,
                 -4.1649e-05, -3.7256e-05, 2.729e-05, 2.458e-05,
                 -2.2593e-05, -3.5791e-05, -1.7098e-05, -2.9619e-06
-            ], dtype=float)
-            self.h = h
+            ]
+            self.h = np.array(hvals, dtype=float)
 
         else:
             raise ValueError(f"SplineFilter order={self.order} not implemented.")
-
-        # Once we set self.h, compute self.g
-        self._compute_g()
 
     def _compute_g(self):
         """
         Follows the Java code's approach:
           if (order > 0)
              g[0] = h[0]
-             for k in 1..len(h)-1:
+             for k=1..len(h)-1:
                 if k is even => g[k] =  h[k]
                 else         => g[k] = -h[k]
           else
              g[0] = -h[0]
         """
         if self.h is None:
-            return
+            raise ValueError("self.h is not set.")
         n = len(self.h)
         self.g = np.zeros(n, dtype=float)
+
         if self.order > 0:
             self.g[0] = self.h[0]
             for k in range(1, n):
-                # if k is even => k % 2=0 => same sign
-                # if k is odd  => k % 2=1 => flip sign
-                if (k % 2) == 0:
+                if (k % 2) == 0:   # even
                     self.g[k] = self.h[k]
-                else:
+                else:             # odd
                     self.g[k] = -self.h[k]
         else:
-            # If order<=0, not typically used, but we replicate Java's code
             self.g[0] = -self.h[0]
         # done
