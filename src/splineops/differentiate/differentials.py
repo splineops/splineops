@@ -82,8 +82,10 @@ class differentials:
         elif self.operation == self.HESSIAN_ORIENTATION:
             self.image = self.hessian_orientation()
 
-        self.image -= self.image.min()
-        self.image /= self.image.max()
+        if self.operation not in [self.GRADIENT_DIRECTION, self.HESSIAN_ORIENTATION]:
+            self.image -= self.image.min()
+            self.image /= self.image.max()
+
         print(f"Completed in {time.time() - start_time:.2f} seconds")
 
     def get_cross_hessian(self, image, tolerance):
