@@ -1,9 +1,7 @@
 """
 splinewavelets.py
 -----------------
-Implements Spline wavelet transform (orders 1,3,5) via the AbstractWavelets interface.
-We show a base 'SplineWavelets' that can handle a user-specified order,
-plus you can have Spline1Wavelets, Spline3Wavelets, Spline5Wavelets as wrappers.
+Implements Spline wavelet transforms of orders 1, 3, 5.
 """
 
 import numpy as np
@@ -12,24 +10,51 @@ from .splinefilter import SplineFilter
 
 class SplineWavelets(AbstractWavelets):
     """
-    A generic Spline wavelet class that references a given 'order' (1,3,5).
-    If you want specialized classes like Spline1Wavelets, Spline3Wavelets, etc.,
-    you can wrap this similarly or define them below.
+    A generic spline wavelet class that references a given 'order' (1,3,5).
+    Uses row->column passes with mirror boundary to compute detail.
+
+    Parameters
+    ----------
+    scales : int
+        Number of scales.
+    order : int
+        Spline order (1,3,5).
+
+    Attributes
+    ----------
+    filter : SplineFilter
+        Holds the arrays h[] (lowpass) and g[] (highpass).
     """
 
     def __init__(self, scales=3, order=3):
         super().__init__(scales=scales)
         self.order = order
-        # Load the SplineFilter for 'order' => sets self.h, self.g
         self.filter = SplineFilter(order)
 
     def get_name(self):
+        """Return 'Spline{order}'."""
         return f"Spline{self.order}"
 
     def get_documentation(self):
+        """Return a short docstring describing the spline wavelet order."""
         return f"Spline Wavelets (order={self.order})."
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
+        """
+        Single-scale 2D spline wavelet analysis pass:
+        - Row pass (splitMirror)
+        - Column pass (splitMirror)
+
+        Parameters
+        ----------
+        inp : np.ndarray
+            2D array.
+
+        Returns
+        -------
+        np.ndarray
+            Transformed 2D array (same shape).
+        """
         out = np.copy(inp)
         ny, nx = out.shape
 
@@ -48,6 +73,21 @@ class SplineWavelets(AbstractWavelets):
 
 
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
+        """
+        Single-scale 2D spline wavelet synthesis pass:
+        - Column pass (mergeMirror)
+        - Row pass (mergeMirror)
+
+        Parameters
+        ----------
+        inp : np.ndarray
+            2D array of wavelet coefficients (one scale).
+
+        Returns
+        -------
+        np.ndarray
+            Reconstructed array (same shape).
+        """
         out = np.copy(inp)
         ny, nx = out.shape
 
@@ -70,10 +110,8 @@ class SplineWavelets(AbstractWavelets):
 
     def _split_mirror_1d(self, vin: np.ndarray, h: np.ndarray, g: np.ndarray) -> np.ndarray:
         """
-        Equivalent to 'splitMirror(...)' from SplineWaveletsTool.java:
-          - Lowpass output in first half
-          - Highpass in second half
-          - Mirror boundary with period=2*(n-1)
+        1D mirror-based split for low-pass & high-pass. 
+        The first half of the output is the lowpass, the second half is the detail.
         """
         n = vin.shape[0]
         vout = np.zeros(n, dtype=vin.dtype)
@@ -121,9 +159,7 @@ class SplineWavelets(AbstractWavelets):
 
     def _merge_mirror_1d(self, vin: np.ndarray, h: np.ndarray, g: np.ndarray) -> np.ndarray:
         """
-        Equivalent to 'mergeMirror(...)' from SplineWaveletsTool.java:
-          - Inverse of 'split_mirror_1d'
-          - Mirror boundary with period=2*(n2)-1, where n2=n//2
+        Inverse of _split_mirror_1d.
         """
         n = vin.shape[0]
         vout = np.zeros(n, dtype=vin.dtype)
@@ -220,6 +256,7 @@ class SplineWavelets(AbstractWavelets):
 # ------------------------------------------------------------------------
 
 class Spline1Wavelets(SplineWavelets):
+    """Spline Wavelets of order=1."""
     def __init__(self, scales=3):
         super().__init__(scales=scales, order=1)
 
@@ -231,6 +268,7 @@ class Spline1Wavelets(SplineWavelets):
 
 
 class Spline3Wavelets(SplineWavelets):
+    """Spline Wavelets of order=3."""
     def __init__(self, scales=3):
         super().__init__(scales=scales, order=3)
 
@@ -242,6 +280,7 @@ class Spline3Wavelets(SplineWavelets):
 
 
 class Spline5Wavelets(SplineWavelets):
+    """Spline Wavelets of order=5."""
     def __init__(self, scales=3):
         super().__init__(scales=scales, order=5)
 

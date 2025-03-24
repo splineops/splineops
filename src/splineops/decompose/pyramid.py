@@ -44,25 +44,28 @@ import numpy as np
 
 def get_pyramid_filter(name: str, order: int):
     """
-    Retrieve the reduce filter (g[]), expand filter (h[]), and
-    a boolean indicating whether the filter is 'centered'.
+    Retrieve the reduce/expand filters for a particular spline family and order.
 
     Parameters
     ----------
     name : str
-        One of: "Spline", "Spline L2", "Centered Spline", "Centered Spline L2"
-        (adjust if you have more families).
+        Filter family name, e.g. "Spline", "Centered Spline".
     order : int
-        The spline order for which the filter is defined.
-
+        Spline order (e.g. 3).
+    
     Returns
     -------
-    g : 1D ndarray
-        Filter coefficients for the reduce operation
-    h : 1D ndarray
-        Filter coefficients for the expand operation
+    g : np.ndarray
+        1D filter for REDUCE operation.
+    h : np.ndarray
+        1D filter for EXPAND operation.
     is_centered : bool
-        True if this filter is a centered variant, else False
+        True if the filter is a centered variant; False otherwise.
+
+    Raises
+    ------
+    ValueError
+        If the combination of name/order is not implemented.
     """
     # These are sample definitions for demonstration:
     # (Add more for other 'name/order' combos if needed)
@@ -115,13 +118,22 @@ def get_pyramid_filter(name: str, order: int):
 
 def wrap_reflect(i: int, n: int) -> int:
     """
-    Mirror boundary reflection of index i into [0..n-1].
-    For n >= 2, we use period = 2*(n-1).
-    For n < 2, everything maps to 0.
+    Mirror boundary reflection of index `i` into the range [0..n-1].
+    
+    If n >= 2, uses period = 2*(n-1).
+    If n < 2, everything maps to 0.
 
-    E.g. from your original C logic:
-       i = i % (2*(n-1))
-       if i >= n => i = 2*(n-1) - i
+    Parameters
+    ----------
+    i : int
+        Original index (may be out of bounds).
+    n : int
+        Length of the signal.
+
+    Returns
+    -------
+    int
+        Reflected index within [0..n-1].
     """
     if n < 2:
         return 0
@@ -138,7 +150,21 @@ def wrap_reflect(i: int, n: int) -> int:
 
 def reduce_1d(signal: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
     """
-    Reduce a 1D signal by factor 2 using filter g.
+    Reduce a 1D signal by factor of 2 using filter g.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        Input 1D signal of length >= 2.
+    g : np.ndarray
+        Filter for reduction (REDUCE).
+    centered : bool
+        Indicates if the filter is a centered variant.
+
+    Returns
+    -------
+    np.ndarray
+        Reduced signal of length roughly n/2.
     """
     n = signal.shape[0]
     half = n // 2 if n >= 2 else 1
@@ -153,7 +179,21 @@ def reduce_1d(signal: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
 
 def expand_1d(signal: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
     """
-    Expand a 1D signal by factor 2 using filter h.
+    Expand a 1D signal by factor of 2 using filter h.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        Input 1D signal (coarse scale).
+    h : np.ndarray
+        Filter for expansion (EXPAND).
+    centered : bool
+        Indicates if the filter is a centered variant.
+
+    Returns
+    -------
+    np.ndarray
+        Expanded signal of length ~ 2*n.
     """
     n = signal.shape[0]
     outlen = 2*n if n >= 2 else n
@@ -172,7 +212,21 @@ def expand_1d(signal: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
 
 def reduce_2d(image: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
     """
-    Reduce a 2D image by factor 2 in each dimension using filter g.
+    Reduce a 2D image by factor of 2 in each dimension.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Input 2D array (ny, nx).
+    g : np.ndarray
+        1D reduce filter.
+    centered : bool
+        True if using centered reduce logic.
+
+    Returns
+    -------
+    np.ndarray
+        Reduced image of shape (ny//2, nx//2) if ny,nx >= 2, else smaller.
     """
     ny, nx = image.shape
     # 1) reduce along X for each row
@@ -197,7 +251,21 @@ def reduce_2d(image: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
 
 def expand_2d(image: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
     """
-    Expand a 2D image by factor 2 in each dimension using filter h.
+    Expand a 2D image by factor of 2 in each dimension.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Input 2D array (coarse scale).
+    h : np.ndarray
+        1D expand filter.
+    centered : bool
+        True if using centered expand logic.
+
+    Returns
+    -------
+    np.ndarray
+        Expanded image, roughly 2*ny by 2*nx.
     """
     ny, nx = image.shape
     NxOut = nx * 2 if nx >= 2 else nx
