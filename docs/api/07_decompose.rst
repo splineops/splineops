@@ -85,3 +85,5 @@ API Reference: Wavelets
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: analysis1, synthesis1
+
