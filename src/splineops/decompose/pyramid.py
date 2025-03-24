@@ -1,34 +1,38 @@
 """
 pyramid.py
 ----------
+
 Implements pyramid decomposition (reduce & expand) in 1D and 2D using
-filters derived from spline expansions. 
+filters derived from spline expansions. Boundary handling is done via
+mirror reflection, closely mimicking original C routines:
 
-Boundary handling is done via mirror reflection, closely mimicking the
-original C routines:
-  - "ReduceStandard_1D" / "ExpandStandard_1D"
-  - "ReduceCentered_1D" / "ExpandCentered_1D"
+- "ReduceStandard_1D" / "ExpandStandard_1D"
+- "ReduceCentered_1D" / "ExpandCentered_1D"
 
-Usage Example:
---------------
-  from splineops.decompose.pyramid import (
-      get_pyramid_filter,
-      reduce_1d, expand_1d,
-      reduce_2d, expand_2d
-  )
+Usage Example
+-------------
 
-  # Retrieve filter
-  g, h, is_centered = get_pyramid_filter("Spline", 3)
+.. code-block:: python
 
-  # 1D reduce/expand
-  x = np.array([0,1,2,3,2,1,0,-2,-4,-6], dtype=float)
-  x_reduced = reduce_1d(x, g, is_centered)
-  x_expanded = expand_1d(x_reduced, h, is_centered)
+    from splineops.decompose.pyramid import (
+        get_pyramid_filter,
+        reduce_1d, expand_1d,
+        reduce_2d, expand_2d
+    )
+    import numpy as np
 
-  # 2D reduce/expand
-  arr = np.random.rand(8,8).astype(np.float32)
-  arr_reduced = reduce_2d(arr, g, is_centered)
-  arr_expanded = expand_2d(arr_reduced, h, is_centered)
+    # Retrieve filter
+    g, h, is_centered = get_pyramid_filter("Spline", 3)
+
+    # 1D reduce/expand
+    x = np.array([0, 1, 2, 3, 2, 1, 0, -2, -4, -6], dtype=float)
+    x_reduced = reduce_1d(x, g, is_centered)
+    x_expanded = expand_1d(x_reduced, h, is_centered)
+
+    # 2D reduce/expand
+    arr = np.random.rand(8, 8).astype(np.float32)
+    arr_reduced = reduce_2d(arr, g, is_centered)
+    arr_expanded = expand_2d(arr_reduced, h, is_centered)
 """
 
 import numpy as np
