@@ -60,6 +60,10 @@ noise_width_10_by_height_15 = [
 
 column_width_2_by_height_5 = [[1.03725, 1.02459], [0.93563, 0.13392], [-0.69445, -0.53387], [-0.29972, 0.05411], [0.00213, 1.24979]]
 
+row_width_3_by_height_1 = [
+	[0.1, 0.5, -0.7]
+]
+
 ##############################################################################
 # 3) Java ground-truth arrays (UNNORMALIZED)
 ##############################################################################
@@ -82,7 +86,9 @@ gradient_magnitude_of_noise_width_10_by_height_15 = [
     [0., 0.3001501294857565, 1.2293994820569738, 1.9897480577136517, 0.46859274879763246, 0.2683770625231223, 0.8761009988901225, 1.934026933037366, 0.12699326674065836, 0.]
 ]
 
-gradient_direction_of_column_width_2_by_height_5 = [[0., 0.], [0., 0.], [0., 0.], [3.141592653589793, 3.141592653589793], [0., 0.]]
+gradient_magnitude_of_column_width_2_by_height_5 = [[0., 0.], [1.08951, 1.1396785714285713], [0.83706, 0.11666571428571437], [0.7317000000000001, 1.3669114285714286], [0., 0.]]
+
+gradient_magnitude_of_row_width_3_by_height_1 = [[0., 0.6000000000000003, 0.]]
 
 # Gradient Direction
 gradient_direction_of_noise_width_10_by_height_15 = [
@@ -103,7 +109,9 @@ gradient_direction_of_noise_width_10_by_height_15 = [
     [0., 1.5707963267948966, 1.5707963267948966, -1.5707963267948966, 1.5707963267948966, 1.5707963267948966, -1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 0.]
 ]
 
-gradient_magnitude_of_column_width_2_by_height_5 = [[0., 0.], [1.08951, 1.1396785714285713], [0.83706, 0.11666571428571437], [0.7317000000000001, 1.3669114285714286], [0., 0.]]
+gradient_direction_of_column_width_2_by_height_5 = [[0., 0.], [0., 0.], [0., 0.], [3.141592653589793, 3.141592653589793], [0., 0.]]
+
+gradient_direction_of_row_width_3_by_height_1 = [[0., 1.5707963267948966, 0.]]
 
 # Laplacian
 laplacian_of_noise_width_10_by_height_15 = [
@@ -126,6 +134,8 @@ laplacian_of_noise_width_10_by_height_15 = [
 
 laplacian_of_column_width_2_by_height_5 = [[1.4933400000000001, -2.988702857142856], [-8.558580000000003, 5.5955657142857165], [5.216700000000003, 0.2972399999999982], [1.0072800000000002, -0.41654571428571474], [7.138260000000004, -11.926217142857148]]
 
+laplacian_of_row_width_3_by_height_1 = [[3.6000000000000023, -4.8000000000000025, 6.0000000000000036]]
+
 # Largest Hessian
 largest_hessian_of_noise_width_10_by_height_15 = [
     [9.25656510723867, 8.077654520236816, 9.645738362713704, 10.122934369219386, 15.25268550156017, 2.2519323714391435, -0.26705687470864836, 6.7463568326980905, 10.702796658463962, 2.2271136098817337], 
@@ -146,6 +156,8 @@ largest_hessian_of_noise_width_10_by_height_15 = [
 ]
 
 largest_hessian_of_column_width_2_by_height_5 = [[1.5693000000000008, 0.0759600000000007], [-3.748320000000001, 4.810260000000002], [4.2532200000000016, 1.2607199999999996], [2.122980000000001, 1.7064342857142862], [7.485960000000004, -4.440257142857143]]
+
+largest_hessian_of_row_width_3_by_height_1 = [[3.6000000000000023, 0., 6.0000000000000036]]
 
 # Smallest Hessian
 smallest_hessian_of_noise_width_10_by_height_15 = [
@@ -168,6 +180,8 @@ smallest_hessian_of_noise_width_10_by_height_15 = [
 
 smallest_hessian_of_column_width_2_by_height_5 = [[-0.0759600000000007, -3.064662857142857], [-4.810260000000001, 0.7853057142857145], [0.9634800000000014, -0.9634800000000014], [-1.1157000000000008, -2.122980000000001], [-0.3476999999999995, -7.485960000000004]]
 
+smallest_hessian_of_row_width_3_by_height_1 = [[0., -4.8000000000000025, 0.]]
+
 # Hessian Orientation
 hessian_orientation_of_noise_width_10_by_height_15 = [
     [1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 3.141592653589793, 1.5707963267948966, 3.141592653589793, -1.5707963267948966, 1.5707963267948966, 1.5707963267948966, -1.5707963267948966], 
@@ -188,6 +202,8 @@ hessian_orientation_of_noise_width_10_by_height_15 = [
 ]
 
 hessian_orientation_of_column_width_2_by_height_5 = [[1.5707963267948966, 3.141592653589793], [-1.5707963267948966, 3.141592653589793], [1.5707963267948966, 1.5707963267948966], [3.141592653589793, -1.5707963267948966], [3.141592653589793, -1.5707963267948966]]
+
+hessian_orientation_of_row_width_3_by_height_1 = [[3.141592653589793, -1.5707963267948966, 3.141592653589793]]
 
 ##############################################################################
 # 4) Helper to compare angles, allowing certain offsets
@@ -226,6 +242,7 @@ ATOL = 1.0
 @pytest.mark.parametrize("image_data, expected_data", [
     (noise_width_10_by_height_15,  gradient_magnitude_of_noise_width_10_by_height_15),
     (column_width_2_by_height_5, gradient_magnitude_of_column_width_2_by_height_5),
+    (row_width_3_by_height_1, gradient_magnitude_of_row_width_3_by_height_1),
 ])
 def test_gradient_magnitude(image_data, expected_data):
     """Test gradient magnitude for both 'noise' and 'smooth' images."""
@@ -239,6 +256,7 @@ def test_gradient_magnitude(image_data, expected_data):
 @pytest.mark.parametrize("image_data, expected_data", [
     (noise_width_10_by_height_15,  gradient_direction_of_noise_width_10_by_height_15),
     (column_width_2_by_height_5, gradient_direction_of_column_width_2_by_height_5),
+    (row_width_3_by_height_1, gradient_direction_of_row_width_3_by_height_1),
 ])
 def test_gradient_direction(image_data, expected_data):
     """
@@ -259,6 +277,7 @@ def test_gradient_direction(image_data, expected_data):
 @pytest.mark.parametrize("image_data, expected_data", [
     (noise_width_10_by_height_15,  laplacian_of_noise_width_10_by_height_15),
     (column_width_2_by_height_5, laplacian_of_column_width_2_by_height_5),
+    (row_width_3_by_height_1, laplacian_of_row_width_3_by_height_1),
 ])
 def test_laplacian(image_data, expected_data):
     """Test Laplacian for both 'noise' and 'smooth' images."""
@@ -272,6 +291,7 @@ def test_laplacian(image_data, expected_data):
 @pytest.mark.parametrize("image_data, expected_data", [
     (noise_width_10_by_height_15,  largest_hessian_of_noise_width_10_by_height_15),
     (column_width_2_by_height_5, largest_hessian_of_column_width_2_by_height_5),
+    (row_width_3_by_height_1, largest_hessian_of_row_width_3_by_height_1),
 ])
 def test_largest_hessian(image_data, expected_data):
     """Test the largest Hessian eigenvalue for both 'noise' and 'smooth'."""
@@ -285,6 +305,7 @@ def test_largest_hessian(image_data, expected_data):
 @pytest.mark.parametrize("image_data, expected_data", [
     (noise_width_10_by_height_15,  smallest_hessian_of_noise_width_10_by_height_15),
     (column_width_2_by_height_5, smallest_hessian_of_column_width_2_by_height_5),
+    (row_width_3_by_height_1, smallest_hessian_of_row_width_3_by_height_1),
 ])
 def test_smallest_hessian(image_data, expected_data):
     """Test the smallest Hessian eigenvalue for both 'noise' and 'smooth'."""
@@ -298,6 +319,7 @@ def test_smallest_hessian(image_data, expected_data):
 @pytest.mark.parametrize("image_data, expected_data", [
     (noise_width_10_by_height_15,  hessian_orientation_of_noise_width_10_by_height_15),
     (column_width_2_by_height_5, hessian_orientation_of_column_width_2_by_height_5),
+    (row_width_3_by_height_1, hessian_orientation_of_row_width_3_by_height_1),
 ])
 def test_hessian_orientation(image_data, expected_data):
     """

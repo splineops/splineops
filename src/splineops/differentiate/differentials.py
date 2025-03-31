@@ -308,6 +308,10 @@ class differentials:
         tolerance : float
             Tolerance parameter controlling the trade-off between speed and accuracy.
         """
+        # If the signal has less than 2 elements, no interpolation is needed.
+        if len(c) < 2:
+            return
+    
         z = [np.sqrt(3.0) - 2.0]
         lambda_ = 1.0
         for zk in z:
