@@ -88,6 +88,7 @@ plt.show()
 #
 # Instead of a synthetic 2D array, we download an external color image,
 # convert it to grayscale, and convert intensities to the [0..1] range.
+# Now we also plot the original image.
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim07.png'
 response = requests.get(url)
@@ -108,6 +109,14 @@ image_gray = (
 
 ny, nx = image_gray.shape
 print(f"Downloaded image shape = {ny} x {nx}")
+
+# Plot the original grayscale image
+plt.figure(figsize=(6, 6))
+plt.imshow(image_gray, cmap='gray', interpolation='nearest', vmin=0, vmax=1)
+plt.title("Original Grayscale Image", fontsize=14)
+plt.axis('off')
+plt.tight_layout()
+plt.show()
 
 # %%
 # 2D Pyramid Decomposition
@@ -131,12 +140,11 @@ print("Expanded shape:", expanded_2d.shape)
 print(f"Max error: {max_err}")
 
 # %%
-# 2D Pyramid Decomposition with White Canvas Embedding (Top-Left Corner)
+# 2D Pyramid Decomposition with White Canvas Embedding (Top-Left Corner, White Background Always White)
 #
-# For each pyramid level computed with reduce_2d, we embed the reduced image
-# into a white canvas with the same dimensions as the original image. The reduced
-# image is placed in the top-left corner, so you can clearly see how the reduced
-# image's size decreases relative to the full image.
+# For each pyramid level computed with reduce_2d (except Level 0), we embed the reduced image
+# into a white canvas of the same size as the original image. The reduced image is placed in the top-left corner.
+# We force the display range so that the white background always appears white.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -157,18 +165,22 @@ for _ in range(num_reductions):
     current = reduce_2d(current, g, is_centered)
     levels.append(current)
 
-# For each level, create a white canvas (all ones, assuming white=1 in grayscale)
+# For each level except Level 0, create a white canvas (all ones, white=1 in grayscale)
 # with the size of the original image, and embed the reduced image in the top-left corner.
 original_shape = image_gray.shape  # (ny, nx)
 for i, level in enumerate(levels):
+    if i == 0:
+        # Skip Level 0 as it is the original image
+        continue
     canvas = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
     h_level, w_level = level.shape
     # Place the reduced image in the top-left corner
     canvas[0:h_level, 0:w_level] = level
     
     plt.figure(figsize=(6, 6))
-    plt.imshow(canvas, cmap='gray', interpolation='nearest')
-    plt.title(f"Level {i} Decomposition", fontsize=14)
+    # Force display range so that 1 is white and 0 is black
+    plt.imshow(canvas, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
+    plt.title(f"Level {i} Decomposition (Embedded in Original Canvas, Top-Left)", fontsize=14)
     plt.axis('off')
     plt.tight_layout()
     plt.show()
