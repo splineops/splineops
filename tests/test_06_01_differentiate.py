@@ -413,7 +413,7 @@ def assert_angle_allclose(actual, expected, offsets, rtol, atol, period=2*np.pi)
 #    then each test uses them.
 ##############################################################################
 
-RTOL = 1e-2
+RTOL = 1e-12
 ATOL = 1.0
 
 @pytest.mark.parametrize("image_data, expected_data", [
