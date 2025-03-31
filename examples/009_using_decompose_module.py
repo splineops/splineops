@@ -9,13 +9,6 @@ This example demonstrates how to use the 'decompose' module for:
   * Haar wavelets (2D)
   * Spline wavelets (2D) of orders 1,3,5
 
-We replicate some small tests from reference C implementations, illustrating:
-- How to create small 1D/2D signals
-- Perform pyramid reduce/expand
-- Perform wavelet analysis/synthesis
-- Measure reconstruction errors
-- Visualize intermediate and final results
-
 You can download this example as both a Python script and a Jupyter notebook.
 """
 
@@ -28,6 +21,11 @@ You can download this example as both a Python script and a Jupyter notebook.
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+# For downloading and handling the image
+import requests
+from io import BytesIO
+from PIL import Image
 
 # Pyramid decomposition utilities
 from splineops.decompose.pyramid import (
@@ -48,11 +46,11 @@ from splineops.decompose.wavelets.splinewavelets import (
 # 1D Pyramid Decomposition
 # ------------------------
 #
-# In this section, we build a 1D signal (length=10) and do a pyramid
-# reduce-then-expand. This replicates the logic of a simpler reference test.
+# We'll keep a simple 1D demonstration (length=10). Then we do a pyramid
+# reduce-then-expand. This replicates the logic of a reference test.
 
 x = np.array([0.0, 1.0, 2.0, 3.0, 2.0, 1.0, 0.0, -2.0, -4.0, -6.0], 
-                dtype=np.float64)
+             dtype=np.float64)
 
 filter_name = "Centered Spline"
 order = 3
@@ -87,42 +85,59 @@ plt.tight_layout()
 plt.show()
 
 # %%
+# Download & Prepare the 2D Image
+# -------------------------------
+#
+# Instead of a synthetic 2D array, we download an external color image,
+# convert it to grayscale, and convert intensities to the [0..1] range.
+
+url = 'https://r0k.us/graphics/kodak/kodak/kodim07.png'
+response = requests.get(url)
+img = Image.open(BytesIO(response.content))
+
+# Convert to numpy float64
+image_color = np.array(img, dtype=np.float64)
+
+# Normalize to [0..1]
+image_color /= 255.0
+
+# Convert to grayscale using standard weights
+image_gray = (
+    image_color[:, :, 0] * 0.2989 +
+    image_color[:, :, 1] * 0.5870 +
+    image_color[:, :, 2] * 0.1140
+)
+
+ny, nx = image_gray.shape
+print(f"Downloaded image shape = {ny} x {nx}")
+
+# %%
 # 2D Pyramid Decomposition
 # ------------------------
 #
-# This section demonstrates a small 4x4 "image" being reduced and then expanded
-# using the same pyramid filter logic.
-
-arr = np.array([
-    [0.0, 1.0, 2.0, 3.0],
-    [1.0, 2.0, 3.0, 4.0],
-    [2.0, 3.0, 4.0, 5.0],
-    [3.0, 4.0, 3.0, 2.0]
-], dtype=np.float32)
+# Demonstrate pyramid reduce->expand on the grayscale image.
 
 filter_name = "Spline"
 order = 3
 g, h, is_centered = get_pyramid_filter(filter_name, order)
 
-reduced_2d = reduce_2d(arr, g, is_centered)
+reduced_2d = reduce_2d(image_gray, g, is_centered)
 expanded_2d = expand_2d(reduced_2d, h, is_centered)
-
-error_2d = expanded_2d - arr
+error_2d = expanded_2d - image_gray
 max_err = np.abs(error_2d).max()
 
 print("[2D Pyramid Test]")
 print(f"Filter: '{filter_name}' (order={order}), is_centered={is_centered}")
-print("Input 4x4 :\n", arr)
-print("Reduced 2x2:\n", reduced_2d)
-print("Expanded 4x4:\n", expanded_2d)
-print("Error:\n", error_2d)
+print("Reduced shape:", reduced_2d.shape)
+print("Expanded shape:", expanded_2d.shape)
 print(f"Max error: {max_err}")
 
 fig, ax = plt.subplots(1, 3, figsize=(10, 3))
-ax[0].imshow(arr, cmap='viridis', vmin=arr.min(), vmax=arr.max())
-ax[0].set_title("Original 4x4")
 
-ax[1].imshow(expanded_2d, cmap='viridis', vmin=arr.min(), vmax=arr.max())
+ax[0].imshow(image_gray, cmap='gray')
+ax[0].set_title("Original Grayscale")
+
+ax[1].imshow(expanded_2d, cmap='gray')
 ax[1].set_title("Expanded from Reduced")
 
 im2 = ax[2].imshow(error_2d, cmap='bwr')
@@ -136,30 +151,27 @@ plt.show()
 # Haar Wavelets (2D)
 # ------------------
 #
-# Next, we demonstrate wavelet decomposition (analysis) and reconstruction (synthesis)
-# using 2D Haar wavelets. For 2D Haar wavelets, we require `ny >= 2` and `nx >= 2`.
-
-ny, nx = 32, 32
-image = np.random.rand(ny, nx).astype(np.float32)*2 - 1.0  # negative & positive
+# Next, demonstrate wavelet decomposition (analysis) and reconstruction (synthesis)
+# using 2D Haar wavelets on the same grayscale image.
 
 haar2d = HaarWavelets(scales=3)
-coeffs = haar2d.analysis(image)
-recon = haar2d.synthesis(coeffs)
-err = recon - image
-max_err = np.abs(err).max()
+coeffs = haar2d.analysis(image_gray)
+recon_haar = haar2d.synthesis(coeffs)
+err_haar = recon_haar - image_gray
+max_err_haar = np.abs(err_haar).max()
 
 print("[Wavelets 2D Haar Test]")
-print(f"Max error after 3-scale decomposition: {max_err}")
+print(f"Max error after 3-scale decomposition: {max_err_haar}")
 
 fig, ax = plt.subplots(1, 3, figsize=(9, 3))
-ax[0].imshow(image, cmap='gray')
-ax[0].set_title("Original 32x32")
+ax[0].imshow(image_gray, cmap='gray')
+ax[0].set_title("Original")
 
-ax[1].imshow(recon, cmap='gray')
-ax[1].set_title("Reconstructed from Haar Wavelets")
+ax[1].imshow(recon_haar, cmap='gray')
+ax[1].set_title("Reconstructed from Haar")
 
-diffim = ax[2].imshow(err, cmap='bwr')
-ax[2].set_title(f"Error (max={max_err:.3g})")
+diffim = ax[2].imshow(err_haar, cmap='bwr')
+ax[2].set_title(f"Error (max={max_err_haar:.3g})")
 plt.colorbar(diffim, ax=ax[2], fraction=0.046, pad=0.04)
 
 plt.tight_layout()
@@ -169,46 +181,41 @@ plt.show()
 # Spline Wavelets (2D)
 # --------------------
 #
-# Finally, we demonstrate 2D wavelet analysis/synthesis using spline wavelets of
-# orders 1, 3, and 5. Each decomposition pass does row->column analysis, then
-# column->row synthesis.
+# Finally, demonstrate 2D wavelet analysis/synthesis using spline wavelets of
+# orders 1, 3, and 5.
 
-ny, nx = 32, 32
-image = np.random.rand(ny, nx).astype(np.float32)*2 - 1.0
-
-# We'll test 3 different spline wavelets: Spline1, Spline3, Spline5
 wavelets_dict = {
     "Spline1": Spline1Wavelets(scales=3),
     "Spline3": Spline3Wavelets(scales=3),
     "Spline5": Spline5Wavelets(scales=3),
 }
 
-fig, axarr = plt.subplots(3, 3, figsize=(9, 9))
+fig, axarr = plt.subplots(3, 3, figsize=(10, 9))
 
 for idx, (name, wavelet) in enumerate(wavelets_dict.items()):
-    coeffs = wavelet.analysis(image)
+    coeffs = wavelet.analysis(image_gray)
     recon = wavelet.synthesis(coeffs)
-    err = recon - image
+    err = recon - image_gray
     max_err = np.abs(err).max()
 
     print(f"[Wavelets 2D {name} Test]")
     print(f"Max error after 3-scale decomposition: {max_err}")
 
-    # Show original only once at the top-left
+    # Show the original image in the top-left subplot only
     if idx == 0:
-        axarr[0,0].imshow(image, cmap='gray')
-        axarr[0,0].set_title("Original 32x32")
+        axarr[0,0].imshow(image_gray, cmap='gray')
+        axarr[0,0].set_title("Original")
 
-    # Recon in row=idx, col=1
+    # Reconstructed image in col=1
     axarr[idx,1].imshow(recon, cmap='gray')
     axarr[idx,1].set_title(f"{name} Reconstructed\nErr={max_err:.3g}")
 
-    # Diff in row=idx, col=2
+    # Difference image in col=2
     im2 = axarr[idx,2].imshow(err, cmap='bwr')
     axarr[idx,2].set_title("Difference")
     plt.colorbar(im2, ax=axarr[idx,2], fraction=0.046, pad=0.04)
 
-# Hide empty subplots in the first column (rows 1 and 2) since we only show original once
+# Hide empty subplots in the first column (rows 1 and 2)
 axarr[1,0].axis('off')
 axarr[2,0].axis('off')
 
