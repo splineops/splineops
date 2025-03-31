@@ -131,48 +131,47 @@ print("Expanded shape:", expanded_2d.shape)
 print(f"Max error: {max_err}")
 
 # %%
-# Progressive Approximation Visualization from Pyramid Decomposition
-# ---------------------------------------------------------------------
+# 2D Pyramid Decomposition with White Canvas Embedding (Top-Left Corner)
 #
-# Using the pyramid decomposition (reduce_2d) from splineops.decompose.pyramid,
-# we iteratively reduce the grayscale image. Each reduction halves the image dimensions,
-# yielding a coarser approximation at each level.
-#
-# This cell produces a separate plot for each level:
-# Level 0: Original image.
-# Level 1: Reduced image (first-level coarse approximation).
-# Level 2: Further reduced image.
-# Level 3: Further reduced image.
-#
-# Retrieve the pyramid filter (using "Spline" filter with order 3)
+# For each pyramid level computed with reduce_2d, we embed the reduced image
+# into a white canvas with the same dimensions as the original image. The reduced
+# image is placed in the top-left corner, so you can clearly see how the reduced
+# image's size decreases relative to the full image.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from splineops.decompose.pyramid import get_pyramid_filter, reduce_2d
+
+# Retrieve the pyramid filter parameters (using "Spline" filter with order 3)
 filter_name = "Spline"
 order = 3
 g, h, is_centered = get_pyramid_filter(filter_name, order)
 
-# Compute multiple pyramid levels
+# Compute pyramid levels:
+# Level 0: Original image, and each subsequent level is obtained by reducing the previous one.
 num_reductions = 3
-levels_pyr = [image_gray]  # Level 0: Original image
-current = image_gray
+levels = []
+current = image_gray  # image_gray is already loaded from previous cell.
+levels.append(current)  # Level 0: Original image
 for _ in range(num_reductions):
     current = reduce_2d(current, g, is_centered)
-    levels_pyr.append(current)
+    levels.append(current)
 
-titles = [
-    "Level 0: Original Image",
-    "Level 1: Coarse Approximation (Pyramid)",
-    "Level 2: Coarse Approximation (Pyramid)",
-    "Level 3: Coarse Approximation (Pyramid)"
-]
-
-# Plot each level in a separate figure
-for im, title in zip(levels_pyr, titles):
+# For each level, create a white canvas (all ones, assuming white=1 in grayscale)
+# with the size of the original image, and embed the reduced image in the top-left corner.
+original_shape = image_gray.shape  # (ny, nx)
+for i, level in enumerate(levels):
+    canvas = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
+    h_level, w_level = level.shape
+    # Place the reduced image in the top-left corner
+    canvas[0:h_level, 0:w_level] = level
+    
     plt.figure(figsize=(6, 6))
-    plt.imshow(im, cmap='gray', interpolation='nearest')
-    plt.title(title, fontsize=14)
+    plt.imshow(canvas, cmap='gray', interpolation='nearest')
+    plt.title(f"Level {i} Decomposition", fontsize=14)
     plt.axis('off')
     plt.tight_layout()
     plt.show()
-
 
 # %%
 # Haar Wavelets (2D)
@@ -192,10 +191,6 @@ print(f"Max error after 3-scale decomposition: {max_err_haar}")
 
 # %%
 # Pyramid Visualization: Separate Plots for 1, 2, and 3 Level Decompositions
-
-import numpy as np
-import matplotlib.pyplot as plt
-from splineops.decompose.wavelets.haar import HaarWavelets
 
 def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
     """
