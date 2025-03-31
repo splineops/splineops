@@ -191,41 +191,41 @@ print("[Wavelets 2D Haar Test]")
 print(f"Max error after 3-scale decomposition: {max_err_haar}")
 
 # %%
-# Progressive Approximation Visualization from Haar Wavelet Decomposition
-# -----------------------------------------------------------------------
+# Progressive Approximation Visualization from Haar Wavelet Decomposition (Fixed)
+# ----------------------------------------------------------------------------------
 #
-# In the multi-scale Haar wavelet decomposition, the top-left region of the
-# coefficients array corresponds to the coarse approximation at that level.
-# Here we generate a separate plot for each level:
-# Level 0: Original image.
-# Level 1: Approximation after 1 level of decomposition.
-# Level 2: Approximation after 2 levels.
-# Level 3: Approximation after 3 levels.
+# In the multi-scale Haar wavelet decomposition, the analysis process stores the
+# coarse approximation in the top-left region of the coefficient array. At each level,
+# the approximation size is reduced by a factor of 2 in each dimension.
 #
-# This follows the common Mallat decomposition approach used in PyWavelets.
-
+# Here we extract the approximation subband at each level based on the original image
+# dimensions. For an original image of shape (ny0, nx0), the approximation at level L is
+# located at coeffs[0:ny0//(2**L), 0:nx0//(2**L)].
+#
 # Assuming 'coeffs' was obtained earlier by:
 #    haar2d = HaarWavelets(scales=3)
 #    coeffs = haar2d.analysis(image_gray)
-ny, nx = image_gray.shape
+ny0, nx0 = image_gray.shape
 
-# Extract the coarse approximation at each level
-approx_levels = [
-    image_gray,                     # Level 0: Original image
-    coeffs[:ny//2, :nx//2],          # Level 1: Approximation (size ny/2 x nx/2)
-    coeffs[:ny//4, :nx//4],          # Level 2: Approximation (size ny/4 x nx/4)
-    coeffs[:ny//8, :nx//8]           # Level 3: Approximation (size ny/8 x nx/8)
-]
+# Number of scales is taken from the HaarWavelets instance (here, 3).
+num_scales = 3
 
-titles = [
-    "Level 0: Original Image",
-    "Level 1: Coarse Approximation",
-    "Level 2: Coarse Approximation",
-    "Level 3: Coarse Approximation"
-]
+approx_levels = []
+titles = []
+
+# Level 0: original image (no transform)
+approx_levels.append(image_gray)
+titles.append("Level 0: Original Image")
+
+# For each subsequent level, compute the size based on dyadic scaling.
+for level in range(1, num_scales + 1):
+    nylevel = ny0 // (2 ** level)
+    nxlevel = nx0 // (2 ** level)
+    approx_levels.append(coeffs[:nylevel, :nxlevel])
+    titles.append(f"Level {level}: Coarse Approximation")
 
 # Create a separate plot for each level
-for level, (im, title) in enumerate(zip(approx_levels, titles)):
+for im, title in zip(approx_levels, titles):
     plt.figure(figsize=(6, 6))
     plt.imshow(im, cmap='gray', interpolation='nearest')
     plt.title(title, fontsize=14)
