@@ -87,6 +87,10 @@ smooth_width_19_by_height_20 = [
 	[0.308, 0.163, 0.025, -0.085, -0.142, -0.133, -0.071, 0.014, 0.102, 0.172, 0.190, 0.136, 0.037, -0.047, -0.090, -0.122, -0.179, -0.258, -0.327]
 ]
 
+tiny_width_1_by_height_1 = [
+	[0.1]
+]
+
 ##############################################################################
 # 3) Ground-truth arrays (UNNORMALIZED)
 ##############################################################################
@@ -136,6 +140,8 @@ gradient_magnitude_of_smooth_width_19_by_height_20 = [
     [0., 0.1827961873946236, 0.11781525042150529, 0.08994281091935524, 0.02341350590107375, 0.03959683452365024, 0.07802616780647278, 0.08929849425045856, 0.08377985519169287, 0.049582084982769926, 0.018108195122772508, 0.08514930449167979, 0.10029458691050835, 0.06267234786628686, 0.030016021624344184, 0.042263565636336375, 0.06792971583031028, 0.09401757104242245, 0.]
 ]
 
+gradient_magnitude_of_tiny_width_1_by_height_1 = [[0.]]
+
 # Gradient Direction
 gradient_direction_of_noise_width_10_by_height_15 = [
     [0., -1.5707963267948966, 1.5707963267948966, 1.5707963267948966, -1.5707963267948966, 1.5707963267948966, -1.5707963267948966, 1.5707963267948966, -1.5707963267948966, 0.], 
@@ -181,6 +187,8 @@ gradient_direction_of_smooth_width_19_by_height_20 = [
     [3.141592653589793, 2.361648910457188, 2.454061621010203, 2.0638665790514756, -0.3557296645882062, -0.6219738006857745, -0.7205669110319863, -0.8160202840187846, -0.9976466981011918, -1.2321327544015104, 0.6750075081593938, 0.9949208274979481, 0.6505320648863654, 0.25635373124141253, 0.06635652344333227, 0.1721724653228556, 0.3285605804339315, 0.5208168132969876, 0.], 
     [0., 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, -1.5707963267948966, -1.5707963267948966, -1.5707963267948966, -1.5707963267948966, -1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 0.]
 ]
+
+gradient_direction_of_tiny_width_1_by_height_1 = [[0.]]
 
 # Laplacian
 laplacian_of_noise_width_10_by_height_15 = [
@@ -228,6 +236,8 @@ laplacian_of_smooth_width_19_by_height_20 = [
     [-0.9033589332241244, -0.19951193378117374, -0.23635095535605619, -0.0071416836112807025, 0.14751928745067844, 0.2321886265797442, 0.21115149856811288, 0.161772762703297, 0.07483720442365005, -0.02656840662572768, -0.051577883124466484, 0.05804436084366674, 0.2623912538223811, 0.4131073590837422, 0.4556354115575243, 0.4649427579609741, 0.5168340204169551, 0.4898917448648847, 0.7077500878071528]
 ]
 
+laplacian_of_tiny_width_1_by_height_1 = [[0.]]
+
 # Largest Hessian
 largest_hessian_of_noise_width_10_by_height_15 = [
     [9.25656510723867, 8.077654520236816, 9.645738362713704, 10.122934369219386, 15.25268550156017, 2.2519323714391435, -0.26705687470864836, 6.7463568326980905, 10.702796658463962, 2.2271136098817337], 
@@ -273,6 +283,8 @@ largest_hessian_of_smooth_width_19_by_height_20 = [
     [0.017902616026744145, 0.16535937030700976, 0.09423924939238534, 0.1167577561997396, 0.08256555387913592, 0.038978106530501044, 0.006130459459557377, 0.009665900884959024, 0.018528296394623982, 0.006767181521736986, -0.008952831245908047, 0.00042289082697722296, 0.039330947101026484, 0.04805907266261705, 0.010519542009749439, -0.044795059174729264, -0.018172033453372663, -0.06435623612947841, 0.27594280701620183], 
     [-0.3989513080133721, 0.13881525042150508, -0.008853376475268404, 0.06459825547956849, 0.07905893289368399, 0.1746283002872907, 0.19185315829492128, 0.15852645008851707, 0.08912079515596139, 0.02754354305980683, 0.02969072740108386, 0.11085796905593095, 0.239868210447774, 0.36038592436990635, 0.44304419378747484, 0.502029063755008, 0.5310800150108691, 0.5278214606951951, 0.4817852298919974]
 ]
+
+largest_hessian_of_tiny_width_1_by_height_1 = [[0.]]
 
 # Smallest Hessian
 smallest_hessian_of_noise_width_10_by_height_15 = [
@@ -320,6 +332,8 @@ smallest_hessian_of_smooth_width_19_by_height_20 = [
     [-0.5044076252107523, -0.3383271842026788, -0.22749757888078778, -0.07173993909084919, 0.06846035455699445, 0.057560326292453515, 0.0192983402731916, 0.0032463126147799365, -0.014283590732311335, -0.05411194968553451, -0.08126861052555034, -0.05281360821226422, 0.022523043374607102, 0.05272143471383586, 0.012591217770049484, -0.03708630579403388, -0.01424599459391393, -0.037929715830310406, 0.2259648579151553]
 ]
 
+smallest_hessian_of_tiny_width_1_by_height_1 = [[0.]]
+
 # Hessian Orientation
 hessian_orientation_of_noise_width_10_by_height_15 = [
     [1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 3.141592653589793, 1.5707963267948966, 3.141592653589793, -1.5707963267948966, 1.5707963267948966, 1.5707963267948966, -1.5707963267948966], 
@@ -366,6 +380,8 @@ hessian_orientation_of_smooth_width_19_by_height_20 = [
     [-1.5707963267948966, 3.141592653589793, 3.141592653589793, 3.141592653589793, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, -1.5707963267948966, -1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966, 1.5707963267948966]
 ]
 
+hessian_orientation_of_tiny_width_1_by_height_1 = [[1.5707963267948966]]
+
 ##############################################################################
 # 4) Helper to compare angles, allowing certain offsets
 ##############################################################################
@@ -405,6 +421,7 @@ ATOL = 1.0
     (column_width_2_by_height_5, gradient_magnitude_of_column_width_2_by_height_5),
     (row_width_3_by_height_1, gradient_magnitude_of_row_width_3_by_height_1),
     (smooth_width_19_by_height_20, gradient_magnitude_of_smooth_width_19_by_height_20),
+    (tiny_width_1_by_height_1, gradient_magnitude_of_tiny_width_1_by_height_1),
 ])
 def test_gradient_magnitude(image_data, expected_data):
     """Test gradient magnitude for both 'noise' and 'smooth' images."""
@@ -420,6 +437,7 @@ def test_gradient_magnitude(image_data, expected_data):
     (column_width_2_by_height_5, gradient_direction_of_column_width_2_by_height_5),
     (row_width_3_by_height_1, gradient_direction_of_row_width_3_by_height_1),
     (smooth_width_19_by_height_20, gradient_direction_of_smooth_width_19_by_height_20),
+    (tiny_width_1_by_height_1, gradient_direction_of_tiny_width_1_by_height_1),
 ])
 def test_gradient_direction(image_data, expected_data):
     """
@@ -442,6 +460,7 @@ def test_gradient_direction(image_data, expected_data):
     (column_width_2_by_height_5, laplacian_of_column_width_2_by_height_5),
     (row_width_3_by_height_1, laplacian_of_row_width_3_by_height_1),
     (smooth_width_19_by_height_20, laplacian_of_smooth_width_19_by_height_20),
+    (tiny_width_1_by_height_1, laplacian_of_tiny_width_1_by_height_1),
 ])
 def test_laplacian(image_data, expected_data):
     """Test Laplacian for both 'noise' and 'smooth' images."""
@@ -457,6 +476,7 @@ def test_laplacian(image_data, expected_data):
     (column_width_2_by_height_5, largest_hessian_of_column_width_2_by_height_5),
     (row_width_3_by_height_1, largest_hessian_of_row_width_3_by_height_1),
     (smooth_width_19_by_height_20, largest_hessian_of_smooth_width_19_by_height_20),
+    (tiny_width_1_by_height_1, largest_hessian_of_tiny_width_1_by_height_1),
 ])
 def test_largest_hessian(image_data, expected_data):
     """Test the largest Hessian eigenvalue for both 'noise' and 'smooth'."""
@@ -472,6 +492,7 @@ def test_largest_hessian(image_data, expected_data):
     (column_width_2_by_height_5, smallest_hessian_of_column_width_2_by_height_5),
     (row_width_3_by_height_1, smallest_hessian_of_row_width_3_by_height_1),
     (smooth_width_19_by_height_20, smallest_hessian_of_smooth_width_19_by_height_20),
+    (tiny_width_1_by_height_1, smallest_hessian_of_tiny_width_1_by_height_1),
 ])
 def test_smallest_hessian(image_data, expected_data):
     """Test the smallest Hessian eigenvalue for both 'noise' and 'smooth'."""
@@ -487,6 +508,7 @@ def test_smallest_hessian(image_data, expected_data):
     (column_width_2_by_height_5, hessian_orientation_of_column_width_2_by_height_5),
     (row_width_3_by_height_1, hessian_orientation_of_row_width_3_by_height_1),
     (smooth_width_19_by_height_20, hessian_orientation_of_smooth_width_19_by_height_20),
+    (tiny_width_1_by_height_1, hessian_orientation_of_tiny_width_1_by_height_1),
 ])
 def test_hessian_orientation(image_data, expected_data):
     """
