@@ -132,21 +132,6 @@ print("Reduced shape:", reduced_2d.shape)
 print("Expanded shape:", expanded_2d.shape)
 print(f"Max error: {max_err}")
 
-fig, ax = plt.subplots(1, 3, figsize=(10, 3))
-
-ax[0].imshow(image_gray, cmap='gray')
-ax[0].set_title("Original Grayscale")
-
-ax[1].imshow(expanded_2d, cmap='gray')
-ax[1].set_title("Expanded from Reduced")
-
-im2 = ax[2].imshow(error_2d, cmap='bwr')
-ax[2].set_title(f"Error (max={max_err:.2g})")
-plt.colorbar(im2, ax=ax[2], fraction=0.046, pad=0.04)
-
-plt.tight_layout()
-plt.show()
-
 # %%
 # Manual Composition of Pyramid Reductions into One Image
 # -------------------------------------------------------
@@ -264,62 +249,3 @@ max_err_haar = np.abs(err_haar).max()
 
 print("[Wavelets 2D Haar Test]")
 print(f"Max error after 3-scale decomposition: {max_err_haar}")
-
-fig, ax = plt.subplots(1, 3, figsize=(9, 3))
-ax[0].imshow(image_gray, cmap='gray')
-ax[0].set_title("Original")
-
-ax[1].imshow(recon_haar, cmap='gray')
-ax[1].set_title("Reconstructed from Haar")
-
-diffim = ax[2].imshow(err_haar, cmap='bwr')
-ax[2].set_title(f"Error (max={max_err_haar:.3g})")
-plt.colorbar(diffim, ax=ax[2], fraction=0.046, pad=0.04)
-
-plt.tight_layout()
-plt.show()
-
-# %%
-# Spline Wavelets (2D)
-# --------------------
-#
-# Finally, demonstrate 2D wavelet analysis/synthesis using spline wavelets of
-# orders 1, 3, and 5.
-
-wavelets_dict = {
-    "Spline1": Spline1Wavelets(scales=3),
-    "Spline3": Spline3Wavelets(scales=3),
-    "Spline5": Spline5Wavelets(scales=3),
-}
-
-fig, axarr = plt.subplots(3, 3, figsize=(10, 9))
-
-for idx, (name, wavelet) in enumerate(wavelets_dict.items()):
-    coeffs = wavelet.analysis(image_gray)
-    recon = wavelet.synthesis(coeffs)
-    err = recon - image_gray
-    max_err = np.abs(err).max()
-
-    print(f"[Wavelets 2D {name} Test]")
-    print(f"Max error after 3-scale decomposition: {max_err}")
-
-    # Show the original image in the top-left subplot only
-    if idx == 0:
-        axarr[0,0].imshow(image_gray, cmap='gray')
-        axarr[0,0].set_title("Original")
-
-    # Reconstructed image in col=1
-    axarr[idx,1].imshow(recon, cmap='gray')
-    axarr[idx,1].set_title(f"{name} Reconstructed\nErr={max_err:.3g}")
-
-    # Difference image in col=2
-    im2 = axarr[idx,2].imshow(err, cmap='bwr')
-    axarr[idx,2].set_title("Difference")
-    plt.colorbar(im2, ax=axarr[idx,2], fraction=0.046, pad=0.04)
-
-# Hide empty subplots in the first column (rows 1 and 2)
-axarr[1,0].axis('off')
-axarr[2,0].axis('off')
-
-plt.tight_layout()
-plt.show()
