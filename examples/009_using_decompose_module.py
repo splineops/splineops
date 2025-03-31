@@ -148,6 +148,108 @@ plt.tight_layout()
 plt.show()
 
 # %%
+# Manual Composition of Pyramid Reductions into One Image
+# -------------------------------------------------------
+#
+# We'll create a single large "canvas" array and copy each reduced image
+# into a spiral layout. The pattern we use for up to 4 levels is:
+#   - Level 0 (original): at the top
+#   - Level 1: below Level 0, aligned to the right
+#   - Level 2: to the left of Level 1, sharing a bottom edge with it
+#   - Level 3: above Level 2, sharing a left edge with it
+#
+# For more levels, you can repeat this spiral pattern in additional steps.
+
+def create_spiral_canvas(levels):
+    """
+    Arrange up to 4 images (levels) in a spiral-like layout:
+
+      - Level 0: top-left (0,0)
+      - Level 1: below Level 0, right-aligned
+      - Level 2: to the left of Level 1, bottom-aligned with it
+      - Level 3: above Level 2, left-aligned with it
+
+    Returns the composed float64 canvas.
+    """
+    if len(levels) == 0:
+        raise ValueError("No images given to compose.")
+    
+    shapes = [img.shape for img in levels]  # List of (height, width)
+    coords = [(0, 0)] * len(levels)         # (top_row, left_col) for each level
+
+    # --- Level 0 at (0,0)
+    H0, W0 = shapes[0]
+    coords[0] = (0, 0)
+
+    # --- Level 1: below L0, right-aligned
+    if len(levels) > 1:
+        H1, W1 = shapes[1]
+        coords[1] = (H0, W0 - W1)
+
+    # --- Level 2: left of L1, bottom-aligned
+    if len(levels) > 2:
+        H2, W2 = shapes[2]
+        top1, left1 = coords[1]
+        coords[2] = (top1 + H1 - H2, left1 - W2)
+
+    # --- Level 3: above L2, left-aligned with L2
+    if len(levels) > 3:
+        H3, W3 = shapes[3]
+        top2, left2 = coords[2]
+        coords[3] = (top2 - H3, left2)
+
+    # --- Shift so no negative indices ---
+    min_row = min(top for (top, left) in coords)
+    min_col = min(left for (top, left) in coords)
+    shift_r = -min_row if min_row < 0 else 0
+    shift_c = -min_col if min_col < 0 else 0
+
+    shifted_coords = []
+    for (top, left) in coords:
+        shifted_coords.append((top + shift_r, left + shift_c))
+
+    # --- Compute canvas size ---
+    max_row = 0
+    max_col = 0
+    for (top, left), (H, W) in zip(shifted_coords, shapes):
+        bottom = top + H - 1
+        right  = left + W - 1
+        max_row = max(max_row, bottom)
+        max_col = max(max_col, right)
+
+    total_height = max_row + 1
+    total_width  = max_col + 1
+
+    # --- Create the canvas and copy each level in place ---
+    canvas = np.zeros((total_height, total_width), dtype=np.float64)
+    for (img, (top, left)) in zip(levels, shifted_coords):
+        h, w = img.shape
+        canvas[top:top+h, left:left+w] = img
+
+    return canvas
+
+# Let's produce multiple levels via pyramid reductions
+# We'll generate up to 3 additional levels (for a total of 4).
+num_reductions = 3
+levels = [image_gray]
+current = image_gray
+for _ in range(num_reductions):
+    current = reduce_2d(current, g, is_centered)
+    levels.append(current)
+
+# Compose them into a single spiral-like layout
+spiral_image = create_spiral_canvas(levels)
+
+# Plot the final single image
+fig, ax = plt.subplots(figsize=(8, 10))
+ax.imshow(spiral_image, cmap='gray')
+ax.set_title("Pyramid Reductions in a Single Spiral Canvas", fontsize=16)
+ax.axis('off')
+plt.tight_layout()
+plt.show()
+
+
+# %%
 # Haar Wavelets (2D)
 # ------------------
 #
