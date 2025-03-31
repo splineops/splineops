@@ -5,9 +5,7 @@ Using decompose module
 This example demonstrates how to use the 'decompose' module for:
 
 - Pyramid decomposition (reduce & expand) in 1D and 2D
-- Wavelet decomposition (analysis & synthesis) in 2D:
-  * Haar wavelets (2D)
-  * Spline wavelets (2D) of orders 1,3,5
+- Haar wavelet decomposition (analysis & synthesis) in 2D:
 
 You can download this example as both a Python script and a Jupyter notebook.
 """
@@ -141,10 +139,10 @@ print(f"Max error: {max_err}")
 # yielding a coarser approximation at each level.
 #
 # This cell produces a separate plot for each level:
-#   - Level 0: Original image.
-#   - Level 1: Reduced image (first-level coarse approximation).
-#   - Level 2: Further reduced image.
-#   - Level 3: Further reduced image.
+# Level 0: Original image.
+# Level 1: Reduced image (first-level coarse approximation).
+# Level 2: Further reduced image.
+# Level 3: Further reduced image.
 #
 # Retrieve the pyramid filter (using "Spline" filter with order 3)
 filter_name = "Spline"
@@ -199,10 +197,10 @@ print(f"Max error after 3-scale decomposition: {max_err_haar}")
 # In the multi-scale Haar wavelet decomposition, the top-left region of the
 # coefficients array corresponds to the coarse approximation at that level.
 # Here we generate a separate plot for each level:
-#   - Level 0: Original image.
-#   - Level 1: Approximation after 1 level of decomposition.
-#   - Level 2: Approximation after 2 levels.
-#   - Level 3: Approximation after 3 levels.
+# Level 0: Original image.
+# Level 1: Approximation after 1 level of decomposition.
+# Level 2: Approximation after 2 levels.
+# Level 3: Approximation after 3 levels.
 #
 # This follows the common Mallat decomposition approach used in PyWavelets.
 
