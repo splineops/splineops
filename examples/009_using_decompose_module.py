@@ -191,72 +191,60 @@ print("[Wavelets 2D Haar Test]")
 print(f"Max error after 3-scale decomposition: {max_err_haar}")
 
 # %%
-# Progressive Approximation Visualization from Haar Wavelet Decomposition
-# with Stored Intermediate Levels
+# Pyramid Visualization: Separate Plots for 1, 2, and 3 Level Decompositions
 
 import numpy as np
 import matplotlib.pyplot as plt
 from splineops.decompose.wavelets.haar import HaarWavelets
 
-def analysis_with_levels(wavelet, inp):
+def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
     """
-    Perform multi-scale wavelet analysis and store each level's coarse approximation.
+    Perform multi-scale wavelet analysis in-place so that at each level the
+    new coarse approximation is stored in the quadrant corresponding to the
+    previous level's coarse region.
     
     Parameters
     ----------
-    wavelet : AbstractWavelets
-        An instance of a wavelet (e.g., HaarWavelets) with its scales set.
+    wavelet : AbstractWavelets instance
+        A wavelet instance (e.g., HaarWavelets) with the desired number of scales.
     inp : np.ndarray
-        The input 2D array (e.g., a grayscale image).
-    
+        Input 2D array (e.g., grayscale image).
+    num_levels : int
+        The number of decomposition levels to perform.
+        
     Returns
     -------
-    final_coeffs : np.ndarray
-        The final coefficient array after full multi-scale analysis.
-    levels : list of np.ndarray
-        List of coarse approximations:
-          - levels[0] is the original image.
-          - levels[1] is the approximation after the first scale,
-          - levels[2] after the second scale, and so on.
+    coeffs : np.ndarray
+        Final coefficient array (same size as inp) with the pyramid layout.
     """
     out = np.copy(inp)
-    levels = [out.copy()]  # Level 0: original image
     ny, nx = out.shape[:2]
     
-    for scale in range(wavelet.scales):
+    for level in range(num_levels):
+        # Process the current top-left subarray
         sub = out[:ny, :nx]
         sub_out = wavelet.analysis1(sub)
         out[:ny, :nx] = sub_out
-        levels.append(out[:ny, :nx].copy())
-        # Update region size for next scale (halve each dimension)
+        
+        # Update region size for next level (halve each dimension)
         nx = max(1, nx // 2)
         ny = max(1, ny // 2)
         
-    return out, levels
+    return out
 
-# Create a HaarWavelets instance with 3 scales.
-haar2d = HaarWavelets(scales=3)
-
-# Assume 'image_gray' is your grayscale image (2D numpy array).
-# For demonstration, if you don't have one loaded, you can uncomment the following line:
+# Assume 'image_gray' is your grayscale image (a 2D numpy array).
+# For demonstration, if you don't have an image loaded, uncomment the following:
 # image_gray = np.random.rand(256, 256)
 
-# Run the analysis and capture each level.
-final_coeffs, approx_levels = analysis_with_levels(haar2d, image_gray)
-
-# Titles for visualization of each level.
-titles = [
-    "Level 0: Original Image",
-    "Level 1: Coarse Approximation",
-    "Level 2: Coarse Approximation",
-    "Level 3: Coarse Approximation"
-]
-
-# Plot each stored level in a separate figure.
-for level, title in zip(approx_levels, titles):
-    plt.figure(figsize=(6, 6))
-    plt.imshow(level, cmap='gray', interpolation='nearest')
-    plt.title(title, fontsize=14)
+# Create separate plots for 1-level, 2-level, and 3-level decompositions.
+for num_levels in [1, 2, 3]:
+    # Create a HaarWavelets instance with scales set to num_levels.
+    wavelet = HaarWavelets(scales=num_levels)
+    coeffs = pyramid_with_quadrant_embedding_levels(wavelet, image_gray, num_levels)
+    
+    plt.figure(figsize=(8, 8))
+    plt.imshow(coeffs, cmap='gray', interpolation='nearest')
+    plt.title(f"Pyramid with {num_levels} Level Decomposition", fontsize=14)
     plt.axis('off')
     plt.tight_layout()
     plt.show()
