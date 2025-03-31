@@ -191,43 +191,71 @@ print("[Wavelets 2D Haar Test]")
 print(f"Max error after 3-scale decomposition: {max_err_haar}")
 
 # %%
-# Progressive Approximation Visualization from Haar Wavelet Decomposition (Fixed)
-# ----------------------------------------------------------------------------------
-#
-# In the multi-scale Haar wavelet decomposition, the analysis process stores the
-# coarse approximation in the top-left region of the coefficient array. At each level,
-# the approximation size is reduced by a factor of 2 in each dimension.
-#
-# Here we extract the approximation subband at each level based on the original image
-# dimensions. For an original image of shape (ny0, nx0), the approximation at level L is
-# located at coeffs[0:ny0//(2**L), 0:nx0//(2**L)].
-#
-# Assuming 'coeffs' was obtained earlier by:
-#    haar2d = HaarWavelets(scales=3)
-#    coeffs = haar2d.analysis(image_gray)
-ny0, nx0 = image_gray.shape
+# Progressive Approximation Visualization from Haar Wavelet Decomposition
+# with Stored Intermediate Levels
 
-# Number of scales is taken from the HaarWavelets instance (here, 3).
-num_scales = 3
+import numpy as np
+import matplotlib.pyplot as plt
+from splineops.decompose.wavelets.haar import HaarWavelets
 
-approx_levels = []
-titles = []
+def analysis_with_levels(wavelet, inp):
+    """
+    Perform multi-scale wavelet analysis and store each level's coarse approximation.
+    
+    Parameters
+    ----------
+    wavelet : AbstractWavelets
+        An instance of a wavelet (e.g., HaarWavelets) with its scales set.
+    inp : np.ndarray
+        The input 2D array (e.g., a grayscale image).
+    
+    Returns
+    -------
+    final_coeffs : np.ndarray
+        The final coefficient array after full multi-scale analysis.
+    levels : list of np.ndarray
+        List of coarse approximations:
+          - levels[0] is the original image.
+          - levels[1] is the approximation after the first scale,
+          - levels[2] after the second scale, and so on.
+    """
+    out = np.copy(inp)
+    levels = [out.copy()]  # Level 0: original image
+    ny, nx = out.shape[:2]
+    
+    for scale in range(wavelet.scales):
+        sub = out[:ny, :nx]
+        sub_out = wavelet.analysis1(sub)
+        out[:ny, :nx] = sub_out
+        levels.append(out[:ny, :nx].copy())
+        # Update region size for next scale (halve each dimension)
+        nx = max(1, nx // 2)
+        ny = max(1, ny // 2)
+        
+    return out, levels
 
-# Level 0: original image (no transform)
-approx_levels.append(image_gray)
-titles.append("Level 0: Original Image")
+# Create a HaarWavelets instance with 3 scales.
+haar2d = HaarWavelets(scales=3)
 
-# For each subsequent level, compute the size based on dyadic scaling.
-for level in range(1, num_scales + 1):
-    nylevel = ny0 // (2 ** level)
-    nxlevel = nx0 // (2 ** level)
-    approx_levels.append(coeffs[:nylevel, :nxlevel])
-    titles.append(f"Level {level}: Coarse Approximation")
+# Assume 'image_gray' is your grayscale image (2D numpy array).
+# For demonstration, if you don't have one loaded, you can uncomment the following line:
+# image_gray = np.random.rand(256, 256)
 
-# Create a separate plot for each level
-for im, title in zip(approx_levels, titles):
+# Run the analysis and capture each level.
+final_coeffs, approx_levels = analysis_with_levels(haar2d, image_gray)
+
+# Titles for visualization of each level.
+titles = [
+    "Level 0: Original Image",
+    "Level 1: Coarse Approximation",
+    "Level 2: Coarse Approximation",
+    "Level 3: Coarse Approximation"
+]
+
+# Plot each stored level in a separate figure.
+for level, title in zip(approx_levels, titles):
     plt.figure(figsize=(6, 6))
-    plt.imshow(im, cmap='gray', interpolation='nearest')
+    plt.imshow(level, cmap='gray', interpolation='nearest')
     plt.title(title, fontsize=14)
     plt.axis('off')
     plt.tight_layout()
