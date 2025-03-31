@@ -249,3 +249,46 @@ max_err_haar = np.abs(err_haar).max()
 
 print("[Wavelets 2D Haar Test]")
 print(f"Max error after 3-scale decomposition: {max_err_haar}")
+
+# %%
+# Progressive Approximation Visualization from Haar Wavelet Decomposition
+# -----------------------------------------------------------------------
+#
+# In the multi-scale Haar wavelet decomposition, the top-left region of the
+# coefficients array corresponds to the coarse approximation at that level.
+# Here we generate a separate plot for each level:
+#   - Level 0: Original image.
+#   - Level 1: Approximation after 1 level of decomposition.
+#   - Level 2: Approximation after 2 levels.
+#   - Level 3: Approximation after 3 levels.
+#
+# This follows the common Mallat decomposition approach used in PyWavelets.
+
+# Assuming 'coeffs' was obtained earlier by:
+#    haar2d = HaarWavelets(scales=3)
+#    coeffs = haar2d.analysis(image_gray)
+ny, nx = image_gray.shape
+
+# Extract the coarse approximation at each level
+approx_levels = [
+    image_gray,                     # Level 0: Original image
+    coeffs[:ny//2, :nx//2],          # Level 1: Approximation (size ny/2 x nx/2)
+    coeffs[:ny//4, :nx//4],          # Level 2: Approximation (size ny/4 x nx/4)
+    coeffs[:ny//8, :nx//8]           # Level 3: Approximation (size ny/8 x nx/8)
+]
+
+titles = [
+    "Level 0: Original Image",
+    "Level 1: Coarse Approximation",
+    "Level 2: Coarse Approximation",
+    "Level 3: Coarse Approximation"
+]
+
+# Create a separate plot for each level
+for level, (im, title) in enumerate(zip(approx_levels, titles)):
+    plt.figure(figsize=(6, 6))
+    plt.imshow(im, cmap='gray', interpolation='nearest')
+    plt.title(title, fontsize=14)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
