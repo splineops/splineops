@@ -7,7 +7,8 @@ This example demonstrates how to use the 'decompose' module for:
 - Pyramid decomposition (reduce & expand) in 1D and 2D
 - Haar wavelet decomposition (analysis & synthesis) in 2D:
 
-You can download this example as both a Python script and a Jupyter notebook.
+You can download this example at the tab at right, as both a Python script
+and as a Jupyter notebook.
 """
 
 # %%
@@ -83,12 +84,11 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Download & Prepare the 2D Image
-# -------------------------------
+# Load and normalize a 2D image
+# -----------------------------
 #
-# Instead of a synthetic 2D array, we download an external color image,
-# convert it to grayscale, and convert intensities to the [0..1] range.
-# Now we also plot the original image.
+# Here, we load an example image from an online repository. 
+# We convert it to grayscale in [0, 1].
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim07.png'
 response = requests.get(url)
@@ -122,7 +122,7 @@ plt.show()
 # 2D Pyramid Decomposition
 # ------------------------
 #
-# Demonstrate pyramid reduce->expand on the grayscale image.
+# Reduce and expand the input image using spline pyramid decomposition.
 
 filter_name = "Spline"
 order = 3
@@ -138,17 +138,6 @@ print(f"Filter: '{filter_name}' (order={order}), is_centered={is_centered}")
 print("Reduced shape:", reduced_2d.shape)
 print("Expanded shape:", expanded_2d.shape)
 print(f"Max error: {max_err}")
-
-# %%
-# 2D Pyramid Decomposition with White Canvas Embedding (Top-Left Corner, White Background Always White)
-#
-# For each pyramid level computed with reduce_2d (except Level 0), we embed the reduced image
-# into a white canvas of the same size as the original image. The reduced image is placed in the top-left corner.
-# We force the display range so that the white background always appears white.
-
-import numpy as np
-import matplotlib.pyplot as plt
-from splineops.decompose.pyramid import get_pyramid_filter, reduce_2d
 
 # Retrieve the pyramid filter parameters (using "Spline" filter with order 3)
 filter_name = "Spline"
@@ -167,7 +156,10 @@ for _ in range(num_reductions):
 
 original_shape = image_gray.shape  # (ny, nx)
 
-# Level 1 Decomposition
+# %%
+# 1 Level Decomposition
+# ~~~~~~~~~~~~~~~~~~~~~
+
 canvas1 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
 h1, w1 = levels[1].shape
 canvas1[:h1, :w1] = levels[1]  # Place the reduced image in the top-left corner
@@ -179,7 +171,10 @@ plt.axis('off')
 plt.tight_layout()
 plt.show()
 
-# Level 2 Decomposition
+# %%
+# 2 Level Decomposition
+# ~~~~~~~~~~~~~~~~~~~~~
+
 canvas2 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
 h2, w2 = levels[2].shape
 canvas2[:h2, :w2] = levels[2]  # Place the reduced image in the top-left corner
@@ -191,7 +186,10 @@ plt.axis('off')
 plt.tight_layout()
 plt.show()
 
-# Level 3 Decomposition
+# %%
+# 3 Level Decomposition
+# ~~~~~~~~~~~~~~~~~~~~~
+
 canvas3 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
 h3, w3 = levels[3].shape
 canvas3[:h3, :w3] = levels[3]  # Place the reduced image in the top-left corner
@@ -204,10 +202,10 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Haar Wavelets (2D)
-# ------------------
+# 2D Wavelet Decomposition
+# ------------------------
 #
-# Next, demonstrate wavelet decomposition (analysis) and reconstruction (synthesis)
+# We demonstrate wavelet decomposition (analysis) and reconstruction (synthesis)
 # using 2D Haar wavelets on the same grayscale image.
 
 haar2d = HaarWavelets(scales=3)
@@ -219,9 +217,7 @@ max_err_haar = np.abs(err_haar).max()
 print("[Wavelets 2D Haar Test]")
 print(f"Max error after 3-scale decomposition: {max_err_haar}")
 
-# %%
-# Pyramid Visualization: Separate Plots for 1, 2, and 3 Level Decompositions
-
+# Helper function for visualization
 def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
     """
     Perform multi-scale wavelet analysis in-place so that at each level the
@@ -257,11 +253,10 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
         
     return out
 
-# Assume 'image_gray' is your grayscale image (a 2D numpy array).
-# For demonstration, if you don't have an image loaded, uncomment the following:
-# image_gray = np.random.rand(256, 256)
+# %%
+# 1 Level Decomposition
+# ~~~~~~~~~~~~~~~~~~~~~
 
-# Haar 1 Level Decomposition
 wavelet1 = HaarWavelets(scales=1)
 coeffs1 = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
 
@@ -272,7 +267,10 @@ plt.axis('off')
 plt.tight_layout()
 plt.show()
 
-# Haar 2 Level Decomposition
+# %%
+# 2 Level Decomposition
+# ~~~~~~~~~~~~~~~~~~~~~
+
 wavelet2 = HaarWavelets(scales=2)
 coeffs2 = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
 
@@ -283,7 +281,10 @@ plt.axis('off')
 plt.tight_layout()
 plt.show()
 
-# Haar 3 Level Decomposition
+# %%
+# 3 Level Decomposition
+# ~~~~~~~~~~~~~~~~~~~~~
+
 wavelet3 = HaarWavelets(scales=3)
 coeffs3 = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
 

@@ -16,7 +16,8 @@ Specifically, we:
 
 5. Compute the Mean Squared Error (MSE) between :math:`f` and :math:`h`.
 
-You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
+You can download this example at the tab at right, as both a Python script
+and as a Jupyter notebook.
 """
 
 # %%
