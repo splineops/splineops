@@ -168,22 +168,20 @@ for _ in range(num_reductions):
 # For each level except Level 0, create a white canvas (all ones, white=1 in grayscale)
 # with the size of the original image, and embed the reduced image in the top-left corner.
 original_shape = image_gray.shape  # (ny, nx)
-for i, level in enumerate(levels):
-    if i == 0:
-        # Skip Level 0 as it is the original image
-        continue
+level_num = 1  # Initialize counter for the level number
+for level in levels[1:]:
     canvas = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
-    h_level, w_level = level.shape
-    # Place the reduced image in the top-left corner
-    canvas[0:h_level, 0:w_level] = level
-    
+    h, w = level.shape
+    canvas[:h, :w] = level  # Place the reduced image in the top-left corner
+
     plt.figure(figsize=(6, 6))
-    # Force display range so that 1 is white and 0 is black
     plt.imshow(canvas, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
-    plt.title(f"Level {i} Decomposition (Embedded in Original Canvas, Top-Left)", fontsize=14)
+    plt.title(f"Pyramid {level_num} Level Decomposition", fontsize=14)
     plt.axis('off')
     plt.tight_layout()
     plt.show()
+    
+    level_num += 1  # Increment the level counter
 
 # %%
 # Haar Wavelets (2D)
@@ -251,7 +249,7 @@ for num_levels in [1, 2, 3]:
     
     plt.figure(figsize=(8, 8))
     plt.imshow(coeffs, cmap='gray', interpolation='nearest')
-    plt.title(f"Pyramid with {num_levels} Level Decomposition", fontsize=14)
+    plt.title(f"Haar {num_levels} Level Decomposition", fontsize=14)
     plt.axis('off')
     plt.tight_layout()
     plt.show()
