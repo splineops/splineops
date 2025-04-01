@@ -165,23 +165,43 @@ for _ in range(num_reductions):
     current = reduce_2d(current, g, is_centered)
     levels.append(current)
 
-# For each level except Level 0, create a white canvas (all ones, white=1 in grayscale)
-# with the size of the original image, and embed the reduced image in the top-left corner.
 original_shape = image_gray.shape  # (ny, nx)
-level_num = 1  # Initialize counter for the level number
-for level in levels[1:]:
-    canvas = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
-    h, w = level.shape
-    canvas[:h, :w] = level  # Place the reduced image in the top-left corner
 
-    plt.figure(figsize=(6, 6))
-    plt.imshow(canvas, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
-    plt.title(f"Pyramid {level_num} Level Decomposition", fontsize=14)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
-    
-    level_num += 1  # Increment the level counter
+# Level 1 Decomposition
+canvas1 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
+h1, w1 = levels[1].shape
+canvas1[:h1, :w1] = levels[1]  # Place the reduced image in the top-left corner
+
+plt.figure(figsize=(6, 6))
+plt.imshow(canvas1, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
+plt.title("Pyramid 1 Level Decomposition", fontsize=14)
+plt.axis('off')
+plt.tight_layout()
+plt.show()
+
+# Level 2 Decomposition
+canvas2 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
+h2, w2 = levels[2].shape
+canvas2[:h2, :w2] = levels[2]  # Place the reduced image in the top-left corner
+
+plt.figure(figsize=(6, 6))
+plt.imshow(canvas2, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
+plt.title("Pyramid 2 Level Decomposition", fontsize=14)
+plt.axis('off')
+plt.tight_layout()
+plt.show()
+
+# Level 3 Decomposition
+canvas3 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
+h3, w3 = levels[3].shape
+canvas3[:h3, :w3] = levels[3]  # Place the reduced image in the top-left corner
+
+plt.figure(figsize=(6, 6))
+plt.imshow(canvas3, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
+plt.title("Pyramid 3 Level Decomposition", fontsize=14)
+plt.axis('off')
+plt.tight_layout()
+plt.show()
 
 # %%
 # Haar Wavelets (2D)
@@ -241,15 +261,35 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
 # For demonstration, if you don't have an image loaded, uncomment the following:
 # image_gray = np.random.rand(256, 256)
 
-# Create separate plots for 1-level, 2-level, and 3-level decompositions.
-for num_levels in [1, 2, 3]:
-    # Create a HaarWavelets instance with scales set to num_levels.
-    wavelet = HaarWavelets(scales=num_levels)
-    coeffs = pyramid_with_quadrant_embedding_levels(wavelet, image_gray, num_levels)
-    
-    plt.figure(figsize=(8, 8))
-    plt.imshow(coeffs, cmap='gray', interpolation='nearest')
-    plt.title(f"Haar {num_levels} Level Decomposition", fontsize=14)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
+# Haar 1 Level Decomposition
+wavelet1 = HaarWavelets(scales=1)
+coeffs1 = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
+
+plt.figure(figsize=(8, 8))
+plt.imshow(coeffs1, cmap='gray', interpolation='nearest')
+plt.title("Haar 1 Level Decomposition", fontsize=14)
+plt.axis('off')
+plt.tight_layout()
+plt.show()
+
+# Haar 2 Level Decomposition
+wavelet2 = HaarWavelets(scales=2)
+coeffs2 = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
+
+plt.figure(figsize=(8, 8))
+plt.imshow(coeffs2, cmap='gray', interpolation='nearest')
+plt.title("Haar 2 Level Decomposition", fontsize=14)
+plt.axis('off')
+plt.tight_layout()
+plt.show()
+
+# Haar 3 Level Decomposition
+wavelet3 = HaarWavelets(scales=3)
+coeffs3 = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
+
+plt.figure(figsize=(8, 8))
+plt.imshow(coeffs3, cmap='gray', interpolation='nearest')
+plt.title("Haar 3 Level Decomposition", fontsize=14)
+plt.axis('off')
+plt.tight_layout()
+plt.show()
