@@ -6,7 +6,8 @@ Rotate
 Overview
 --------
 
-The `rotate` function in the `splineops` library enables rotation of 2D or 3D data arrays around a specified axis and center using spline interpolation. This function is widely used in image processing, computer graphics, and scientific computing.
+The `rotate` function in the `splineops` library enables rotation of 2D or 3D data arrays around a specified axis and center using spline interpolation. 
+This function is widely used in image processing, computer graphics, and scientific computing [1]_.
 
 This module supports:
 
@@ -48,7 +49,8 @@ Here, :math:`(x', y')` are the coordinates of the rotated point.
 3D Rotation
 ~~~~~~~~~~~
 
-For 3D data, a point :math:`\mathbf{v} = (x, y, z)` can be rotated around an arbitrary axis defined by a unit vector :math:`\mathbf{u} = (u_x, u_y, u_z)` by an angle :math:`\theta` using Rodrigues' rotation formula:
+For 3D data, a point :math:`\mathbf{v} = (x, y, z)` can be rotated around an arbitrary axis defined by a unit vector :math:`\mathbf{u} = (u_x, u_y, u_z)` 
+by an angle :math:`\theta` using Rodrigues' rotation formula:
 
 .. math::
 
@@ -116,4 +118,6 @@ Rotate Example
 References
 ----------
 
-- Unser, M. (1999). `Splines: A perfect fit for signal/image processing <https://ieeexplore.ieee.org/document/7075842>`_. IEEE Signal Processing Magazine.
+.. [1] Unser, M. (1999),
+   `Splines: A perfect fit for signal/image processing <https://ieeexplore.ieee.org/document/7075842>`_,
+   IEEE Signal Processing Magazine.

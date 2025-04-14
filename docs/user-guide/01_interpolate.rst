@@ -3,11 +3,9 @@ Interpolate
 
 .. currentmodule:: splineops
 
-Overview
---------
 
 Tedious Construction of Polynomial Splines
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------
 
 A polynomial spline is a continuously defined function made of polynomial pieces of nonnegative integer degree :math:`N`. 
 What makes such a spline special is that all pieces connect smoothly when :math:`N\geq1`. In one dimension, let some piece be defined over :math:`x_{-1}\leq x\leq x_{0}` 
@@ -59,12 +57,12 @@ the list :math:`\{y[k]\}_{k=0}^{K-1}` of :math:`K` samples at the set :math:`\{x
 
 
 Practical Construction of Polynomial Splines
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------
 
 The construction of a polynomial spline is greatly simplified under some appropriate assumptions, namely, that the sampling locations are regularly spaced 
 exactly one unit apart and coincide with the integers; it is also especially convenient to assume that the polynomial pieces are of unit length, too, and that 
 their extremities coincide either with the integers (odd :math:`N`) or with the half integers (even :math:`N`). Under these simplifying assumptions, algorithms 
-were championed in [`1 <https://ieeexplore.ieee.org/document/193220>`_, `2 <https://ieeexplore.ieee.org/document/193221>`_, `3 <https://ieeexplore.ieee.org/document/799930>`_] 
+were championed in [1]_, [2]_, [3]_.
 to honor all constraints (continuity and interpolation), with the computational effort :math:`{\mathcal{O}}(K\,\left\lfloor N/2\right\rfloor)` 
 to build a polynomial spline of degree :math:`N` out of :math:`K` samples.
 
@@ -79,7 +77,7 @@ that are uniquely defined as even-symmetric splines of unit integral and least s
 
 
 Tensor Product of Splines
-~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 
 In one dimension, we write a generic spline in terms of :math:`x\in{\mathbb{R}}` as
 
@@ -103,7 +101,7 @@ while :math:`k_{1}\in[0\ldots W-1]` and :math:`k_{2}\in[0\ldots H-1]` are intege
 
 
 Extension of Splines Beyond Their Known Support
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------------------
 
 It is remarkable that splines can be interrogated at any coordinate, not only at a non-integer one, but also at one that would be far remote from the support of 
 the samples that define, say, an image. This is achieved by imposing some structural organization to the spline coefficients. Typically, this organization takes 
@@ -113,7 +111,7 @@ of :math:`c[{\mathbf{k}}]` for :math:`k_{1}\in[0\ldots W-1]` and :math:`k_{2}\in
 
 
 Quality of Approximation
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
 The computational burden increases with the degree of a spline, but so does the quality of the representation. Indeed, consider a one-dimensional ground-truth generic 
 function (not necessarily a spline) that is differentiable sufficiently many times. Now, it is customary to know this function only through its samples and to let a 
@@ -123,7 +121,7 @@ the continuously defined spline represents the continuously defined ground truth
 
 To understand the true mechanism that links degree and quality, one needs to master the theory of approximation, which in turn relies on the Fourier theory, the theory 
 of distributions, the measure theory, the theory of sampling, and the theory of integration, among others, all of them being advanced mathematical 
-topics [`4 <https://ieeexplore.ieee.org/document/718806>`_, `5 <https://ieeexplore.ieee.org/document/843002>`_].
+topics [4]_, [5]_.
 
 While one-dimensional splines are well-understood, the approximation properties of tensor-product splines are less so. Yet, numerous practical experiments have led to 
 the conclusion that a tensor-product cubic spline offers a good tradeoff between computational effort and quality, being significantly more accurate than what linear 
@@ -140,16 +138,24 @@ Interpolate Examples
 References
 ----------
 
-[1] M. Unser, A. Aldroubi, M. Eden, `B-Spline Signal Processing: Part I—Theory <https://ieeexplore.ieee.org/document/193220>`_, IEEE-SPS best paper award, IEEE Transactions on 
-Signal Processing, vol. 41, no. 2, pp. 821–833, February 1993.
+.. [1] M. Unser, A. Aldroubi, M. Eden, 
+   `B-Spline Signal Processing: Part I—Theory <https://ieeexplore.ieee.org/document/193220>`_, 
+   IEEE-SPS best paper award, IEEE Transactions on 
+   Signal Processing, vol. 41, no. 2, pp. 821–833, February 1993.
 
-[2] M. Unser, A. Aldroubi, M. Eden, `B-Spline Signal Processing: Part II—Efficient Design and Applications <https://ieeexplore.ieee.org/document/193221>`_, IEEE Transactions 
-on Signal Processing, vol. 41, no. 2, pp. 834–848, February 1993.
+.. [2] M. Unser, A. Aldroubi, M. Eden, 
+   `B-Spline Signal Processing: Part II—Efficient Design and Applications <https://ieeexplore.ieee.org/document/193221>`_, 
+   IEEE Transactions 
+   on Signal Processing, vol. 41, no. 2, pp. 834–848, February 1993.
 
-[3] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://ieeexplore.ieee.org/document/799930>`_, IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
-vol. 16, no. 6, pp. 22–38, November 1999.
+.. [3] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://ieeexplore.ieee.org/document/799930>`_, 
+   IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
+   vol. 16, no. 6, pp. 22–38, November 1999.
 
-[4] M. Unser, J. Zerubia, `A Generalized Sampling Theory Without Band-Limiting Constraints <https://ieeexplore.ieee.org/document/718806>`_, IEEE Transactions on Circuits and 
-Systems—II: Analog and Digital Signal Processing, vol. 45, no. 8, pp. 959–969, August 1998.
+.. [4] M. Unser, J. Zerubia, 
+   `A Generalized Sampling Theory Without Band-Limiting Constraints <https://ieeexplore.ieee.org/document/718806>`_, 
+   IEEE Transactions on Circuits and 
+   Systems—II: Analog and Digital Signal Processing, vol. 45, no. 8, pp. 959–969, August 1998.
 
-[5] M. Unser, `Sampling—50 Years After Shannon <https://ieeexplore.ieee.org/document/843002>`_, Proceedings of the IEEE, vol. 88, no. 4, pp. 569–587, April 2000.
+.. [5] M. Unser, `Sampling—50 Years After Shannon <https://ieeexplore.ieee.org/document/843002>`_, 
+   Proceedings of the IEEE, vol. 88, no. 4, pp. 569–587, April 2000.

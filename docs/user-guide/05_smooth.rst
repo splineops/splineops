@@ -6,7 +6,8 @@ Smooth
 Overview
 --------
 
-The `smooth` module in `splineops` implements fractional smoothing splines, which are optimal estimators for smooth function approximation and interpolation. Unlike standard polynomial splines, these splines are derived from fractional differential operators, making them highly adaptable for self-similar and fractal-like signals.
+The `smooth` module in `splineops` implements fractional smoothing splines, which are optimal estimators for smooth function approximation and interpolation [1]_, [2]_, [3]_.
+Unlike standard polynomial splines, these splines are derived from fractional differential operators, making them highly adaptable for self-similar and fractal-like signals.
 
 Key features:
 
@@ -24,7 +25,8 @@ Mathematical Background
 Problem Formulation
 ~~~~~~~~~~~~~~~~~~~
 
-Smoothing splines solve a regularized variational problem where the objective is to fit a function :math:`f(x)` to given data points :math:`(x_m, y_m)`, while penalizing roughness:
+Smoothing splines solve a regularized variational problem where the objective is to fit a function :math:`f(x)` to given data points :math:`(x_m, y_m)`, 
+while penalizing roughness:
 
 .. math::
 
@@ -199,9 +201,17 @@ Smooth Example
 References
 ----------
 
-- Unser, M., & Blu, T. (2007). *Self-Similarity: Part I — Splines and Operators*. IEEE Transactions on Signal Processing, vol. 55, no. 4, pp. 1352-1363.
-- Blu, T. & M. Unser. (2007). *Self-Similarity: Part II — Optimal Estimation of Fractal Processes*. IEEE Transactions on Signal Processing, vol. 55, no. 4, pp. 1364-1378.
-- Unser, M., & Blu, T. (2000). *Fractional Splines and Wavelets*. SIAM Review, vol. 42, no. 1, pp. 43-67.
+.. [1] Unser, M., & Blu, T,
+    Self-Similarity: Part I — Splines and Operators,
+    IEEE Transactions on Signal Processing, vol. 55, no. 4, pp. 1352-1363. 2007.
+
+.. [2] Blu, T. & M. Unser,
+    Self-Similarity: Part II — Optimal Estimation of Fractal Processes,
+    IEEE Transactions on Signal Processing, vol. 55, no. 4, pp. 1364-1378, 2007.
+
+.. [3] Unser, M., & Blu, T,
+    Fractional Splines and Wavelets,
+    SIAM Review, vol. 42, no. 1, pp. 43-67, 2000.
 
 .. note::
     Smoothing splines are widely used for fractal process estimation, medical imaging, and machine learning.

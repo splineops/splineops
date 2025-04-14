@@ -5,7 +5,7 @@ Differentiate
 
 Overview
 --------
-The `differentiate` module in `splineops` provides a collection of algorithms for computing image differentials based on cubic B‑spline interpolation. 
+The `differentiate` module in `splineops` provides a collection of algorithms for computing image differentials based on cubic B‑spline interpolation [1]_, [2]_. 
 By modeling a grayscale image as a continuous function reconstructed from its discrete samples, the module enables the accurate computation of derivatives. 
 It offers several operations including:
 
@@ -108,8 +108,14 @@ Differentiate Example
 
 References
 ----------
-- Unser, M. (1999). *Splines: A Perfect Fit for Signal and Image Processing*, IEEE Signal Processing Magazine, vol. 16, no. 6.
-- Unser, M. & Blu, T. (2000). *Fractional Splines and Wavelets*, SIAM Review, vol. 42, no. 1, pp. 43–67.
+
+.. [1] Unser, M.,
+  Splines: A Perfect Fit for Signal and Image Processing, 
+  IEEE Signal Processing Magazine, vol. 16, no. 6, 1999.
+
+.. [2] Unser, M. & Blu, T., 
+  Fractional Splines and Wavelets,
+  SIAM Review, vol. 42, no. 1, pp. 43–67, 2000.
 
 .. note::
     The `differentiate` module is optimized for grayscale images of type ``GRAY32``. For best results, ensure that input images are normalized (typically 

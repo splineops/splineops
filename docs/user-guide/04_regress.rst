@@ -153,19 +153,19 @@ References
 ----------
 
 .. [1] Debarre, T., Denoyelle, Q., Unser, M., & Fageot, J. (2022).  
-   *Sparsest Piecewise-Linear Regression of One-Dimensional Data*.  
+   Sparsest Piecewise-Linear Regression of One-Dimensional Data.  
    Journal of Computational and Applied Mathematics, 406, 114044.  
    `DOI: 10.1016/j.cam.2021.114044 <https://doi.org/10.1016/j.cam.2021.114044>`_.
 
 .. [2] Abbott, S., Hellewell, J., Thompson, R. N., Sherratt, K., Gibbs, H. P., 
    Bosse, N. I., ... & Funk, S. (2020).
-   *Estimating the time-varying reproduction number of SARS-CoV-2 using national
-   and subnational case counts*.
+   Estimating the time-varying reproduction number of SARS-CoV-2 using national
+   and subnational case counts.
    PLoS ONE, 15(7), e0237901.
    `DOI: 10.1371/journal.pone.0237901 <https://doi.org/10.1371/journal.pone.0237901>`_.
 
 .. [3] Boyd, S., Parikh, N., Chu, E., Peleato, B., & Eckstein, J. (2011).  
-   *Distributed Optimization and Statistical Learning via the Alternating Direction Method of Multipliers*.  
+   Distributed Optimization and Statistical Learning via the Alternating Direction Method of Multipliers.  
    Foundations and Trends in Machine Learning, 3(1), 1-122.  
    `DOI: 10.1561/2200000016 <https://doi.org/10.1561/2200000016>`_.
 
