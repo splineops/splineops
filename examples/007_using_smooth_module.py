@@ -14,7 +14,7 @@ and as a Jupyter notebook.
 #
 # Fractional Brownian motion in 1D.
 # In this demo, a realization of an fBm process of length {N} is generated and corrupted with noise.
-# # The sequence is then denoised and oversampled by a factor of {m} using the optimal fractional spline estimator
+# The sequence is then denoised and oversampled by a factor of {m} using the optimal fractional spline estimator
 
 import math
 import numpy as np
