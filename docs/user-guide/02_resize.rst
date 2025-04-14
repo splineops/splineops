@@ -6,30 +6,19 @@ Resize
 Overview
 --------
 
-The `resize` function in the `splineops` library enables resizing (scaling) of N-dimensional data arrays using advanced spline-based methods [1]_, [2]_, [3]_. It
-- supports arbitrary scaling factors and output sizes;
+The `resize` function in the `splineops` library enables resizing (scaling) of N-dimensional data arrays using advanced spline-based methods [1]_, [2]_, [3]_.
 
-- handles multi-dimensional data (2D, 3D, and higher);
-
-- has customizable spline degree and boundary extension modes.
-
-
-Three resizing methods can be called:
+Three resizing methods are available:
 
 - Standard Interpolation: Smooth, continuous interpolation.
-- Least-Squares Projection: Optimal resizing with minimal approximation error. Slower than standard interpolation but with better interpolation quality. It requires float64 precision.
-- Oblique Projection: Similar to Least-Squares projection, but faster and lower quality. It works well with with float32 precision
+- Least-Squares Projection: Optimal resizing with minimal approximation error. Slower than standard interpolation but with better interpolation quality. It requires 64-bit float precision.
+- Oblique Projection: Similar to Least-Squares projection, but faster and lower quality. It works well with with 32-bit float precision.
 
-In general, it is recommended to use standard interpolation for most cases; in case higher accuracy is required and float64 precision is used, least-squares projection is recommended.
+It is recommended to use standard interpolation for most cases; in case higher accuracy is required and float64 precision is used, least-squares projection is recommended.
 Oblique projection provides better balance of performance, speed and accuracy.
 
-The `resize` module is suitable for a wide range of applications, including Image processing, Scientific visualization and Medical imaging.
-
-Mathematical Details
---------------------
-
 Standard Interpolation
-~~~~~~~~~~~~~~~~~~~~~~
+----------------------
 
 B-spline interpolation is a method for reconstructing a smooth function from discrete data points using B-splines as basis functions. Given a discrete sequence :math:`\{f_k\}`, 
 the interpolation function is defined as:
@@ -52,7 +41,7 @@ The key property of B-splines is their compact support, which ensures efficient 
 is satisfied by computing the coefficients :math:`c_k` through a digital prefiltering step using a recursive IIR implementation.
 
 Least-Squares Projection
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
 Least-squares projection provides an optimal approximation of a function in a given space by minimizing the squared error. Instead of direct interpolation, 
 the least-squares approach seeks to find the function :math:`s(x)` in a spline space :math:`V_n` that best approximates a given function :math:`f(x)` in the sense of:
@@ -75,7 +64,7 @@ where:
 This method effectively reduces aliasing and blocking artifacts, improving image quality, especially for downsampling.
 
 Oblique Projection
-~~~~~~~~~~~~~~~~~~
+------------------
 
 Oblique projection is a generalization of least-squares projection where the approximation space and the analysis space are different. Instead of computing an orthogonal 
 projection, we use an auxiliary analysis function :math:`\psi(x)`, leading to an approximation:

@@ -9,17 +9,8 @@ Overview
 The `rotate` function in the `splineops` library enables rotation of 2D or 3D data arrays around a specified axis and center using spline interpolation. 
 This function is widely used in image processing, computer graphics, and scientific computing [1]_.
 
-This module supports:
-
-- rotation of both 2D and 3D data arrays;
-- specification of arbitrary rotation axes and centers;
-- high-quality spline interpolation for accurate transformations.
-
-Mathematical Details
---------------------
-
 2D Rotation
-~~~~~~~~~~~
+-----------
 
 In 2D space, a point :math:`(x, y)` can be rotated around a center point :math:`(x_c, y_c)` by an angle :math:`\theta` (in radians) using the rotation matrix:
 
@@ -47,7 +38,7 @@ In 2D space, a point :math:`(x, y)` can be rotated around a center point :math:`
 Here, :math:`(x', y')` are the coordinates of the rotated point.
 
 3D Rotation
-~~~~~~~~~~~
+-----------
 
 For 3D data, a point :math:`\mathbf{v} = (x, y, z)` can be rotated around an arbitrary axis defined by a unit vector :math:`\mathbf{u} = (u_x, u_y, u_z)` 
 by an angle :math:`\theta` using Rodrigues' rotation formula:
@@ -93,22 +84,13 @@ The rotated point is calculated as:
 where :math:`(x_c, y_c, z_c)` represents the center of rotation.
 
 Interpolation
-~~~~~~~~~~~~~
+-------------
 
-The rotation often results in coordinates that do not align with the original data grid. To compute the data values at these rotated coordinates, spline interpolation is used:
-
-- TensorSpline Interpolation: This method uses tensor-product B-splines for smooth and accurate interpolation in multiple dimensions, minimizing artifacts such as aliasing and ensuring high-quality results.
-
-Implementation Details
-----------------------
-
-1. Centering Coordinates: The coordinates are shifted such that the center of rotation aligns with the origin.
-   
-2. Applying Rotation Matrix: The appropriate rotation matrix (2D or 3D) is applied to the centered coordinates.
-
-3. Translating Back: The rotated coordinates are shifted back to their original location by adding the center coordinates.
-
-4. Interpolation: Spline interpolation is applied to evaluate the rotated data values at the new coordinates.
+During rotation, the new coordinates may not align with the original data grid, so spline interpolation is employed to compute the corresponding 
+data values. This approach uses standard interpolation, which leverages tensor-product B-splines for smooth, accurate results across multiple 
+dimensions while minimizing artifacts like aliasing. The process involves first recentering the coordinates so that the rotation center coincides 
+with the origin, then applying the appropriate 2D or 3D rotation matrix to the centered coordinates, followed by translating the rotated coordinates 
+back to their original reference frame, and finally using spline interpolation to determine the data values at these new positions.
 
 Rotate Example
 --------------

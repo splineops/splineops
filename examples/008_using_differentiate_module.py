@@ -48,8 +48,8 @@ image_gray = (
 )
 
 # %%
-# Create helper functions to visualize results
-# --------------------------------------------
+# Helper visualization functions
+# ------------------------------
 
 def show_result_with_colorbar(title, result, units="Value", percentile_range=(5, 95)):
     """

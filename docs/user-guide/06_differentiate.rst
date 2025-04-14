@@ -16,13 +16,12 @@ It offers several operations including:
 - Smallest Hessian Eigenvalue – the minimum curvature, and
 - Hessian Orientation – the principal direction of curvature.
 
-Key features include the use of precise spline interpolation coefficients, the implementation of both anti-symmetric and symmetric FIR filters for first and 
+Key features include the use of precise spline interpolation coefficients, the implementation of both anti-symmetric and symmetric finite impulse respones (FIR) filters for first and 
 second derivatives, and a tunable tolerance parameter to balance speed and accuracy.
 
-Mathematical Background
--------------------------
 Image Representation
-~~~~~~~~~~~~~~~~~~~~
+--------------------
+
 A grayscale image is modeled as a continuous function
 
 .. math::
@@ -38,45 +37,46 @@ where :math:`\phi(x,y)` is defined as the tensor-product cubic B‑spline
 This formulation allows one to compute exact derivatives of the image by first determining the spline coefficients :math:`c[k,l]`.
 
 Differentiation Operations
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
+
 Based on the spline representation, the module computes various differential operators:
 
-- Gradient Magnitude  
+- Gradient Magnitude:  
   Computed as the Euclidean norm of the first derivatives:
 
   .. math::
 
       \|\nabla f(x,y)\| = \sqrt{\left(\frac{\partial f}{\partial x}\right)^2 + \left(\frac{\partial f}{\partial y}\right)^2}.
 
-- Gradient Direction  
+- Gradient Direction:  
   The orientation of the gradient is given by:
 
   .. math::
 
       \theta(x,y) = \arctan\left(\frac{\partial f/\partial y}{\partial f/\partial x}\right).
 
-- Laplacian  
+- Laplacian:  
   A second-order operator that highlights regions of rapid intensity change:
 
   .. math::
 
       \Delta f(x,y) = \frac{\partial^2 f}{\partial x^2} + \frac{\partial^2 f}{\partial y^2}.
 
-- Largest Hessian Eigenvalue  
+- Largest Hessian Eigenvalue:  
   The maximum eigenvalue of the Hessian matrix is computed as:
 
   .. math::
 
       \lambda_{\text{max}} = \frac{1}{2}\Bigl(f_{xx} + f_{yy} + \sqrt{4f_{xy}^2 + \left(f_{xx} - f_{yy}\right)^2}\Bigr).
 
-- Smallest Hessian Eigenvalue  
+- Smallest Hessian Eigenvalue:  
   The minimum eigenvalue of the Hessian matrix is given by:
 
   .. math::
 
       \lambda_{\text{min}} = \frac{1}{2}\Bigl(f_{xx} + f_{yy} - \sqrt{4f_{xy}^2 + \left(f_{xx} - f_{yy}\right)^2}\Bigr).
 
-- Hessian Orientation  
+- Hessian Orientation:  
   This operation returns the orientation corresponding to the maximum second derivative:
 
   .. math::
@@ -87,6 +87,7 @@ Based on the spline representation, the module computes various differential ope
 
 Implementation Details
 ----------------------
+
 The `Differentials` class implements these operations in two main stages:
 
 1. Spline Interpolation:  
@@ -104,6 +105,7 @@ epsilon for single-precision floats). Progress during processing is displayed vi
 
 Differentiate Example
 ----------------------
+
 * :ref:`sphx_glr_auto_examples_008_using_differentiate_module.py`
 
 References
@@ -116,7 +118,3 @@ References
 .. [2] Unser, M. & Blu, T., 
   Fractional Splines and Wavelets,
   SIAM Review, vol. 42, no. 1, pp. 43–67, 2000.
-
-.. note::
-    The `differentiate` module is optimized for grayscale images of type ``GRAY32``. For best results, ensure that input images are normalized (typically 
-    in the range [0, 1]) and that the tolerance parameter is set appropriately.

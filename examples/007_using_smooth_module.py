@@ -297,8 +297,8 @@ def demo_3d_sinusoid():
 demo_3d_sinusoid()
 
 # %%
-# Using recursive smoothing spline
-# --------------------------------
+# Recursive smoothing spline
+# --------------------------
 #
 # Using recursive smoothing spline.
 

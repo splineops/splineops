@@ -6,20 +6,19 @@ Regress
 Overview
 --------
 
-The `regress` module in `splineops` provides a method for performing one-dimensional regression using total-variation (TV) regularization on the second derivative. 
+The `regress` module in `splineops` provides a method for performing one-dimensional regression using total-variation (TV) regularization on the second derivative [1]_. 
 This approach promotes solutions that are piecewise-linear with the minimum number of knots, making it ideal for applications requiring sparse representations.
 
 Key features of this method:
 
-- Guarantees piecewise-linear solutions with minimal knots.
-- Provides a systematic analysis of unique vs. non-unique solutions.
-- Introduces a fast two-step algorithm to compute sparsest solutions efficiently.
-- Supports both interpolation (exact fit) and regression (data fitting with noise).
+- It guarantees piecewise-linear solutions with minimal knots.
+- It provides a systematic analysis of unique vs. non-unique solutions.
+- It introduces a fast two-step algorithm to compute sparsest solutions efficiently.
+- It supports both interpolation (exact fit) and regression (data fitting with noise).
 
-This technique is particularly relevant in machine learning, where sparsity improves generalization, and in signal processing, where minimal knots lead to simpler models.
-
-.. note::
-   Recent work has also demonstrated the method’s usefulness in epidemiology, for example, in estimating the reproduction number of COVID-19 infections [2]_, underscoring its flexibility in time-series analysis contexts.
+This technique is particularly relevant in machine learning, where sparsity improves generalization, and in signal processing, where minimal knots lead to simpler 
+models. It is closely related to ReLU neural networks, which also produce piecewise-linear functions. It can serve as a more direct way to achieve a 
+minimal-knot solution in 1D, although caution should be exercised in equating fewer parameters with superior overall performance in high-dimensional machine-learning tasks [2]_.
 
 Mathematical Background
 -----------------------
@@ -40,7 +39,7 @@ where:
 - :math:`D^2 f` is the second derivative, ensuring the solution is piecewise-linear.
 - :math:`\| \cdot \|_M` is the total-variation norm, which promotes sparsity.
 
-This is called the generalized Beurling LASSO (g-BLASSO), extending classical LASSO regression to continuous functions [1]_.
+This is called the generalized Beurling LASSO (g-BLASSO), extending classical LASSO regression to continuous functions.
 
 Representer Theorem
 ~~~~~~~~~~~~~~~~~~~
@@ -95,45 +94,6 @@ Limitations and Directions
 - Higher Dimensions: Extending this approach to dimensions :math:`d > 1` is non-trivial. Defining analogous TV-based regularizations on higher-order derivatives (e.g., Hessian-based penalties) is an active area of research, but a direct multi-dimensional analogue of the fewest-knot guarantee remains challenging.
 - Over-Parameterization vs. Minimal Parameters: In practice, neural networks often benefit from having more parameters than necessary. While our method finds the minimal number of parameters for a 1D CPWL model, the *optimal* size of a model in broader machine-learning contexts may not always be about strictly minimizing parameters.
 
-Example Usage
--------------
-
-Here’s how to use the `sparsest linear regression` module in `splineops`:
-
-.. code-block:: python
-
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from splineops.interpolate.sparsest_linear.denoising import denoise_y
-    from splineops.interpolate.sparsest_linear.sparsification import sparsest_interpolant, linear_spline
-
-    # Sample data (noisy)
-    x = np.linspace(0, 1, 50)
-    y = np.sin(2 * np.pi * x) + 0.1 * np.random.randn(len(x))
-
-    # Regularization parameter
-    lamb = 0.01
-
-    # Compute denoised y
-    y_denoised = denoise_y(x, y, lamb, rho=lamb)
-
-    # Compute sparsest spline
-    knots, amplitudes, polynomial = sparsest_interpolant(x, y_denoised)
-
-    # Plot results
-    plt.figure()
-    plt.plot(x, y, 'x', label='Noisy Data')
-    plt.plot(x, y_denoised, 'o', label='Denoised Data')
-    plt.plot(x, linear_spline(x, knots, amplitudes, polynomial), label='Sparsest Regression')
-    plt.legend()
-    plt.show()
-
-This example demonstrates:
-
-- Denoising noisy data using total-variation regularization.
-- Finding the sparsest linear spline with minimal knots.
-- Visualizing the results to compare noisy, denoised, and sparse regression outputs.
-
 Regularization Parameter
 ------------------------
 
@@ -152,7 +112,7 @@ Regression Example
 References
 ----------
 
-.. [1] Debarre, T., Denoyelle, Q., Unser, M., & Fageot, J. (2022).  
+.. [1] Debarre, T., Denoyelle, Q., Unser, M., & Fageot, J. (2022).
    Sparsest Piecewise-Linear Regression of One-Dimensional Data.  
    Journal of Computational and Applied Mathematics, 406, 114044.  
    `DOI: 10.1016/j.cam.2021.114044 <https://doi.org/10.1016/j.cam.2021.114044>`_.
@@ -168,9 +128,3 @@ References
    Distributed Optimization and Statistical Learning via the Alternating Direction Method of Multipliers.  
    Foundations and Trends in Machine Learning, 3(1), 1-122.  
    `DOI: 10.1561/2200000016 <https://doi.org/10.1561/2200000016>`_.
-
-.. note::
-    This method is closely related to ReLU neural networks, which also produce
-    piecewise-linear functions. It can serve as a more direct way to achieve a
-    minimal-knot solution in 1D, although caution should be exercised in equating fewer
-    parameters with superior overall performance in high-dimensional machine-learning tasks.
