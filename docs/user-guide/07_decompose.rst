@@ -5,73 +5,82 @@ Decompose
 
 Overview
 --------
-The `decompose` module in `splineops` provides a suite of algorithms for generating multiresolution representations of signals and images using spline pyramid decomposition. 
-By modeling a signal as a continuously defined function reconstructed from its discrete samples via polynomial spline interpolation, the module enables both reduction (downsampling) 
-and expansion (upsampling) operations. These operations form the basis for constructing error pyramids and establishing a connection with wavelet transforms.
+This module provides spline-based multiresolution
+decomposition of signals and images. It allows one to reduce (downsample)
+and expand (upsample) data via spline interpolation and provides an important building 
+block for pyramid and wavelet transforms [1]_. [2]_. [3]_, [4]_.
 
-Mathematical Background
--------------------------
-Spline Pyramid Decomposition
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-A signal is represented as a continuous function based on its discrete samples:
+Spline Representation
+---------------------
 
-.. math::
-
-    f(x) = \sum_{k} c[k] \cdot \phi(x-k),
-
-where :math:`\phi(x)` denotes a polynomial spline basis function. The spline model is interpolating and completely defined by the sample values. This representation facilitates 
-the derivation of the REDUCE and EXPAND operators, which are essential for the pyramid construction.
-
-REDUCE and EXPAND Operators
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- **REDUCE Operator:**  
-  The REDUCE operator filters and downsamples a signal by a factor of two. It minimizes the approximation error in a least squares sense, thereby ensuring that the reduced signal 
-  maintains an optimal representation of the original. For centered pyramids, a variant named `ReduceCentered_1D` is used to accommodate grid shifts.
-
-- **EXPAND Operator:**  
-  The EXPAND operator up-samples a signal by a factor of two. It fills in the missing samples by applying an interpolation filter derived from the underlying spline model. In 
-  the case of centered pyramids, the `ExpandCentered_1D` function is employed to correctly re-align the finer grid points.
-
-Wavelets and the Error Pyramid
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-A close relationship exists between spline pyramids and wavelet transforms. The error pyramid is computed as:
+A 1D discrete signal :math:`\{f[k]\}` can be modeled as the continuous function
 
 .. math::
 
-    \text{error} = f - \text{EXPAND}(\text{REDUCE}(f)),
+   f(x) \;=\; \sum_{k} c[k]\, \phi\bigl(x - k\bigr),
 
-which represents the loss of information during the reduction process. This error signal is analogous to the wavelet coefficients, capturing the details that are discarded in 
-each level of the decomposition.
+where :math:`\phi(x)` is a polynomial spline basis function (e.g., a B-spline of degree 3),
+and :math:`c[k]` are the spline coefficients determined from the samples :math:`f[k]`.
+This representation allows the application of downsampling and upsampling filters
+directly to the spline model.
+
+Pyramid Decomposition
+---------------------
+
+Two key operators are proposed.
+
+- Reduce: it filters the signal (or image) and downsamples by dyadic factors,
+  thus producing a coarse approximation.
+- Expand: it upsamples and interpolates the coarse approximation back to
+  the original resolution.
+
+When applied iteratively, these operations create a pyramid structure
+(approximation at multiple scales). In 2D, the same concept applies along rows
+and columns.
+
+Wavelet Decomposition
+---------------------
+
+Wavelet transforms extend the idea of the pyramid by also tracking the
+detail that is lost at each reduction step. At each scale (analysis)
+
+- an approximation is obtained (the reduced signal or image);
+- a corresponding detail or wavelet sub-band is formed (the difference or “error” relative to the expanded approximation).
+
+The application of this decomposition over multiple scales yields a so-called wavelet
+representation, where the stored approximation plus the detail coefficients can be used 
+to perfectly reconstruct the original data (synthesis).
 
 Implementation Details
 ----------------------
-The `Decompose` class implements these operations in two major stages:
 
-1. **Spline Interpolation:**  
-   The input signal is converted into a continuous function by computing its spline interpolation coefficients. This step is crucial to ensure that subsequent operations are 
-   performed on a smooth representation.
+- Reduce and expand features perform the core downsampling and upsampling based on spline filters.
+- Wavelet transforms such as Haar wavelets or spline wavelets (analysis and synthesis) are implemented by the combination of pyramid steps with detail sub-bands.
+- Various spline degrees (e.g., degree 3) are supported. They allow one to control how the data are dispatched in the approximation channel and the sub-bands.
 
-2. **Multiresolution Decomposition:**  
-   - **REDUCE Operation:** The function `Reduce_1D` (or `ReduceCentered_1D` for centered grids) filters and downsamples the signal, constructing a coarser approximation.
-   - **EXPAND Operation:** The function `Expand_1D` (or `ExpandCentered_1D` for centered grids) up-samples the reduced signal, interpolating the missing values.
-   - **Error Pyramid:** The difference between the original signal and its reconstructed version (via EXPAND(REDUCE(signal))) yields the error pyramid, which is essential for 
-   understanding the details removed during the decomposition and is tightly linked to wavelet analysis.
+Example
+-------
 
-Users can customize the underlying spline degree (typically n=3) and choose between different error measures (discrete or continuous norms). This flexibility allows the module 
-to be adapted for various applications in signal and image processing.
-
-Decompose Example
-------------------
-* :ref:`sphx_glr_auto_examples_009_using_decompose_module.py`
+- :ref:`sphx_glr_auto_examples_009_decompose_module.py`
 
 References
 ----------
-- Unser, M. (1999). *Splines: A Perfect Fit for Signal and Image Processing*, IEEE Signal Processing Magazine, vol. 16, no. 6, pp. 22-38.
-- Unser, M., Aldroubi, A., & Eden, M. (1993). *B-Spline Signal Processing: Part II--Efficient Design and Applications*, IEEE Transactions on Signal Processing, vol. 41, no. 2, pp. 834-848.
-- Unser, M., Aldroubi, A., & Eden, M. (1993). *The L2-Polynomial Spline Pyramid*, IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 15, no. 4, pp. 364-379.
-- Brigger, P., Müller, F., Illgner, K., & Unser, M. (1999). *Centered Pyramids*, IEEE Transactions on Image Processing, vol. 8, no. 9, pp. 1254-1264.
-- Burt, P. J., & Adelson, E. H. (1983). *The Laplacian Pyramid as a Compact Code*, IEEE Transactions on Communication, vol. COM-31, no. 4, pp. 337-345.
 
-.. note::
-   The `decompose` module is optimized for signals and images reconstructed as continuous functions from discrete samples. For optimal performance, ensure that input data is 
-   properly normalized and that spline parameters are appropriately selected.
+.. [1] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
+   IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
+   vol. 16, no. 6, pp. 22–38, November 1999.
+
+.. [2] M. Unser, A. Aldroubi, M. Eden, 
+   `B-Spline Signal Processing: Part II—Efficient Design and Applications <https://doi.org/10.1109/78.193221>`_, 
+   IEEE Transactions 
+   on Signal Processing, vol. 41, no. 2, pp. 834–848, February 1993.
+
+.. [3] M. Unser, A. Aldroubi, M. Eden, 
+   `The L<sub>2</sub>-Polynomial Spline Pyramid <https://doi.org/10.1109/34.206956>`_, 
+   IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 15,
+   no. 4, pp. 364–379, April 1993.
+
+.. [4] P. Brigger, F. Müller, K. Illgner, M. Unser, 
+   `Centered Pyramids <https://doi.org/10.1109/83.784437>`_, 
+   IEEE Transactions on Image Processing, vol. 8, no. 9, pp. 1254–1264,
+   September 1999.

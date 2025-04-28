@@ -6,21 +6,14 @@ Rotate
 Overview
 --------
 
-The `rotate` function in the `splineops` library enables rotation of 2D or 3D data arrays around a specified axis and center using spline interpolation. This function is widely used in image processing, computer graphics, and scientific computing.
-
-This module supports:
-
-- rotation of both 2D and 3D data arrays;
-- specification of arbitrary rotation axes and centers;
-- high-quality spline interpolation for accurate transformations.
-
-Mathematical Details
---------------------
+The `rotate` function in the `splineops` library allows for the rotation of 2D or 3D data arrays around a specified axis and center using spline interpolation. 
+This function is widely used in image processing, computer graphics, and scientific computing [1]_.
 
 2D Rotation
-~~~~~~~~~~~
+-----------
 
-In 2D space, a point :math:`(x, y)` can be rotated around a center point :math:`(x_c, y_c)` by an angle :math:`\theta` (in radians) using the rotation matrix:
+In 2D space, a point of coordinates :math:`(x, y)` can be rotated around a center point :math:`(x_\mathrm{c}, y_\mathrm{c})` by an angle :math:`\theta` 
+(in radians) using the rotation matrix.
 
 .. math::
 
@@ -34,38 +27,46 @@ In 2D space, a point :math:`(x, y)` can be rotated around a center point :math:`
    \sin\theta & \cos\theta
    \end{pmatrix}
    \begin{pmatrix}
-   x - x_c \\
-   y - y_c
+   x - x_\mathrm{c} \\
+   y - y_\mathrm{c}
    \end{pmatrix}
    +
    \begin{pmatrix}
-   x_c \\
-   y_c
+   x_\mathrm{c} \\
+   y_\mathrm{c}
    \end{pmatrix}
 
 Here, :math:`(x', y')` are the coordinates of the rotated point.
 
 3D Rotation
-~~~~~~~~~~~
+-----------
 
-For 3D data, a point :math:`\mathbf{v} = (x, y, z)` can be rotated around an arbitrary axis defined by a unit vector :math:`\mathbf{u} = (u_x, u_y, u_z)` by an angle :math:`\theta` using Rodrigues' rotation formula:
+For 3D data, a point :math:`\mathbf{v} = (x, y, z)` can be rotated around an arbitrary axis defined by a 
+unit vector :math:`\mathbf{u} = (u_\mathrm{x}, u_\mathrm{y}, u_\mathrm{z})` 
+by an angle :math:`\theta` using Rodrigues' rotation formula
 
 .. math::
 
    \mathbf{v}' = \mathbf{v} \cos\theta + (\mathbf{u} \times \mathbf{v}) \sin\theta + \mathbf{u} \left( \mathbf{u} \cdot \mathbf{v} \right) (1 - \cos\theta)
 
-Alternatively, the rotation can be expressed with a rotation matrix :math:`\mathbf{R}`:
+Alternatively, the rotation can be expressed with the rotation matrix
 
 .. math::
 
    \mathbf{R} =
    \begin{pmatrix}
-   \cos\theta + u_x^2 (1 - \cos\theta) & u_x u_y (1 - \cos\theta) - u_z \sin\theta & u_x u_z (1 - \cos\theta) + u_y \sin\theta \\
-   u_y u_x (1 - \cos\theta) + u_z \sin\theta & \cos\theta + u_y^2 (1 - \cos\theta) & u_y u_z (1 - \cos\theta) - u_x \sin\theta \\
-   u_z u_x (1 - \cos\theta) - u_y \sin\theta & u_z u_y (1 - \cos\theta) + u_x \sin\theta & \cos\theta + u_z^2 (1 - \cos\theta)
+     \cos\theta + u_{\mathrm{x}}^2\,(1 - \cos\theta)
+     & u_{\mathrm{x}}\,u_{\mathrm{y}}\,(1 - \cos\theta) - u_{\mathrm{z}}\,\sin\theta
+     & u_{\mathrm{x}}\,u_{\mathrm{z}}\,(1 - \cos\theta) + u_{\mathrm{y}}\,\sin\theta \\[6pt]
+     u_{\mathrm{y}}\,u_{\mathrm{x}}\,(1 - \cos\theta) + u_{\mathrm{z}}\,\sin\theta
+     & \cos\theta + u_{\mathrm{y}}^2\,(1 - \cos\theta)
+     & u_{\mathrm{y}}\,u_{\mathrm{z}}\,(1 - \cos\theta) - u_{\mathrm{x}}\,\sin\theta \\[6pt]
+     u_{\mathrm{z}}\,u_{\mathrm{x}}\,(1 - \cos\theta) - u_{\mathrm{y}}\,\sin\theta
+     & u_{\mathrm{z}}\,u_{\mathrm{y}}\,(1 - \cos\theta) + u_{\mathrm{x}}\,\sin\theta
+     & \cos\theta + u_{\mathrm{z}}^2\,(1 - \cos\theta)
    \end{pmatrix}
 
-The rotated point is calculated as:
+The rotated point is calculated as
 
 .. math::
 
@@ -77,43 +78,34 @@ The rotated point is calculated as:
    =
    \mathbf{R}
    \begin{pmatrix}
-   x - x_c \\
-   y - y_c \\
-   z - z_c
+   x - x_\mathrm{c} \\
+   y - y_\mathrm{c} \\
+   z - z_\mathrm{c}
    \end{pmatrix}
    +
    \begin{pmatrix}
-   x_c \\
-   y_c \\
-   z_c
+   x_\mathrm{c} \\
+   y_\mathrm{c} \\
+   z_\mathrm{c}
    \end{pmatrix}
 
-where :math:`(x_c, y_c, z_c)` represents the center of rotation.
-
 Interpolation
-~~~~~~~~~~~~~
+-------------
 
-The rotation often results in coordinates that do not align with the original data grid. To compute the data values at these rotated coordinates, spline interpolation is used:
-
-- TensorSpline Interpolation: This method uses tensor-product B-splines for smooth and accurate interpolation in multiple dimensions, minimizing artifacts such as aliasing and ensuring high-quality results.
-
-Implementation Details
-----------------------
-
-1. Centering Coordinates: The coordinates are shifted such that the center of rotation aligns with the origin.
-   
-2. Applying Rotation Matrix: The appropriate rotation matrix (2D or 3D) is applied to the centered coordinates.
-
-3. Translating Back: The rotated coordinates are shifted back to their original location by adding the center coordinates.
-
-4. Interpolation: Spline interpolation is applied to evaluate the rotated data values at the new coordinates.
+The rotated coordinates may not coincide with the original data grid, so spline interpolation is employed for the resampling of the rotated data. 
+The approach documented here uses standard interpolation, which leverages tensor-product B-splines for smooth, accurate results across multiple 
+dimensions while minimizing artifacts like aliasing. The process asks one to first recenter the coordinates so that the rotation center coincides 
+with the origin, then to apply the appropriate 2D or 3D rotation matrix to the recentered coordinates, followed by a translation of the rotated recentered coordinates 
+back to their original reference frame, to compensate for the recentering step, and finally to use spline interpolation to determine the data values at these new positions.
 
 Rotate Example
 --------------
 
-* :ref:`sphx_glr_auto_examples_005_using_rotate_module.py`
+* :ref:`sphx_glr_auto_examples_005_rotate_module.py`
 
 References
 ----------
 
-- Unser, M. (1999). `Splines: A perfect fit for signal/image processing <https://ieeexplore.ieee.org/document/7075842>`_. IEEE Signal Processing Magazine.
+.. [1] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
+   IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
+   vol. 16, no. 6, pp. 22–38, November 1999.
