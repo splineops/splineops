@@ -2,10 +2,10 @@
 Decompose Module
 ================
 
-This example demonstrates how to use the 'decompose' module for:
+This example demonstrates how to use the 'decompose' module.
 
-- Pyramid decomposition (reduce & expand) in 1D and 2D
-- Haar wavelet decomposition (analysis & synthesis) in 2D:
+- Pyramid decomposition (reduce & expand) in 1D and 2D.
+- Haar wavelet decomposition (analysis & synthesis) in 2D.
 
 You can download this example at the tab at right (Python script or Jupyter notebook.
 """
@@ -14,8 +14,7 @@ You can download this example at the tab at right (Python script or Jupyter note
 # Imports
 # -------
 #
-# We import the necessary libraries and modules for demonstrating
-# pyramid decomposition and wavelet analysis/synthesis.
+# We import the required libraries and modules.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,8 +43,7 @@ from splineops.decompose.wavelets.splinewavelets import (
 # 1D Pyramid Decomposition
 # ------------------------
 #
-# We'll keep a simple 1D demonstration (length=10). Then we do a pyramid
-# reduce-then-expand. This replicates the logic of a reference test.
+# Here is a 1D examples that involves data of length 10. We do a pyramid reduce-then-expand.
 
 x = np.array([0.0, 1.0, 2.0, 3.0, 2.0, 1.0, 0.0, -2.0, -4.0, -6.0], 
              dtype=np.float64)
@@ -83,11 +81,11 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Load and normalize a 2D image
+# Load and Normalize a 2D Image
 # -----------------------------
 #
 # Here, we load an example image from an online repository. 
-# We convert it to grayscale in [0, 1].
+# We convert it to grayscale in [0,1].
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim07.png'
 response = requests.get(url)
@@ -96,7 +94,7 @@ img = Image.open(BytesIO(response.content))
 # Convert to numpy float64
 image_color = np.array(img, dtype=np.float64)
 
-# Normalize to [0..1]
+# Normalize to [0,1]
 image_color /= 255.0
 
 # Convert to grayscale using standard weights
@@ -156,7 +154,7 @@ for _ in range(num_reductions):
 original_shape = image_gray.shape  # (ny, nx)
 
 # %%
-# 1 Level Decomposition
+# 1-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 canvas1 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
@@ -165,13 +163,13 @@ canvas1[:h1, :w1] = levels[1]  # Place the reduced image in the top-left corner
 
 plt.figure(figsize=(6, 6))
 plt.imshow(canvas1, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
-plt.title("Pyramid 1 Level Decomposition", fontsize=14)
+plt.title("Pyramid 1-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
 plt.show()
 
 # %%
-# 2 Level Decomposition
+# 2-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 canvas2 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
@@ -180,13 +178,13 @@ canvas2[:h2, :w2] = levels[2]  # Place the reduced image in the top-left corner
 
 plt.figure(figsize=(6, 6))
 plt.imshow(canvas2, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
-plt.title("Pyramid 2 Level Decomposition", fontsize=14)
+plt.title("Pyramid 2-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
 plt.show()
 
 # %%
-# 3 Level Decomposition
+# 3-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 canvas3 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
@@ -195,7 +193,7 @@ canvas3[:h3, :w3] = levels[3]  # Place the reduced image in the top-left corner
 
 plt.figure(figsize=(6, 6))
 plt.imshow(canvas3, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
-plt.title("Pyramid 3 Level Decomposition", fontsize=14)
+plt.title("Pyramid 3-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
 plt.show()
@@ -205,7 +203,7 @@ plt.show()
 # ------------------------
 #
 # We demonstrate wavelet decomposition (analysis) and reconstruction (synthesis)
-# using 2D Haar wavelets on the same grayscale image.
+# using 2D Haar wavelets on a grayscale image.
 
 haar2d = HaarWavelets(scales=3)
 coeffs = haar2d.analysis(image_gray)
@@ -253,7 +251,7 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
     return out
 
 # %%
-# 1 Level Decomposition
+# 1-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet1 = HaarWavelets(scales=1)
@@ -261,13 +259,13 @@ coeffs1 = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
 
 plt.figure(figsize=(8, 8))
 plt.imshow(coeffs1, cmap='gray', interpolation='nearest')
-plt.title("Haar 1 Level Decomposition", fontsize=14)
+plt.title("Haar 1-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
 plt.show()
 
 # %%
-# 2 Level Decomposition
+# 2-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet2 = HaarWavelets(scales=2)
@@ -275,13 +273,13 @@ coeffs2 = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
 
 plt.figure(figsize=(8, 8))
 plt.imshow(coeffs2, cmap='gray', interpolation='nearest')
-plt.title("Haar 2 Level Decomposition", fontsize=14)
+plt.title("Haar 2-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
 plt.show()
 
 # %%
-# 3 Level Decomposition
+# 3-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet3 = HaarWavelets(scales=3)
@@ -289,7 +287,7 @@ coeffs3 = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
 
 plt.figure(figsize=(8, 8))
 plt.imshow(coeffs3, cmap='gray', interpolation='nearest')
-plt.title("Haar 3 Level Decomposition", fontsize=14)
+plt.title("Haar 3-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
 plt.show()

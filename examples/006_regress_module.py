@@ -2,7 +2,7 @@
 Regress Module
 ==============
 
-Use the regress module to perform linear regression on a set of 1D points.
+We use the regress module to perform linear regression on a set of 1D points.
 
 You can download this example at the tab at right (Python script or Jupyter notebook.
 """
@@ -23,7 +23,7 @@ from splineops.regress.sparsification import sparsest_interpolant, linear_spline
 # Data Preparation
 # ----------------
 #
-# Creating a dataset as (x,y) coordinates.
+# Create a dataset as (x,y) coordinates.
 
 # Directly embedded data
 data = np.array([
@@ -82,8 +82,8 @@ data = np.array([
 x, y = data[:, 0], data[:, 1]
 
 # %%
-# Denoising Data
-# --------------
+# Denoising
+# ---------
 #
 # The function `denoise_y` applies a regularized least-squares method to smooth the noisy data.
 

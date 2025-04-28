@@ -12,7 +12,7 @@ You can download this example at the tab at right (Python script or Jupyter note
 # Imports
 # -------
 #
-# We import the necessary libraries and modules:
+# Import the necessary libraries and modules.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,18 +25,18 @@ from PIL import Image
 from splineops.differentiate.differentials import differentials
 
 # %%
-# Data preparation
+# Data Preparation
 # ----------------
 #
 # We retrieve an example color image, convert it to grayscale,
-# and normalize its intensities to the [0..1] range.
+# and normalize its intensities to the [0,1] range.
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim15.png'
 response = requests.get(url)
 img = Image.open(BytesIO(response.content))
 image = np.array(img, dtype=np.float64)
 
-# Convert to [0..1]
+# Convert to [0,1]
 image_normalized = image / 255.0
 
 # Convert to grayscale via simple weighting
@@ -47,7 +47,7 @@ image_gray = (
 )
 
 # %%
-# Helper visualization functions
+# Helper Visualization Functions
 # ------------------------------
 
 def show_result_with_colorbar(title, result, units="Value", percentile_range=(5, 95)):
@@ -149,8 +149,6 @@ show_result_with_colorbar("Gradient Magnitude", grad_magnitude_result, units="Va
 # %%
 # Gradient Direction
 # ------------------
-# By default, gradient direction (using arctan2) often ranges from -π to +π.
-# We shift it to the [0..2π] range for a cyclical visualization.
 
 diff = differentials(image_gray.copy())
 diff.run(differentials.GRADIENT_DIRECTION)
@@ -197,20 +195,14 @@ show_result_with_colorbar("Smallest Hessian Eigenvalue", smallest_hessian_result
 # %%
 # Hessian Orientation
 # -------------------
-# The default orientation may lie in [-π/2, +π/2], but we map it to [0..π]
-# so 0 and π visualize as the same direction in a cyclical colormap.
 
 diff = differentials(image_gray.copy())
 diff.run(differentials.HESSIAN_ORIENTATION)
 hessian_orientation_result = diff.image
 
-# Shift from [-π/2..+π/2] to [0..π]
-# (If your code produces a slightly different base range, adjust as needed.)
-hessian_orientation_result_0_pi = (hessian_orientation_result + np.pi/2.0) % np.pi
-
 show_angle_result(
     "Hessian Orientation",
-    hessian_orientation_result_0_pi,
-    vmin=0.0, vmax=np.pi,
+    hessian_orientation_result,
+    vmin=-np.pi/2.0, vmax=np.pi/2.0,
     units="Orientation (radians)"
 )
