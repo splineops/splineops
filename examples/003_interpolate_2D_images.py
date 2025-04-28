@@ -1,5 +1,5 @@
 """
-Interpolate 2D images
+Interpolate 2D Images
 =====================
 
 Interpolate 2D images with standard interpolation, least-squares and oblique projection,

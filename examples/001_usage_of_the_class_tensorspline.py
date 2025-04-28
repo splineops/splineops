@@ -1,6 +1,6 @@
 """
-Using TensorSpline class
-========================
+Usage of the Class TensorSpline
+===============================
 
 Showcase TensorSpline class basic functionality.
 

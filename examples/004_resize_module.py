@@ -1,6 +1,6 @@
 """
-Using resize module
-===================
+Resize Module
+=============
 
 Use the resize module to shrink and expand a 2D image.
 

@@ -1,6 +1,6 @@
 """
-Using smooth module
-===================
+Smooth Module
+=============
 
 Use the smooth module to smooth N-dimensional data.
 

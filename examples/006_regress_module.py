@@ -1,6 +1,6 @@
 """
-Using regress module
-====================
+Regress Module
+==============
 
 Use the regress module to perform linear regression on a set of 1D points.
 

@@ -83,7 +83,7 @@ However, it introduces a slight approximation error depending on the angle betwe
 Resize Example
 --------------
 
-* :ref:`sphx_glr_auto_examples_004_using_resize_module.py`
+* :ref:`sphx_glr_auto_examples_004_resize_module.py`
 
 References
 ----------

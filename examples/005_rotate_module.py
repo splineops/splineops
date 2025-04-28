@@ -1,6 +1,6 @@
 """
-Using rotate module
-===================
+Rotate Module
+=============
 
 Use the rotate module to rotate a 2D image.
 

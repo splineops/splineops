@@ -106,7 +106,7 @@ epsilon for single-precision floats). Progress during processing is displayed vi
 Differentiate Example
 ----------------------
 
-* :ref:`sphx_glr_auto_examples_008_using_differentiate_module.py`
+* :ref:`sphx_glr_auto_examples_008_differentiate_module.py`
 
 References
 ----------

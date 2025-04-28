@@ -95,7 +95,7 @@ back to their original reference frame, and finally using spline interpolation t
 Rotate Example
 --------------
 
-* :ref:`sphx_glr_auto_examples_005_using_rotate_module.py`
+* :ref:`sphx_glr_auto_examples_005_rotate_module.py`
 
 References
 ----------

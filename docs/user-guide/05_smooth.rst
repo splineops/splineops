@@ -76,7 +76,7 @@ For images and high-dimensional data, a typical choice is :math:`\lambda \approx
 Smooth Example
 --------------
 
-* :ref:`sphx_glr_auto_examples_007_using_smooth_module.py`
+* :ref:`sphx_glr_auto_examples_007_smooth_module.py`
 
 References
 ----------

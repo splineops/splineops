@@ -1,6 +1,6 @@
 """
-Using decompose module
-======================
+Decompose Module
+================
 
 This example demonstrates how to use the 'decompose' module for:
 

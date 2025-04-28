@@ -63,7 +63,7 @@ Implementation Details
 Example
 -------
 
-- :ref:`sphx_glr_auto_examples_009_using_decompose_module.py`
+- :ref:`sphx_glr_auto_examples_009_decompose_module.py`
 
 References
 ----------

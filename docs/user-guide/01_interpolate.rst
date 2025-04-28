@@ -128,10 +128,10 @@ the conclusion that a tensor-product cubic spline offers a good tradeoff between
 interpolation offers.
 
 
-Interpolate Examples
---------------------
+Interpolation Examples
+----------------------
 
-* :ref:`sphx_glr_auto_examples_001_using_tensorspline_class.py`
+* :ref:`sphx_glr_auto_examples_001_usage_of_the_class_tensorspline.py`
 * :ref:`sphx_glr_auto_examples_002_interpolate_1D_samples.py`
 * :ref:`sphx_glr_auto_examples_003_interpolate_2D_images.py`
 
