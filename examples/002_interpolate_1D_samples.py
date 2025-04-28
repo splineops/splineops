@@ -4,28 +4,27 @@ Interpolate 1D Samples
 
 Interpolate 1D samples with standard interpolation.
 
-Specifically, we:
+1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid. 
 
-1. Interpolate an initial set of 1D samples :math:`f[k]`, placed on a unit grid with a B-spline to form a continuously defined function :math:`f(x)`.
+2. From the samples, recover the continuously defined spline :math:`f(x)`.
 
-2. Resample :math:`f(x)` to get :math:`g[k] = f(\lambda k)`, with :math:`|\lambda| > 1`.
+3. Resample :math:`f(x)` to get :math:`g[k] = f(\lambda k)`, with :math:`|\lambda| > 1`.
 
-3. Create a new spline :math:`g(x)`.
+4. Create a new spline :math:`g(x)` from the samples :math:`g[k]`.
 
-4. We define :math:`h(x) = g(x / \lambda)`.
+5. We define :math:`h(x) = g(x / \lambda)`.
 
-5. Compute the Mean Squared Error (MSE) between :math:`f` and :math:`h`.
+6. Compute the mean squared error (MSE) between :math:`f` and :math:`h`.
 
-You can download this example at the tab at right, as both a Python script
-and as a Jupyter notebook.
+You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
-# Import required libraries
-# -------------------------
+# Required Libraries
+# ------------------
 #
 # We import the required libraries, including numpy for numerical computations,
-# Matplotlib for plotting, and the `splineops` package.
+# Matplotlib for the plots, and the `splineops` package.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,14 +40,14 @@ plt.rcParams.update({
 })
 
 # %%
-# Initial 1D samples
+# Initial 1D Samples
 # ------------------
 #
 # We generate 1D samples and treat them as discrete signal points.
 # 
 # Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data.
 #
-# These are the input samples that we will interpolate.
+# These are the input samples that we are going to interpolate.
 
 number_of_samples = 27
 
@@ -74,15 +73,15 @@ plt.axhline(
     zorder=0
 )
 plt.xlabel("k")
-plt.ylabel("f[]")
+plt.ylabel("f[k]")
 plt.grid(True)
 plt.tight_layout()
 plt.show()
 
 
 # %%
-# Interpolate samples with spline f
-# ---------------------------------
+# Interpolate the Samples with a Spline
+# -------------------------------------
 #
 # We interpolate the 1D samples with a spline to obtain the continuously defined function
 #
@@ -90,11 +89,11 @@ plt.show()
 #
 #    f(x) = \sum_{k\in{\mathbb{Z}}}\,c[k]\,\beta^{n}(x-k),
 #
-# where:
+# where
 #
-# - :math:`\beta^n` is the B-spline of degree :math:`n`;
+# - the B-spline of degree :math:`n` is :math:`\beta^n`;
 #
-# - :math:`c[k]` are the spline coefficients determined from the input samples, such that :math:`f(k) = f[k]`.
+# - the spline coefficients :math:`c[k]` are determined from the input samples, such that :math:`f(k) = f[k]`.
 #
 # Let us now plot :math:`f`.
 
@@ -106,10 +105,10 @@ base = "bspline3"
 mode = "mirror"
 
 # %%
-# Using TensorSpline
-# ~~~~~~~~~~~~~~~~~~
+# TensorSpline
+# ~~~~~~~~~~~~
 #
-# Using standard interpolation.
+# Here is one way to perform the standard interpolation.
 
 f = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
 
@@ -120,10 +119,10 @@ f_coords = np.array([q / plot_points_per_unit
 f_data = f(coordinates=(f_coords,), grid=False)
 
 # %%
-# Using resize method
-# ~~~~~~~~~~~~~~~~~~~
+# Resize Method
+# ~~~~~~~~~~~~~
 #
-# Using resize method with standard interpolation will yield exactly the same result.
+# The resize method with standard interpolation yields the same result.
 
 from splineops.resize.resize import resize
 
@@ -150,8 +149,8 @@ mse_diff = np.mean((f_data_spline - f_data_resize)**2)
 print(f"MSE between TensorSpline result and resize result = {mse_diff:.6e}")
 
 # %%
-# Plotting spline f
-# ~~~~~~~~~~~~~~~~~
+# Plot of the Spline f
+# ~~~~~~~~~~~~~~~~~~~~
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples with interpolated f spline")
@@ -164,7 +163,7 @@ plt.axhline(
     zorder=0 # draw behind other plot elements
 )
 plt.plot(f_coords_resize, f_data_resize, color="green", linewidth=2, label="f spline")
-plt.xlabel("x")
+plt.xlabel("k")
 plt.ylabel("f")
 plt.legend()
 plt.grid(True)
@@ -175,13 +174,13 @@ plt.show()
 # Coarsening of f
 # ---------------
 # We define :math:`\lambda` with :math:`|\lambda| > 1` and sample :math:`f(x)` 
-# at :math:`x = \lambda k`:
+# at :math:`x = \lambda k` as
 #
 # .. math::
 #    g[k] = f(\lambda k).
 #
-# These :math:`g[k]` points form a new discrete set, which we will then treat 
-# as a separate signal to build another spline, :math:`g`.
+# These points :math:`g[k]` form a new discrete set, which we then treat 
+# as a separate signal to build another spline :math:`g`.
 
 val_lambda = np.pi
 
@@ -293,18 +292,18 @@ fig.tight_layout()
 plt.show()
 
 # %%
-# Expanding g to obtain h
-# -----------------------
+# Expand g to Obtain h
+# --------------------
 #
 # To compare :math:`g` on the same domain as :math:`f`, we expand :math:`g` by defining 
-# a new function :math:`h`:
+# a new function :math:`h` as
 #
 # .. math::
 #
 #    h(x) = g\bigl(\tfrac{x}{\lambda}\bigr),
 #
-# where :math:`g` is the continuously defined spline built from the :math:`g[k]` 
-# discrete points. Hence, :math:`h` and :math:`f` have the same support 
+# where :math:`g` is the continuously defined spline built from the 
+# discrete points :math:`g[k]`. Hence, :math:`h` and :math:`f` have the same support 
 # and can be directly compared (e.g., by computing an MSE).
 
 fig2 = plt.figure(figsize=(12, 12))
@@ -387,7 +386,7 @@ ax_mid_left.set_ylim(ax_top.get_ylim())
 
 # BOTTOM ROW: expanded h(x) = g(x / λ)
 ax_bottom = fig2.add_subplot(gs2[2, :])  # spans both columns
-ax_bottom.set_title("h spline and difference f - h")
+ax_bottom.set_title("h spline and difference (f - h)")
 
 # We'll sample h over 0..(f_support_length-1)
 h_coords = f_coords
@@ -421,26 +420,26 @@ fig2.tight_layout()
 plt.show()
 
 # %%
-# MSE between f and h
+# MSE Between f and h
 # -------------------
 #
-# We compute the Mean Squared Error (MSE) between :math:`h(x)` and :math:`f(x)`:
+# We compute the MSE between :math:`h(x)` and :math:`f(x)` as
 #
 # .. math::
 #    \text{MSE} = \frac{1}{b - a} \int_{a}^{b} (f(x) - h(x))^2 \, \mathrm{d}x.
 #
-# **Riemann Rule Approximation**:
+# **Riemann Approximation**
 #
-# Instead of computing this integral analytically, we discretize the interval
+# To estimate this integral, we discretize the interval
 # :math:`[a,b]` into :math:`K` points. At each point :math:`x_k`, we evaluate
-# :math:`(f(x_k) - h(x_k))^2` and multiply by the small width :math:`\Delta x`.
-# Summing across all points approximates the integral:
+# :math:`(f(x_k) - h(x_k))^2` and multiply by the width :math:`\Delta x`.
+# Summing across all points produces the approximation
 #
 # .. math::
-#    \int_{a}^{b} (f(x) - h(x))^2 \, \mathrm{d}x 
-#    \;\approx\; \Delta x \sum_{k=1}^{K} (f(x_k) - h(x_k))^2.
+#    \Delta x \sum_{k=1}^{K} (f(x_k) - h(x_k))^2
+#    \;\approx\; \int_{a}^{b} (f(x) - h(x))^2 \, \mathrm{d}x.
 #
-# Dividing by :math:`b-a` yields the MSE.
+# The normalization by :math:`(b-a)` yields the MSE.
 
 # 1) Define a midpoint sampling domain for [a, b]
 N = 1000
@@ -463,10 +462,11 @@ mse_midpoint = integral_value / (b - a)
 print(f"MSE between f and h = {mse_midpoint:.6e}")
 
 # %%
-# Variation using linear splines
-# ------------------------------
+# Variation with Linear Splines
+# -----------------------------
 #
-# We repeat exactly everything but using linear splines.
+# We repeat exactly everything with linear splines. As the MSE increases, we conclude that splines of degree 3 provide a better representation
+# of the original signal than splines of degree 1.
 
 base = "bspline1"
 mode = "mirror"

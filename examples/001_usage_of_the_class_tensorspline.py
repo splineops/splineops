@@ -4,8 +4,7 @@ Usage of the Class TensorSpline
 
 Showcase TensorSpline class basic functionality.
 
-You can download this example at the tab at right, as both a Python script
-and as a Jupyter notebook.
+You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
@@ -20,10 +19,10 @@ from splineops.interpolate.tensorspline import TensorSpline
 from splineops.bases.utils import create_basis
 
 # %%
-# Data preparation
+# Data Preparation
 # ----------------
 #
-# Data type configuration and sample data definition.
+# General configuration and sample data.
 
 dtype = "float32"
 
@@ -38,7 +37,7 @@ data = prng.standard_normal(size=tuple(c.size for c in coordinates))
 data = np.ascontiguousarray(data, dtype=dtype)
 
 # %%
-# TensorSpline setup
+# TensorSpline Setup
 # ------------------
 #
 # Configure bases and modes for the TensorSpline.
@@ -48,7 +47,7 @@ modes = "mirror"
 tensor_spline = TensorSpline(data=data, coordinates=coordinates, bases=bases, modes=modes)
 
 # %%
-# Evaluation coordinates
+# Evaluation Coordinates
 # ----------------------
 #
 # Define evaluation coordinates to extend and oversample the original grid.
@@ -63,7 +62,7 @@ eval_yy = np.linspace(yy[0] - py, yy[-1] + py, 100 * ny)
 eval_coords = eval_xx, eval_yy
 
 # %%
-# Interpolation and visualization
+# Interpolation and Visualization
 # -------------------------------
 #
 # Perform interpolation and visualize the original and interpolated data.
@@ -87,10 +86,10 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Plotting spline bases
-# ---------------------
+# Plotting of Spline Bases
+# ------------------------
 #
-# Define a helper function to visualize spline bases.
+# Define a helper function to visualize the spline bases.
 
 x_values = np.linspace(-3, 3, 1000) # Define x range
 
@@ -113,10 +112,10 @@ def plot_bases(names, x_values, title):
     plt.show()
 
 # %%
-# Plot B-spline bases
+# Plot B-Spline Bases
 # ~~~~~~~~~~~~~~~~~~~
 #
-# Plot B-spline basis functions for degrees 0 through 9.
+# Plot B-spline basis functions for degree 0 to 9.
 
 plot_bases(
     names=[f"bspline{i}" for i in range(10)],
@@ -125,10 +124,10 @@ plot_bases(
 )
 
 # %%
-# Plot OMOMS bases
+# Plot OMOMS Bases
 # ~~~~~~~~~~~~~~~~
 #
-# Plot OMOMS basis functions for degrees 0 through 5.
+# Plot OMOMS basis functions for degree 0 to 5.
 
 plot_bases(
     names=[f"omoms{i}" for i in range(6)],
@@ -137,10 +136,10 @@ plot_bases(
 )
 
 # %%
-# Plot Keys basis
+# Plot Keys Basis
 # ~~~~~~~~~~~~~~~
 #
-# Plot the Keys spline basis function.
+# Plot the Keys basis function.
 
 plot_bases(
     names=["keys"],
@@ -149,10 +148,10 @@ plot_bases(
 )
 
 # %%
-# Plotting extension modes
-# ------------------------
+# Plot Extension Modes
+# --------------------
 #
-# Visualize signal extension modes for a given mode.
+# Visualize how the extension modes allow one to control the values that a signal is assumed to take outside of its original domain.
 
 # Generate a signal that is mostly linear but includes a "bump."
 
@@ -187,8 +186,9 @@ def plot_extension_modes_for_bump_function(mode_name, x_values, title):
     plt.show()
 
 # %%
-# Finite support coefficients
+# Finite-Support Coefficients
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 plot_extension_modes_for_bump_function(
     mode_name="zero",
     x_values=x_values,
@@ -196,8 +196,9 @@ plot_extension_modes_for_bump_function(
 )
 
 # %%
-# Narrow mirroring
+# Narrow Mirroring
 # ~~~~~~~~~~~~~~~~
+
 plot_extension_modes_for_bump_function(
     mode_name="mirror",
     x_values=x_values,

@@ -4,8 +4,7 @@ Smooth Module
 
 Use the smooth module to smooth N-dimensional data.
 
-You can download this example at the tab at right, as both a Python script
-and as a Jupyter notebook.
+You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%

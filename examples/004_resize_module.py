@@ -4,8 +4,7 @@ Resize Module
 
 Use the resize module to shrink and expand a 2D image.
 
-You can download this example at the tab at right, as both a Python script
-and as a Jupyter notebook.
+You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
