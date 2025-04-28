@@ -9,7 +9,7 @@ Overview
 The `smooth` module in `splineops` implements fractional smoothing splines, which are optimal estimators for smooth function approximation and interpolation [1]_, [2]_, [3]_.
 Unlike standard polynomial splines, these splines are derived from fractional differential operators, making them highly adaptable for self-similar and fractal-like signals.
 
-Key features.
+Key features:
 
 - It supports 1D and N-dimensional smoothing splines.
 - It provides a recursive-filtering implementation for fast computation.

@@ -8,7 +8,7 @@ Overview
 
 The `resize` function in the `splineops` library enables the resizing (scaling) of N-dimensional data arrays through advanced spline-based methods [1]_, [2]_, [3]_.
 
-Three resizing methods are available.
+Three resizing methods are available:
 
 - Standard Interpolation: Smooth, continuous interpolation.
 - Least-Squares Projection: Optimal resizing with minimal approximation error. Slower than standard interpolation but with better interpolation quality. It requires 64-bit float precision.
