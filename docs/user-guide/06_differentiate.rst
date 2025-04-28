@@ -5,103 +5,100 @@ Differentiate
 
 Overview
 --------
-The `differentiate` module in `splineops` provides a collection of algorithms for computing image differentials based on cubic B‑spline interpolation [1]_, [2]_. 
+The `differentiate` module in `splineops` provides a collection of algorithms for the computation of image differentials based on cubic B‑spline interpolation [1]_, [2]_. 
 By modeling a grayscale image as a continuous function reconstructed from its discrete samples, the module enables the accurate computation of derivatives. 
-It offers several operations including:
+It offers several operations such as
 
-- Gradient Magnitude – the local rate of intensity change,
-- Gradient Direction – the orientation of maximum intensity change,
-- Laplacian – the sum of second-order derivatives,
-- Largest Hessian Eigenvalue – the maximum curvature,
-- Smallest Hessian Eigenvalue – the minimum curvature, and
-- Hessian Orientation – the principal direction of curvature.
-
-Key features include the use of precise spline interpolation coefficients, the implementation of both anti-symmetric and symmetric finite impulse respones (FIR) filters for first and 
-second derivatives, and a tunable tolerance parameter to balance speed and accuracy.
+- Gradient Magnitude: the local rate of change of the intensity;
+- Gradient Direction: the direction along which the intensity changes most;
+- Laplacian:the sum of second-order derivatives;
+- Largest Hessian Eigenvalue: the maximal curvature;
+- Smallest Hessian Eigenvalue: the minimal curvature; and
+- Hessian Orientation: the principal orientation of the curvature.
 
 Image Representation
 --------------------
 
-A grayscale image is modeled as a continuous function
+A grayscale image is modeled as the continuous function
 
 .. math::
 
-    f(x, y) = \sum_{k,l} c[k,l] \cdot \phi(x-k, y-l),
+    f(x_1, x_2) = \sum_{k_1,k_2} c[k_1,k_2] \cdot \phi(x_1-k_1, x_2-k_2),
 
-where :math:`\phi(x,y)` is defined as the tensor-product cubic B‑spline
+where :math:`\phi(x_1,x_2)` is defined as the tensor-product cubic B‑spline
 
 .. math::
 
-    \phi(x,y) = \beta_3(x) \cdot \beta_3(y).
+    \phi(x_1,x_2) = \beta^{3}(x_1) \cdot \beta^{3}(x_2).
 
-This formulation allows one to compute exact derivatives of the image by first determining the spline coefficients :math:`c[k,l]`.
+This formulation allows one to compute exact derivatives of the image by first determining the spline coefficients :math:`c[k_1,k_2]`.
 
 Differentiation Operations
 --------------------------
 
-Based on the spline representation, the module computes various differential operators:
+Based on the spline representation, the module computes several differential operators. We define:
+
+.. math::
+
+     f_1   \equiv \frac{\partial f}{\partial x_1},\\
+     f_2   \equiv \frac{\partial f}{\partial x_2},\\
+     f_{11}\equiv \frac{\partial^2 f}{\partial x_1^2},\\
+     f_{22}\equiv \frac{\partial^2 f}{\partial x_2^2},\\
+     f_{12}=f_{21} \equiv \frac{\partial^2 f}{\partial x_1 \partial x_2}.  
 
 - Gradient Magnitude:  
-  Computed as the Euclidean norm of the first derivatives:
+  Computed as the Euclidean norm of the first derivatives
 
   .. math::
 
-      \|\nabla f(x,y)\| = \sqrt{\left(\frac{\partial f}{\partial x}\right)^2 + \left(\frac{\partial f}{\partial y}\right)^2}.
+      \|\pmb{\nabla}f(x,y)\| = \sqrt{\bigl(f_1\bigr)^2 + \bigl(f_2\bigr)^2}.
 
 - Gradient Direction:  
-  The orientation of the gradient is given by:
+  The direction of the gradient is given by
 
   .. math::
 
-      \theta(x,y) = \arctan\left(\frac{\partial f/\partial y}{\partial f/\partial x}\right).
+      \theta(x,y) = \arctan\!\Bigl(\tfrac{f_2}{f_1}\Bigr).
 
 - Laplacian:  
-  A second-order operator that highlights regions of rapid intensity change:
+  A second-order operator that highlights regions of rapid intensity change as
 
   .. math::
 
-      \Delta f(x,y) = \frac{\partial^2 f}{\partial x^2} + \frac{\partial^2 f}{\partial y^2}.
+      \Delta f(x,y) = f_{11} + f_{22}.
 
 - Largest Hessian Eigenvalue:  
-  The maximum eigenvalue of the Hessian matrix is computed as:
+  The maximal eigenvalue of the Hessian matrix is given by
 
   .. math::
 
-      \lambda_{\text{max}} = \frac{1}{2}\Bigl(f_{xx} + f_{yy} + \sqrt{4f_{xy}^2 + \left(f_{xx} - f_{yy}\right)^2}\Bigr).
+      \lambda_{\text{max}} = \tfrac12\Bigl(f_{11} + f_{22}
+      + \sqrt{4f_{12}^2 + (f_{11} - f_{22})^2}\Bigr).
 
 - Smallest Hessian Eigenvalue:  
-  The minimum eigenvalue of the Hessian matrix is given by:
+  The minimal eigenvalue of the Hessian matrix is given by
 
   .. math::
 
-      \lambda_{\text{min}} = \frac{1}{2}\Bigl(f_{xx} + f_{yy} - \sqrt{4f_{xy}^2 + \left(f_{xx} - f_{yy}\right)^2}\Bigr).
+      \lambda_{\text{min}} = \tfrac12\Bigl(f_{11} + f_{22}
+      - \sqrt{4f_{12}^2 + (f_{11} - f_{22})^2}\Bigr).
 
 - Hessian Orientation:  
-  This operation returns the orientation corresponding to the maximum second derivative:
+  This operation returns the orientation that corresponds to the maximal second derivative, as
 
   .. math::
 
-      \theta_H(x,y) = \pm \frac{1}{2}\arccos\Bigl(\frac{f_{xx} - f_{yy}}{\sqrt{4f_{xy}^2 + \left(f_{xx} - f_{yy}\right)^2}}\Bigr),
+      \theta_H(x,y) = \pm \tfrac12
+      \arccos\!\Bigl(\tfrac{f_{11} - f_{22}}{\sqrt{4f_{12}^2 + (f_{11}-f_{22})^2}}\Bigr),
 
-  where the sign is determined by the sign of the cross derivative :math:`f_{xy}`.
+  where the sign is determined by the sign of the cross derivative :math:`f_{12}`.
 
 Implementation Details
 ----------------------
 
-The `Differentials` class implements these operations in two main stages:
-
-1. Spline Interpolation:  
-   The image is first converted to a continuously defined function by computing the cubic B‑spline interpolation coefficients. This step ensures that 
-   derivatives are computed on a smooth approximation of the original data.
-
-2. Differentiation Filtering:  
-   Using the precomputed spline coefficients, the module applies finite impulse response (FIR) filters:
-   
-   - Anti-symmetric filters are used to compute first-order derivatives (gradients).
-   - Symmetric filters are applied for second-order derivatives (Hessians).
-
-A tolerance parameter is provided to control the trade-off between precision and computational efficiency (with the recommended value being near the machine 
-epsilon for single-precision floats). Progress during processing is displayed via a simple progress bar mechanism.
+The `Differentials` class implements these operations as follows: the input image is provided by its samples. We assume it to be a cubic B-spline and first determine 
+its interpolation coefficients. The differential-based computations that we perform are then perfectly consistent with this continuously defined function.
+We finally build the output image by sampling the ideal, continuously defined intermediate result.
 
 Differentiate Example
 ----------------------
