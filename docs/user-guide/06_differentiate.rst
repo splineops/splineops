@@ -36,7 +36,7 @@ This formulation allows one to compute exact derivatives of the image by first d
 Differentiation Operations
 --------------------------
 
-Based on the spline representation, the module computes several differential operators. We define:
+Based on the spline representation, the module computes several differential operators. We define
 
 .. math::
 
