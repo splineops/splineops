@@ -76,7 +76,7 @@ References
    on Signal Processing, vol. 41, no. 2, pp. 834–848, February 1993.
 
 .. [3] M. Unser, A. Aldroubi, M. Eden, 
-   `The L<sub>2</sub>-Polynomial Spline Pyramid <https://doi.org/10.1109/34.206956>`_, 
+   `The L2-Polynomial Spline Pyramid <https://doi.org/10.1109/34.206956>`_, 
    IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 15,
    no. 4, pp. 364–379, April 1993.
 
