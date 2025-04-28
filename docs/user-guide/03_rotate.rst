@@ -13,7 +13,7 @@ This function is widely used in image processing, computer graphics, and scienti
 -----------
 
 In 2D space, a point of coordinates :math:`(x, y)` can be rotated around a center point :math:`(x_\mathrm{c}, y_\mathrm{c})` by an angle :math:`\theta` 
-(in radians) using the rotation matrix:
+(in radians) using the rotation matrix.
 
 .. math::
 
