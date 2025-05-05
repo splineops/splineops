@@ -9,13 +9,13 @@ Overview
 The `smooth` module in `splineops` implements fractional smoothing splines, which are optimal estimators for smooth function approximation and interpolation [1]_, [2]_, [3]_.
 Unlike standard polynomial splines, these splines are derived from fractional differential operators, making them highly adaptable for self-similar and fractal-like signals.
 
-Key features:
+This module
 
-- It supports 1D and N-dimensional smoothing splines.
-- It provides a recursive-filtering implementation for fast computation.
-- It uses fractional-order derivatives for the fine control of smoothness.
-- It implements fast Fourier transform (FFT)-based methods for large-scale smoothing.
-- It provides direct interpolation and denoising functionality.
+- supports 1D and N-dimensional smoothing splines;
+- provides a recursive-filtering implementation for fast computation;
+- uses fractional-order derivatives for the fine control of smoothness;
+- implements fast Fourier transform (FFT)-based methods for large-scale smoothing
+- and provides direct interpolation and denoising functionality.
 
 These methods are particularly useful in signal processing, image reconstruction, and time-series modeling, especially for noisy or fractal-like data.
 
@@ -33,12 +33,12 @@ while penalizing roughness. The problem is formalized as
     + \,\lambda\,\bigl\|\mathrm{D}^\gamma f\bigr\|_M\
    \Biggr),
 
-where:
+where
 
-- The data-fidelity term is :math:`E(f(x_m), y_m)`. It is typically quadratic, with :math:`E(f(x_m), y_m) = (f(x_m) - y_m)^2`.
-- The regularization parameter is :math:`\lambda`, which offer control over the smoothness.
-- The fractional derivative of order :math:`\gamma = H + 0.5` is :math:`\mathrm{D}^\gamma f`.
-- The norm :math:`\| \cdot \|_M` represents the total-variation norm and enforces smoothness.
+- the data-fidelity term is :math:`E(f(x_m), y_m)`. It is typically quadratic, with :math:`E(f(x_m), y_m) = (f(x_m) - y_m)^2`;
+- the regularization parameter is :math:`\lambda`, which offer control over the smoothness;
+- the fractional derivative of order :math:`\gamma = H + 0.5` is :math:`\mathrm{D}^\gamma f`;
+- the norm :math:`\| \cdot \|_M` represents the total-variation norm and enforces smoothness.
 
 This formulation ensures that the smoothing-spline solution is a fractional B-spline.
 

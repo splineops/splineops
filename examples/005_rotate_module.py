@@ -1,17 +1,17 @@
 """
-Using rotate module
-===================
+Rotate Module
+=============
 
-Use the rotate module to rotate a 2D image.
+We use the rotate module to rotate a 2D image.
 
-You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
+You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
 # Imports
 # -------
 #
-# Import necessary libraries.
+# Import the necessary libraries.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,12 +23,12 @@ from io import BytesIO
 from PIL import Image
 
 # %%
-# Load and preprocess the image
+# Load and Preprocess the Image
 # -----------------------------
 #
 # Load a Kodak image, convert it to grayscale, normalize it,
 # and then resize it by a factor of (0.5, 0.5). After that,
-# scale it back to [0, 255] before rotation.
+# scale its intensity back to [0, 255] before rotation.
 
 # Load the 'kodim17.png' image
 url = 'https://r0k.us/graphics/kodak/kodak/kodim22.png'
@@ -104,11 +104,10 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Create animation
-# ----------------
+# Create an Animation
+# -------------------
 #
-# Create the animation of the image being rotated from 0 to 360 degrees using different spline degrees
-# and visualize the center of rotation only in the rotated images.
+# Create the animation of the image being rotated from 0 to 360 degrees. Explore the effect of the spline degree.
 
 def rotate_and_mask(image, angle, degree, center, radius):
     rotated = rotate(image, angle=angle, degree=degree, center=center)

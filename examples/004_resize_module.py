@@ -1,15 +1,15 @@
 """
-Using resize module
-===================
+Resize Module
+=============
 
-Use the resize module to shrink and expand a 2D image.
+We use the resize module to shrink and expand a 2D image.
 
-You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
+You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
-# Import required libraries
-# -------------------------
+# Required Libraries
+# ------------------
 #
 # We import the required libraries, including NumPy for numerical computations,
 # Matplotlib for plotting, and the custom resize function from the splineops package.
@@ -24,10 +24,10 @@ from scipy.ndimage import zoom as ndi_zoom
 from splineops.resize.resize import resize  # or your actual import path
 
 # %%
-# Utility functions
+# Utility Functions
 # -----------------
 #
-# To adjust an image resolution using scipy and splineops.
+# Adjustment of an image resolution using scipy and splineops.
 
 def adjust_image_size_for_shrink(data, shrink_factor):
     """
@@ -87,7 +87,7 @@ def resize_image_splineops(data, zoom_factor, degree=3, extension_mode="mirror")
     return (resized_image * 255.0).astype(np.uint8)
 
 # %%
-# Basic resizing example
+# Basic Resizing Example
 # ----------------------
 #
 # Load a simple 2D image, shrink and expand it using splineops interpolation.
@@ -162,15 +162,15 @@ plt.show()
 # Aliasing
 # --------
 #
-# Note that in the resulting expanded image we observe aliasing.
+# Note that we observe aliasing in the expanded image.
 #
 # **Aliasing**:
 # When we shrink an image below the Nyquist limit for its higher-frequency details,
 # those details cannot be represented adequately at the smaller sampling rate.
 # As a result, they become "aliased"—folded back into lower-frequency components.
 # When we then re-expand the image, these aliased components manifest as
-# artificial wave-like or moiré patterns, since the original high-frequency
-# content is irretrievably lost in the shrink step.
+# artificial wave-like or Moiré patterns, since the original high-frequency
+# content is irretrievably lost in the shrinking step.
 #
 # In practice, one might mitigate aliasing by pre-filtering or low-pass filtering
 # before downsampling, but here we demonstrate straightforward interpolation,

@@ -8,38 +8,88 @@ import numpy as np
 
 class AbstractWavelets:
     """
-    Base class for wavelet decomposition with 'analysis' and 'synthesis' methods.
-    Subclasses should implement analysis1() and synthesis1() on single-scale.
+    Base class for wavelet decomposition with multi-scale analysis & synthesis.
+
+    Subclasses must override:
+      - analysis1()  (single-scale wavelet decomposition)
+      - synthesis1() (single-scale wavelet reconstruction)
+
+    Parameters
+    ----------
+    scales : int
+        Number of scales for multi-scale decomposition.
+
+    Attributes
+    ----------
+    scales : int
+        Number of scales for repeated analysis/synthesis steps.
     """
 
     def __init__(self, scales=3):
         self.scales = scales
 
     def set_scale(self, scale: int):
+        """
+        Update the number of scales.
+
+        Parameters
+        ----------
+        scale : int
+            New scale value.
+        """
         self.scales = scale
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
         """
         Single-scale wavelet transform of inp -> out. Must be overridden.
+
+        Parameters
+        ----------
+        inp : np.ndarray
+            Input array (2D or 3D typically).
+
+        Returns
+        -------
+        np.ndarray
+            Transformed array (same shape).
         """
         raise NotImplementedError
 
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
         """
         Single-scale inverse wavelet transform of inp -> out. Must be overridden.
+
+        Parameters
+        ----------
+        inp : np.ndarray
+            Input wavelet coefficients (single scale).
+
+        Returns
+        -------
+        np.ndarray
+            Reconstructed array at that scale.
         """
         raise NotImplementedError
 
     def analysis(self, inp: np.ndarray) -> np.ndarray:
         """
-        Multi-scale analysis in 2D or 3D. Here we show a 2D example:
+        Multi-scale wavelet analysis in 2D (or 3D).
+        Repeatedly calls analysis1() from fine to coarse.
+
+        Parameters
+        ----------
+        inp : np.ndarray
+            Input array with shape (ny, nx) or (nz, ny, nx).
+
+        Returns
+        -------
+        np.ndarray
+            Full wavelet decomposition (in-place layout).
         """
         out = np.copy(inp)
-        # successively apply analysis1 at each scale
-        nx, ny = out.shape
-        for i in range(self.scales):
-            # consider sub-image of size (nx, ny), transform in-place
-            sub = out[:ny, :nx]   # for 2D, or out[:,...] for 3D
+        ny, nx = out.shape[:2]  # for 2D
+        for _ in range(self.scales):
+            sub = out[:ny, :nx]
             sub_out = self.analysis1(sub)
             out[:ny, :nx] = sub_out
             nx = max(1, nx//2)
@@ -48,29 +98,42 @@ class AbstractWavelets:
 
     def synthesis(self, inp: np.ndarray) -> np.ndarray:
         """
-        Multi-scale synthesis in 2D or 3D. 
+        Multi-scale wavelet synthesis in 2D (or 3D).
+        Repeatedly calls synthesis1() from coarsest to finest.
+
+        Parameters
+        ----------
+        inp : np.ndarray
+            Wavelet decomposition array (same shape as original).
+
+        Returns
+        -------
+        np.ndarray
+            Reconstructed array (same shape as input).
         """
         out = np.copy(inp)
-        # starting from coarsest scale
-        # e.g. coarsest size is (nx//(2^(scales-1)), ny//(2^(scales-1)))
+        ny_full, nx_full = out.shape[:2]
         factor = 2 ** (self.scales - 1)
-        # coarsest dims
-        nx_coarse = max(1, out.shape[1] // factor)
-        ny_coarse = max(1, out.shape[0] // factor)
+        nx_coarse = max(1, nx_full // factor)
+        ny_coarse = max(1, ny_full // factor)
 
-        nx = nx_coarse
-        ny = ny_coarse
-        for i in range(self.scales):
+        nx, ny = nx_coarse, ny_coarse
+        for _ in range(self.scales):
             sub = out[:ny, :nx]
             sub_out = self.synthesis1(sub)
             out[:ny, :nx] = sub_out
-            nx = min(out.shape[1], nx * 2)
-            ny = min(out.shape[0], ny * 2)
+            nx = min(nx_full, nx * 2)
+            ny = min(ny_full, ny * 2)
         return out
 
     def get_name(self) -> str:
+        """
+        Returns a descriptive name for the wavelet transform.
+        """
         return "AbstractWavelets"
 
     def get_documentation(self) -> str:
+        """
+        Returns a short description of the wavelet.
+        """
         return "Base class for wavelets."
-

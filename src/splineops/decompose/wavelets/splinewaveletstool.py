@@ -1,7 +1,6 @@
 """
 splinewaveletstool.py
 ---------------------
-Python translation of SplineWaveletsTool.java logic. 
 Uses a SplineFilter to get h[] and g[], then does 'splitMirror' and 
 'mergeMirror' passes on rows, then columns.
 """
@@ -11,11 +10,21 @@ from .splinefilter import SplineFilter
 
 def split_mirror_1d(vin: np.ndarray, h: np.ndarray, g: np.ndarray) -> np.ndarray:
     """
-    Replicates the 'splitMirror(...)' logic from Java:
-      - Low pass part into the first half
-      - High pass part into the second half
-      - uses period=2*(n-1) mirror boundary for negative indices
-      - etc.
+    1D mirror-based 'split' producing lowpass + highpass sub-bands.
+
+    Parameters
+    ----------
+    vin : np.ndarray
+        1D input array.
+    h : np.ndarray
+        Lowpass filter coefficients.
+    g : np.ndarray
+        Highpass filter coefficients.
+
+    Returns
+    -------
+    np.ndarray
+        1D array same length as vin, first half = lowpass, second half = detail.
     """
     n = vin.shape[0]
     # allocate output
@@ -62,10 +71,21 @@ def split_mirror_1d(vin: np.ndarray, h: np.ndarray, g: np.ndarray) -> np.ndarray
 
 def merge_mirror_1d(vin: np.ndarray, h: np.ndarray, g: np.ndarray) -> np.ndarray:
     """
-    Replicates the 'mergeMirror(...)' logic from Java:
-      - inverse of 'splitMirror'
-      - uses separate expansions for low pass/h pass 
-      - merges them into a 2x-larger array.
+    Inverse of split_mirror_1d. Recombines lowpass and highpass into original signal.
+
+    Parameters
+    ----------
+    vin : np.ndarray
+        1D array, half is lowpass, half is highpass.
+    h : np.ndarray
+        Lowpass filter.
+    g : np.ndarray
+        Highpass filter.
+
+    Returns
+    -------
+    np.ndarray
+        1D reconstructed array.
     """
     n = vin.shape[0]
     vout = np.zeros(n, dtype=vin.dtype)
@@ -158,9 +178,26 @@ def merge_mirror_1d(vin: np.ndarray, h: np.ndarray, g: np.ndarray) -> np.ndarray
 
 class SplineWaveletsTool:
     """
-    Python equivalent of SplineWaveletsTool.java.
-    Holds a SplineFilter, and offers analysis1() / synthesis1() 
-    that do row -> column passes with splitMirror / mergeMirror.
+    Equivalent of SplineWaveletsTool.java for 2D analysis/synthesis.
+
+    Parameters
+    ----------
+    scale : int
+        Number of scales (used externally, if needed).
+    order : int
+        Spline order, e.g. 3.
+
+    Attributes
+    ----------
+    filters : SplineFilter
+        Holds arrays h (lowpass) and g (highpass).
+
+    Methods
+    -------
+    analysis1(inp)
+        Single-scale 2D analysis (row pass then column pass).
+    synthesis1(inp)
+        Single-scale 2D synthesis (inverse).
     """
 
     def __init__(self, scale: int, order: int):
@@ -172,11 +209,17 @@ class SplineWaveletsTool:
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
         """
-        2D version of analysis1:
-         1) For each row => splitMirror
-         2) For each column => splitMirror
-        returns a new array. 
-        (For 3D, you'd also do a z-pass.)
+        Perform one scale of 2D analysis.
+
+        Parameters
+        ----------
+        inp : np.ndarray
+            2D array, shape (ny, nx).
+
+        Returns
+        -------
+        np.ndarray
+            Transformed 2D array (same shape).
         """
         out = np.copy(inp)
         ny, nx = out.shape
@@ -197,11 +240,17 @@ class SplineWaveletsTool:
 
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
         """
-        2D version of synthesis1:
-         1) For each column => mergeMirror
-         2) For each row => mergeMirror
-        returns a new array.
-        (3D would add a z pass.)
+        Perform one scale of 2D synthesis (inverse of analysis1).
+
+        Parameters
+        ----------
+        inp : np.ndarray
+            2D wavelet coefficients.
+
+        Returns
+        -------
+        np.ndarray
+            Reconstructed 2D array (same shape).
         """
         out = np.copy(inp)
         ny, nx = out.shape

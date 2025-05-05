@@ -1,18 +1,18 @@
 """
-Interpolate 2D images
+Interpolate 2D Images
 =====================
 
-Interpolate 2D images with standard interpolation, least-squares and oblique projection,
-comparing them to SciPy's zoom. We compute SNR and MSE only on a central region 
-to exclude boundary artifacts.
+Interpolate 2D images with standard interpolation, least-squares, and oblique projection.
+Compare them to SciPy zoom. We compute SNR and MSE only on a central region 
+to exclude boundary artifacts. A summary of the cost/benefit tradeoff of the three methods
+is provided at the bottom of this page.
 
-You can download this example at the tab at right, as both a Python script
-and as a Jupyter notebook.
+You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
-# Import required libraries
-# -------------------------
+# Required Libraries
+# ------------------
 #
 # We import the required libraries, including NumPy for numerical computations,
 # Matplotlib for plotting, and the custom `resize` function from the `splineops` package.
@@ -28,13 +28,13 @@ import time
 
 
 # %%
-# Helper functions
+# Helper Functions
 # ----------------
 #
-# We define:
-#   - a utility to crop out ~20% borders around the image
-#   - SNR and MSE on that central cropped area
-#   - resizing functions
+# We define
+#   - a utility to crop out ~20% borders around the image;
+#   - SNR and MSE on that central cropped area;
+#   - resizing functions.
 
 def crop_to_central_region(image, border_fraction):
     """
@@ -132,10 +132,10 @@ def resize_and_compute_metrics(input_image, method, degree, zoom_factors, border
 
 
 # %%
-# Plotting helpers
-# ----------------
+# Plot Helpers
+# ------------
 #
-# We define three plotting helpers now:
+# We define three plotting helpers.
 #   1) plot_resized_image(): Show the resized 2D image
 #   2) plot_recovered_image(): Show the image after resizing back
 #   3) plot_difference_image(): Show the difference (original - recovered)
@@ -233,8 +233,8 @@ def plot_difference_image(original, recovered, snr, mse):
     plt.show()
 
 # %%
-# Load and normalize a 2D image
-# -----------------------------
+# Load and Normalize an Image
+# ---------------------------
 #
 # Here, we load an example image from an online repository.
 # We convert it to grayscale in [0, 1].
@@ -267,10 +267,10 @@ plt.axis("off")
 plt.show()
 
 # %%
-# SciPy interpolation
+# SciPy Interpolation
 # -------------------
 #
-# For comparison purposes, we also use SciPy's zoom method for resizing.
+# For comparison purposes, we also use the SciPy zoom method for resizing.
 
 (
     resized_2d_scipy,
@@ -287,7 +287,7 @@ plt.show()
 )
 
 # %%
-# Resized image
+# Resized Image
 # ~~~~~~~~~~~~~
 #
 # We plot the resized image with SciPy interpolation.
@@ -301,15 +301,15 @@ plot_resized_image(
 )
 
 # %%
-# Recovered image
+# Recovered Image
 # ~~~~~~~~~~~~~~~
 #
-# We plot the recovered image after reversing zoom factors.
+# We plot the recovered image after a reversing of the zoom factors.
 
 plot_recovered_image(recovered_2d_scipy)
 
 # %%
-# Difference image
+# Difference Image
 # ~~~~~~~~~~~~~~~~
 #
 # Display the difference image (original - recovered) with colorbar.
@@ -322,7 +322,7 @@ plot_difference_image(
 )
 
 # %%
-# Trivial interpolation
+# Trivial Interpolation
 # ---------------------
 #
 # We use our standard interpolation method.
@@ -342,7 +342,7 @@ plot_difference_image(
 )
 
 # %%
-# Resized image
+# Resized Image
 # ~~~~~~~~~~~~~
 #
 # We plot the resized image with standard interpolation.
@@ -356,10 +356,10 @@ plot_resized_image(
 )
 
 # %%
-# Recovered image
+# Recovered Image
 # ~~~~~~~~~~~~~~~
 #
-# We plot the recovered image after reversing zoom factors.
+# We plot the recovered image after a reversing of the zoom factors.
 
 plot_recovered_image(recovered_2d_interp)
 
@@ -381,10 +381,10 @@ plot_difference_image(
 # ~~~~~~~~~~~~~~~~~~~~~
 #
 # Now we compute the difference between the recovered image from the
-# trivial interpolation and SciPy interpolation. We also compute
-# SNR and MSE on the central region and display the difference.
-# We observe that the difference is extremely small, hence the two interpolation 
-# methods are identical.
+# trivial interpolation and the SciPy interpolation. We also compute
+# SNR and MSE on the central region and display them.
+# Because they are nearly identical, we conclude that the two interpolation 
+# methods produce the same results.
 
 snr_scipy_vs_interp, mse_scipy_vs_interp = compute_snr_and_mse_cropped(
     recovered_2d_scipy, recovered_2d_interp, border_fraction
@@ -398,11 +398,11 @@ plot_difference_image(
 )
 
 # %%
-# Alternative using TensorSpline
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Alternative with TensorSpline
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # As an alternative, we can replicate the same interpolation manually using the 
-# ``TensorSpline`` class, which underpins the `resize()` function behind the scenes.
+# ``TensorSpline`` class, which underpins the `resize()` function behind the scene.
 
 from splineops.interpolate.tensorspline import TensorSpline
 
@@ -461,7 +461,7 @@ print(f"MSE (TensorSpline vs. resize()) resized:  {mse_forward:.6e}")
 print(f"MSE (TensorSpline vs. resize()) recovered: {mse_backward:.6e}")
 
 # %%
-# Least-squares projection
+# Least-Squares Projection
 # ------------------------
 #
 # We use the least-squares projection method.
@@ -481,7 +481,7 @@ print(f"MSE (TensorSpline vs. resize()) recovered: {mse_backward:.6e}")
 )
 
 # %%
-# Resized image
+# Resized Image
 # ~~~~~~~~~~~~~
 #
 # We plot the resized image with least-squares projection method.
@@ -495,7 +495,7 @@ plot_resized_image(
 )
 
 # %%
-# Recovered image
+# Recovered Image
 # ~~~~~~~~~~~~~~~
 #
 # We plot the recovered image after reversing zoom factors.
@@ -503,7 +503,7 @@ plot_resized_image(
 plot_recovered_image(recovered_2d_ls)
 
 # %%
-# Difference image
+# Difference Image
 # ~~~~~~~~~~~~~~~~
 #
 # Display the difference image (original - recovered) with colorbar.
@@ -516,10 +516,10 @@ plot_difference_image(
 )
 
 # %%
-# Oblique projection
+# Oblique Projection
 # ------------------
 #
-# We use the oblique projection method.
+# We use the oblique-projection method.
 
 (
     resized_2d_ob,
@@ -536,10 +536,10 @@ plot_difference_image(
 )
 
 # %%
-# Resized image
+# Resized Image
 # ~~~~~~~~~~~~~
 #
-# We plot the resized image with oblique projection method.
+# We plot the resized image with the oblique-projection method.
 
 plot_resized_image(
     original=input_image_normalized,
@@ -550,15 +550,15 @@ plot_resized_image(
 )
 
 # %%
-# Recovered image
+# Recovered Image
 # ~~~~~~~~~~~~~~~
 #
-# We plot the recovered image after reversing zoom factors.
+# We plot the recovered image after a reversing of the zoom factors.
 
 plot_recovered_image(recovered_2d_ob)
 
 # %%
-# Difference image
+# Difference Image
 # ~~~~~~~~~~~~~~~~
 #
 # Display the difference image (original - recovered) with colorbar.
@@ -574,10 +574,10 @@ plot_difference_image(
 # Comparison
 # ----------
 #
-# We compare the performance of the different methods analysed.
+# We compare the performance of the different methods being analyzed.
 
 # %%
-# Comparison table
+# Comparison Table
 # ~~~~~~~~~~~~~~~~
 #
 # We print the SNR, MSE, and timing data for each method.
@@ -601,17 +601,17 @@ for method_name, snr_val, mse_val, time_val in methods:
 
 
 # %%
-# Comparison plot
+# Comparison Plot
 # ~~~~~~~~~~~~~~~
 #
-# Here, we compare how standard interpolation, Least-Squares, and Oblique projection perform
+# Here, we compare how standard interpolation, least-squares, and oblique projection perform
 # (in terms of SNR) across multiple zoom factors in [0.05, 0.9].
 # For each method at each zoom factor, we compute the SNR between the recovered image and
 # the original, and plot the results on a single y-axis.
 # Note that we don't compare with Scipy interpolation as it virtually gives
 # the same values as the trivial interpolation.
 
-zoom_values = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+zoom_values = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.9])
 
 snr_scipy_list = []
 snr_ls_list = []

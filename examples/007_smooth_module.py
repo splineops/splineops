@@ -1,19 +1,18 @@
 """
-Using smooth module
-===================
+Smooth Module
+=============
 
-Use the smooth module to smooth N-dimensional data.
+We use the smooth module to smooth N-dimensional data.
 
-You can download this example at the tab at right, as both a Python script and as a Jupyter notebook.
+You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
-# Fractional Brownian Motion
-# --------------------------
+# 1D Fractional Brownian Motion
+# -----------------------------
 #
-# Fractional Brownian motion in 1D.
-# In this demo, a realization of an fBm process of length {N} is generated and corrupted with noise.
-# # The sequence is then denoised and oversampled by a factor of {m} using the optimal fractional spline estimator
+# A realization of an fBm process of length N is generated and corrupted with noise.
+# The sequence is then denoised and oversampled by a factor m using the optimal fractional-spline estimator.
 
 import math
 import numpy as np
@@ -91,11 +90,11 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Verification of estimator
-# -------------------------
+# Estimator Optimality
+# --------------------
 #
-# To verify the optimality of the estimator we compare the MSE for estimators with different values of gamma and lambda.
-# To avoid excessive computation, verification is performed using only one realization of fBm.
+# To verify the optimality of the estimator, we compare the MSE for estimators with different values of gamma and lambda.
+# To avoid excessive computations, the verification is performed over one realization of fBm only.
 
 # Check for optimality of lambda
 Lambda = lambda_ * np.arange(0, 3.1, 0.1)
@@ -135,10 +134,8 @@ plt.show()
 
 
 # %%
-# Smoothing a 2D image
-# --------------------
-#
-# Using smoothing spline on a 2D image.
+# 2D Image Smoothing
+# ------------------
 
 import requests
 from io import BytesIO
@@ -227,10 +224,8 @@ def demo_cameraman_image():
 demo_cameraman_image()
 
 # %%
-# Sinusoid 3D data
+# Sinusoid 3D Data
 # ----------------
-#
-# Sinusoid data in 3D.
 
 def demo_3d_sinusoid():
     # Desired cutoff frequency
@@ -296,10 +291,8 @@ def demo_3d_sinusoid():
 demo_3d_sinusoid()
 
 # %%
-# Using recursive smoothing spline
-# --------------------------------
-#
-# Using recursive smoothing spline.
+# Recursive Smoothing Spline
+# --------------------------
 
 # Example signal: A noisy sine wave
 x = np.linspace(0, np.pi, 100)
