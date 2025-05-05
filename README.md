@@ -7,11 +7,18 @@ support for GPU computing.
 
 You need at least `Python 3.10` to install `splineops` (ideally `Python 3.12`). `Python 3.11` is also compatible.
 
-Create and activate your Python virtual environment
+Create and activate your Python virtual environment (on Unix or MacOS)
 
 ```shell
-python3 -m venv /path/to/splineops-env
+python -m venv /path/to/splineops-env
 source /path/to/splineops-env/bin/activate
+```
+
+On Windows,
+
+```shell
+python -m venv /path/to/splineops-env
+./path/to/splineops-env/Scripts/Activate
 ```
 
 To deactivate the environment use
