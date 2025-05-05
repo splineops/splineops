@@ -15,6 +15,7 @@ license.file = "LICENSE"
 authors = [
     { name = "Dimitris Perdios" },
     { name = "Pablo Garcia-Amorena" },
+    { name = "Philippe Thévenaz" },
 ]
 dynamic = ["version"]
 requires-python = ">=3.10"
