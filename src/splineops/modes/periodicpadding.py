@@ -1,16 +1,16 @@
 """
 PeriodicPadding – periodic extension mode for TensorSpline
----------------------------------------------------------
+----------------------------------------------------------
 
-Implements wrap-around (“cyclic”) boundary conditions:
+Implements wrap-around (“cyclic”) boundary conditions
 
     … | a  b  c  d | a  b  c  d | a …
 
 Both the index wrapping and the conversion of samples to spline
 coefficients are handled here.  For spline orders with poles, the
-coefficient calculation is done by diagonalising the circulant
-convolution matrix with the DFT (FFT).  A CuPy branch is included so
-the mode works transparently on GPU arrays.
+coefficients are obtained by diagonalising the circulant convolution
+matrix with the DFT (FFT).  A CuPy branch is included so the mode works
+transparently on GPU arrays as well.
 """
 from __future__ import annotations
 
@@ -24,7 +24,13 @@ from splineops.utils.interop import is_cupy_type
 
 
 class PeriodicPadding(ExtensionMode):
-    """Periodic (wrap-around) boundary condition."""
+    """
+    Periodic (wrap-around) boundary condition.
+
+    The last signal axis is considered cyclic; indexes are taken modulo
+    the signal length and the sample-to-coefficient conversion is solved
+    on the circle via FFT.
+    """
 
     # ---------------------------------------------------------------- helpers
     @staticmethod
@@ -33,34 +39,38 @@ class PeriodicPadding(ExtensionMode):
         basis: SplineBasis,
     ) -> np.ndarray:
         """
-        Solve   (basis ⋆ c)[k] = f[k]   on the circle
-        by dividing in the Fourier domain.
-        Operates on – and returns – NumPy arrays.
+        Solve  (basis ⋆ c)[k] = f[k]  on a circle by division in the
+        Fourier domain (NumPy implementation, operates on last axis).
         """
-        n = data.shape[-1]
+        n = data.shape[-1]                   # period length
         m = (basis.support - 1) // 2
 
-        # One period of the basis (zero-padded to length *n*)
+        # One period of the basis, zero-padded / wrapped to length *n*
         bk = basis(np.arange(-m, m + 1, dtype=data.real.dtype))
         bk_per = np.zeros(n, dtype=bk.dtype)
-        bk_per[: m + 1] = bk[m:]
-        bk_per[-m:] = bk[:m]
+        bk_per[: m + 1] = bk[m:]             #  0 … +m
+        bk_per[-m:]   = bk[:m]               # -m … -1
 
-        # Choose the right FFT flavour depending on data type
-        fft  = np.fft.rfftn if np.isrealobj(data) else np.fft.fftn
-        ifft = np.fft.irfftn if np.isrealobj(data) else np.fft.ifftn
+        if np.isrealobj(data):
+            # --- real FFT branch (need n for odd lengths!) -----------------
+            Ff = np.fft.rfft(data, axis=-1)
+            Fb = np.fft.rfft(bk_per, n=n, axis=-1)
+        else:
+            # --- complex branch -------------------------------------------
+            Ff = np.fft.fftn(data, axes=(-1,))
+            Fb = np.fft.fftn(bk_per, axes=(-1,))
 
-        Ff = fft(data, axes=(-1,))
-        Fb = fft(bk_per, axes=(-1,))
-
-        # Avoid numerical blow-ups
+        # Numerical safety
         eps = np.finfo(Fb.real.dtype).eps
         Fb = np.where(np.abs(Fb) < eps, eps, Fb)
 
         Fc = Ff / Fb
-        coeffs = ifft(Fc, axes=(-1,))
 
-        return coeffs.real if np.isrealobj(data) else coeffs
+        if np.isrealobj(data):
+            coeffs = np.fft.irfft(Fc, n=n, axis=-1)      # exact length n
+            return coeffs
+        else:
+            return np.fft.ifftn(Fc, axes=(-1,))
 
     # ---------------------------------------------------------------- public
     @staticmethod
@@ -70,9 +80,9 @@ class PeriodicPadding(ExtensionMode):
         length: float,
     ) -> Tuple[npt.NDArray, npt.NDArray]:
         """
-        Wrap indexes modulo *length*.  Weights are unchanged.
+        Wrap indexes modulo *length*; weights stay unchanged.
         """
-        return np.mod(indexes, length, dtype=indexes.dtype), weights
+        return np.mod(indexes, length), weights
 
     @staticmethod
     def compute_coefficients(
@@ -80,19 +90,18 @@ class PeriodicPadding(ExtensionMode):
         basis: SplineBasis,
     ) -> npt.NDArray:
         """
-        Convert samples to spline coefficients assuming periodic
-        boundaries.  Uses an FFT-based solver for arbitrary order.
+        Convert samples to spline coefficients with periodic boundaries.
         """
-        # Orders with no poles need no pre-filter
+        # Orders with no poles (nearest / linear / …) need no pre-filter
         if basis.poles is None:
             return np.copy(data)
 
-        # ------------ NumPy path -------------------------------------
+        # ----------------------- NumPy path ------------------------------
         if not is_cupy_type(data):
             return PeriodicPadding._ifft_cyclic_inverse(data, basis)
 
-        # ------------ CuPy path --------------------------------------
-        import cupy as cp  # local import to keep CuPy optional
+        # ----------------------- CuPy path -------------------------------
+        import cupy as cp  # local import keeps CuPy optional
 
         n = data.shape[-1]
         m = (basis.support - 1) // 2
@@ -101,10 +110,19 @@ class PeriodicPadding(ExtensionMode):
         bk_per[: m + 1] = bk[m:]
         bk_per[-m:] = bk[:m]
 
-        Ff = cp.fft.fftn(data, axes=(-1,))
-        Fb = cp.fft.fftn(bk_per, axes=(-1,))
+        if cp.isrealobj(data):
+            Fx = cp.fft.rfft(data, axis=-1)
+            Fb = cp.fft.rfft(bk_per, n=n, axis=-1)
+        else:
+            Fx = cp.fft.fftn(data, axes=(-1,))
+            Fb = cp.fft.fftn(bk_per, axes=(-1,))
+
         eps = cp.finfo(Fb.real.dtype).eps
         Fb = cp.where(cp.abs(Fb) < eps, eps, Fb)
 
-        Fc = Ff / Fb
-        return cp.fft.ifftn(Fc, axes=(-1,))
+        Fc = Fx / Fb
+
+        if cp.isrealobj(data):
+            return cp.fft.irfft(Fc, n=n, axis=-1)
+        else:
+            return cp.fft.ifftn(Fc, axes=(-1,))

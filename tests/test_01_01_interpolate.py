@@ -1,13 +1,17 @@
 import pytest
 import numpy as np
 import numpy.typing as npt
+
 from splineops.interpolate.tensorspline import TensorSpline
 from splineops.bases.utils import asbasis, basis_map
 from splineops.modes.utils import mode_map
 
 
+# --------------------------------------------------------------------------- #
+# 1) Dirac-impulse sanity check on a cardinal grid
+# --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("basis", basis_map.keys())
-@pytest.mark.parametrize("mode", mode_map.keys())
+@pytest.mark.parametrize("mode", mode_map.keys())           # "periodic" is in map
 @pytest.mark.parametrize("dtype", ["float64", "float32"])
 def test_interpolate_cardinal_spline(
     basis: str, mode: str, dtype: npt.DTypeLike
@@ -19,9 +23,7 @@ def test_interpolate_cardinal_spline(
     pad_left = (support - 1) // 2
     pad_right = support // 2
     if mode == "zero":
-        # Need to have an "infinite" signal to have finite coefficients for
-        # B-Splines with poles
-        # Note: this is not super robust but does the job
+        # Need a very long signal so poles produce finite coeffs
         pad_right = 100 * pad_right
     pad_right = int(np.ceil(pad_right) // 2 * 2 + 1)  # next odd
     real_dtype = np.array([1], dtype=dtype).real.dtype
@@ -45,6 +47,8 @@ def test_interpolate_cardinal_spline(
         sig_ext_val = 0
     elif mode == "mirror":
         sig_ext_val = dirac_val
+    elif mode == "periodic":
+        sig_ext_val = 0  # impulse repeats every full period, not at edges here
     else:
         raise NotImplementedError(f"Unsupported test mode '{mode}'")
 
@@ -57,9 +61,6 @@ def test_interpolate_cardinal_spline(
     )
 
     # Tolerances
-    # TODO(dperdios): need to account for more dtypes
-    # TODO(dperdios): check `abs` and `rel` parameters for `pytest.approx` and
-    #  which values should be used depending on dtype
     if dtype == "float64":
         atol = 1e-8
     elif dtype == "float32":
@@ -70,6 +71,9 @@ def test_interpolate_cardinal_spline(
     assert values == pytest.approx(values_exact, abs=atol)
 
 
+# --------------------------------------------------------------------------- #
+# 2) N-D / dtype regression test (unchanged)
+# --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("dtype", ["complex128", "complex64", "float64", "float32"])
 @pytest.mark.parametrize("ndim", [1, 2, 3, 4])
 def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
@@ -136,7 +140,6 @@ def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
     # Default evaluation (grid=True): tensor product of evaluation coordinates
     data_eval_tp = tensor_spline(coordinates=eval_coords_seq, grid=True)
     if flag_complex_data:
-        # Add a check since both real and imag party are identical
         np.testing.assert_equal(data_eval_tp.real, data_eval_tp.imag)
 
     # Meshgrid evaluation
@@ -153,23 +156,53 @@ def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
 
     # Batch-processing: tensor product
     eval_coords_tp_batch = []
-    for ii, (coords, batch_offsets) in enumerate(
-        zip(eval_coords_seq, batch_offsets_seq)
-    ):
+    for coords, batch_offsets in zip(eval_coords_seq, batch_offsets_seq):
         coords_batch = np.stack([coords + b for b in batch_offsets])
-        # Add another batch dimension (2, 3, ...)
-        coords_batch = np.stack([coords_batch, coords_batch])
+        coords_batch = np.stack([coords_batch, coords_batch])  # add one more batch dim
         eval_coords_tp_batch.append(coords_batch)
     eval_coords_tp_batch = tuple(eval_coords_tp_batch)
     data_eval_tp_batch = tensor_spline(coordinates=eval_coords_tp_batch, grid=True)
 
-    # Batch-processing: Meshgrid
+    # Batch-processing: meshgrid
     eval_coords_mg_batch = []
     for coords, batch_offsets in zip(eval_coords_mg, batch_offsets_seq):
-        # Add another batch dimension (2, 3, ...)
         coords_mg_batch = np.stack([coords + b for b in batch_offsets])
         coords_mg_batch = np.stack([coords_mg_batch, coords_mg_batch])
         eval_coords_mg_batch.append(coords_mg_batch)
     eval_coords_mg_batch = tuple(eval_coords_mg_batch)
     data_eval_mg_batch = tensor_spline(coordinates=eval_coords_mg_batch, grid=False)
     np.testing.assert_equal(data_eval_tp_batch, data_eval_mg_batch)
+
+
+# --------------------------------------------------------------------------- #
+# 3) Periodic analytic-function test
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("basis", ["linear", "bspline3", "bspline5"])
+@pytest.mark.parametrize("dtype", ["float64", "float32"])
+def test_periodic_padding_analytic(basis: str, dtype: str) -> None:
+
+    # Create a periodic analytical function
+    L = 1.0
+    nsamp = 32
+    x = np.linspace(0, L, nsamp, endpoint=False, dtype=dtype)
+
+    def f(xx):
+        return np.sin(2 * np.pi * xx / L) + 0.3 * np.cos(4 * np.pi * xx / L)
+
+    data = f(x).astype(dtype, copy=False)
+
+    # Create the tensor spline with periodic mode
+    ts = TensorSpline(data=data, coordinates=(x,), bases=basis, modes="periodic")
+
+    # Query outside the base interval
+    x_query = np.concatenate([x - L, x + 0.5 * L, x + 2 * L]).astype(dtype)
+    y_pred = ts(coordinates=(x_query,), grid=False)
+    y_true = f(np.mod(x_query, L))
+
+    # Tolerances
+    if dtype == "float64":
+        atol = 1e-8
+    else:
+        atol = 3e-4
+
+    np.testing.assert_allclose(y_pred, y_true, atol=atol, rtol=0)
