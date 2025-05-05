@@ -206,6 +206,16 @@ plot_extension_modes_for_bump_function(
 )
 
 # %%
+# Periodic Padding
+# ~~~~~~~~~~~~~~~~
+
+plot_extension_modes_for_bump_function(
+    mode_name="periodic",
+    x_values=x_values,
+    title="Extension Mode: Periodic Padding",
+)
+
+# %%
 # GPU Support
 # -----------
 #

@@ -49,6 +49,7 @@ class TensorSpline:
 
         - **"zero" (0 0 0 0 | a b c d | 0 0 0 0)** The input is extended by filling all values beyond the boundary with zeroes.
         - **"mirror" (d c b | a b c d | c b a)** The input is extended by reflecting around the center of the data points adjacent to the border.
+        - **"periodic"** (d c b | a b c d | a b c)   The signal is wrapped around cyclically.
 
     Example
     -------
