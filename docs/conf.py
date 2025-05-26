@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath("sphinxext"))
 # Project information
 project = 'splineops'
 copyright = f'{datetime.now().year}, SplineOps authors'
-release = '0.3.6'
+release = '0.3.7'
 
 # General configuration
 extensions = [
@@ -77,6 +77,9 @@ sphinx_gallery_conf = {
 }
 
 html_theme_options = {
+    "logo": {
+        "text": "SplineOps",
+    },
     'navbar_start': ['navbar-logo'],
     'navbar_center': ['navbar-nav'],
     'navbar_end': ['theme-switcher', 'navbar-icon-links'],
