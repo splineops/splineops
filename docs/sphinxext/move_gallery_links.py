@@ -160,11 +160,13 @@ def move_gallery_links(app, exception):
                 )
 
                 # Move the badge links into the secondary sidebar
-                lite_link_div = sg_footer.find("div", class_="lite-badge")
+                # See here for how JupyterLite works: https://sphinx-gallery.github.io/stable/configuration.html#jupyterlite
+                # See here for properly deploying sidebar components: https://sphinx-gallery.github.io/stable/advanced.html#using-sphinx-gallery-sidebar-components 
+                #lite_link_div = sg_footer.find("div", class_="lite-badge")       # We temporarily remove JupyterLite badge until we fix the issue with JupyterLite
                 binder_link_div = sg_footer.find("div", class_="binder-badge")
                 _create_secondary_sidebar_component(
                     [
-                        _create_badge_link(lite_link_div.a),
+                        #_create_badge_link(lite_link_div.a), # We temporarily remove JupyterLite badge until we fix the issue with JupyterLite
                         _create_badge_link(binder_link_div.a),
                     ]
                 )

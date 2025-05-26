@@ -1,64 +1,69 @@
 # SplineOps: Spline Operations
 
-SplineOps is a Python-based N-dimensional signal processing library with
+`splineops` is a Python-based N-dimensional signal-processing library with
 support for GPU computing.
 
 ## Installation
 
-Install minimal dependencies in a dedicated environment
-(shown here using [Mamba](https://mamba.readthedocs.io/en/latest/)).
+You need at least `Python 3.10` to install `splineops` (ideally `Python 3.12`). `Python 3.11` is also compatible.
 
-Create and activate your environment
-
-```shell
-mamba create -n myenv
-mamba activate myenv
-```
-
-Make sure you have the conda-forge channel added to your conda configuration.
-If not, you can add it using
+Create and activate your Python virtual environment (on Unix or MacOS)
 
 ```shell
-conda config --add channels conda-forge
+python -m venv /path/to/splineops-env
+source /path/to/splineops-env/bin/activate
 ```
 
-Minimal requirements:
+On Windows,
 
 ```shell
-mamba install numpy scipy
+python -m venv /path/to/splineops-env
+./path/to/splineops-env/Scripts/Activate
 ```
 
-Simply install `splineops` using `pip`.
+To deactivate the environment use
+
+```shell
+deactivate
+```
+
+Minimal requirement:
+
+```shell
+pip install numpy scipy
+```
+
+Simply install `splineops` using `pip`
 
 ```shell
 pip install splineops
 ```
 
-To run the examples, `matplotlib`, `pooch` (for built-in image datasets)
-and `IPython` (for Python UI widgets) will also be required.
+To run the examples, `matplotlib`
+and `IPython` (for Python UI widgets) will also be required
 
 ```shell
-mamba install matplotlib pooch IPython
+pip install matplotlib IPython
 ```
 
-## Formatting, type checking, and testing
+## Formatting, Type Checking, and Testing
 
-Formatting and type checking is performed using the following commands
+Formatting and type checking is performed as
 
 ```shell
 tox -e format
 tox -e type
 ```
 
-Testing requires a valid environment with a supported Python version and `tox`
-installed. Tests can be run with the following command (automatic pick of the
-Python version).
+The testing requires a valid environment with a supported Python version and `tox`
+installed. The tests are run with the following command (automatic pick of the
+Python version)
 
 ```shell
 tox
 ```
 
-Tests can also be launched for a specific Python version (must match the one
+The tests can also be launched for a specific Python version (must match the one
 installed in the active environment)
 
 ```shell
@@ -67,8 +72,8 @@ tox -e py311
 tox -e py312
 ```
 
-*IMPORTANT:* Since CI is not implemented, make sure to run, pass and/or fix
-`tox -e format`, `tox -e type` and `tox`.
+*IMPORTANT:* Since CI is not implemented, make sure to run, pass, and/or fix
+`tox -e format`, `tox -e type`, and `tox`.
 
 ## Packaging
 
@@ -84,12 +89,12 @@ Using `hatch`
 hatch build -t wheel
 ```
 
-## Development environment
+## Development Environment
 
 Easiest way to install dev dependencies
 
 ```shell
-mamba install numpy scipy matplotlib pooch IPython black mypy tox hatch pytest
+pip install numpy scipy matplotlib IPython black mypy tox hatch pytest
 ```
 
 Install `splineops` development environment in editable mode
@@ -98,12 +103,12 @@ Install `splineops` development environment in editable mode
 pip install -e .[dev]
 ```
 
-## GPU compatibility
+## GPU Compatibility
 
-You can use SplineOps with `cupy`. If a specific CUDA version is required do
+You can benefit of `cupy` to deploy `splineops`. If a specific CUDA version is required, do
 
 ```shell
-mamba install cupy cuda-version=12.3
+pip install cupy cuda-version=12.3
 ```
 
 Install `splineops` cupy development environment in editable mode
@@ -116,15 +121,15 @@ Potential other CuPy libraries
 ([CuPy from Conda-Forge](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge))
 
 ```shell
-mamba install cupy cutensor cudnn nccl
+pip install cupy cutensor cudnn nccl
 ```
 
-## Building the documentation
+## Building of the Documentation
 
 To build the Sphinx documentation, install `splineops` doc dependencies
 
 ```shell
-mamba install numpy scipy matplotlib pooch IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme sphinx-design myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
+pip install numpy scipy matplotlib IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme sphinx-design myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
 ```
 
 Install `splineops` doc environment in editable mode
@@ -133,16 +138,18 @@ Install `splineops` doc environment in editable mode
 pip install -e .[docs]
 ```
 
-Navigate to the `docs` directory and run the `.\make.bat html` command
+Navigate to the `docs` directory and run the `make html` command
 
 ```shell
 cd docs
-.\make.bat html
+make html
 ```
 
 Then, go to `docs/_build/html` and open `index.html` to navigate the
 documentation locally.
 
-If you want to make a "clean" build, go to `docs` and manually delete the folders `_build`, `auto_examples`, `gen_modules`, `notebooks_jupyterlite` and the file `sg_execution_times.rst`.
-Why isn't this done automatically? Because Sphinx optimizes speed and removes redundant tasks, by not re-creating the examples' notebooks if they have already been created.
-If you for example modify the name of the examples' files, you will have to delete at least the folder `auto_examples`. Otherwise, the old examples' files will not have disappeared automatically, and Sphinx will raise an internal warning referring to a toctree.
+### Troubleshooting
+
+If you want to make a "clean" build, go to `docs` and manually delete the folders `_build`, `auto_examples`, `gen_modules`, `notebooks_jupyterlite`, and the file `sg_execution_times.rst`.
+Why isn't this done automatically? Because Sphinx optimizes speed and removes redundant tasks, by not re-creating the examples notebooks if they have already been created.
+If you, for example, modify the name of the examples files, you will have to delete at least the folder `auto_examples`. Otherwise, the old examples files will not have disappeared automatically and Sphinx will raise an internal warning referring to a toctree.
