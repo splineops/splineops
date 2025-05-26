@@ -76,6 +76,7 @@ source = "vcs"
 
 # Hatch build
 [tool.hatch.build]
+targets.wheel.core-metadata-version = "2.3"
 exclude = [
     "/docs",
     "/tests",
