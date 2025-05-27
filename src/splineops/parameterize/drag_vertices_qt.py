@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # pip install vtk PySide6 numpy
 import sys, numpy as np, vtk
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtk.util import numpy_support as nps
 
@@ -35,8 +35,8 @@ class MeshEditor(QtWidgets.QMainWindow):
         self.vtk = QVTKRenderWindowInteractor(self)
         self.setCentralWidget(self.vtk)
 
-        self.renderer = vtk.vtkRenderer()
-        self.vtk.GetRenderWindow().AddRenderer(self.renderer)
+        self.ren = vtk.vtkRenderer()
+        self.vtk.GetRenderWindow().AddRenderer(self.ren)
 
         # ---- simple cube mesh
         verts = np.array(
@@ -48,34 +48,53 @@ class MeshEditor(QtWidgets.QMainWindow):
              [1,2,6,5],[2,3,7,6],[3,0,4,7]], int)
 
         self.poly   = numpy_mesh_to_polydata(verts, faces)
-        self.points = self.poly.GetPoints()          # mutable
+        self.points = self.poly.GetPoints()          # mutable reference
 
+        # ---- surface actor (semi-transparent, edges on)
         mapper = vtk.vtkPolyDataMapper(); mapper.SetInputData(self.poly)
         actor  = vtk.vtkActor(); actor.SetMapper(mapper)
         actor.GetProperty().EdgeVisibilityOn(); actor.GetProperty().SetOpacity(0.8)
+        self.ren.AddActor(actor)
 
-        self.renderer.AddActor(actor)
-        self.renderer.ResetCamera()
+        # ------------------------------------------------------------------
+        # **** OPTION 1 – BIG ORANGE POINT-SPRITES ON EVERY VERTEX ****
+        #
+        # 1. Convert each point into an explicit vertex cell
+        v_filter = vtk.vtkVertexGlyphFilter()
+        v_filter.SetInputData(self.poly)
+        v_filter.Update()                           # run once now
+        self.v_filter = v_filter                    # keep a handle for updates
 
-        # --- picker & mouse observer ------------------------------------------
+        # 2. Map those vertices with large, sphere-shaded points
+        v_mapper = vtk.vtkPolyDataMapper()
+        v_mapper.SetInputConnection(v_filter.GetOutputPort())
+
+        v_actor = vtk.vtkActor()
+        v_actor.SetMapper(v_mapper)
+        v_prop = v_actor.GetProperty()
+        v_prop.SetColor(1, 0.4, 0)                  # orange
+        v_prop.SetPointSize(14)                     # pixel radius
+        v_prop.SetRenderPointsAsSpheres(1)          # nice round sprite
+
+        self.ren.AddActor(v_actor)
+        # ------------------------------------------------------------------
+
+        self.ren.ResetCamera()
+
+        # --- picker & interaction style ----------------------------------
         self.picker = vtk.vtkPointPicker(); self.picker.SetTolerance(0.02)
-
         iren = self.vtk.GetRenderWindow().GetInteractor()
 
         try:
             style = vtk.vtkInteractorStyleTerrain()
-            # only call if it actually exists
             if hasattr(style, "SetMotionFactor"):
                 style.SetMotionFactor(0.3)
         except AttributeError:
-            # terrain not available / missing methods → use trackball instead
             style = vtk.vtkInteractorStyleTrackballCamera()
             style.SetMotionFactor(0.25)
-
         iren.SetInteractorStyle(style)
 
-        # =======================================================================
-
+        iren.SetPicker(self.picker)
         iren.AddObserver("LeftButtonPressEvent", self.on_left_press, 1.0)
 
         self.handle_widgets = {}   # pid -> vtkHandleWidget
@@ -85,9 +104,9 @@ class MeshEditor(QtWidgets.QMainWindow):
         self.show()
 
     # -----------------------------------------------------------------
-    def on_left_press(self, obj, evt):
-        x, y = obj.GetEventPosition()
-        if not self.picker.Pick(x, y, 0, self.renderer):
+    def on_left_press(self, iren, _evt):
+        x, y = iren.GetEventPosition()
+        if not self.picker.Pick(x, y, 0, self.ren):
             return
         pid = self.picker.GetPointId()
         if pid >= 0 and pid not in self.handle_widgets:
@@ -97,17 +116,21 @@ class MeshEditor(QtWidgets.QMainWindow):
     def _spawn_handle(self, pid: int):
         rep = vtk.vtkPointHandleRepresentation3D()
         rep.SetWorldPosition(self.points.GetPoint(pid))
-        rep.SetRenderer(self.renderer)
+        rep.SetRenderer(self.ren)
         rep.GetProperty().SetColor(1, .55, .2)
 
         widget = vtk.vtkHandleWidget()
-        widget.SetInteractor(self.vtk.GetRenderWindow().GetInteractor())  # <- FIX
+        widget.SetInteractor(self.vtk.GetRenderWindow().GetInteractor())
         widget.SetRepresentation(rep)
         widget.EnabledOn()
 
-        def drag_cb(_, __):
+        def drag_cb(*_):
+            # update the moved vertex in place
             self.points.SetPoint(pid, rep.GetWorldPosition())
             self.points.Modified()
+            # refresh glyph filter so sprites follow
+            self.v_filter.Modified()
+            self.v_filter.Update()
             self.vtk.GetRenderWindow().Render()
 
         widget.AddObserver("InteractionEvent", drag_cb)
