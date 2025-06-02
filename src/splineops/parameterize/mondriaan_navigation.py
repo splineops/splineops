@@ -54,42 +54,46 @@ def mesh_to_vtk(mesh: Mesh):
     poly.SetPolys(tris)
     return poly, mesh.vertex3DCoordinates
 
-
 def build_isolines(xyz: np.ndarray):
-    """Thin black grid for visual reference."""
-    idx = []
-    for row in range(0, MESH_H, ISO_STEP):
-        idx.extend(row * MESH_W + np.arange(MESH_W))
-    row_break = len(idx)
-    for col in range(0, MESH_W, ISO_STEP):
-        idx.extend(col + MESH_W * np.arange(MESH_H))
-
+    """
+    Draw latitude / longitude grid lines.
+    All stripes start at vertex-0 (the single south-pole vertex) so every
+    pole-to-stripe segment is rendered exactly once.
+    """
     iso_pts = vtk.vtkPoints()
-    iso_pts.SetData(vtknp.numpy_to_vtk(xyz[idx]))
+    lines   = vtk.vtkCellArray()
 
-    lines, off = vtk.vtkCellArray(), 0
-    for _ in range(0, MESH_H, ISO_STEP):         # horizontal
-        pl = vtk.vtkPolyLine(); pl.GetPointIds().SetNumberOfIds(MESH_W)
-        for i in range(MESH_W):
-            pl.GetPointIds().SetId(i, off + i)
-        lines.InsertNextCell(pl); off += MESH_W
-    off = row_break                               # vertical
-    for _ in range(0, MESH_W, ISO_STEP):
-        pl = vtk.vtkPolyLine(); pl.GetPointIds().SetNumberOfIds(MESH_H)
-        for j in range(MESH_H):
-            pl.GetPointIds().SetId(j, off + j)
-        lines.InsertNextCell(pl); off += MESH_H
+    # we will push points stripe-by-stripe and remember their ids
+    def add_polyline(pts_idx):
+        """Helper: add one vtkPolyLine from a list of vertex indices."""
+        first_id = iso_pts.InsertNextPoint(xyz[pts_idx[0]])
+        ids = [first_id]
+        for vidx in pts_idx[1:]:
+            ids.append(iso_pts.InsertNextPoint(xyz[vidx]))
+        pl = vtk.vtkPolyLine(); pl.GetPointIds().SetNumberOfIds(len(ids))
+        for i, gid in enumerate(ids):
+            pl.GetPointIds().SetId(i, gid)
+        lines.InsertNextCell(pl)
 
-    iso_poly = vtk.vtkPolyData()
-    iso_poly.SetPoints(iso_pts)
-    iso_poly.SetLines(lines)
+    # ── horizontal stripes (row = k·ISO_STEP) ──────────────────────────
+    for row in range(ISO_STEP, MESH_H, ISO_STEP):
+        base = row * MESH_W
+        stripe = [0]                                 # pole vertex once
+        stripe.extend(base + np.arange(1, MESH_W))   # cols 1…127
+        add_polyline(stripe)
 
-    mapper = vtk.vtkPolyDataMapper(); mapper.SetInputData(iso_poly)
-    actor  = vtk.vtkActor(); actor.SetMapper(mapper)
-    prop   = actor.GetProperty()
-    prop.SetColor(0, 0, 0); prop.SetLineWidth(1.0); prop.LightingOff()
+    # ── vertical stripes (col = k·ISO_STEP) ────────────────────────────
+    for col in range(ISO_STEP, MESH_W, ISO_STEP):
+        stripe = [0]                                 # pole vertex once
+        stripe.extend(col + MESH_W * np.arange(1, MESH_H))  # rows 1…127
+        add_polyline(stripe)
+
+    # ---- build actor ---------------------------------------------------
+    iso_poly = vtk.vtkPolyData(); iso_poly.SetPoints(iso_pts); iso_poly.SetLines(lines)
+    mapper   = vtk.vtkPolyDataMapper(); mapper.SetInputData(iso_poly)
+    actor    = vtk.vtkActor(); actor.SetMapper(mapper)
+    prop = actor.GetProperty(); prop.SetColor(0, 0, 0); prop.SetLineWidth(1.0); prop.LightingOff()
     return actor
-
 
 def build_texture(layers: MondriaanLayers, t: float):
     rgb = layers.update(t)
