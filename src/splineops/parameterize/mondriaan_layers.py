@@ -1,8 +1,13 @@
 """
-CPU-only Mondriaan colour texture (128×128×3 float32).
+mondriaan_layers.py  –  CPU-only Mondriaan texture generator
+===========================================================
 
-Very light-weight: no OpenGL – it just returns a NumPy image that
-vtk_mondriaan.py uploads into a vtkTexture every frame.
+Returns a NumPy RGB image (128×128×3 float32 in [0,1]) every frame.
+
+The pattern here is deliberately simple: 40 vertical sine stripes whose
+amplitudes are blended by the rolling B-spline “mixing” weights.  It’s
+meant as a stand-in for the far more complex GLSL original—you can
+replace the math later without touching the public API.
 """
 from __future__ import annotations
 import numpy as np
@@ -11,46 +16,54 @@ from spline import bspline3
 
 _rng = np.random.default_rng()
 
-# static lookup table: simple smooth gradient ------------------------------
-_g = np.linspace(0, 1, LUT_LEN, dtype='f4')
-_LUT = np.stack([_g, _g**2, np.sqrt(_g)], axis=1)
+# ---- static colour look-up table (placeholder) ---------------------------
+_g   = np.linspace(0, 1, LUT_LEN, dtype='f4')
+_LUT = np.stack([_g, _g**2, np.sqrt(_g)], axis=1)      # (1024,3)
 
-def _initial_mix():
-    m = np.array([bspline3(4*k/N_LAYERS - 2) for k in range(N_LAYERS)], 'f4')
-    m = np.sqrt(m); return m / m.sum()
+def _initial_mix() -> np.ndarray:
+    w = np.array([bspline3(4*k/N_LAYERS - 2) for k in range(N_LAYERS)], 'f4')
+    w = np.sqrt(w)
+    return w / w.sum()
 
+# --------------------------------------------------------------------------
 class MondriaanLayers:
     def __init__(self):
-        self.col  = _rng.random(N_LAYERS).astype('f4')
-        self.mix_prev = _initial_mix()
-        self.mix_next = np.roll(self.mix_prev.copy(), 1)
-        self._t_prev  = -1
+        self.colors    = _rng.random(N_LAYERS).astype('f4')
+        self.mix_prev  = _initial_mix()
+        self.mix_next  = np.roll(self.mix_prev.copy(), 1)
+        self.t_prev    = -1                            # last integer second
 
-        # pre-compute X grid once
-        self.x = np.linspace(-1, 1, TEX_W, dtype='f4')[None, :]  # shape (1,W)
-        self.hann = 0.5 * (1 + np.cos(np.linspace(0, np.pi*2, TEX_W, dtype='f4')))
+        # x-grid (1,128) and stripe wave-numbers (40,1) for vectorised eval
+        self.x  = np.linspace(-1, 1, TEX_W, dtype='f4')[None, :]     # (1,W)
+        self.k  = np.arange(1, N_LAYERS + 1, dtype='f4')[:, None]    # (L,1)
 
-    # ---------------------------------------------------------------------
-    def _rotate_layers(self):
-        """Called once per whole second – cyclic permutation of weights."""
+        # simple vertical fade so top/bottom edges aren’t hard-cut
+        self.fade_y = 0.5 * (1 + np.cos(np.linspace(0, np.pi*2, TEX_H, 'f4')))
+
+    # ----------------------------------------------------------------------
+    def _roll_once(self):
+        """Rotate mixing weights once per whole second and randomise layer 0."""
         self.mix_prev[:] = self.mix_next
-        self.mix_next = np.roll(self.mix_next, 1)
-        # randomise the colour of the new layer 0
-        self.col[0] = _rng.random()
+        self.mix_next    = np.roll(self.mix_next, 1)
+        self.colors[0]   = _rng.random()        # new random colour for layer 0
 
-    # ---------------------------------------------------------------------
-    def update(self, t: float):
+    # ----------------------------------------------------------------------
+    def update(self, t: float) -> np.ndarray:
+        """Return a fresh (128×128×3) float32 RGB image for time *t* (sec)."""
         ti, tf = int(t), t - int(t)
-        if ti > self._t_prev:
-            self._rotate_layers(); self._t_prev = ti
+        if ti > self.t_prev:
+            self._roll_once(); self.t_prev = ti
 
-        mix = self.mix_next*tf + self.mix_prev*(1-tf)
+        # linear interpolation between the two weight sets
+        mix = self.mix_next * tf + self.mix_prev * (1 - tf)          # (L,)
 
-        # extremely cheap procedural pattern: sum of weighted Hann stripes
-        stripes = np.sin(self.x * np.arange(1, N_LAYERS+1) * np.pi)
-        gray = (self.col * mix)[None, :] * stripes
-        gray = gray.sum(axis=1)  # shape (1,W)
-        gray = np.tile(gray, (TEX_H, 1)) * self.hann  # fade Y edges
+        # build sine stripes and mix them
+        stripes = np.sin(self.k * np.pi * self.x)                    # (L,W)
+        gray_x  = (self.colors * mix)[:, None] * stripes             # (L,W)
+        gray_1d = gray_x.sum(axis=0)                                 # (W,)
+        gray_2d = gray_1d[None, :] * self.fade_y[:, None]            # (H,W)
 
-        idx = (gray.clip(0,1) * (LUT_LEN-1)).astype('i4')
-        return _LUT[idx]
+        # LUT lookup → RGB
+        idx = np.clip((gray_2d * (LUT_LEN - 1)).astype('i4'), 0, LUT_LEN - 1)
+        rgb = _LUT[idx]                                              # (H,W,3)
+        return rgb.astype('f4')
