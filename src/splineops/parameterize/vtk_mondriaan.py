@@ -11,7 +11,7 @@ from mondriaan_layers import MondriaanLayers
 class MondriaanVTK:
     def __init__(self):
         # stronger bulge: amp = 0.12
-        self.morph  = Morph(freq_hz=0.3, amp=0.12)
+        self.morph  = Morph(freq_hz=0.12, amp=0.12)
         self.layers = MondriaanLayers()
         self.pos_b  = BrownianVector3()
         self.rot_b  = BrownianRotation4()
