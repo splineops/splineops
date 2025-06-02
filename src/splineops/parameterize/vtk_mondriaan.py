@@ -14,6 +14,7 @@ class MondriaanVTK:
         self.rot_b  = BrownianRotation4()
 
         self._init_polydata()
+        self._init_isolines()       # ← new call
         self._init_vtk_scene()
 
         self.t_prev_print = -1      # debug counter
@@ -54,6 +55,66 @@ class MondriaanVTK:
         self.normals_flt.SetInputData(self.poly)
         self.normals_flt.SplittingOff()
 
+    # ------------------------------------------------------------------+
+    def _init_isolines(self, iso_step: int = 16):
+        """
+        Build a vtkPolyData containing parametric grid lines every
+        `iso_step` vertices.  Lines share *their own* point array so we
+        can update them independently of the main mesh.
+        """
+        self.iso_map = []                       # maps isoline-point → mesh index
+
+        # collect indices along constant-v (rows) and constant-u (cols)
+        for row in range(0, MESH_H, iso_step):
+            for col in range(MESH_W):
+                self.iso_map.append(row * MESH_W + col)
+        row_break = len(self.iso_map)           # delimiter
+        for col in range(0, MESH_W, iso_step):
+            for row in range(MESH_H):
+                self.iso_map.append(row * MESH_W + col)
+
+        # vtkPoints placeholder
+        self.iso_pts = vtk.vtkPoints()
+        self.iso_pts.SetData(vtknp.numpy_to_vtk(
+            np.zeros((len(self.iso_map), 3), 'f4')))
+
+        # connectivity as polylines ---------------------------------------
+        lines = vtk.vtkCellArray()
+
+        # first bundle: horizontal lines (constant v)
+        offset = 0
+        for _ in range(0, MESH_H, iso_step):
+            poly = vtk.vtkPolyLine()
+            poly.GetPointIds().SetNumberOfIds(MESH_W)
+            for i in range(MESH_W):
+                poly.GetPointIds().SetId(i, offset + i)
+            lines.InsertNextCell(poly)
+            offset += MESH_W
+
+        # second bundle: vertical lines (constant u) ----------------------
+        offset = row_break                      # first vertical point index
+        for _ in range(0, MESH_W, iso_step):
+            poly = vtk.vtkPolyLine()
+            poly.GetPointIds().SetNumberOfIds(MESH_H)
+            for j in range(MESH_H):
+                poly.GetPointIds().SetId(j, offset + j)
+            lines.InsertNextCell(poly)
+            offset += MESH_H                    # jump to next column bloc
+
+        self.iso_poly = vtk.vtkPolyData()
+        self.iso_poly.SetPoints(self.iso_pts)
+        self.iso_poly.SetLines(lines)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(self.iso_poly)
+
+        self.iso_actor = vtk.vtkActor()
+        self.iso_actor.SetMapper(mapper)
+        self.iso_actor.GetProperty().SetColor(0, 0, 0)
+        self.iso_actor.GetProperty().SetLineWidth(1.0)
+        self.iso_actor.GetProperty().LightingOff()
+
+
     # ------------ VTK scene ----------------------------------------------
     def _init_vtk_scene(self):
         mapper = vtk.vtkPolyDataMapper()
@@ -69,6 +130,8 @@ class MondriaanVTK:
         self.ren = vtk.vtkRenderer()
         self.ren.SetBackground(0.05, 0.1, 0.15)
         self.ren.AddActor(self.actor)
+        self.ren.AddActor(self.iso_actor)     # ← draw grid lines
+
 
         self.cam = self.ren.GetActiveCamera()
         self.cam.SetViewAngle(ZOOM_ANGLE)
@@ -91,6 +154,10 @@ class MondriaanVTK:
         for p, st in enumerate(self.st_grid):
             verts[p], nrms[p] = self.morph.evaluate(st)
 
+        # update isoline points (share main verts via mapping)
+        iso_xyz = verts[self.iso_map]
+        self.iso_pts.SetData(vtknp.numpy_to_vtk(iso_xyz))
+        self.iso_pts.Modified()
         self.vtk_pts.SetData(vtknp.numpy_to_vtk(verts))
         self.vtk_nrm.SetArray(nrms.ravel(), nrms.size, 1)
         self.vtk_pts.Modified(); self.vtk_nrm.Modified()
