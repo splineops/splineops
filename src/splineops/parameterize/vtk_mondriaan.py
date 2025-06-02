@@ -16,10 +16,10 @@ from morph            import Morph
 from mondriaan_layers import MondriaanLayers
 
 # pacing knobs -------------------------------------------------------------
-TIMER_MS      = 33      # one physics step every 33 ms  → 30 Hz
-SUB_FRAMES    = 3       # N software frames between physics steps
+TIMER_MS      = 40      # one physics step every 33 ms  → 30 Hz
+SUB_FRAMES    = 15       # N software frames between physics steps
 CAMERA_SCALE  = 0.5
-BREATH_FREQ   = 0.06    # Hz (≈16 s cycle)
+BREATH_FREQ   = 0.04    # Hz (≈16 s cycle)
 BREATH_AMP    = 0.12
 
 # -------------------------------------------------------------------------
