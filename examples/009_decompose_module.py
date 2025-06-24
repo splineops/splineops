@@ -256,9 +256,10 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
 
 wavelet1 = HaarWavelets(scales=1)
 coeffs1 = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
+absmax1 = np.abs(coeffs1).max()
 
 plt.figure(figsize=(8, 8))
-plt.imshow(coeffs1, cmap='gray', interpolation='nearest')
+plt.imshow(coeffs1, cmap='gray', vmin=-absmax1, vmax=absmax1, interpolation='nearest')
 plt.title("Haar 1-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
@@ -270,9 +271,10 @@ plt.show()
 
 wavelet2 = HaarWavelets(scales=2)
 coeffs2 = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
+absmax2 = np.abs(coeffs2).max()
 
 plt.figure(figsize=(8, 8))
-plt.imshow(coeffs2, cmap='gray', interpolation='nearest')
+plt.imshow(coeffs2, cmap='gray', vmin=-absmax2, vmax=absmax2, interpolation='nearest')
 plt.title("Haar 2-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
@@ -284,9 +286,10 @@ plt.show()
 
 wavelet3 = HaarWavelets(scales=3)
 coeffs3 = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
+absmax3 = np.abs(coeffs3).max()
 
 plt.figure(figsize=(8, 8))
-plt.imshow(coeffs3, cmap='gray', interpolation='nearest')
+plt.imshow(coeffs3, cmap='gray', vmin=-absmax3, vmax=absmax3, interpolation='nearest')
 plt.title("Haar 3-Level Decomposition", fontsize=14)
 plt.axis('off')
 plt.tight_layout()
