@@ -30,15 +30,15 @@ while penalizing roughness. The problem is formalized as
    \arg\min_{f}
    \Biggl(
     \sum_{m=1}^{M} E\bigl(f(x_m),y_m\bigr)
-    + \,\lambda\,\bigl\|\mathrm{D}^\gamma f\bigr\|_M\
+    + \,\lambda\,\bigl\|\mathrm{D}^\gamma f\bigr\|_{L_{2}}\
    \Biggr),
 
 where
 
 - the data-fidelity term is :math:`E(f(x_m), y_m)`. It is typically quadratic, with :math:`E(f(x_m), y_m) = (f(x_m) - y_m)^2`;
 - the regularization parameter is :math:`\lambda`, which offer control over the smoothness;
-- the fractional derivative of order :math:`\gamma = H + 0.5` is :math:`\mathrm{D}^\gamma f`;
-- the norm :math:`\| \cdot \|_M` represents the total-variation norm and enforces smoothness.
+- the fractional derivative of order :math:`\gamma` is :math:`\mathrm{D}^\gamma f`;
+- the norm :math:`\| \cdot \|_{L_{2}}` represents the total-variation norm and enforces smoothness.
 
 This formulation ensures that the smoothing-spline solution is a fractional B-spline.
 
@@ -49,9 +49,9 @@ Fractional splines generalize classical polynomial splines by allowing non-integ
 
 .. math::
 
-    \| \mathrm{D}^\gamma f \|^2_M,
+    \| \mathrm{D}^\gamma f \|^2_{L_{2}}.
 
-which is equivalent to the application of a Butterworth-like low-pass filter.
+The effect of this filter is qualitatively that of a Butterworth low-pass filter.
 
 For a discrete signal :math:`y[n]`, the solution is given by
 

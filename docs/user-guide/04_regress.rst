@@ -93,12 +93,6 @@ Advantages and Applications
 - Time-Series and Segmented Regression: Whenever a piecewise-linear model is suitable (e.g., finance, economics, or epidemiological data such as daily infection rates), this algorithm helps create interpretable "segmented regression" fits with a small number of segments.
 - Connection to ReLU Networks: In 1D, neural networks with ReLU activations yield continuous piecewise-linear (CPWL) functions. This algorithm can be viewed as a more direct way to learn a CPWL function with the fewest parameters (knots). Although modern deep networks often over-parameterize for performance reasons, in strictly 1D scenarios, the method here outperforms a naive ReLU network in terms of parameter sparsity.
 
-Limitations and Directions
---------------------------
-
-- Higher Dimensions: The extension of this approach to dimensions :math:`d > 1` is non-trivial. The definition of analogous TV-based regularizations on higher-order derivatives (e.g., Hessian-based penalties) is an active area of research, but a direct multi-dimensional analogue of the fewest-knot guarantee remains challenging.
-- Over-Parameterization vs. Minimal Parameters: In practice, neural networks often benefit from having more parameters than necessary. While our method finds the minimal number of parameters for a 1D CPWL model, the *optimal* size of a model in broader machine-learning contexts may not always be about a strict minimization of the number of parameters.
-
 Regularization Parameter
 ------------------------
 
