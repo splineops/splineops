@@ -30,7 +30,7 @@ def resize(
     output_size : tuple of int, optional
         Desired output shape. If provided, `zoom_factors` is ignored.
     degree : int, optional
-        Degree of the B-spline interpolation (0 to 9). Default is 3.
+        Degree of the B-spline interpolation (1 to 3). Default is 3.
     modes : str or sequence of str, optional
         Extension mode(s) for each dimension. Default is "mirror".
     method : {'interpolation', 'least-squares', 'oblique'}, optional
