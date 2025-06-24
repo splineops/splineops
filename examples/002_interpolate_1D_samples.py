@@ -1,4 +1,4 @@
-r"""
+"""
 Interpolate 1D Samples
 ======================
 
@@ -8,11 +8,11 @@ Interpolate 1D samples with standard interpolation.
 
 2. From the samples, recover the continuously defined spline :math:`f(x)`.
 
-3. Resample :math:`f(x)` to get :math:`g[k] = f(\lambda k)`, with :math:`|\lambda| > 1`.
+3. Resample :math:`f(x)` to get :math:`g[k] = f(Tk)`, with :math:`|T| > 1`.
 
 4. Create a new spline :math:`g(x)` from the samples :math:`g[k]`.
 
-5. We define :math:`h(x) = g(x / \lambda)`.
+5. We define :math:`h(x) = g(x / T)`.
 
 6. Compute the mean squared error (MSE) between :math:`f` and :math:`h`.
 
@@ -173,20 +173,20 @@ plt.show()
 # %%
 # Coarsening of f
 # ---------------
-# We define :math:`\lambda` with :math:`|\lambda| > 1` and sample :math:`f(x)` 
-# at :math:`x = \lambda k` as
+# We define :math:`T` with :math:`|T| > 1` and sample :math:`f(x)` 
+# at :math:`x = T k` as
 #
 # .. math::
-#    g[k] = f(\lambda k).
+#    g[k] = f(T k).
 #
 # These points :math:`g[k]` form a new discrete set, which we then treat 
 # as a separate signal to build another spline :math:`g`.
 
-val_lambda = np.pi
+val_T = np.pi
 
-g_support_length = round(f_support_length // val_lambda)
+g_support_length = round(f_support_length // val_T)
 g_support = np.arange(g_support_length)  
-f_resampled_coords = np.array([q * val_lambda for q in range(g_support_length)])
+f_resampled_coords = np.array([q * val_T for q in range(g_support_length)])
 g_samples = f(coordinates=(f_resampled_coords,), grid=False)
 g = TensorSpline(data=g_samples, coordinates=g_support, bases=base, modes=mode)
 
@@ -221,8 +221,8 @@ ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 # Plot spline f(x)
 ax_top.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 
-# Overplot discrete g[k] as unfilled red squares at x = k * val_lambda
-x_g = np.arange(g_support_length) * val_lambda
+# Overplot discrete g[k] as unfilled red squares at x = k * val_T
+x_g = np.arange(g_support_length) * val_T
 ax_top.plot(
     x_g, 
     g_samples,
@@ -300,7 +300,7 @@ plt.show()
 #
 # .. math::
 #
-#    h(x) = g\bigl(\tfrac{x}{\lambda}\bigr),
+#    h(x) = g\bigl(\tfrac{x}{T}\bigr),
 #
 # where :math:`g` is the continuously defined spline built from the 
 # discrete points :math:`g[k]`. Hence, :math:`h` and :math:`f` have the same support 
@@ -325,8 +325,8 @@ ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 # Replot f spline
 ax_top.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 
-# Overplot discrete g[k] in red squares at x = k*val_lambda
-x_g = np.arange(g_support_length) * val_lambda
+# Overplot discrete g[k] in red squares at x = k*val_T
+x_g = np.arange(g_support_length) * val_T
 ax_top.plot(
     x_g, g_samples,
     "rs", mfc='none', markersize=12, markeredgewidth=2,
@@ -390,8 +390,8 @@ ax_bottom.set_title("h spline and difference (f - h)")
 
 # We'll sample h over 0..(f_support_length-1)
 h_coords = f_coords
-# Evaluate h(x) = g(x/val_lambda)
-h_data = g(coordinates=(h_coords / val_lambda,), grid=False)
+# Evaluate h(x) = g(x/val_T)
+h_data = g(coordinates=(h_coords / val_T,), grid=False)
 
 # Also evaluate f at the same coords, so we can show the difference
 f_data_for_diff = f(coordinates=(h_coords,), grid=False)
@@ -451,7 +451,7 @@ mid_x = np.linspace(a + dx/2, b - dx/2, N)  # midpoints
 
 # 2) Evaluate f(x) and h(x) at those midpoints
 f_mid = f(coordinates=(mid_x,), grid=False)
-h_mid = g(coordinates=(mid_x / val_lambda,), grid=False)
+h_mid = g(coordinates=(mid_x / val_T,), grid=False)
 
 # 3) Compute the midpoint Riemann sum for ∫(f(x)-h(x))^2 dx
 squared_diff = (f_mid - h_mid) ** 2
@@ -479,7 +479,7 @@ g_lin = TensorSpline(data=g_lin_samps, coordinates=g_support, bases=base, modes=
 # 2) Evaluate them at the same plotting coordinates
 f_lin_f = f_lin(coordinates=(f_coords,), grid=False)               # f_lin over domain 0..(K-1)
 g_lin_g = g_lin(coordinates=(g_coords,), grid=False)               # g_lin over domain 0..(g_support_length-1)
-h_lin_h = g_lin(coordinates=(f_coords / val_lambda,), grid=False)  # h_lin(x)=g_lin(x/λ) over 0..(K-1)
+h_lin_h = g_lin(coordinates=(f_coords / val_T,), grid=False)  # h_lin(x)=g_lin(x/λ) over 0..(K-1)
 
 # 3) Create the 3×2 figure layout
 fig3 = plt.figure(figsize=(12, 12))
@@ -500,8 +500,8 @@ ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 # Plot f spline
 ax_top.plot(f_coords, f_lin_f, color="green", linewidth=2, label="f spline")
 
-# Overplot discrete g[k] as unfilled red squares at x = k * val_lambda
-x_g = np.arange(g_support_length) * val_lambda
+# Overplot discrete g[k] as unfilled red squares at x = k * val_T
+x_g = np.arange(g_support_length) * val_T
 ax_top.plot(
     x_g, g_lin_samps,
     "rs",              # red squares
@@ -594,7 +594,7 @@ mid_x = np.linspace(a + dx/2, b - dx/2, N)
 
 # Evaluate f_lin and h_lin at midpoints
 f_lin_mid = f_lin(coordinates=(mid_x,), grid=False)
-h_lin_mid = g_lin(coordinates=(mid_x / val_lambda,), grid=False)
+h_lin_mid = g_lin(coordinates=(mid_x / val_T,), grid=False)
 
 # Midpoint Riemann sum for ∫(f_lin - h_lin)²
 squared_diff_lin = (f_lin_mid - h_lin_mid) ** 2
