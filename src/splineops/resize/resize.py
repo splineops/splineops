@@ -1,24 +1,15 @@
-"""
-splineops.resize.resize
------------------------
+# splineops.resize.resize
+# =======================
 
-Unified resize helper that supports
+# One-stop helper that wraps three back-ends
 
-    ┌───────────────────────────────┬────────────────┬────────┐
-    │ method string                 │ internal algo  │ degree │
-    ├───────────────────────────────┼────────────────┼────────┤
-    │ fast                          │ interpolation  │   0    │
-    │ linear                        │ interpolation  │   1    │
-    │ quadratic                     │ interpolation  │   2    │
-    │ cubic                         │ interpolation  │   3    │
-    │ linear-fast_antialiasing      │ oblique        │   1    │
-    │ quadratic-fast_antialiasing   │ oblique        │   2    │
-    │ cubic-fast_antialiasing       │ oblique        │   3    │
-    │ linear-best_antialiasing      │ least-squares  │   1    │
-    │ quadratic-best_antialiasing   │ least-squares  │   2    │
-    │ cubic-best_antialiasing       │ least-squares  │   3    │
-    └───────────────────────────────┴────────────────┴────────┘
-"""
+# * **interpolation**   – classic B-spline evaluation (degrees 0-9) via :class:`splineops.interpolate.TensorSpline`
+# * **oblique**         – fast anti-aliasing down-sampling using the Muñoz *oblique projection* variant
+# * **least-squares**   – highest-quality anti-aliasing down-sampling using Muñoz *LS projection*
+
+# The concrete back-end and spline degree are chosen with a single *method* string
+# (see the *method* parameter in :pyfunc:`resize`).
+
 
 from __future__ import annotations
 
@@ -67,30 +58,47 @@ def resize(
     method: str = "cubic",
     modes: Union[str, Sequence[str]] = "mirror",
 ) -> npt.NDArray:
-    """
-    Resize an N-dimensional array.
+    r"""
+    Resize an *N*-dimensional array using splines.
 
     Parameters
     ----------
-    data
+    data : ndarray
         Input array.
-    zoom_factors
-        Per-axis scale factors. Ignored if *output_size* is provided.
-    output
-        Optional array to write the result into or a `dtype` for the output.
-    output_size
-        Target shape. Overrides *zoom_factors*.
-    method
-        One of the 10 preset strings listed in the module docstring.
-    modes
-        Boundary handling used by :class:`~splineops.interpolate.tensorspline.TensorSpline`
-        (ignored for LS/oblique paths).
+    zoom_factors : float or sequence of float, optional
+        Per-axis scale factors.  Ignored if *output_size* is given.
+    output : ndarray or dtype, optional
+        * If an ``ndarray`` is supplied, the result is written **in-place** and the same array is returned.  
+        * If a ``dtype`` is supplied, a new array of that dtype is allocated and returned.  
+    output_size : tuple of int, optional
+        Desired shape (overrides *zoom_factors*).
+    method : {'fast', 'linear', 'quadratic', 'cubic',
+              'linear-fast_antialiasing', 'quadratic-fast_antialiasing',
+              'cubic-fast_antialiasing',
+              'linear-best_antialiasing', 'quadratic-best_antialiasing',
+              'cubic-best_antialiasing'}, optional
+        Preset selecting **both** the algorithm *and* the spline degree::
+
+            fast                         → interpolation, degree 0
+            linear                       → interpolation, degree 1
+            quadratic                    → interpolation, degree 2
+            cubic                        → interpolation, degree 3
+            linear-fast_antialiasing     → oblique,       degree 1
+            quadratic-fast_antialiasing  → oblique,       degree 2
+            cubic-fast_antialiasing      → oblique,       degree 3
+            linear-best_antialiasing     → least-squares, degree 1
+            quadratic-best_antialiasing  → least-squares, degree 2
+            cubic-best_antialiasing      → least-squares, degree 3
+
+    modes : str or sequence of str, optional
+        Boundary handling passed to
+        :class:`splineops.interpolate.TensorSpline`
+        (ignored by the anti-aliasing presets).
 
     Returns
     -------
     ndarray
-        Resized data – either a freshly allocated array or *output* if it was
-        an ndarray.
+        Resized data – either a new array or the one supplied via *output*.
     """
     # --------------------------------------------------------------------- #
     # Validate & interpret parameters                                       #
