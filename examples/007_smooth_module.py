@@ -90,50 +90,6 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Estimator Optimality
-# --------------------
-#
-# To verify the optimality of the estimator, we compare the MSE for estimators with different values of gamma and lambda.
-# To avoid excessive computations, the verification is performed over one realization of fBm only.
-
-# Check for optimality of lambda
-Lambda = lambda_ * np.arange(0, 3.1, 0.1)
-MSE_list = []
-for lam in Lambda:
-    tsc, ysc = smoothing_spline(y_noisy, lam, m, gamma_)
-    trc, rc = smoothing_spline(cnn, lam, m, gamma_)
-    y_est_c = ysc - rc * ysc[0] / rc[0]
-    MSE_list.append(np.mean((y_est_c[::m] - y0[::m]) ** 2))
-
-plt.figure()
-plt.plot(Lambda, MSE_list, 'k', label='MSE vs λ')
-plt.plot(lambda_, MSE, 'r+', label='Theoretical optimum point')
-plt.legend()
-plt.title('MSE vs λ')
-plt.xlabel('λ')
-plt.ylabel('MSE')
-plt.show()
-
-# Check for optimality of gamma_
-Gamma = np.arange(0.55, 1.46, 0.01)
-MSE_gamma = []
-for g in Gamma:
-    tsc, ysc = smoothing_spline(y_noisy, lambda_, m, g)
-    trc, rc = smoothing_spline(cnn, lambda_, m, g)
-    y_est_c = ysc - rc * ysc[0] / rc[0]
-    MSE_gamma.append(np.mean((y_est_c[::m] - y0[::m]) ** 2))
-
-plt.figure()
-plt.plot(Gamma, MSE_gamma, 'k', label='MSE vs γ')
-plt.plot(gamma_, MSE, 'r+', label='Theoretical optimum point')
-plt.legend()
-plt.title('MSE vs γ')
-plt.xlabel('γ')
-plt.ylabel('MSE')
-plt.show()
-
-
-# %%
 # 2D Image Smoothing
 # ------------------
 
@@ -141,9 +97,9 @@ import requests
 from io import BytesIO
 from PIL import Image
 
-def create_camera_image():
+def create_image():
     """
-    Loads a real grayscale image (cameraman).
+    Loads a real grayscale image.
     """
     url = 'https://r0k.us/graphics/kodak/kodak/kodim06.png'
     response = requests.get(url)
@@ -179,49 +135,49 @@ def compute_snr(clean_signal, noisy_signal):
     snr = 10 * np.log10(signal_power / noise_power)
     return snr
 
-def demo_cameraman_image():
+def demo_image():
     # Parameters
     lambda_ = 0.1  # Regularization parameter
     gamma = 2.0     # Order of the spline operator
     snr_db = 10.0   # Desired SNR in dB
 
-    # Load cameraman image
-    img_camera = create_camera_image()
-    noisy_img_camera = add_noise(img_camera, snr_db)
-    smoothed_img_camera = smoothing_spline_nd(noisy_img_camera, lambda_, gamma)
+    # Load image
+    img = create_image()
+    noisy_img = add_noise(img, snr_db)
+    smoothed_img = smoothing_spline_nd(noisy_img, lambda_, gamma)
 
     # Compute SNRs
-    snr_noisy_camera = compute_snr(img_camera, noisy_img_camera)
-    snr_smooth_camera = compute_snr(img_camera, smoothed_img_camera)
-    snr_improvement_camera = snr_smooth_camera - snr_noisy_camera
+    snr_noisy = compute_snr(img, noisy_img)
+    snr_smooth = compute_snr(img, smoothed_img)
+    snr_improvement = snr_smooth - snr_noisy
 
-    print("Cameraman Image:")
-    print(f"SNR of noisy image: {snr_noisy_camera:.2f} dB")
-    print(f"SNR after smoothing: {snr_smooth_camera:.2f} dB")
-    print(f"SNR improvement: {snr_improvement_camera:.2f} dB\n")
+    print("Image:")
+    print(f"SNR of noisy image: {snr_noisy:.2f} dB")
+    print(f"SNR after smoothing: {snr_smooth:.2f} dB")
+    print(f"SNR improvement: {snr_improvement:.2f} dB\n")
 
-    # Visualization for Cameraman Image
+    # Visualization for image
     plt.figure(figsize=(12, 4))
     plt.subplot(1, 3, 1)
-    plt.imshow(img_camera, cmap='gray')
-    plt.title('Original Cameraman Image')
+    plt.imshow(img, cmap='gray')
+    plt.title('Original Image')
     plt.axis('off')
 
     plt.subplot(1, 3, 2)
-    plt.imshow(noisy_img_camera, cmap='gray')
-    plt.title(f'Noisy Image (SNR={snr_noisy_camera:.2f} dB)')
+    plt.imshow(noisy_img, cmap='gray')
+    plt.title(f'Noisy Image (SNR={snr_noisy:.2f} dB)')
     plt.axis('off')
 
     plt.subplot(1, 3, 3)
-    plt.imshow(smoothed_img_camera, cmap='gray')
-    plt.title(f'Smoothed Image (SNR={snr_smooth_camera:.2f} dB)')
+    plt.imshow(smoothed_img, cmap='gray')
+    plt.title(f'Smoothed Image (SNR={snr_smooth:.2f} dB)')
     plt.axis('off')
 
     plt.tight_layout()
     plt.show()
 
-# Run the cameraman image demo
-demo_cameraman_image()
+# Run the image demo
+demo_image()
 
 # %%
 # Sinusoid 3D Data
