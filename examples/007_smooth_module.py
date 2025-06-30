@@ -145,7 +145,7 @@ def create_camera_image():
     """
     Loads a real grayscale image (cameraman).
     """
-    url = 'https://people.math.sc.edu/Burkardt/data/tif/cameraman.tif'
+    url = 'https://r0k.us/graphics/kodak/kodak/kodim06.png'
     response = requests.get(url)
     img = Image.open(BytesIO(response.content))
     data = np.array(img, dtype=np.float64)

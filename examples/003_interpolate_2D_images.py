@@ -239,7 +239,7 @@ def plot_difference_image(original, recovered, snr, mse):
 # Here, we load an example image from an online repository.
 # We convert it to grayscale in [0, 1].
 
-url = 'https://people.math.sc.edu/Burkardt/data/tif/columns.tif'
+url = 'https://r0k.us/graphics/kodak/kodak/kodim14.png'
 response = requests.get(url)
 img = Image.open(BytesIO(response.content))
 data = np.array(img, dtype=np.float64)
