@@ -49,7 +49,7 @@ adjusted_uint8 = (adjusted * 255).astype(np.uint8)
 shrunken = resize_multichannel(
     adjusted,               # float64 [0, 1]
     shrink_factor,
-    degree=3,
+    method="cubic",          # plain cubic interpolation
     modes="mirror",
 )                           # returns uint8
 
@@ -64,7 +64,7 @@ canvas[: shrunken.shape[0], : shrunken.shape[1]] = shrunken
 expanded = resize_multichannel(
     shrunken.astype(np.float64) / 255.0,   # back to float64 [0, 1]
     1.0 / shrink_factor,
-    degree=3,
+    method="cubic",
     modes="mirror",
 )
 

@@ -138,8 +138,7 @@ f_coords_resize = np.linspace(0, f_support_length - 1, desired_length)
 f_data_resize = resize(
     data=f_samples,             # 1D input
     output_size=(desired_length,),
-    degree=3,                   # matches "bspline3"
-    method="interpolation"      # ensures TensorSpline standard interpolation, not least-squares or oblique
+    method="cubic"      # ensures TensorSpline standard interpolation, not least-squares or oblique
 )
 
 # Ensure both arrays have identical shapes

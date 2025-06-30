@@ -48,14 +48,13 @@ data_normalized = data_gray / 255.0
 
 # Define zoom factors for resizing
 zoom_factors = (0.3, 0.3)
-degree = 3  # spline degree
+interp_method = "cubic"
 
 # Resize the image using spline interpolation (this returns image in [0,1])
 image_resized = resize(
     data_normalized, 
     zoom_factors=zoom_factors, 
-    degree=degree, 
-    method="interpolation"
+    method=interp_method
 )
 
 # Bring the resized image back to [0,255]
@@ -71,8 +70,7 @@ custom_center = (image_resized.shape[0] // 2, image_resized.shape[1] // 2)
 rotated_image = rotate(
     image_resized,
     angle=rotation_angle,
-    degree=degree,
-    center=custom_center,
+    center=custom_center
 )
 
 # Create a circular mask
@@ -96,7 +94,7 @@ ax[1].scatter(
     color="red", 
     label="Center of Rotation"
 )
-ax[1].set_title(f"Rotated Image ({rotation_angle}°, spline degree {degree})")
+ax[1].set_title(f"Rotated Image ({rotation_angle}°")
 ax[1].axis("off")
 ax[1].legend()
 

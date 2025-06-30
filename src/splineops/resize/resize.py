@@ -1,110 +1,147 @@
+"""
+splineops.resize.resize
+-----------------------
+
+Unified resize helper that supports
+
+    ┌───────────────────────────────┬────────────────┬────────┐
+    │ method string                 │ internal algo  │ degree │
+    ├───────────────────────────────┼────────────────┼────────┤
+    │ fast                          │ interpolation  │   0    │
+    │ linear                        │ interpolation  │   1    │
+    │ quadratic                     │ interpolation  │   2    │
+    │ cubic                         │ interpolation  │   3    │
+    │ linear-fast_antialiasing      │ oblique        │   1    │
+    │ quadratic-fast_antialiasing   │ oblique        │   2    │
+    │ cubic-fast_antialiasing       │ oblique        │   3    │
+    │ linear-best_antialiasing      │ least-squares  │   1    │
+    │ quadratic-best_antialiasing   │ least-squares  │   2    │
+    │ cubic-best_antialiasing       │ least-squares  │   3    │
+    └───────────────────────────────┴────────────────┴────────┘
+"""
+
+from __future__ import annotations
+
+from typing import Optional, Sequence, Tuple, Union, Dict, Literal
+
 import numpy as np
 import numpy.typing as npt
-from typing import Optional, Union, Sequence, Tuple
-from splineops.interpolate.tensorspline import TensorSpline
+
 from splineops.bases.utils import asbasis
+from splineops.interpolate.tensorspline import TensorSpline
 from splineops.resize.ls_oblique_resize import ls_oblique_resize
+
+# --------------------------------------------------------------------------- #
+# Mapping from public `method` strings to (internal_algorithm, spline_degree)  #
+# --------------------------------------------------------------------------- #
+
+METHOD_MAP: Dict[
+    str,
+    Tuple[Literal["interpolation", "oblique", "least-squares"], int],
+] = {
+    # pure interpolation – no anti-aliasing
+    "fast": ("interpolation", 0),
+    "linear": ("interpolation", 1),
+    "quadratic": ("interpolation", 2),
+    "cubic": ("interpolation", 3),
+    # oblique projection – fast anti-aliasing
+    "linear-fast_antialiasing": ("oblique", 1),
+    "quadratic-fast_antialiasing": ("oblique", 2),
+    "cubic-fast_antialiasing": ("oblique", 3),
+    # least-squares – best anti-aliasing
+    "linear-best_antialiasing": ("least-squares", 1),
+    "quadratic-best_antialiasing": ("least-squares", 2),
+    "cubic-best_antialiasing": ("least-squares", 3),
+}
+
+# Helper for ls_oblique_resize ↔︎ degree translation
+_DEGREE_TO_NAME = {0: "nearest", 1: "linear", 2: "quadratic", 3: "cubic"}
 
 
 def resize(
     data: npt.NDArray,
+    *,
     zoom_factors: Optional[Union[float, Sequence[float]]] = None,
     output: Optional[Union[npt.NDArray, np.dtype]] = None,
     output_size: Optional[Tuple[int, ...]] = None,
-    degree: int = 3,
+    method: str = "cubic",
     modes: Union[str, Sequence[str]] = "mirror",
-    method: str = "interpolation"
 ) -> npt.NDArray:
     """
-    Resize an N-dimensional image using TensorSpline for interpolation or LS/oblique projection methods.
+    Resize an N-dimensional array.
 
     Parameters
     ----------
-    data : ndarray
-        The input data to resize.
-    zoom_factors : float or sequence of float, optional
-        Scaling factors for each axis. Ignored if `output_size` is provided.
-    output : ndarray or numpy.dtype, optional
-        If an ndarray, the result is copied into it. If a dtype, a new array
-        of that dtype is returned. Default is None.
-    output_size : tuple of int, optional
-        Desired output shape. If provided, `zoom_factors` is ignored.
-    degree : int, optional
-        Degree of the B-spline interpolation (1 to 3). Default is 3.
-    modes : str or sequence of str, optional
-        Extension mode(s) for each dimension. Default is "mirror".
-    method : {'interpolation', 'least-squares', 'oblique'}, optional
-        Resizing method. Default is "interpolation".
+    data
+        Input array.
+    zoom_factors
+        Per-axis scale factors. Ignored if *output_size* is provided.
+    output
+        Optional array to write the result into or a `dtype` for the output.
+    output_size
+        Target shape. Overrides *zoom_factors*.
+    method
+        One of the 10 preset strings listed in the module docstring.
+    modes
+        Boundary handling used by :class:`~splineops.interpolate.tensorspline.TensorSpline`
+        (ignored for LS/oblique paths).
 
     Returns
     -------
-    resized_data : ndarray
-        Resized data. If `output` is an ndarray, the function writes the
-        result in-place and returns `output`.
-
-    Examples
-    --------
-    Resize a 2D array using interpolation:
-    
-    >>> import numpy as np
-    >>> from splineops.interpolate.resize import resize
-    >>> data = np.array([[1, 2], [3, 4]])
-    >>> resized_data = resize(data, zoom_factors=2)
-    >>> resized_data.shape
-    (4, 4)
-
-    Resize a 3D array using LS projection:
-    
-    >>> data_3d = np.random.rand(4, 4, 4)
-    >>> resized_data_3d = resize(data_3d, output_size=(8, 8, 8), degree=3, method="least-squares")
-    >>> resized_data_3d.shape
-    (8, 8, 8)
+    ndarray
+        Resized data – either a freshly allocated array or *output* if it was
+        an ndarray.
     """
-    if not (0 <= degree <= 9):
-        raise ValueError("degree must be an integer between 0 and 9 for B-spline interpolation.")
+    # --------------------------------------------------------------------- #
+    # Validate & interpret parameters                                       #
+    # --------------------------------------------------------------------- #
+    if method not in METHOD_MAP:  # pragma: no cover
+        valid = ", ".join(METHOD_MAP)
+        raise ValueError(f"Unknown method '{method}'. Valid options: {valid}")
+
+    algo, degree = METHOD_MAP[method]
 
     if output_size is not None:
         zoom_factors = [new / old for new, old in zip(output_size, data.shape)]
     elif zoom_factors is None:
-        raise ValueError("Either output_size or zoom_factors must be provided.")
-    
-    if isinstance(zoom_factors, (int, float)):
+        raise ValueError("Either 'output_size' or 'zoom_factors' must be provided.")
+    elif isinstance(zoom_factors, (int, float)):
         zoom_factors = [zoom_factors] * data.ndim
 
-    dtype = data.dtype if output is None else output.dtype
-
-    # Call LS/oblique resize if conditions are met, else use TensorSpline
-    if method in {"least-squares", "oblique"} and degree in {1, 2, 3}:
-        # Use LS/oblique resize
+    # --------------------------------------------------------------------- #
+    # Choose implementation path                                            #
+    # --------------------------------------------------------------------- #
+    if algo in {"least-squares", "oblique"} and degree in (1, 2, 3):
+        # Use Arrate Muñoz' LS/oblique implementation
         output_data = ls_oblique_resize(
             input_img_normalized=data,
             output_size=output_size,
             zoom_factors=zoom_factors,
-            method=method,
-            interpolation={1: "linear", 2: "quadratic", 3: "cubic"}[degree]
+            method=algo,
+            interpolation=_DEGREE_TO_NAME[degree],
         )
     else:
-        # Use TensorSpline for standard interpolation
-        if method in {"least-squares", "oblique"}:
-            print("Standard interpolation is used because the degree is not 1, 2, or 3.")
-        basis_str = f"bspline{degree}"
-        basis = asbasis(basis_str)
-        original_coords = [np.linspace(0, dim - 1, dim, dtype=dtype) for dim in data.shape]
-        new_coords = [
-            np.linspace(0, dim - 1, round(dim * zoom), dtype=dtype)
-            for dim, zoom in zip(data.shape, zoom_factors)
+        # Fall back to TensorSpline – handles interpolation for deg 0‒9
+        basis = asbasis(f"bspline{degree}")
+        # source grid
+        src_coords = [np.linspace(0, n - 1, n, dtype=data.dtype) for n in data.shape]
+        # target grid
+        tgt_coords = [
+            np.linspace(0, n - 1, round(n * z), dtype=data.dtype)
+            for n, z in zip(data.shape, zoom_factors)
         ]
-        tensor_spline = TensorSpline(data=data, coordinates=original_coords, bases=basis, modes=modes)
-        output_data = tensor_spline.eval(coordinates=new_coords, grid=True)
+        tensor = TensorSpline(data=data, coordinates=src_coords, bases=basis, modes=modes)
+        output_data = tensor.eval(coordinates=tgt_coords, grid=True)
 
-    # Assign to output array if specified
+    # --------------------------------------------------------------------- #
+    # Handle 'output' argument                                              #
+    # --------------------------------------------------------------------- #
     if output is not None:
         if isinstance(output, np.ndarray):
             np.copyto(output, output_data)
             return output
-        else:
-            output = np.empty(output_data.shape, dtype=output)
-            np.copyto(output, output_data)
-            return output
+        out_arr = np.empty_like(output_data, dtype=output)
+        np.copyto(out_arr, output_data)
+        return out_arr
 
     return output_data

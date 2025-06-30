@@ -49,7 +49,6 @@ input_image_normalized = (
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
 
-degree = 3
 zoom_factors_2d = (0.25, 0.25)
 border_fraction = 0.3
 
@@ -76,7 +75,7 @@ plt.show()
 ) = resize_and_compute_metrics(
     input_image_normalized,
     method="scipy",
-    degree=degree,
+    scipy_order=3,
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction
 )
@@ -130,8 +129,7 @@ plot_difference_image(
     time_2d_interp
 ) = resize_and_compute_metrics(
     input_image_normalized,
-    method="interpolation",
-    degree=degree,
+    method="cubic",
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction
 )
@@ -145,7 +143,7 @@ plot_difference_image(
 plot_resized_image(
     original=input_image_normalized,
     resized=resized_2d_interp,
-    method="interpolation",
+    method="cubic",
     zoom_factors=zoom_factors_2d,
     time_elapsed=time_2d_interp
 )
@@ -269,8 +267,7 @@ print(f"MSE (TensorSpline vs. resize()) recovered: {mse_backward:.6e}")
     time_2d_ls
 ) = resize_and_compute_metrics(
     input_image_normalized,
-    method="least-squares",
-    degree=degree,
+    method="cubic-best_antialiasing",
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction
 )
@@ -284,7 +281,7 @@ print(f"MSE (TensorSpline vs. resize()) recovered: {mse_backward:.6e}")
 plot_resized_image(
     original=input_image_normalized,
     resized=resized_2d_ls,
-    method="least-squares",
+    method="cubic-best_antialiasing",
     zoom_factors=zoom_factors_2d,
     time_elapsed=time_2d_ls
 )
@@ -324,8 +321,7 @@ plot_difference_image(
     time_2d_ob
 ) = resize_and_compute_metrics(
     input_image_normalized,
-    method="oblique",
-    degree=degree,
+    method="cubic-fast_antialiasing",
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction
 )
@@ -339,7 +335,7 @@ plot_difference_image(
 plot_resized_image(
     original=input_image_normalized,
     resized=resized_2d_ob,
-    method="oblique",
+    method="cubic-fast_antialiasing",
     zoom_factors=zoom_factors_2d,
     time_elapsed=time_2d_ob
 )
