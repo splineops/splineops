@@ -389,3 +389,25 @@ print("-" * len(header_line))  # or manually set a dash length, e.g. 67
 for method_name, snr_val, mse_val, time_val in methods:
     row_line = f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_val:>12.4f}"
     print(row_line)
+
+# %%
+# Side-by-side (2×2) view of the recovered images
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+recovered_stack = [
+    ("SciPy",                recovered_2d_scipy,  snr_2d_scipy,  mse_2d_scipy),
+    ("Cubic (interp)",       recovered_2d_interp, snr_2d_interp, mse_2d_interp),
+    ("Least-Squares (best)", recovered_2d_ls,     snr_2d_ls,     mse_2d_ls),
+    ("Oblique (fast AA)",    recovered_2d_ob,     snr_2d_ob,     mse_2d_ob),
+]
+
+fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+axes = axes.ravel()   # flatten to 1-D iterator
+
+for ax, (label, img, snr_val, mse_val) in zip(axes, recovered_stack):
+    ax.imshow(img, cmap="gray", aspect="equal")
+    ax.set_title(f"{label}\nSNR {snr_val:.1f} dB  ·  MSE {mse_val:.2e}")
+    ax.axis("off")
+
+plt.tight_layout()
+plt.show()
