@@ -3,16 +3,11 @@ Smooth Module
 =============
 
 We use the smooth module to smooth N-dimensional data.
-
-You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
-# 1D Fractional Brownian Motion
-# -----------------------------
-#
-# A realization of an fBm process of length N is generated and corrupted with noise.
-# The sequence is then denoised and oversampled by a factor m using the optimal fractional-spline estimator.
+# Imports
+# -------
 
 import math
 import numpy as np
@@ -21,6 +16,13 @@ from splineops.smooth.fBmper import fBmper
 from splineops.smooth.smoothing_spline import smoothing_spline
 from splineops.smooth.smoothing_spline import smoothing_spline_nd
 from splineops.smooth.smoothing_spline import recursive_smoothing_spline
+
+# %%
+# 1D Fractional Brownian Motion
+# -----------------------------
+#
+# A realization of an fBm process of length N is generated and corrupted with noise.
+# The sequence is then denoised and oversampled by a factor m using the optimal fractional-spline estimator.
 
 # Define program constants
 m = 4       # Upsampling factor

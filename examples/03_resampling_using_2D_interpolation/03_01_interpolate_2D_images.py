@@ -6,8 +6,6 @@ Interpolate 2D images with standard interpolation, least-squares, and oblique pr
 Compare them to SciPy zoom. We compute SNR and MSE only on a central region 
 to exclude boundary artifacts. A summary of the cost/benefit tradeoff of the three methods
 is provided at the bottom of this page.
-
-You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # Required Libraries

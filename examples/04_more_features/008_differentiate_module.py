@@ -4,15 +4,11 @@ Differentiate Module
 
 In this example, we demonstrate how to use the differentiate module to compute various
 differential operations on an image.
-
-You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
 # Imports
 # -------
-#
-# Import the necessary libraries and modules.
 
 import numpy as np
 import matplotlib.pyplot as plt

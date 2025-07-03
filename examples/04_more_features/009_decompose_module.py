@@ -6,15 +6,11 @@ This example demonstrates how to use the 'decompose' module.
 
 - Pyramid decomposition (reduce & expand) in 1D and 2D.
 - Haar wavelet decomposition (analysis & synthesis) in 2D.
-
-You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
 # Imports
 # -------
-#
-# We import the required libraries and modules.
 
 import numpy as np
 import matplotlib.pyplot as plt

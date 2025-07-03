@@ -1,8 +1,8 @@
 """
-Interpolate 1D Samples
-======================
+Compare different splines
+=========================
 
-Interpolate 1D samples with standard interpolation.
+Obtain a spline through different methods and compare the results.
 
 1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid. 
 
@@ -15,16 +15,11 @@ Interpolate 1D samples with standard interpolation.
 5. We define :math:`h(x) = g(x / T)`.
 
 6. Compute the mean squared error (MSE) between :math:`f` and :math:`h`.
-
-You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
-# Required Libraries
-# ------------------
-#
-# We import the required libraries, including numpy for numerical computations,
-# Matplotlib for the plots, and the `splineops` package.
+# Imports
+# -------
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,16 +34,6 @@ plt.rcParams.update({
     "ytick.labelsize": 14
 })
 
-# %%
-# Initial 1D Samples
-# ------------------
-#
-# We generate 1D samples and treat them as discrete signal points.
-# 
-# Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data.
-#
-# These are the input samples that we are going to interpolate.
-
 number_of_samples = 27
 
 f_support = np.arange(number_of_samples)
@@ -62,53 +47,11 @@ f_samples = np.array([
     0.50695, 0.544767, 0.555373
 ])
 
-plt.figure(figsize=(10, 4))
-plt.title("f[k] samples")
-plt.stem(f_support, f_samples, basefmt=" ")
-# Add a black horizontal line at y=0:
-plt.axhline(
-    y=0,
-    color="black",
-    linewidth=1,
-    zorder=0
-)
-plt.xlabel("k")
-plt.ylabel("f[k]")
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-
-# %%
-# Interpolate the Samples with a Spline
-# -------------------------------------
-#
-# We interpolate the 1D samples with a spline to obtain the continuously defined function
-#
-# .. math::
-#
-#    f(x) = \sum_{k\in{\mathbb{Z}}}\,c[k]\,\beta^{n}(x-k),
-#
-# where
-#
-# - the B-spline of degree :math:`n` is :math:`\beta^n`;
-#
-# - the spline coefficients :math:`c[k]` are determined from the input samples, such that :math:`f(k) = f[k]`.
-#
-# Let us now plot :math:`f`.
-
-# Plot points
 plot_points_per_unit = 12
 
 # Interpolated signal
 base = "bspline3"
 mode = "mirror"
-
-# %%
-# TensorSpline
-# ~~~~~~~~~~~~
-#
-# Here is one way to perform the standard interpolation.
 
 f = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
 
@@ -117,69 +60,6 @@ f_coords = np.array([q / plot_points_per_unit
 
 # Syntax hint: pass (plot_coords,) not plot_coords
 f_data = f(coordinates=(f_coords,), grid=False)
-
-# %%
-# Resize Method
-# ~~~~~~~~~~~~~
-#
-# The resize method with standard interpolation yields the same result.
-
-from splineops.resize.resize import resize
-
-# We'll produce the same number of output samples as in f_coords
-desired_length = plot_points_per_unit * f_support_length
-
-# IMPORTANT: We explicitly define a coordinate array from 0..(f_support_length - 1)
-# with `desired_length` points. This matches the domain and size that the `resize`
-# function will produce below, ensuring the two outputs are sampled at the exact
-# same x-positions, and thus comparable point-by-point.
-f_coords_resize = np.linspace(0, f_support_length - 1, desired_length)
-
-f_data_resize = resize(
-    data=f_samples,             # 1D input
-    output_size=(desired_length,),
-    method="cubic"      # ensures TensorSpline standard interpolation, not least-squares or oblique
-)
-
-# Ensure both arrays have identical shapes
-f_data_spline = f(coordinates=(f_coords_resize,), grid=False)
-assert f_data_spline.shape == f_data_resize.shape, "Arrays must match in shape."
-mse_diff = np.mean((f_data_spline - f_data_resize)**2)
-print(f"MSE between TensorSpline result and resize result = {mse_diff:.6e}")
-
-# %%
-# Plot of the Spline f
-# ~~~~~~~~~~~~~~~~~~~~
-
-plt.figure(figsize=(10, 4))
-plt.title("f[k] samples with interpolated f spline")
-plt.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
-# Add a black horizontal line at y=0:
-plt.axhline(
-    y=0,
-    color="black",
-    linewidth=1,
-    zorder=0 # draw behind other plot elements
-)
-plt.plot(f_coords_resize, f_data_resize, color="green", linewidth=2, label="f spline")
-plt.xlabel("k")
-plt.ylabel("f")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-# %%
-# Coarsening of f
-# ---------------
-# We define :math:`T` with :math:`|T| > 1` and sample :math:`f(x)` 
-# at :math:`x = T k` as
-#
-# .. math::
-#    g[k] = f(T k).
-#
-# These points :math:`g[k]` form a new discrete set, which we then treat 
-# as a separate signal to build another spline :math:`g`.
 
 val_T = np.pi
 
@@ -192,103 +72,6 @@ g = TensorSpline(data=g_samples, coordinates=g_support, bases=base, modes=mode)
 g_coords = np.array([q/plot_points_per_unit 
                      for q in range(plot_points_per_unit * len(g_support))])
 g_data = g(coordinates=(g_coords,), grid=False)
-
-fig = plt.figure(figsize=(12, 8))
-
-gs = GridSpec(
-    nrows=2, 
-    ncols=2,
-    # Match widths: first column = g_support_length, second column = leftover
-    width_ratios=[g_support_length, f_support_length - g_support_length],
-    height_ratios=[1, 1]
-)
-
-# Top row: entire row (two columns combined)
-ax_top = fig.add_subplot(gs[0, :])
-
-# Bottom row: left side for g, right side blank
-ax_bottom_left = fig.add_subplot(gs[1, 0])
-ax_bottom_right = fig.add_subplot(gs[1, 1])
-ax_bottom_right.axis("off")  # leave right side blank
-
-# 1) TOP ROW: f[k] + f spline + discrete g[k]
-ax_top.set_title("Interpolated f spline")
-
-# Plot discrete f[k] as stems
-ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
-
-# Plot spline f(x)
-ax_top.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
-
-# Overplot discrete g[k] as unfilled red squares at x = k * val_T
-x_g = np.arange(g_support_length) * val_T
-ax_top.plot(
-    x_g, 
-    g_samples,
-    "rs",              # red squares
-    mfc='none',        # unfilled
-    markersize=12,
-    markeredgewidth=2, 
-    label="g[k] samples"
-)
-
-# Horizontal line at 0 for reference
-ax_top.axhline(0, color='black', linewidth=1, zorder=0)
-
-# Make sure the top axis goes from 0..(f_support_length-1)
-ax_top.set_xlim(0, f_support_length - 1)
-ax_top.set_xticks(np.arange(0, f_support_length, 1))
-ax_top.set_xlabel("x")
-ax_top.set_ylabel("f")
-ax_top.grid(True)
-ax_top.legend()
-
-# 2) BOTTOM LEFT: discrete g[k] + g spline
-ax_bottom_left.set_title("Interpolated g spline")
-
-# Plot discrete g[k] with red vertical lines and unfilled red squares
-ax_bottom_left.vlines(
-    x=g_support,
-    ymin=0,
-    ymax=g_samples,
-    color='red',
-    linestyle='-',
-    linewidth=1
-)
-ax_bottom_left.plot(
-    g_support,
-    g_samples,
-    "rs",              # red squares
-    mfc='none',        # unfilled
-    markersize=12,
-    markeredgewidth=2,
-    label="g[k] samples"
-)
-
-# Plot g spline in purple over the same domain
-ax_bottom_left.plot(
-    g_coords, 
-    g_data,
-    color="purple", 
-    linewidth=2,
-    label="g spline"
-)
-
-# Horizontal line at 0
-ax_bottom_left.axhline(0, color='black', linewidth=1, zorder=0)
-
-ax_bottom_left.set_xlim(0, g_support_length - 1)
-ax_bottom_left.set_xticks(np.arange(0, g_support_length, 1))
-ax_bottom_left.set_xlabel("x")
-ax_bottom_left.set_ylabel("g")
-ax_bottom_left.grid(True)
-ax_bottom_left.legend()
-
-# Match vertical scale with the top axis
-ax_bottom_left.set_ylim(ax_top.get_ylim())
-
-fig.tight_layout()
-plt.show()
 
 # %%
 # Expand g to Obtain h

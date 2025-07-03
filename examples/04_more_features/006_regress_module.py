@@ -3,15 +3,11 @@ Regress Module
 ==============
 
 We use the regress module to perform linear regression on a set of 1D points.
-
-You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
 # Imports
 # -------
-#
-# Import the necessary libraries and modules.
 
 import numpy as np
 from matplotlib import pyplot as plt

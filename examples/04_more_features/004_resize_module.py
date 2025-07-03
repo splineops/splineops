@@ -3,12 +3,11 @@ Resize Module
 =============
 
 Shrink and re-expand a 2-D RGB image with splineops, then discuss aliasing.
-You can download this example from the tab at right (Python script or Jupyter notebook).
 """
 
 # %%
-# Required libraries
-# ------------------
+# Imports
+# -------
 
 import numpy as np
 import matplotlib.pyplot as plt

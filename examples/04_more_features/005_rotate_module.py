@@ -3,15 +3,11 @@ Rotate Module
 =============
 
 We use the rotate module to rotate a 2D image.
-
-You can download this example at the tab at right (Python script or Jupyter notebook.
 """
 
 # %%
 # Imports
 # -------
-#
-# Import the necessary libraries.
 
 import numpy as np
 import matplotlib.pyplot as plt
