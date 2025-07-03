@@ -21,6 +21,12 @@ from splineops.utils import (
     resize_multichannel,    # channel-wise wrapper around splineops.resize
 )
 
+plt.rcParams.update({
+    "font.size": 14,
+    "axes.titlesize": 18,
+    "axes.labelsize": 16,
+})
+
 # %%
 # Load and Normalize an Image
 # ---------------------------
@@ -59,19 +65,30 @@ expanded = resize_multichannel(
     modes="mirror",
 )
 
-# 5) Visualise the three stages
+# %%
+# Expanded Image (Thumbnail Example)
+# ----------------------------------
+#
+# We first show the final expanded image at large scale. This helps Sphinx
+# generate a visually useful thumbnail and lets users preview the aliasing artefacts up front.
 
-plt.rcParams.update({
-    "font.size": 14,
-    "axes.titlesize": 18,
-    "axes.labelsize": 16,
-})
+plt.figure(figsize=(10, 10))  # Tune size for thumbnail quality
+plt.imshow(expanded)
+plt.title(f"Expanded Image (×{1/shrink_factor:.1f})", fontsize=18)
+plt.axis("off")
+plt.tight_layout()
+plt.show()
+
+# %%
+# Resize Stages (Original → Shrink → Expand)
+# ------------------------------------------
 
 fig, axes = plt.subplots(3, 1, figsize=(8, 18))
 axes[0].imshow(adjusted_uint8); axes[0].set_title("Adjusted Original"); axes[0].axis("off")
 axes[1].imshow(canvas);         axes[1].set_title(f"Shrunken (×{shrink_factor})"); axes[1].axis("off")
 axes[2].imshow(expanded);       axes[2].set_title(f"Expanded (×{1/shrink_factor:.1f})"); axes[2].axis("off")
 plt.tight_layout(); plt.show()
+
 
 # %%
 # Aliasing discussion

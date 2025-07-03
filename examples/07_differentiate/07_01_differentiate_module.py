@@ -2,7 +2,7 @@
 Differentiate Module
 ====================
 
-In this example, we demonstrate how to use the differentiate module to compute various
+In this example, we demonstrate how to use the differentiate module to compute different
 differential operations on an image.
 """
 

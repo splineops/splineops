@@ -1,6 +1,6 @@
 """
-Rotate Module
-=============
+Rotate Image
+============
 
 We use the rotate module to rotate a 2D image.
 """
@@ -96,55 +96,3 @@ ax[1].legend()
 
 plt.tight_layout()
 plt.show()
-
-# %%
-# Create an Animation
-# -------------------
-#
-# Create the animation of the image being rotated from 0 to 360 degrees. Explore the effect of the spline degree.
-
-def rotate_and_mask(image, angle, degree, center, radius):
-    rotated = rotate(image, angle=angle, degree=degree, center=center)
-    rows, cols = rotated.shape
-    rr, cc = np.ogrid[:rows, :cols]
-    mask = (rr - center[0])**2 + (cc - center[1])**2 <= radius**2
-    # We'll return both the rotated image and the mask so we can use the mask as alpha.
-    return rotated, mask
-
-def create_combined_animation(image, center, radius):
-    fig, axes = plt.subplots(3, 1, figsize=(6, 18), constrained_layout=True)
-    degrees_list = [0, 1, 3]
-    for ax, d in zip(axes, degrees_list):
-        ax.axis("off")
-        ax.set_title(f"Spline Degree {d}")
-    # Initialize the images with just zeros
-    image_plots = []
-    for ax in axes:
-        img_plot = ax.imshow(
-            np.zeros((image.shape[0], image.shape[1])),
-            cmap="gray",
-            vmin=0,
-            vmax=255,
-        )
-        image_plots.append(img_plot)
-
-    # Smaller rotation angle per frame
-    rotation_step = 10  # Degrees per frame (adjust this value)
-    total_frames = 360 // rotation_step  # Number of frames for a full rotation
-
-    def animate(frame):
-        angle = frame * rotation_step  # Increment rotation angle
-        for i, d in enumerate(degrees_list):
-            rotated_img, m = rotate_and_mask(image, angle=angle, degree=d, center=center, radius=radius)
-            image_plots[i].set_data(rotated_img)
-            image_plots[i].set_alpha(m.astype(float))  # Apply mask as transparency
-        return image_plots
-
-    ani = animation.FuncAnimation(
-        fig, animate, frames=total_frames, interval=250, blit=True
-    )
-    return ani
-
-# Create the animation
-ani = create_combined_animation(image_resized, custom_center, radius)
-ani_html = ani.to_jshtml()
