@@ -58,7 +58,7 @@ def resize(
     method: str = "cubic",
     modes: Union[str, Sequence[str]] = "mirror",
 ) -> npt.NDArray:
-    r"""
+    """
     Resize an *N*-dimensional array using splines.
 
     Parameters
@@ -67,7 +67,7 @@ def resize(
         Input array.
 
     zoom_factors : float or sequence of float, optional
-        Per-axis scale factors.  Ignored if *output_size* is given.
+        Per-axis scale factors. Ignored if *output_size* is given.
 
     output : ndarray or dtype, optional
         If an ``ndarray`` is supplied, the result is written **in-place** and
@@ -79,23 +79,21 @@ def resize(
     output_size : tuple of int, optional
         Desired shape (overrides *zoom_factors*).
 
-    method : {'fast', 'linear', 'quadratic', 'cubic',
-              'linear-fast_antialiasing', 'quadratic-fast_antialiasing',
-              'cubic-fast_antialiasing',
-              'linear-best_antialiasing', 'quadratic-best_antialiasing',
-              'cubic-best_antialiasing'}, optional
+    method : string
         Preset selecting **both** the algorithm *and* the spline degree:
+        
+        - **fast**: interpolation, degree 0
+        - **linear**: interpolation, degree 1
+        - **quadratic**: interpolation, degree 2
+        - **cubic**: interpolation, degree 3
+        - **linear-fast_antialiasing**: oblique, degree 1
+        - **quadratic-fast_antialiasing**: oblique, degree 2
+        - **cubic-fast_antialiasing**: oblique, degree 3
+        - **linear-best_antialiasing**: least-squares, degree 1
+        - **quadratic-best_antialiasing**: least-squares, degree 2
+        - **cubic-best_antialiasing**: least-squares, degree 3
 
-        * **fast** – interpolation, degree 0
-        * **linear** – interpolation, degree 1
-        * **quadratic** – interpolation, degree 2
-        * **cubic** – interpolation, degree 3
-        * **linear-fast_antialiasing** – oblique, degree 1
-        * **quadratic-fast_antialiasing** – oblique, degree 2
-        * **cubic-fast_antialiasing** – oblique, degree 3
-        * **linear-best_antialiasing** – least-squares, degree 1
-        * **quadratic-best_antialiasing** – least-squares, degree 2
-        * **cubic-best_antialiasing** – least-squares, degree 3
+        Note that anti-aliasing variants are preferred when down-sampling.
 
     modes : str or sequence of str, optional
         Boundary handling passed to
