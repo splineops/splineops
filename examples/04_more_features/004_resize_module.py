@@ -22,7 +22,7 @@ from splineops.utils import (
 )
 
 # %%
-# Load and normalise an image
+# Load and Normalize an Image
 # ---------------------------
 
 url = "https://r0k.us/graphics/kodak/kodak/kodim19.png"
