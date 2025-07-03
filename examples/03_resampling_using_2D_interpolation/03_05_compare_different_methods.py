@@ -2,10 +2,8 @@
 Compare Different Methods
 =========================
 
-Interpolate 2D images with standard interpolation, least-squares, and oblique projection.
-Compare them to SciPy zoom. We compute SNR and MSE only on a central region 
-to exclude boundary artifacts. A summary of the cost/benefit tradeoff of the three methods
-is provided at the bottom of this page.
+A summary of the cost/benefit tradeoff of the three interpolation methods 
+is provided in this example.
 """
 
 # %%
@@ -131,8 +129,8 @@ for method_name, snr_val, mse_val, time_val in methods:
     print(row_line)
 
 # %%
-# Vertical Comparison: All Methods (3×1)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Visual Comparison of all Methods
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 recovered_stack = [
     ("Standard (Cubic)",       recovered_2d_interp, snr_2d_interp, mse_2d_interp),

@@ -2,10 +2,8 @@
 Standard Interpolation
 ======================
 
-Interpolate 2D images with standard interpolation, least-squares, and oblique projection.
-Compare them to SciPy zoom. We compute SNR and MSE only on a central region 
-to exclude boundary artifacts. A summary of the cost/benefit tradeoff of the three methods
-is provided at the bottom of this page.
+Interpolate 2D images with standard interpolation. Compare them to SciPy zoom. We compute SNR and MSE only on a central region 
+to exclude boundary artifacts.
 """
 
 # %%

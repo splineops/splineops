@@ -29,22 +29,16 @@ url = "https://r0k.us/graphics/kodak/kodak/kodim19.png"
 img = Image.open(BytesIO(requests.get(url).content))
 data = np.asarray(img, dtype=np.float64) / 255.0      # H × W × 3, range [0, 1]
 
-# %%
 # 1) Quick down-size so the notebook images aren't huge
-# ----------------------------------------------------
 initial_shrink = 0.8
 data_small = ndi_zoom(data, (initial_shrink, initial_shrink, 1), order=1)
 
-# %%
 # 2) Choose the demo shrink factor and make dimensions "zoom-friendly"
-# -------------------------------------------------------------------
 shrink_factor = 0.3
 adjusted = adjust_size_for_zoom(data_small, shrink_factor)      # still float64 [0, 1]
 adjusted_uint8 = (adjusted * 255).astype(np.uint8)
 
-# %%
 # 3) Shrink with splineops
-# ------------------------
 shrunken = resize_multichannel(
     adjusted,               # float64 [0, 1]
     shrink_factor,
@@ -57,9 +51,7 @@ H_adj, W_adj, _ = adjusted_uint8.shape
 canvas = np.full_like(adjusted_uint8, 255)
 canvas[: shrunken.shape[0], : shrunken.shape[1]] = shrunken
 
-# %%
 # 4) Re-expand to the original adjusted size
-# -----------------------------------------
 expanded = resize_multichannel(
     shrunken.astype(np.float64) / 255.0,   # back to float64 [0, 1]
     1.0 / shrink_factor,
@@ -67,9 +59,8 @@ expanded = resize_multichannel(
     modes="mirror",
 )
 
-# %%
 # 5) Visualise the three stages
-# -----------------------------
+
 plt.rcParams.update({
     "font.size": 14,
     "axes.titlesize": 18,

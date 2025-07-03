@@ -1,8 +1,8 @@
 """
-Oblique Projection
-==================
+Least-Squares Projection
+========================
 
-Interpolate 2D images with standard interpolation, least-squares, and oblique projection.
+Interpolate 2D images with least-squares projection.
 Compare them to SciPy zoom. We compute SNR and MSE only on a central region 
 to exclude boundary artifacts. A summary of the cost/benefit tradeoff of the three methods
 is provided at the bottom of this page.
@@ -13,7 +13,6 @@ is provided at the bottom of this page.
 # -------
 
 import numpy as np
-import matplotlib.pyplot as plt
 import requests
 from io import BytesIO
 from PIL import Image
@@ -51,20 +50,20 @@ zoom_factors_2d = (0.25, 0.25)
 border_fraction = 0.3
 
 # %%
-# Oblique Projection
-# ------------------
+# Least-Squares Projection
+# ------------------------
 #
-# We use the oblique-projection method.
+# We use the least-squares projection method.
 
 (
-    resized_2d_ob,
-    recovered_2d_ob,
-    snr_2d_ob,
-    mse_2d_ob,
-    time_2d_ob
+    resized_2d_ls,
+    recovered_2d_ls,
+    snr_2d_ls,
+    mse_2d_ls,
+    time_2d_ls
 ) = resize_and_compute_metrics(
     input_image_normalized,
-    method="cubic-fast_antialiasing",
+    method="cubic-best_antialiasing",
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction
 )
@@ -73,22 +72,22 @@ border_fraction = 0.3
 # Recovered Image
 # ~~~~~~~~~~~~~~~
 #
-# We plot the recovered image after a reversing of the zoom factors.
+# We plot the recovered image after reversing zoom factors.
 
-plot_recovered_image(recovered_2d_ob)
+plot_recovered_image(recovered_2d_ls)
 
 # %%
 # Resized Image
 # ~~~~~~~~~~~~~
 #
-# We plot the resized image with the oblique-projection method.
+# We plot the resized image with least-squares projection method.
 
 plot_resized_image(
     original=input_image_normalized,
-    resized=resized_2d_ob,
-    method="cubic-fast_antialiasing",
+    resized=resized_2d_ls,
+    method="cubic-best_antialiasing",
     zoom_factors=zoom_factors_2d,
-    time_elapsed=time_2d_ob
+    time_elapsed=time_2d_ls
 )
 
 # %%
@@ -99,7 +98,7 @@ plot_resized_image(
 
 plot_difference_image(
     original=input_image_normalized,
-    recovered=recovered_2d_ob,
-    snr=snr_2d_ob,
-    mse=mse_2d_ob
+    recovered=recovered_2d_ls,
+    snr=snr_2d_ls,
+    mse=mse_2d_ls
 )
