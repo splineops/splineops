@@ -1,0 +1,118 @@
+"""
+Usage of the Class TensorSpline
+===============================
+
+Showcase TensorSpline class basic functionality.
+"""
+
+# %%
+# Imports
+# -------
+
+import numpy as np
+import matplotlib.pyplot as plt
+from splineops.interpolate.tensorspline import TensorSpline
+
+# %%
+# Data Preparation
+# ----------------
+#
+# General configuration and sample data.
+
+dtype = "float32"
+
+nx, ny = 2, 5
+xmin, xmax = 0, 2.0
+ymin, ymax = 0, 5.0
+xx = np.linspace(xmin, xmax, nx, dtype=dtype)
+yy = np.linspace(ymin, ymax, ny, dtype=dtype)
+coordinates = xx, yy
+prng = np.random.default_rng(seed=5250)
+data = prng.standard_normal(size=tuple(c.size for c in coordinates))
+data = np.ascontiguousarray(data, dtype=dtype)
+
+# %%
+# TensorSpline Setup
+# ------------------
+#
+# Configure bases and modes for TensorSpline.
+
+bases = "bspline3"
+modes = "mirror"
+tensor_spline = TensorSpline(data=data, coordinates=coordinates, bases=bases, modes=modes)
+
+# %%
+# Evaluation Coordinates
+# ----------------------
+#
+# Define evaluation coordinates to extend and oversample the original grid.
+
+dx = (xx[-1] - xx[0]) / (nx - 1)
+dy = (yy[-1] - yy[0]) / (ny - 1)
+pad_fct = 1.0
+px = pad_fct * nx * dx
+py = pad_fct * ny * dy
+eval_xx = np.linspace(xx[0] - px, xx[-1] + px, 100 * nx)
+eval_yy = np.linspace(yy[0] - py, yy[-1] + py, 100 * ny)
+eval_coords = eval_xx, eval_yy
+
+# %%
+# Interpolation and Visualization
+# -------------------------------
+#
+# Perform interpolation and visualize the original and interpolated data.
+
+data_eval = tensor_spline(coordinates=eval_coords)
+
+extent = [xx[0] - dx / 2, xx[-1] + dx / 2, yy[0] - dy / 2, yy[-1] + dy / 2]
+eval_extent = [
+    eval_xx[0] - dx / 2,
+    eval_xx[-1] + dx / 2,
+    eval_yy[0] - dy / 2,
+    eval_yy[-1] + dy / 2,
+]
+
+fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6), sharex="all", sharey="all")
+axes[0].imshow(data.T, extent=extent, cmap="gray", aspect="equal")
+axes[0].set_title("Original Data Samples")
+axes[1].imshow(data_eval.T, extent=eval_extent, cmap="gray", aspect="equal")
+axes[1].set_title("Interpolated Data")
+plt.tight_layout()
+plt.show()
+
+# %%
+# GPU Support
+# -----------
+#
+# We leverage the GPU for TensorSpline if cupy is installed.
+# If cupy is not available, we skip this section.
+
+try:
+    import cupy as cp
+    HAS_CUPY = True
+except ImportError:
+    HAS_CUPY = False
+
+if not HAS_CUPY:
+    print("CuPy is not installed, skipping GPU demonstration.")
+else:
+    # Convert existing data/coordinates to CuPy
+    data_cp = cp.asarray(data)
+    coords_cp = tuple(cp.asarray(c) for c in coordinates)
+
+    # Create CuPy-based spline
+    ts_cp = TensorSpline(data=data_cp, coordinates=coords_cp, bases=bases, modes=modes)
+
+    # Convert evaluation coordinates to CuPy
+    eval_coords_cp = tuple(cp.asarray(c) for c in eval_coords)
+
+    # Evaluate on the GPU
+    data_eval_cp = ts_cp(coordinates=eval_coords_cp)
+    
+    # Compare with NumPy evaluation
+    # (Ensure you already have data_eval from the CPU version above.)
+    data_eval_cp_np = data_eval_cp.get()  # Move from GPU to CPU
+    diff = data_eval_cp_np - data_eval  # 'data_eval' is from the CPU TensorSpline
+    mse = np.mean(diff**2)
+    print(f"Max abs diff (CPU vs GPU): {np.max(np.abs(diff)):.3e}")
+    print(f"MSE (CPU vs GPU): {mse:.3e}")
