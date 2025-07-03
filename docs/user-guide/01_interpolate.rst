@@ -100,9 +100,12 @@ The answer is yes, we can go from discrete samples to continuously defined curve
 Interpolation Examples
 ----------------------
 
-* :ref:`sphx_glr_auto_examples_001_usage_of_the_class_tensorspline.py`
-* :ref:`sphx_glr_auto_examples_002_interpolate_1D_samples.py`
-* :ref:`sphx_glr_auto_examples_003_interpolate_2D_images.py`
+* :ref:`sphx_glr_auto_examples_01_quick-start_01_01_tensorspline_class.py`
+* :ref:`sphx_glr_auto_examples_01_quick-start_01_02_spline_bases.py`
+* :ref:`sphx_glr_auto_examples_01_quick-start_01_03_extension_modes.py`
+* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_01_interpolate_1d_samples.py`
+* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_02_resample_a_1d_spline.py`
+* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_03_compare_different_splines.py`
 
 References
 ----------
