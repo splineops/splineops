@@ -1,61 +1,132 @@
 Smooth
 ======
 
-.. currentmodule:: splineops
-
 Overview
 --------
 
-The `smooth` module in `splineops` implements fractional smoothing splines, which are optimal estimators for smooth function approximation and interpolation [1]_, [2]_, [3]_.
-Unlike standard polynomial splines, these splines are derived from fractional differential operators, making them highly adaptable for self-similar and fractal-like signals.
+The **smooth** module offers practical tools for removing noise and
+filling in missing values with *fractional smoothing splines*.
+Think of these splines as flexible low-pass filters whose sharpness can
+be tuned continuously, making them effective for signals and images that
+exhibit repeating, self-similar patterns.
 
-This module
+What you will find
+^^^^^^^^^^^^^^^^^^
 
-- supports 1D and N-dimensional smoothing splines;
-- provides a recursive-filtering implementation for fast computation;
-- uses fractional-order derivatives for the fine control of smoothness;
-- implements fast Fourier transform (FFT)-based methods for large-scale smoothing
-- and provides direct interpolation and denoising functionality.
+* **Exact 1-D routine** – ``smoothing_spline``  
+  Works on a 1-D array and returns the mathematically exact
+  fractional-spline result.
 
-These methods are particularly useful in signal processing, image reconstruction, and time-series modeling, especially for noisy or fractal-like data.
+* **Isotropic N-D routine** – ``smoothing_spline_nd``  
+  Extends the idea to 2-D pictures or 3-D volumes through one FFT;
+  internally it behaves like a Butterworth low-pass filter whose order is
+  set by the parameter ``gamma``.
 
-Problem Minimization
---------------------
+* **Fast cubic shortcut** – ``recursive_smoothing_spline``  
+  A lightweight forward/backward IIR filter that approximates the cubic
+  (\ ``gamma = 1``\ ) case and runs in a single pass—handy for
+  real-time streams.
 
-Smoothing splines solve a regularized variational problem where the objective is to fit a function :math:`f(x)` to given data points :math:`(x_m, y_m)`, 
-while penalizing roughness. The problem is formalized as
+* Extra helpers to generate test data
+  (fractional Brownian motion) and to compute spline autocorrelations.
+
+Core idea in one dimension
+--------------------------
+
+Given noisy samples :math:`y[k]` at integer positions, the algorithm
+finds a smooth curve :math:`s(t)` that minimises
 
 .. math::
 
-   \arg\min_{f}
-   \Biggl(
-    \sum_{m=1}^{M} E\bigl(f(x_m),y_m\bigr)
-    + \,\lambda\,\bigl\|\mathrm{D}^\gamma f\bigr\|_{L_{2}}\
-   \Biggr),
+   \sum_{k}\bigl|\,y[k] - s(k)\bigr|^{2}
+   \;+\;
+   \lambda\,\bigl\lVert\partial^{\gamma} s\bigr\rVert_{L^{2}}^{2},
 
 where
 
-- the data-fidelity term is :math:`E(f(x_m), y_m)`. It is quadratic, with :math:`E(f(x_m), y_m) = (f(x_m) - y_m)^2`;
-- the regularization parameter is :math:`\lambda`, which offer control over the smoothness;
-- the fractional derivative of order :math:`\gamma` is :math:`\mathrm{D}^\gamma f`;
-- the norm :math:`\| \cdot \|_{L_{2}}` represents the total-variation norm and enforces smoothness.
+* the first term keeps the curve close to the data,
+* the second term penalises roughness,
+* :math:`\lambda` controls the trade-off,
+* :math:`\partial^{\gamma}` is a derivative of *fractional* order
+  :math:`\gamma` (for example, :math:`\gamma = 1` reproduces the classical
+  cubic-spline penalty).
 
-This formulation ensures that the smoothing-spline solution is a fractional B-spline.
+If we write :math:`Y(\omega)` for the discrete Fourier transform (DFT) of
+the noisy samples and :math:`S(\omega)` for the DFT of the unknown
+spline, the Euler–Lagrange equations turn the minimisation above into a
+*point-wise* relationship in the frequency domain
 
-Regularization Parameter
-------------------------
+.. math::
 
-The regularization parameter :math:`\lambda` balances data fidelity and smoothness.
+   S(\omega)\;
+   =\;
+   H(\omega)\;Y(\omega),\qquad
+   H(\omega)=\frac{1}{1+\lambda\,|\omega|^{2\gamma}}.
 
-- Small :math:`\lambda`: Preserves details but may fail to attenuate noise.
-- Large :math:`\lambda`: Produces a smooth function but may also oversmooth.
+That is, the optimum is obtained by
 
-For images and high-dimensional data, a typical choice is :math:`\lambda \in [0.05, 0.2]`.
+1. **FFT** – compute :math:`Y(\omega)` from the data,  
+2. **Multiply** – apply the low-pass gain :math:`H(\omega)`,  
+3. **inverse FFT** – transform back to get :math:`s[k]`.
 
-Smooth Example
---------------
+Because the filter is diagonal in the Fourier domain, the whole procedure
+takes one forward FFT, an element-wise product, and one inverse FFT.
 
-* :ref:`sphx_glr_auto_examples_007_smooth_module.py`
+Core idea in higher dimensions
+------------------------------
+
+For a 2-D image or a 3-D volume we replace the one-dimensional
+fractional derivative with the **fractional Laplacian**
+:math:`(-\Delta)^{\gamma/2}`.  
+The variational cost therefore becomes
+
+.. math::
+
+   \sum_{\mathbf k}\bigl|\,y[\mathbf k]-s(\mathbf k)\bigr|^{2}
+   \;+\;
+   \lambda\,\bigl\lVert(-\Delta)^{\gamma/2}s\bigr\rVert_{L^{2}}^{2}.
+
+In the Fourier domain the Laplacian turns into
+:math:`\|\boldsymbol\omega\|^{2}`, so the optimal filter is the *radial*
+version of the 1-D one:
+
+.. math::
+
+   S(\boldsymbol\omega)
+   \;=\;
+   \frac{1}{1+\lambda\,\lVert\boldsymbol\omega\rVert^{2\gamma}}
+   \;Y(\boldsymbol\omega).
+
+This looks and behaves like an order :math:`2\gamma` **Butterworth
+low-pass** but now works the same in every direction.  The practical
+algorithm is identical to the 1-D case:
+
+#. Run an *n*-dimensional FFT to obtain :math:`Y(\boldsymbol\omega)`.  
+#. Multiply by the gain above.  
+#. Apply the inverse FFT to get the smoothed image or volume.
+
+Because the filter is applied element-wise in the frequency domain, the
+computation still needs just one forward FFT and one inverse FFT,
+irrespective of the data dimension.
+
+Choosing the parameters
+-----------------------
+
+* **gamma** – controls how steeply the filter rolls off  
+  (larger values ⇒ steeper transition).  Typical range:
+  :math:`0.5 \le \gamma \le 3`.
+
+* **lambda** – moves the cut-off frequency  
+  (small values keep more detail, large values smooth harder).
+  For most images, :math:`10^{-3} \lesssim \lambda \lesssim 10^{-1}` is a
+  good starting interval.
+
+Example scripts
+---------------
+
+* :ref:`sphx_glr_auto_examples_06_smooth_06_01_1d_fractional_brownian_motion.py`
+* :ref:`sphx_glr_auto_examples_06_smooth_06_02_2d_image_smoothing.py`
+* :ref:`sphx_glr_auto_examples_06_smooth_06_04_recursive_smoothing_spline.py`
 
 References
 ----------
