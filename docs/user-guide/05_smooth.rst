@@ -103,6 +103,33 @@ Because the filter is applied element-wise in the frequency domain, the
 computation still needs just one forward FFT and one inverse FFT,
 whatever the data dimension.
 
+Fast recursive cubic smoother
+-----------------------------
+
+When you only need the **cubic** case (``gamma = 1``) the frequency
+response above simplifies so much that it can be implemented with two
+tiny first-order filters—one run forward, the other backward.  The key
+quantity is the *pole*  
+
+.. math::
+
+   z_1 \;=\;-\frac{\lambda}{1+\sqrt{\,1+4\lambda\,}}.
+
+With that number in hand the algorithm is
+
+#. **Causal pass**  
+   start at :math:`k = 0` and accumulate  
+   :math:`c[k] = y[k] + z_1\,c[k-1]`.
+
+#. **Anti-causal pass**  
+   start at the last sample and run backwards  
+   :math:`s[k] = c[k] + z_1\,s[k+1]`.
+
+The two passes give the same zero-phase result you would obtain from the
+FFT method but at a cost that is strictly linear in the number of
+samples and with virtually no memory footprint.  A detailed derivation
+appears in [1]_, Section IV-B.
+
 Choosing the parameters
 -----------------------
 
