@@ -185,7 +185,7 @@ coeffs1  = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
 
 plt.figure(figsize=(8, 8))
 imshow_matched_LL(coeffs1, levels=1, orig_image=image_gray,
-                  detail_pct=95, ll_low=2, ll_high=98,
+                  detail_pct=95, ll_low=5, ll_high=99,
                   title="Haar 1-Level Decomposition")
 plt.tight_layout()
 plt.show()
@@ -200,7 +200,7 @@ coeffs2  = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
 
 plt.figure(figsize=(8, 8))
 imshow_matched_LL(coeffs2, levels=2, orig_image=image_gray,
-                  detail_pct=95, ll_low=2, ll_high=98,
+                  detail_pct=95, ll_low=5, ll_high=99,
                   title="Haar 2-Level Decomposition")
 plt.tight_layout()
 plt.show()
@@ -214,7 +214,7 @@ coeffs3  = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
 
 plt.figure(figsize=(8, 8))
 imshow_matched_LL(coeffs3, levels=3, orig_image=image_gray,
-                  detail_pct=95, ll_low=2, ll_high=98,
+                  detail_pct=95, ll_low=5, ll_high=99,
                   title="Haar 3-Level Decomposition")
 plt.tight_layout()
 plt.show()
