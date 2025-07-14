@@ -109,32 +109,6 @@ Because the filter is applied element-wise in the frequency domain, the
 computation still needs just one forward FFT and one inverse FFT,
 whatever the data dimension.
 
-Relation to classical Butterworth filters
------------------------------------------
-
-* In **1-D** the exact spline response  
-  :math:`H(\omega)=\bigl(1+\lambda|\omega|^{2\gamma}\bigr)^{-1}`  
-  is squeezed between two order-:math:`2\gamma` Butterworth curves whose
-  cut-off frequencies differ by less than one octave (proved in Unser &
-  Blu, Part I).  It therefore *acts* like a fractional Butterworth while
-  still enjoying the spline’s polynomial-reproduction property.
-
-* In **higher dimensions** the module chooses the isotropic penalty
-  :math:`(-\Delta)^{\gamma/2}`; the resulting filter  
-  :math:`H(\boldsymbol\omega)=\bigl(1+\lambda\lVert\boldsymbol\omega\rVert^{2\gamma}\bigr)^{-1}`  
-  *is exactly* a radial Butterworth low-pass of order :math:`2\gamma`.
-
-A simple rule of thumb links the parameters:
-
-.. math::
-
-   \omega_0 = \lambda^{-1/(2\gamma)}
-   \quad\Longleftrightarrow\quad
-   \lambda = \omega_0^{-2\gamma},
-
-so you can pick a cut-off frequency :math:`\omega_0` and compute
-``lambda`` just as you would for a Butterworth design.
-
 Choosing the parameters
 -----------------------
 
@@ -158,13 +132,13 @@ References
 ----------
 
 .. [1] M. Unser, T. Blu, `Self-Similarity: Part I—Splines and Operators <https://doi.org/10.1109/TSP.2006.890843>`_, 
-   IEEE Transactions on Signal Processing, vol. 55, no. 4, pp. 1352–1363,
+   IEEE Transactions on Signal Processing, vol. 55, no. 4, pp. 1352-1363,
    April 2007.
 
 .. [2] T. Blu, M. Unser, `Self-Similarity: Part II—Optimal Estimation of
    Fractal Processes <https://doi.org/10.1109/TSP.2006.890845>`_, 
-   IEEE Transactions on Signal Processing, vol. 55, no. 4, pp. 1364–1378,
+   IEEE Transactions on Signal Processing, vol. 55, no. 4, pp. 1364-1378,
    April 2007.
 
 .. [3] M. Unser, T. Blu, `Fractional Splines and Wavelets <https://doi.org/10.1137/S0036144598349435>`_, 
-   SIAM Review, vol. 42, no. 1, pp. 43–67, March 2000.
+   SIAM Review, vol. 42, no. 1, pp. 43-67, March 2000.
