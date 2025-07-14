@@ -53,37 +53,72 @@ image_gray = (
 ny, nx = image_gray.shape
 print(f"Downloaded image shape = {ny} x {nx}")
 
-def imshow_percentile(coeffs, pct=99, ax=None, title=None):
+# %%
+# Helper – balanced view: LL gets its own stretch + gamma, details stay centred
+# -----------------------------------------------------------------------------
+def imshow_dual_scaling(
+    coeffs,
+    levels,
+    detail_pct=95,       # clip for LH/HL/HH bands
+    ll_low=2, ll_high=98,# percentiles for LL stretch
+    ll_gamma=2.0,        # >1 darkens the LL block, <1 lightens
+    ax=None,
+    title=None,
+    cmap='gray',
+):
     """
-    Symmetric percentile stretch about zero and display.
+    Show a quadrant-pyramid so that
+
+      • LL block is stretched *by its own* percentiles and optionally darkened
+        with a gamma (>1 darkens, <1 lightens);
+
+      • all detail coefficients are percentile-stretched, then mapped to
+        0.5±0.5, so zero ⇒ mid-gray.
 
     Parameters
     ----------
-    coeffs : np.ndarray
-        2-D array of wavelet coefficients.
-    pct : float, optional
-        Percentile for clipping magnitude (0–100). 99 keeps the
-        largest 1 % saturated; lower pct → more aggressive stretch.
-    ax : matplotlib.axes.Axes, optional
-        Axis to draw on; if None, uses plt.gca().
-    title : str, optional
-        A title for the axes.
+    coeffs : 2-D ndarray
+        Quadrant-pyramid of wavelet coefficients.
+    levels : int
+        Decomposition depth (to locate the LL block).
+    detail_pct : float
+        |coeff| percentile mapped to ±1 in the detail bands.
+    ll_low, ll_high : float
+        Percentiles (0–100) used for LL contrast stretch.
+    ll_gamma : float
+        Gamma applied *after* stretching the LL block.
     """
     if ax is None:
         ax = plt.gca()
 
-    lim = np.percentile(np.abs(coeffs), pct)
-    im = ax.imshow(
-        coeffs,
-        cmap="gray",
-        vmin=-lim,
-        vmax=+lim,
-        interpolation="nearest",
-    )
-    ax.set_axis_off()
+    vis          = np.empty_like(coeffs, dtype=np.float64)
+    ny, nx       = vis.shape
+    ny_ll        = ny // (2 ** levels)
+    nx_ll        = nx // (2 ** levels)
+
+    # ─────────────────── 1.  LL block ───────────────────
+    ll           = coeffs[:ny_ll, :nx_ll]
+    lo, hi       = np.percentile(ll, [ll_low, ll_high])
+    hi           = max(hi, lo + 1e-12)          # avoid zero division
+    ll_scaled    = np.clip((ll - lo) / (hi - lo), 0, 1)
+    ll_scaled    = ll_scaled ** ll_gamma        # gamma darken / lighten
+    vis[:ny_ll, :nx_ll] = ll_scaled
+
+    # ─────────────────── 2.  Detail bands ───────────────
+    detail_mask  = np.ones_like(coeffs, dtype=bool)
+    detail_mask[:ny_ll, :nx_ll] = False
+    if detail_mask.any():
+        dvals   = coeffs[detail_mask]
+        d_scale = np.percentile(np.abs(dvals), detail_pct)
+        d_scale = max(d_scale, 1e-12)
+        d_norm  = np.clip(dvals / d_scale, -1, 1) / 2 + 0.5   # [-1,1]→[0,1]
+        vis[detail_mask] = d_norm
+
+    # ─────────────────── 3.  Display ────────────────────
+    ax.imshow(vis, cmap=cmap, vmin=0, vmax=1, interpolation='nearest')
+    ax.axis('off')
     if title:
         ax.set_title(title, fontsize=14)
-    return im
 
 # %%
 # 2D Wavelet Decomposition
@@ -145,7 +180,9 @@ wavelet1 = HaarWavelets(scales=1)
 coeffs1  = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
 
 plt.figure(figsize=(8, 8))
-imshow_percentile(coeffs1, pct=98, title="Haar 1-Level Decomposition")
+imshow_dual_scaling(coeffs1, levels=1,
+                    detail_pct=95, ll_low=2, ll_high=98, ll_gamma=2.0,
+                    title="Haar 1-Level (dual-scaled)")
 plt.tight_layout()
 plt.show()
 
@@ -158,7 +195,9 @@ wavelet2 = HaarWavelets(scales=2)
 coeffs2  = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
 
 plt.figure(figsize=(8, 8))
-imshow_percentile(coeffs2, pct=98, title="Haar 2-Level Decomposition")
+imshow_dual_scaling(coeffs2, levels=2,
+                    detail_pct=95, ll_low=2, ll_high=98, ll_gamma=2.0,
+                    title="Haar 2-Level (dual-scaled)")
 plt.tight_layout()
 plt.show()
 
@@ -170,6 +209,8 @@ wavelet3 = HaarWavelets(scales=3)
 coeffs3  = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
 
 plt.figure(figsize=(8, 8))
-imshow_percentile(coeffs3, pct=99, title="Haar 3-Level Decomposition")
+imshow_dual_scaling(coeffs3, levels=3,
+                    detail_pct=95, ll_low=2, ll_high=98, ll_gamma=2.0,
+                    title="Haar 3-Level (dual-scaled)")
 plt.tight_layout()
 plt.show()
