@@ -33,45 +33,39 @@ What you will find
 Core idea in one dimension
 --------------------------
 
-Given noisy samples :math:`y[k]` at integer positions, the algorithm
-finds a smooth curve :math:`s(t)` that minimises
+Given noisy samples :math:`y[k]` at integer positions, we look for a
+smooth curve :math:`s(t)` that minimises
 
 .. math::
 
-   \sum_{k}\bigl|\,y[k] - s(k)\bigr|^{2}
+   \sum_{k}\lvert y[k]-s(k)\rvert^{2}
    \;+\;
-   \lambda\,\bigl\lVert\partial^{\gamma} s\bigr\rVert_{L^{2}}^{2},
+   \lambda\,\lVert\partial^{\gamma}s\rVert_{L^{2}}^{2},
 
 where
 
-* the first term keeps the curve close to the data,
+* the first term measures closeness to the data,
 * the second term penalises roughness,
-* :math:`\lambda` controls the trade-off,
-* :math:`\partial^{\gamma}` is a derivative of *fractional* order
-  :math:`\gamma` (for example, :math:`\gamma = 1` reproduces the classical
-  cubic-spline penalty).
+* :math:`\lambda` balances the two,
+* :math:`\partial^{\gamma}` is a *fractional* derivative
+  (:math:`\gamma=1` gives the classic cubic penalty).
 
-If we write :math:`Y(\omega)` for the discrete Fourier transform (DFT)
-of the noisy samples and :math:`S(\omega)` for the DFT of the unknown
-spline, the Euler–Lagrange equations turn the minimisation above into a
-*point-wise* relationship in the frequency domain
+Taking the discrete Fourier transform (DFT) of both sides turns the
+problem into a simple, frequency-by-frequency scaling
 
 .. math::
 
-   S(\omega)
-   \;=\;
-   H(\omega)\,Y(\omega),\qquad
-   H(\omega)=\frac{1}{1+\lambda\,|\omega|^{2\gamma}}.
+   S(\omega) \;=\; H(\omega)\,Y(\omega),\qquad
+   H(\omega)=\frac{1}{1+\lambda\,|\omega|^{2\gamma}},
 
-That is, the optimum is obtained by
+where :math:`Y(\omega)` is the DFT of the data and :math:`S(\omega)` the
+DFT of the solution.  The practical recipe is therefore
 
-1. **FFT** – compute :math:`Y(\omega)` from the data;  
-2. **Multiply** – apply the low-pass gain :math:`H(\omega)`;  
-3. **inverse FFT** – transform back to get :math:`s[k]`.
+#. FFT the data,
+#. multiply by :math:`H(\omega)`,
+#. inverse FFT to obtain the smoothed samples.
 
-Because the filter is diagonal in the Fourier domain, the whole
-procedure takes one forward FFT, an element-wise product, and one
-inverse FFT.
+A full derivation of this result can be found in [1]_ and [2]_.
 
 Core idea in higher dimensions
 ------------------------------
