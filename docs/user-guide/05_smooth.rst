@@ -24,8 +24,8 @@ What you will find
 
 * **Fast cubic shortcut** – ``recursive_smoothing_spline``  
   A lightweight forward/backward IIR filter that approximates the cubic
-  (\ ``gamma = 1``\ ) case and runs in a single pass—handy for
-  real-time streams.
+  (``gamma = 1``) case and runs in a single pass—handy for real-time
+  streams.
 
 * Extra helpers to generate test data
   (fractional Brownian motion) and to compute spline autocorrelations.
@@ -51,34 +51,34 @@ where
   :math:`\gamma` (for example, :math:`\gamma = 1` reproduces the classical
   cubic-spline penalty).
 
-If we write :math:`Y(\omega)` for the discrete Fourier transform (DFT) of
-the noisy samples and :math:`S(\omega)` for the DFT of the unknown
+If we write :math:`Y(\omega)` for the discrete Fourier transform (DFT)
+of the noisy samples and :math:`S(\omega)` for the DFT of the unknown
 spline, the Euler–Lagrange equations turn the minimisation above into a
 *point-wise* relationship in the frequency domain
 
 .. math::
 
-   S(\omega)\;
-   =\;
-   H(\omega)\;Y(\omega),\qquad
+   S(\omega)
+   \;=\;
+   H(\omega)\,Y(\omega),\qquad
    H(\omega)=\frac{1}{1+\lambda\,|\omega|^{2\gamma}}.
 
 That is, the optimum is obtained by
 
-1. **FFT** – compute :math:`Y(\omega)` from the data,  
-2. **Multiply** – apply the low-pass gain :math:`H(\omega)`,  
+1. **FFT** – compute :math:`Y(\omega)` from the data;  
+2. **Multiply** – apply the low-pass gain :math:`H(\omega)`;  
 3. **inverse FFT** – transform back to get :math:`s[k]`.
 
-Because the filter is diagonal in the Fourier domain, the whole procedure
-takes one forward FFT, an element-wise product, and one inverse FFT.
+Because the filter is diagonal in the Fourier domain, the whole
+procedure takes one forward FFT, an element-wise product, and one
+inverse FFT.
 
 Core idea in higher dimensions
 ------------------------------
 
 For a 2-D image or a 3-D volume we replace the one-dimensional
 fractional derivative with the **fractional Laplacian**
-:math:`(-\Delta)^{\gamma/2}`.  
-The variational cost therefore becomes
+:math:`(-\Delta)^{\gamma/2}`.  The variational cost therefore becomes
 
 .. math::
 
@@ -94,8 +94,8 @@ version of the 1-D one:
 
    S(\boldsymbol\omega)
    \;=\;
-   \frac{1}{1+\lambda\,\lVert\boldsymbol\omega\rVert^{2\gamma}}
-   \;Y(\boldsymbol\omega).
+   \frac{1}{1+\lambda\,\lVert\boldsymbol\omega\rVert^{2\gamma}}\,
+   Y(\boldsymbol\omega).
 
 This looks and behaves like an order :math:`2\gamma` **Butterworth
 low-pass** but now works the same in every direction.  The practical
@@ -107,7 +107,33 @@ algorithm is identical to the 1-D case:
 
 Because the filter is applied element-wise in the frequency domain, the
 computation still needs just one forward FFT and one inverse FFT,
-irrespective of the data dimension.
+whatever the data dimension.
+
+Relation to classical Butterworth filters
+-----------------------------------------
+
+* In **1-D** the exact spline response  
+  :math:`H(\omega)=\bigl(1+\lambda|\omega|^{2\gamma}\bigr)^{-1}`  
+  is squeezed between two order-:math:`2\gamma` Butterworth curves whose
+  cut-off frequencies differ by less than one octave (proved in Unser &
+  Blu, Part I).  It therefore *acts* like a fractional Butterworth while
+  still enjoying the spline’s polynomial-reproduction property.
+
+* In **higher dimensions** the module chooses the isotropic penalty
+  :math:`(-\Delta)^{\gamma/2}`; the resulting filter  
+  :math:`H(\boldsymbol\omega)=\bigl(1+\lambda\lVert\boldsymbol\omega\rVert^{2\gamma}\bigr)^{-1}`  
+  *is exactly* a radial Butterworth low-pass of order :math:`2\gamma`.
+
+A simple rule of thumb links the parameters:
+
+.. math::
+
+   \omega_0 = \lambda^{-1/(2\gamma)}
+   \quad\Longleftrightarrow\quad
+   \lambda = \omega_0^{-2\gamma},
+
+so you can pick a cut-off frequency :math:`\omega_0` and compute
+``lambda`` just as you would for a Butterworth design.
 
 Choosing the parameters
 -----------------------
