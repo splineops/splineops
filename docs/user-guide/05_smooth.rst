@@ -19,8 +19,8 @@ This module
 
 These methods are particularly useful in signal processing, image reconstruction, and time-series modeling, especially for noisy or fractal-like data.
 
-Problem Formulation
--------------------
+Problem Minimization
+--------------------
 
 Smoothing splines solve a regularized variational problem where the objective is to fit a function :math:`f(x)` to given data points :math:`(x_m, y_m)`, 
 while penalizing roughness. The problem is formalized as
@@ -35,37 +35,12 @@ while penalizing roughness. The problem is formalized as
 
 where
 
-- the data-fidelity term is :math:`E(f(x_m), y_m)`. It is typically quadratic, with :math:`E(f(x_m), y_m) = (f(x_m) - y_m)^2`;
+- the data-fidelity term is :math:`E(f(x_m), y_m)`. It is quadratic, with :math:`E(f(x_m), y_m) = (f(x_m) - y_m)^2`;
 - the regularization parameter is :math:`\lambda`, which offer control over the smoothness;
 - the fractional derivative of order :math:`\gamma` is :math:`\mathrm{D}^\gamma f`;
 - the norm :math:`\| \cdot \|_{L_{2}}` represents the total-variation norm and enforces smoothness.
 
 This formulation ensures that the smoothing-spline solution is a fractional B-spline.
-
-Fractional B-Splines
---------------------
-
-Fractional splines generalize classical polynomial splines by allowing non-integer derivatives. The smoothing spline minimizes an energy functional of the form
-
-.. math::
-
-    \| \mathrm{D}^\gamma f \|^2_{L_{2}}.
-
-The effect of this filter is qualitatively that of a Butterworth low-pass filter.
-
-For a discrete signal :math:`y[n]`, the solution is given by
-
-.. math::
-
-    y_{\text{smooth}} = \mathcal{F}^{-1} \left( H(\omega) \mathcal{F}(y) \right),
-
-where the smoothing filter is
-
-.. math::
-
-    H(\omega) = \frac{1}{1 + \lambda |\omega|^{2\gamma}}.
-
-This filter attenuates high frequencies and leads to optimal smoothing.
 
 Regularization Parameter
 ------------------------
