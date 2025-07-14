@@ -53,6 +53,38 @@ image_gray = (
 ny, nx = image_gray.shape
 print(f"Downloaded image shape = {ny} x {nx}")
 
+def imshow_percentile(coeffs, pct=99, ax=None, title=None):
+    """
+    Symmetric percentile stretch about zero and display.
+
+    Parameters
+    ----------
+    coeffs : np.ndarray
+        2-D array of wavelet coefficients.
+    pct : float, optional
+        Percentile for clipping magnitude (0–100). 99 keeps the
+        largest 1 % saturated; lower pct → more aggressive stretch.
+    ax : matplotlib.axes.Axes, optional
+        Axis to draw on; if None, uses plt.gca().
+    title : str, optional
+        A title for the axes.
+    """
+    if ax is None:
+        ax = plt.gca()
+
+    lim = np.percentile(np.abs(coeffs), pct)
+    im = ax.imshow(
+        coeffs,
+        cmap="gray",
+        vmin=-lim,
+        vmax=+lim,
+        interpolation="nearest",
+    )
+    ax.set_axis_off()
+    if title:
+        ax.set_title(title, fontsize=14)
+    return im
+
 # %%
 # 2D Wavelet Decomposition
 # ------------------------
@@ -110,28 +142,23 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet1 = HaarWavelets(scales=1)
-coeffs1 = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
-absmax1 = np.abs(coeffs1).max()
+coeffs1  = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
 
 plt.figure(figsize=(8, 8))
-plt.imshow(coeffs1, cmap='gray', vmin=-absmax1, vmax=absmax1, interpolation='nearest')
-plt.title("Haar 1-Level Decomposition", fontsize=14)
-plt.axis('off')
+imshow_percentile(coeffs1, pct=98, title="Haar 1-Level Decomposition")
 plt.tight_layout()
 plt.show()
+
 
 # %%
 # 2-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet2 = HaarWavelets(scales=2)
-coeffs2 = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
-absmax2 = np.abs(coeffs2).max()
+coeffs2  = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
 
 plt.figure(figsize=(8, 8))
-plt.imshow(coeffs2, cmap='gray', vmin=-absmax2, vmax=absmax2, interpolation='nearest')
-plt.title("Haar 2-Level Decomposition", fontsize=14)
-plt.axis('off')
+imshow_percentile(coeffs2, pct=98, title="Haar 2-Level Decomposition")
 plt.tight_layout()
 plt.show()
 
@@ -140,12 +167,9 @@ plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet3 = HaarWavelets(scales=3)
-coeffs3 = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
-absmax3 = np.abs(coeffs3).max()
+coeffs3  = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
 
 plt.figure(figsize=(8, 8))
-plt.imshow(coeffs3, cmap='gray', vmin=-absmax3, vmax=absmax3, interpolation='nearest')
-plt.title("Haar 3-Level Decomposition", fontsize=14)
-plt.axis('off')
+imshow_percentile(coeffs3, pct=99, title="Haar 3-Level Decomposition")
 plt.tight_layout()
 plt.show()
