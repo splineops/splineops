@@ -13,18 +13,17 @@ exhibit repeating, self-similar patterns.
 What you will find
 ^^^^^^^^^^^^^^^^^^
 
-* **Exact 1-D routine** – ``smoothing_spline``  
+* **Exact 1-D routine** -
   Works on a 1-D array and returns the mathematically exact
   fractional-spline result.
 
-* **Isotropic N-D routine** – ``smoothing_spline_nd``  
+* **Isotropic N-D routine** -
   Extends the idea to 2-D pictures or 3-D volumes through one FFT;
-  internally it behaves like a Butterworth low-pass filter whose order is
-  set by the parameter ``gamma``.
+  internally it behaves like a Butterworth low-pass filter.
 
-* **Fast cubic shortcut** – ``recursive_smoothing_spline``  
+* **Fast cubic shortcut** -
   A lightweight forward/backward IIR filter that approximates the cubic
-  (``gamma = 1``) case and runs in a single pass—handy for real-time
+  case and runs in a single pass—handy for real-time
   streams.
 
 * Extra helpers to generate test data
@@ -106,7 +105,7 @@ whatever the data dimension.
 Fast recursive cubic smoother
 -----------------------------
 
-When you only need the **cubic** case (``gamma = 1``) the frequency
+When you only need the **cubic** case (:math:`\gamma = 1`) the frequency
 response above simplifies so much that it can be implemented with two
 tiny first-order filters—one run forward, the other backward.  The key
 quantity is the *pole*  
