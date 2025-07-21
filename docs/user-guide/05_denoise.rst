@@ -1,10 +1,10 @@
-Smooth
-======
+Denoise
+=======
 
 Overview
 --------
 
-The **smooth** module offers practical tools for removing noise and
+The **denoise** module offers practical tools for removing noise and
 filling in missing values with *fractional smoothing splines*.
 Think of these splines as flexible low-pass filters whose sharpness can
 be tuned continuously, making them effective for signals and images that
@@ -65,7 +65,7 @@ DFT of the solution.  The practical recipe is therefore
 #. multiply by :math:`H(\omega)`,
 #. inverse FFT to obtain the smoothed samples.
 
-A full derivation of this result can be found in [1]_ and [2]_.
+A full derivation of this result can be found in [1]_, [2]_ and [3]_.
 
 Core idea in higher dimensions
 ------------------------------
@@ -133,21 +133,21 @@ appears in [1]_, Section IV-B.
 Choosing the parameters
 -----------------------
 
-* **gamma** – controls how steeply the filter rolls off  
+* **gamma** - controls how steeply the filter rolls off  
   (larger values ⇒ steeper transition).  Typical range:
   :math:`0.5 \le \gamma \le 3`.
 
-* **lambda** – moves the cut-off frequency  
+* **lambda** - moves the cut-off frequency  
   (small values keep more detail, large values smooth harder).
-  For most images, :math:`10^{-3} \lesssim \lambda \lesssim 10^{-1}` is a
+  For most images, :math:`10^{-3} \le \lambda \le 10^{-1}` is a
   good starting interval.
 
 Example scripts
 ---------------
 
-* :ref:`sphx_glr_auto_examples_06_smooth_06_01_1d_fractional_brownian_motion.py`
-* :ref:`sphx_glr_auto_examples_06_smooth_06_02_2d_image_smoothing.py`
-* :ref:`sphx_glr_auto_examples_06_smooth_06_04_recursive_smoothing_spline.py`
+* :ref:`sphx_glr_auto_examples_06_denoise_06_01_1d_fractional_brownian_motion.py`
+* :ref:`sphx_glr_auto_examples_06_denoise_06_02_2d_image_smoothing.py`
+* :ref:`sphx_glr_auto_examples_06_denoise_06_04_recursive_smoothing_spline.py`
 
 References
 ----------

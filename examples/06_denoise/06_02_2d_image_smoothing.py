@@ -11,7 +11,7 @@ We use the smooth module to smooth a 2D image.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.smooth.smoothing_spline import smoothing_spline_nd
+from splineops.denoise.smoothing_spline import smoothing_spline_nd
 
 # %%
 # 2D Image Smoothing

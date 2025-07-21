@@ -12,8 +12,8 @@ We use the smooth module to smooth a 1D fractional Brownian motion signal.
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.smooth.fBmper import fBmper
-from splineops.smooth.smoothing_spline import smoothing_spline
+from splineops.denoise.fBmper import fBmper
+from splineops.denoise.smoothing_spline import smoothing_spline
 
 # %%
 # 1D Fractional Brownian Motion

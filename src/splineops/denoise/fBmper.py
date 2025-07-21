@@ -1,7 +1,7 @@
 from typing import Tuple
 import numpy as np
 import numpy.typing as npt
-from splineops.smooth.fractsplineautocorr import fractsplineautocorr
+from splineops.denoise.fractsplineautocorr import fractsplineautocorr
 
 
 def fBmper(
