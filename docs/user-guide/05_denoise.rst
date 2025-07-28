@@ -4,7 +4,7 @@ Denoise
 Overview
 --------
 
-The **denoise** module offers practical tools for removing noise and
+The *denoise* module offers practical tools for removing noise and
 filling in missing values with *fractional smoothing splines*.
 Think of these splines as flexible low-pass filters whose sharpness can
 be tuned continuously, making them effective for signals and images that
