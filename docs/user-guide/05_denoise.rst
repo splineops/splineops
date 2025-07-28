@@ -13,12 +13,12 @@ exhibit repeating, self-similar patterns.
 What you will find
 ^^^^^^^^^^^^^^^^^^
 
-* **Exact 1-D routine** -
-  Works on a 1-D array and returns the mathematically exact
+* **Exact 1D routine** -
+  Works on a 1D array and returns the mathematically exact
   fractional-spline result.
 
 * **Isotropic N-D routine** -
-  Extends the idea to 2-D pictures or 3-D volumes through one FFT;
+  Extends the idea to 2D pictures or 3D volumes through one FFT;
   internally it behaves like a Butterworth low-pass filter.
 
 * **Fast cubic shortcut** -
@@ -69,7 +69,7 @@ A full derivation of this result can be found in [1]_, [2]_ and [3]_.
 Core idea in higher dimensions
 ------------------------------
 
-For a 2-D image or a 3-D volume we replace the one-dimensional
+For a 2D image or a 3D volume we replace the one-dimensional
 fractional derivative with the **fractional Laplacian**
 :math:`(-\Delta)^{\gamma/2}`.  The variational cost therefore becomes
 
@@ -81,7 +81,7 @@ fractional derivative with the **fractional Laplacian**
 
 In the Fourier domain the Laplacian turns into
 :math:`\|\boldsymbol\omega\|^{2}`, so the optimal filter is the *radial*
-version of the 1-D one:
+version of the 1D one:
 
 .. math::
 
@@ -92,7 +92,7 @@ version of the 1-D one:
 
 This looks and behaves like an order :math:`2\gamma` **Butterworth
 low-pass** but now works the same in every direction.  The practical
-algorithm is identical to the 1-D case:
+algorithm is identical to the 1D case:
 
 #. Run an *n*-dimensional FFT to obtain :math:`Y(\boldsymbol\omega)`.  
 #. Multiply by the gain above.  
