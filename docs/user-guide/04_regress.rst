@@ -120,7 +120,7 @@ Example
 References
 ----------
 
-.. [1] T. Debarre, Q. Denoyelle, M. Unser, J. Fageot,  
-   *Sparsest Piecewise-Linear Regression of One-Dimensional Data,*  
-   Journal of Computational and Applied Mathematics, 406:114044, 2022.
-
+.. [1] T. Debarre, Q. Denoyelle, M. Unser, J. Fageot,
+   `Sparsest Piecewise-Linear Regression of One-Dimensional Data <https://doi.org/10.1016/j.cam.2021.114044>`_, 
+   Journal of Computational and Applied Mathematics, vol. 406,
+   paper no. 114044, 30 p., May 1, 2022.
