@@ -49,25 +49,52 @@ Least-Squares Projection
 
 *For applications where quality is paramount. Produces optimal approximations in a spline space, minimizing aliasing and reconstruction error.*
 
-Instead of direct interpolation, the least-squares approach seeks to find the function :math:`s(x)` in a spline space :math:`V_n` that best approximates a 
-given function :math:`f(x)` in the sense of
+Least-squares projection aims to reconstruct a signal by projecting it onto a spline space in a way that minimizes the :math:`L_2`
+error between the original signal and its resized version.
+
+This approach uses two spline families:
+
+- **Synthesis spline**: defines the space onto which the resized image is reconstructed (e.g., cubic B-spline basis).
+- **Analysis spline**: used to analyze the input image before projection, typically chosen to be biorthogonal to the synthesis spline to ensure a true orthogonal projection.
+
+Both the **analysis** and **synthesis** functions are typically B-splines of the same degree (e.g., degree 3 for cubic splines), 
+ensuring that the projection is orthogonal and optimal in the least-squares sense. The interpolation spline is also of the same degree, providing a consistent model throughout.
+
+The goal is to find the spline function :math:`s(x)` in the synthesis space :math:`V_n` that best approximates a given input :math:`f(x)` by minimizing the squared error:
 
 .. math::
 
     \min_{s \in V_n} \int |f(x) - s(x)|^2 \mathrm{d}x.
 
-The least-squares approximation is obtained by projecting :math:`f(x)` onto the space spanned by the basis functions. This projection is given by
+This leads to a projection of the form:
 
 .. math::
 
     s(x) = \sum_k \langle f, \varphi_k \rangle \tilde{\varphi}_k(x),
 
-where
+where:
 
-- the basis functions are :math:`\varphi_k(x)` (typically, B-splines);
-- the duals of the basis functions are :math:`\tilde{\varphi}_k(x)`, which ensures biorthonormality.
+- :math:`\varphi_k(x)` are the shifted synthesis splines (e.g., cubic B-splines),
+- :math:`\tilde{\varphi}_k(x)` are the corresponding analysis functions (their duals),
+- :math:`\langle f, \varphi_k \rangle` represents inner products with these duals.
 
-This method effectively reduces aliasing and blocking artifacts. It improves image quality, especially for downsampling.
+The biorthonormality condition
+
+.. math::
+
+    \langle \tilde{\varphi}_k, \varphi_\ell \rangle = \delta_{k\ell}
+
+ensures that this projection minimizes energy loss. The use of matching spline degrees for both analysis and synthesis (e.g., cubic–cubic) 
+guarantees orthogonality and the best possible approximation in terms of signal-to-noise ratio (SNR).
+
+This method is especially powerful for:
+
+- **downsampling**, where aliasing suppression is critical,
+- **interpolate scientific or medical data**, where signal fidelity matters most,
+- **use in invertible pipelines**, as the projection preserves information structure well.
+
+While least-squares projection is computationally more intensive and designed for float64 precision, it offers the gold standard in quality 
+among the available resizing methods in `splineops`.
 
 Oblique Projection
 ------------------
