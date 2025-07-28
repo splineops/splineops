@@ -85,12 +85,12 @@ The biorthonormality condition
     \langle \tilde{\varphi}_k, \varphi_\ell \rangle = \delta_{k\ell}
 
 ensures that this projection minimizes energy loss. The use of matching spline degrees for both analysis and synthesis (e.g., cubic–cubic) 
-guarantees orthogonality and the best possible approximation in terms of signal-to-noise ratio (SNR).
+ensures an orthogonal projection and yields the best possible approximation in terms of signal-to-noise ratio (SNR).
 
 This method is especially powerful for:
 
 - **downsampling**, where aliasing suppression is critical,
-- **interpolate scientific or medical data**, where signal fidelity matters most,
+- **interpolating scientific or medical data**, where signal fidelity matters most,
 - **use in invertible pipelines**, as the projection preserves information structure well.
 
 While least-squares projection is computationally more intensive and designed for float64 precision, it offers the gold standard in quality 
