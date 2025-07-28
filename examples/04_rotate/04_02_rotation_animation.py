@@ -75,39 +75,75 @@ def rotate_and_mask(image, angle, degree, center, radius):
     return rotated, mask
 
 def create_combined_animation(image, center, radius):
-    fig, axes = plt.subplots(3, 1, figsize=(6, 18), constrained_layout=True)
-    degrees_list = [0, 1, 3]
-    for ax, d in zip(axes, degrees_list):
-        ax.axis("off")
-        ax.set_title(f"Spline Degree {d}")
-    # Initialize the images with just zeros
-    image_plots = []
-    for ax in axes:
-        img_plot = ax.imshow(
-            np.zeros((image.shape[0], image.shape[1])),
-            cmap="gray",
-            vmin=0,
-            vmax=255,
-        )
-        image_plots.append(img_plot)
+    """
+    Build a 3-panel rotation demo that shows spline degrees 0, 1 and 3.
 
-    # Smaller rotation angle per frame
-    rotation_step = 10  # Degrees per frame (adjust this value)
-    total_frames = 360 // rotation_step  # Number of frames for a full rotation
+    Parameters
+    ----------
+    image  : 2D np.ndarray
+        Grayscale image in the range [0, 255].
+    center : tuple[int, int]
+        (row, col) coordinates of the rotation centre.
+    radius : int
+        Pixel radius of the circular area we want to keep visible.
+    """
+    # ------------------------------------------------------------------
+    # 1.  Figure and axes
+    # ------------------------------------------------------------------
+    fig, axes = plt.subplots(
+        nrows=3, ncols=1, figsize=(4, 12),  # a bit narrower than (6, 18)
+        constrained_layout=True,
+    )
+    degrees = [0, 1, 3]
+
+    # Pre‑compute the square that bounds the circle
+    x0, x1 = center[1] - radius, center[1] + radius
+    y0, y1 = center[0] - radius, center[0] + radius   # note y inverted later
+
+    for ax, d in zip(axes, degrees):
+        ax.set_title(f"Spline degree {d}", fontsize=12, pad=8)
+        ax.set_xlim(x0, x1)
+        ax.set_ylim(y1, y0)           # invert y so (0,0) is top‑left
+        ax.set_aspect("equal")
+        ax.axis("off")
+
+    # ------------------------------------------------------------------
+    # 2.  Empty image artists (one per axis)
+    # ------------------------------------------------------------------
+    image_artists = [
+        ax.imshow(
+            np.zeros_like(image),     # full‑sized buffer (fastest, no re‑alloc)
+            cmap="gray",
+            vmin=0, vmax=255,
+        )
+        for ax in axes
+    ]
+
+    # ------------------------------------------------------------------
+    # 3.  Animation driver
+    # ------------------------------------------------------------------
+    rotation_step = 10                      # ° per frame
+    total_frames = 360 // rotation_step     # one full revolution
 
     def animate(frame):
-        angle = frame * rotation_step  # Increment rotation angle
-        for i, d in enumerate(degrees_list):
-            rotated_img, m = rotate_and_mask(image, angle=angle, degree=d, center=center, radius=radius)
-            image_plots[i].set_data(rotated_img)
-            image_plots[i].set_alpha(m.astype(float))  # Apply mask as transparency
-        return image_plots
+        angle = frame * rotation_step
+        for artist, deg in zip(image_artists, degrees):
+            rotated, mask = rotate_and_mask(
+                image, angle=angle, degree=deg,
+                center=center, radius=radius,
+            )
+            artist.set_data(rotated)
+            artist.set_alpha(mask.astype(float))
+        return image_artists
 
-    ani = animation.FuncAnimation(
-        fig, animate, frames=total_frames, interval=250, blit=True
+    return animation.FuncAnimation(
+        fig,
+        animate,
+        frames=total_frames,
+        interval=250,
+        blit=True,
     )
-    return ani
 
 # Create the animation
-ani = create_combined_animation(image_resized, custom_center, radius)
+ani = create_combined_animation(image_resized, center=custom_center, radius=radius)
 ani_html = ani.to_jshtml()
