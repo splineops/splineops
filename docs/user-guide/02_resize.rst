@@ -68,19 +68,64 @@ This method effectively reduces aliasing and blocking artifacts. It improves ima
 Oblique Projection
 ------------------
 
-Oblique projection is a generalization of least-squares projection where the approximation space and the analysis space are allowed to differ. 
-Instead of computing an orthonormal projection, we use an auxiliary analysis function :math:`\psi(x)`, which leads to the approximation
+Oblique projection is a generalization of least-squares projection where the synthesis and analysis spline spaces are allowed to differ. 
+Instead of computing an orthogonal projection (where the same basis is used for both approximation and analysis), the method employs an auxiliary 
+analysis function :math:`\psi(x)` distinct from the synthesis function :math:`\tilde{\varphi}(x)`. The resulting approximation is given by:
 
 .. math::
 
-    s(x) = \sum_k \langle f, \psi_k \rangle \tilde{\varphi}_k(x).
+    s(x) = \sum_k \langle f, \psi_k \rangle \tilde{\varphi}_k(x),
 
-If :math:`\psi_k = \tilde{\varphi}_k`, we obtain the orthonormal projection (least-squares solution). Otherwise, when :math:`\psi_k` differs from :math:`\tilde{\varphi}_k`, 
-the projection is oblique.
+where:
 
-The computational complexity of an oblique projection is lower than that of a least-squares projection, as the former avoids the explicit computation of the optimal prefilter. 
-However, some approximation error arises, depending on the angle between the analysis and synthesis spaces.
+- :math:`\tilde{\varphi}_k(x)` are the synthesis basis functions (typically B-splines of degree :math:`n`);
+- :math:`\psi_k(x)` are the translated analysis functions, often chosen to be simpler or more localized.
 
+This formulation leads to an *oblique* rather than orthogonal projection. It trades off a small loss in optimality for improved speed and numerical stability. 
+Empirical results show that the signal-to-noise ratio (SNR) degrades only slightly (e.g., 0.1–0.4 dB) compared to the exact least-squares projection [2]_.
+
+Spline Degrees
+~~~~~~~~~~~~~~
+
+In the `splineops.resize` implementation, the oblique projection is configured to use:
+
+- **Interpolation degree**: Determines the input model and spline interpolation order.
+- **Synthesis spline**: Matches the interpolation degree (used to reconstruct the resized image).
+- **Analysis spline**: Set to a lower degree, typically `interpolation degree - 1`.
+
+For example:
+
+.. list-table:: Spline degree configuration in oblique projection
+   :header-rows: 1
+
+   * - Method
+     - Interpolation Degree
+     - Synthesis Spline Degree
+     - Analysis Spline Degree
+   * - ``linear-fast_antialiasing``
+     - 1
+     - 1
+     - 0
+   * - ``quadratic-fast_antialiasing``
+     - 2
+     - 2
+     - 1
+   * - ``cubic-fast_antialiasing``
+     - 3
+     - 3
+     - 1
+
+The synthesis spline determines the space onto which the image is projected. The analysis spline is used to compute inner products with the scaled signal, 
+effectively acting as a prefilter. Choosing a lower-degree analysis spline (e.g., linear) simplifies the filter computation and enables efficient recursive implementations 
+using finite differences.
+
+**Computational and Practical Implications**
+
+- The oblique method retains much of the quality of least-squares projection, especially for moderate downsampling factors.
+- It operates correctly in float32 precision and requires less memory and fewer computations than its least-squares counterpart.
+- Because the projection is not orthogonal, there may be small residual aliasing or reconstruction errors, especially for high-frequency content or very aggressive downsampling.
+
+This makes oblique projection a compelling compromise: faster and more stable than least-squares, but still significantly more accurate than naive interpolation.
 
 Resize Example
 --------------
