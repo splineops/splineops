@@ -101,7 +101,8 @@ back to their original reference frame, to compensate for the recentering step, 
 Rotate Example
 --------------
 
-* :ref:`sphx_glr_auto_examples_005_rotate_module.py`
+* :ref:`sphx_glr_auto_examples_04_rotate_04_01_rotate_image.py`
+* :ref:`sphx_glr_auto_examples_04_rotate_04_02_rotation_animation.py`
 
 References
 ----------

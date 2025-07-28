@@ -10,8 +10,7 @@ Think of these splines as flexible low-pass filters whose sharpness can
 be tuned continuously, making them effective for signals and images that
 exhibit repeating, self-similar patterns.
 
-What you will find
-^^^^^^^^^^^^^^^^^^
+You will find:
 
 * **Exact 1D routine** -
   Works on a 1D array and returns the mathematically exact

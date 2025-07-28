@@ -106,7 +106,7 @@ A practical way to tune :math:`\lambda` is to plot sparsity vs. data fidelity an
 Regression Example
 ------------------
 
-* :ref:`sphx_glr_auto_examples_006_regress_module.py`
+* :ref:`sphx_glr_auto_examples_05_regress_05_01_regress_module.py`
 
 References
 ----------

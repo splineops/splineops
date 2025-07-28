@@ -103,7 +103,7 @@ We finally build the output image by sampling the ideal, continuously defined in
 Differentiate Example
 ----------------------
 
-* :ref:`sphx_glr_auto_examples_008_differentiate_module.py`
+* :ref:`sphx_glr_auto_examples_07_differentiate_07_01_differentiate_module.py`
 
 References
 ----------

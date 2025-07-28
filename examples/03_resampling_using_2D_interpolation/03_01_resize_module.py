@@ -66,15 +66,15 @@ expanded = resize_multichannel(
 )
 
 # %%
-# Expanded Image (Thumbnail Example)
-# ----------------------------------
+# Expanded from Downsampled
+# -------------------------
 #
 # We first show the final expanded image at large scale. This helps Sphinx
 # generate a visually useful thumbnail and lets users preview the aliasing artefacts up front.
 
 plt.figure(figsize=(10, 10))  # Tune size for thumbnail quality
 plt.imshow(expanded)
-plt.title(f"Expanded Image (×{1/shrink_factor:.1f})", fontsize=18)
+plt.title(f"Expanded from Downsampled Image (×{1/shrink_factor:.1f})", fontsize=18)
 plt.axis("off")
 plt.tight_layout()
 plt.show()
@@ -84,9 +84,12 @@ plt.show()
 # ------------------------------------------
 
 fig, axes = plt.subplots(3, 1, figsize=(8, 18))
-axes[0].imshow(adjusted_uint8); axes[0].set_title("Adjusted Original"); axes[0].axis("off")
-axes[1].imshow(canvas);         axes[1].set_title(f"Shrunken (×{shrink_factor})"); axes[1].axis("off")
-axes[2].imshow(expanded);       axes[2].set_title(f"Expanded (×{1/shrink_factor:.1f})"); axes[2].axis("off")
+axes[0].imshow(adjusted_uint8); 
+axes[0].set_title("Adjusted Original"); axes[0].axis("off")
+axes[1].imshow(canvas);         
+axes[1].set_title(f"Shrunken (×{shrink_factor})"); axes[1].axis("off")
+axes[2].imshow(expanded);       
+axes[2].set_title(f"Expanded (×{1/shrink_factor:.1f})"); axes[2].axis("off")
 plt.tight_layout(); plt.show()
 
 
