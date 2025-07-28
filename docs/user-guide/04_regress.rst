@@ -6,112 +6,121 @@ Regress
 Overview
 --------
 
-The `regress` module in `splineops` provides a method to perform one-dimensional regression with total-variation (TV) regularization on the second derivative [1]_. 
-This approach promotes solutions that are piecewise-linear with a minimal number of knots, which makes them ideal for applications that require sparse representations.
+The *regress* module performs one-dimensional regression with
+total-variation (TV) regularisation on the second derivative [1]_.  
+Because TV is measured with the measure norm (denoted
+:math:`\|\cdot\|_{\mathcal{M}}`), solutions are piecewise-linear splines that
+use few knots, giving very compact models.
 
-Key features of this method:
+Key features
+~~~~~~~~~~~~
 
-- It guarantees piecewise-linear solutions with the fewest knots.
-- It provides a systematic analysis of unique vs. non-unique solutions.
-- It introduces a fast two-step algorithm to efficiently determine the sparsest solutions.
-- It supports both interpolation (exact fit) and regression (data fitting with noise).
+* Guarantees piecewise-linear solutions with few knots.
+* Provides a fast two-step algorithm that returns the sparsest solution found.
+* Works for both interpolation (exact fit) and regression (noisy data).
 
-This method is particularly relevant in machine learning, where sparsity improves generalization, and in signal processing, where fewer knots lead to simpler 
-models. It is closely related to rectified linear unit (ReLU) neural networks, which also produce piecewise-linear functions. It can serve as a direct way to achieve a 
-fewest-knot solution in 1D, although caution should be exercised in equating fewer parameters with superior overall performance in high-dimensional machine-learning tasks.
+These properties are valuable in machine learning (where sparsity improves
+generalisation) and in signal processing (where interpretability matters).
+In 1D, the method is closely related to rectified linear unit (ReLU) neural networks, which also
+create piecewise-linar functions, but here we obtain the sparsest possible representation
+directly.
 
-Mathematical Background
+Mathematical background
 -----------------------
 
-Problem Formulation
+Problem formulation
 ~~~~~~~~~~~~~~~~~~~
-
-The sparsest linear regression problem is formulated as the inverse problem
 
 .. math::
 
-   \arg\min_{f}
+   \arg\min_{f}\;
    \Biggl(
      \sum_{m=1}^{M} E\bigl(f(x_m),y_m\bigr)
-     + \lambda\,\bigl\|\mathrm{D}^2 f\bigr\|_M
+     \;+\; \lambda\,\|\mathrm{D}^2 f\|_{\mathcal{M}}
    \Biggr),
 
 where
 
-- The term :math:`E(f(x_m), y_m)` measures the fidelity to the data (e.g., quadratic loss :math:`(f(x_m) - y_m)^2`).
-- The regularization parameter :math:`\lambda` controls the sparsity.
-- The operator :math:`\mathrm{D}^2 f` is a second derivative, which ensures the solution is piecewise-linear.
-- The norm :math:`\| \cdot \|_M` is total variation (TV) and promotes sparsity.
+* The term :math:`E` is a data-fidelity term (e.g., squared loss
+  :math:`(f(x_m)-y_m)^2`);
+* The regularization parameter :math:`\lambda>0` balances fidelity and sparsity;
+* The operator :math:`\mathrm{D}^2 f` is the second derivative;
+* The norm :math:`\|\cdot\|_{\mathcal{M}}` is the total variation (TV) norm on measures, promoting sparse
+  second derivatives.
 
-This is called the generalized Beurling LASSO (g-BLASSO). It extends the classic LASSO regression to continuous functions.
+This is the generalised Beurling LASSO (g-BLASSO):  
+it extends the classical LASSO (:math:`L^1` regularisation on vectors)  
+and the Beurling LASSO (BLASSO, :math:`L^1` on measures) by inserting the linear
+operator :math:`\mathrm{D}^2`.
 
-Representer Theorem
+Representer theorem
 ~~~~~~~~~~~~~~~~~~~
 
-A key result in this framework is that the solution to the optimization problem always takes the form
+A solution of the g-BLASSO has the form
 
 .. math::
 
-    f_{\text{opt}}(x) = b_0 + b_1 x + \sum_{k=1}^{K} a_k (x - \tau_k)_+,
+   f_\text{opt}(x)\;=\;b_0 + b_1 x \;+\;
+   \sum_{k=1}^{K} a_k\bigl(x-\tau_k\bigr)_+,
 
 where
 
-- the global linear trend is defined by :math:`b_0, b_1 \in \mathbb{R}`;
-- the ReLU function is :math:`(x - \tau_k)_+`;
-- the number :math:`K` of knots satisfies :math:`K \leq (M - 2)`, meaning that the model is sparse.
+* :math:`b_0,b_1\in\mathbb{R}` describe the global trend;
+* :math:`(x-\tau_k)_+` is a shifted ReLU function;
+* the number :math:`K` satisfies :math:`K\le M-2`, so only *few* knots appear.
 
-This theorem guarantees that the solutions are adaptive splines with the fewest knots.
-
-Uniqueness and Sparsity
+Uniqueness and sparsity
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-While the g-BLASSO problem always has solutions, it is generally non-unique. 
-This module provides a full characterization of the solution set and identifies several cases.
-
-- Cases where the solution is unique (e.g., when certain convexity conditions hold).
-- Cases where multiple solutions exist, and how to select the sparsest one.
-- The minimal number of knots required for a valid solution.
-
-A dual certificate approach is used to analyze the support of the second derivative, which determines the solution space.
+The g-BLASSO may admit multiple solutions, but the algorithm implemented here
+leverages the theoretical analysis of [1]_ to always return the sparsest
+one (minimum K).
 
 Algorithm
 ---------
 
-A two-step algorithm is introduced to compute the sparsest solution efficiently.
+The solver uses two stages\*:
 
-1. Compute the optimal data points :math:`y_\lambda` as the solution of a discrete :math:`L^{1}`-regularized problem.  
-   Techniques such as ADMM can be employed here for efficient optimization in large-scale settings.
-2. Apply a sparsification step to obtain the final solution with the fewest knots.
+1. **Data fitting** – solve a discrete :math:`L^1`-regularised problem to obtain
+   :math:`y_\lambda` (each ADMM iteration costs :math:`\mathcal{O}(M)` and the
+   residual decreases like :math:`\mathcal{O}(1/n)`).
+2. **Sparsification** – in exactly :math:`\mathcal{O}(M)` time, extract the
+   spline with the fewest knots.
 
-This algorithm is agnostic to uniqueness and runs in linear time :math:`O(M)`, which makes it significantly faster than traditional total-variation denoising methods.
+\*Stage 2 is linear-time; stage 1 is linear per iteration.
 
-Advantages and Applications
+Advantages and applications
 ---------------------------
 
-- Fewest-Knots Guarantee: Among all solutions satisfying a given TV2-regularized objective, this algorithm recovers a piecewise-linear spline with the fewest knots. Unlike traditional TV-based methods, it explicitly finds the sparsest solution.
-- Exact Interpolation: If you need a piecewise-linear spline that exactly interpolates your data (no noise term), this method can find the lowest-complexity fit. In other words, it will produce the least angular spline that still goes through every data point.
-- Time-Series and Segmented Regression: Whenever a piecewise-linear model is suitable (e.g., finance, economics, or epidemiological data such as daily infection rates), this algorithm helps create interpretable "segmented regression" fits with a small number of segments.
-- Connection to ReLU Networks: In 1D, neural networks with ReLU activations yield continuous piecewise-linear (CPWL) functions. This algorithm can be viewed as a more direct way to learn a CPWL function with the fewest parameters (knots). Although modern deep networks often over-parameterize for performance reasons, in strictly 1D scenarios, the method here outperforms a naive ReLU network in terms of parameter sparsity.
+* **Few-knot guarantee** – the returned spline is the sparsest among all
+  feasible solutions.
+* **Exact interpolation** – with :math:`\lambda=0`, the method finds the least
+  angular spline through every point.
+* **Segmented regression** – ideal for interpretable fits in finance,
+  epidemiology, etc.
+* **ReLU connection** – in 1-D this outperforms naïve ReLU networks in terms of
+  parameter count.
 
-Regularization Parameter
+Regularisation parameter
 ------------------------
 
-The regularization parameter :math:`\lambda` controls the tradeoff between data fidelity and sparsity.
+Choosing :math:`\lambda`:
 
-- Small :math:`\lambda` → Interpolates the data, but may overfit.
-- Large :math:`\lambda` → Produces smoother results, eventually converging to a linear fit.
+* Small :math:`\lambda` → exact or near-exact interpolation (risk of over-fit).  
+* Large :math:`\lambda` → smoother, eventually linear.
 
-A practical way to tune :math:`\lambda` is to plot sparsity vs. data fidelity and to select a balanced value.
+**Practical tip:** run the solver on a grid of :math:`\lambda` values and
+*plot sparsity vs. data-fidelity* (e.g., root-MSE) to pick a balanced point.
 
-Regression Example
-------------------
+Example
+-------
 
 * :ref:`sphx_glr_auto_examples_05_regress_05_01_regress_module.py`
 
 References
 ----------
 
-.. [1] T. Debarre, Q. Denoyelle, M. Unser, J. Fageot,
-   `Sparsest Piecewise-Linear Regression of One-Dimensional Data <https://doi.org/10.1016/j.cam.2021.114044>`_, 
-   Journal of Computational and Applied Mathematics, vol. 406,
-   paper no. 114044, 30 p., May 1, 2022.
+.. [1] T. Debarre, Q. Denoyelle, M. Unser, J. Fageot,  
+   *Sparsest Piecewise-Linear Regression of One-Dimensional Data,*  
+   Journal of Computational and Applied Mathematics, 406:114044, 2022.
+
