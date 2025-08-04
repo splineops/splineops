@@ -16,7 +16,10 @@ import requests
 from io import BytesIO
 from PIL import Image
 
-from splineops.utils import resize_and_compute_metrics
+from splineops.utils import (
+    resize_and_compute_metrics,      # resampling + metrics
+    show_roi_zoom,
+)
 
 # %%
 # Load and Normalize an Image

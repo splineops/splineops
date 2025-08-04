@@ -52,11 +52,18 @@ border_fraction = 0.3
 
 # We plot the original grayscale image.
 
-plt.figure(figsize=(6, 5))
-plt.imshow(input_image_normalized, cmap='gray', aspect='equal')
-plt.title("Original Image")
-plt.axis("off")
-plt.show()
+#plt.figure(figsize=(6, 5))
+#plt.imshow(input_image_normalized, cmap='gray', aspect='equal')
+#plt.title("Original Image")
+#plt.axis("off")
+#plt.show()
+
+show_roi_zoom(
+    input_image_normalized,     # image to inspect
+    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
+    grayscale=True,        # keep plotting in gray
+    ax_titles=("Original Image", None),  # customise left title; right auto
+)
 
 # %%
 # Standard Interpolation
@@ -83,7 +90,14 @@ plt.show()
 #
 # We plot the recovered image after a reversing of the zoom factors.
 
-plot_recovered_image(recovered_2d_interp)
+#plot_recovered_image(recovered_2d_interp)
+
+show_roi_zoom(
+    recovered_2d_interp,     # image to inspect
+    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
+    grayscale=True,        # keep plotting in gray
+    ax_titles=("Recovered Image", None),  # customise left title; right auto
+)
 
 # %%
 # Resized Image
@@ -138,7 +152,14 @@ plot_difference_image(
 #
 # We plot the recovered image after a reversing of the zoom factors.
 
-plot_recovered_image(recovered_2d_scipy)
+#plot_recovered_image(recovered_2d_scipy)
+
+show_roi_zoom(
+    recovered_2d_scipy,     # image to inspect
+    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
+    grayscale=True,        # keep plotting in gray
+    ax_titles=("Recovered Image", None),  # customise left title; right auto
+)
 
 # %%
 # Resized Image
@@ -250,19 +271,3 @@ mse_forward = np.mean((resized_direct_ts - resized_2d_interp) ** 2)
 mse_backward = np.mean((recovered_direct_ts - recovered_2d_interp) ** 2)
 print(f"MSE (TensorSpline vs. resize()) resized:  {mse_forward:.6e}")
 print(f"MSE (TensorSpline vs. resize()) recovered: {mse_backward:.6e}")
-
-# %%
-# Zoom-in inspection of the down-sampled result
-# --------------------------------------------
-#
-# Thanks to `splineops.utils.plotting.show_roi_zoom` we can collapse the
-# dozen-line ROI demo into a one-liner.
-
-# Inspect the down-sampled image produced with standard cubic interpolation.
-# (It is already grayscale, so `grayscale=True` is appropriate.)
-show_roi_zoom(
-    resized_2d_interp,     # image to inspect
-    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
-    grayscale=True,        # keep plotting in gray
-    ax_titles=("Downsampled", None),  # customise left title; right auto
-)
