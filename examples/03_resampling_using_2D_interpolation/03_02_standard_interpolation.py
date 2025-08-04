@@ -249,3 +249,49 @@ mse_forward = np.mean((resized_direct_ts - resized_2d_interp) ** 2)
 mse_backward = np.mean((recovered_direct_ts - recovered_2d_interp) ** 2)
 print(f"MSE (TensorSpline vs. resize()) resized:  {mse_forward:.6e}")
 print(f"MSE (TensorSpline vs. resize()) recovered: {mse_backward:.6e}")
+
+# %%
+# Zoomed-Region Inspection
+# ------------------------
+#
+# Show the down-sampled image with a red square marking a region of interest
+# (ROI).  Display that same ROI magnified with nearest-neighbor interpolation
+# so that individual pixels are clearly visible.
+
+import matplotlib.patches as patches
+
+# -- parameters --------------------------------------------------------------
+roi_size      = 64   # width/height of the square ROI *after* down-sampling
+magnify_by    = 8    # how much to enlarge the ROI for display
+# ---------------------------------------------------------------------------
+
+# 1) Pick the ROI roughly at image centre (feel free to adjust).
+h_lr, w_lr = resized_2d_interp.shape
+row0 = h_lr // 2 - roi_size // 2   # top-left corner of ROI
+col0 = w_lr // 2 - roi_size // 2
+
+# 2) Extract ROI from the down-sampled image.
+roi = resized_2d_interp[row0 : row0 + roi_size,
+                        col0 : col0 + roi_size]
+
+# 3) Magnify the ROI with nearest-neighbor (pixel replication).
+roi_big = np.kron(roi, np.ones((magnify_by, magnify_by)))
+
+# 4) Plot: down-sampled image + highlighted ROI, and the magnified ROI.
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
+
+# -- left: down-sampled image with red square --------------------------------
+axes[0].imshow(resized_2d_interp, cmap="gray", aspect="equal")
+rect = patches.Rectangle((col0, row0), roi_size, roi_size,
+                         linewidth=2, edgecolor="red", facecolor="none")
+axes[0].add_patch(rect)
+axes[0].set_title("Down-sampled (cubic) with ROI")
+axes[0].axis("off")
+
+# -- right: magnified ROI ----------------------------------------------------
+axes[1].imshow(roi_big, cmap="gray", aspect="equal")
+axes[1].set_title(f"ROI ×{magnify_by} (nearest)")
+axes[1].axis("off")
+
+plt.tight_layout()
+plt.show()
