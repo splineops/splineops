@@ -1,49 +1,43 @@
 """
-Illustrative speed-vs-quality trade-off for splineops resize methods
---------------------------------------------------------------------
+Symbolic Speed–Quality plot with guide lines
+-------------------------------------------
 
-The dotted line is a quadratic that passes *exactly* through the three
-method points:
-
-    • Standard interpolation   – fastest, lowest quality
-    • Oblique projection       – mid-speed, mid-quality
-    • Least-Squares projection – slowest, best quality
+Each resize mode is shown with:
+  • a coloured marker,
+  • a vertical dashed line down to the Speed axis,
+  • a horizontal dashed line left to the Quality axis.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ── raw data points ────────────────────────────────────────────────────
-speed_pts   = np.array([0.90, 0.50, 0.10])   # Standard, Oblique, LS
-quality_pts = np.array([0.20, 0.60, 0.90])
+# Mode, speed, quality, colour
+points = [
+    ("Least-Squares", 0.10, 0.90, "#1f77b4"),
+    ("Oblique",       0.50, 0.60, "#ff7f0e"),
+    ("Standard",      0.90, 0.20, "#2ca02c"),
+]
 
-method_info = {
-    "Standard":      dict(s=0.90, q=0.20, color="#2ca02c"),
-    "Oblique":       dict(s=0.50, q=0.60, color="#ff7f0e"),
-    "Least-Squares": dict(s=0.10, q=0.90, color="#1f77b4"),
-}
+fig, ax = plt.subplots(figsize=(7, 5))
 
-# ── fit a quadratic y = ax² + bx + c that goes through the three points ─
-coeff = np.polyfit(speed_pts, quality_pts, deg=2)   # exact for 3 points
-speed_curve = np.linspace(0, 1, 300)
-quality_curve = np.polyval(coeff, speed_curve)
+for name, spd, qlt, clr in points:
+    # marker
+    ax.scatter(spd, qlt, s=140, color=clr, edgecolor="k", zorder=3)
+    ax.text(spd + 0.03, qlt + 0.03, name, fontsize=11, weight="bold")
 
-# ── plot ───────────────────────────────────────────────────────────────
-plt.figure(figsize=(7, 5))
+    # guide lines
+    ax.plot([spd, spd], [0, qlt], linestyle="--", color=clr, alpha=0.7)
+    ax.plot([0, spd], [qlt, qlt], linestyle="--", color=clr, alpha=0.7)
 
-plt.plot(speed_curve, quality_curve, linestyle="--", color="0.6",
-         label="Illustrative trade-off")
+# symbolic axes: labels only, no numbers
+ax.set_xlabel("Speed →")
+ax.set_ylabel("Quality ↑")
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_xticks([])
+ax.set_yticks([])
+ax.grid(False)
 
-for name, d in method_info.items():
-    plt.scatter(d["s"], d["q"], s=140, color=d["color"],
-                edgecolor="k", zorder=3)
-    plt.text(d["s"] + 0.03, d["q"] + 0.02, name,
-             fontsize=11, weight="bold")
-
-plt.xlim(0, 1); plt.ylim(0, 1)
-plt.xlabel("Speed   (1 = fastest)")
-plt.ylabel("Quality (1 = best)")
-plt.title("Resize Method Trade-off in splineops")
-plt.grid(alpha=0.3)
+ax.set_title("Illustrative Trade-off Among splineops Resize Modes")
 plt.tight_layout()
 plt.show()
