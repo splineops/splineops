@@ -251,58 +251,67 @@ print(f"MSE (TensorSpline vs. resize()) resized:  {mse_forward:.6e}")
 print(f"MSE (TensorSpline vs. resize()) recovered: {mse_backward:.6e}")
 
 """
-Zoomed Region Inspection – compact layout
+Zoomed Region Inspection (grayscale)
+------------------------------------
+
+* Load Kodak “kodim14” → grayscale float • [0,1]
+* Down-sample with cubic B-spline (splineops.resize standard mode)
+* Draw a red square ROI on the low-res image
+* Magnify that ROI with nearest-neighbor so its display height matches the low-res image
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import requests, io, PIL.Image as Image
-from splineops.utils import resize_multichannel      # cubic B-spline interp
+import requests, io
+from PIL import Image
+from splineops.utils import resize_multichannel   # cubic interpolation helper
 
-# --------------------------- parameters ----------------------------------
+# ── parameters ────────────────────────────────────────────────────────────────
 IMG_URL          = "https://r0k.us/graphics/kodak/kodak/kodim14.png"
-DOWNSAMPLE       = 0.25        # keep 25 %
-ROI_FRAC_HEIGHT  = 1/3         # ROI height as fraction of low-res height
-# -------------------------------------------------------------------------
+DOWNSAMPLE       = 0.25      # keep 25 %
+ROI_FRAC_HEIGHT  = 1 / 3     # ROI height as fraction of low-res height
+# ──────────────────────────────────────────────────────────────────────────────
 
-# 1) fetch image → float64 RGB [0,1]
-img = Image.open(io.BytesIO(requests.get(IMG_URL, timeout=10).content))
-img_f = np.asarray(img, dtype=np.float64) / 255.0            # H×W×3
+# 1) fetch image → grayscale float64
+rgb = Image.open(io.BytesIO(requests.get(IMG_URL, timeout=10).content))
+rgb_np = np.asarray(rgb, dtype=np.float64) / 255.0            # H×W×3
+gray  = (0.2989*rgb_np[...,0] + 0.5870*rgb_np[...,1] + 0.1140*rgb_np[...,2])
+gray  = gray[..., None]                                        # H×W×1 (for resize)
 
-# 2) cubic down-sample (mirror boundary)
-low_res = resize_multichannel(img_f, DOWNSAMPLE, method="cubic", modes="mirror")
-h_lr, w_lr, _ = low_res.shape
+# 2) cubic down-sample (mirror boundaries)
+low_res = resize_multichannel(gray, DOWNSAMPLE,
+                              method="cubic", modes="mirror").squeeze(-1)  # H×W uint8
+h_lr, w_lr = low_res.shape
 
-# 3) pick square ROI; ensure roi_size divides h_lr (integer magnification)
+# 3) pick square ROI whose side divides h_lr  → integer magnification
 roi_size = max(1, int(h_lr * ROI_FRAC_HEIGHT))
-while h_lr % roi_size:           # step down until divisor
+while h_lr % roi_size:
     roi_size -= 1
-
 row0 = h_lr // 2 - roi_size // 2
 col0 = w_lr // 2 - roi_size // 2
-roi   = low_res[row0:row0+roi_size, col0:col0+roi_size]
+roi  = low_res[row0:row0+roi_size, col0:col0+roi_size]
 
-# 4) nearest-neighbor enlarge so ROI height == h_lr
+# 4) enlarge ROI with nearest-neighbor so height == h_lr
 mag     = h_lr // roi_size
-roi_big = np.repeat(np.repeat(roi, mag, 0), mag, 1)          # H=h_lr
+roi_big = np.repeat(np.repeat(roi, mag, 0), mag, 1)
 
-# 5) plot; width ratios ~ pixel widths ⇒ heights identical
+# 5) plot – width ratios proportional to pixel widths → equal heights
 fig, ax = plt.subplots(
     1, 2,
-    figsize=(10, h_lr / 20),                      # scale nicely
+    figsize=(10, h_lr / 20),
     gridspec_kw={"width_ratios": [w_lr, roi_big.shape[1]]}
 )
 
-# left: low-res with ROI box
-ax[0].imshow(low_res)
+# left: low-res image with ROI
+ax[0].imshow(low_res, cmap="gray")
 ax[0].add_patch(patches.Rectangle((col0, row0), roi_size, roi_size,
                                   linewidth=2, edgecolor="red", facecolor="none"))
 ax[0].set_title("Down-sampled (cubic)")
 ax[0].axis("off"); ax[0].set_aspect("equal")
 
 # right: magnified ROI
-ax[1].imshow(roi_big, interpolation="nearest")
+ax[1].imshow(roi_big, cmap="gray", interpolation="nearest")
 ax[1].set_title(f"ROI ×{mag} (nearest)")
 ax[1].axis("off"); ax[1].set_aspect("equal")
 
