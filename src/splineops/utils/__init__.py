@@ -9,6 +9,7 @@ from .plotting import (
     plot_resized_image,
     plot_recovered_image,
     plot_difference_image,
+    show_roi_zoom,
 )
 
 __all__ = [
@@ -21,4 +22,5 @@ __all__ = [
     "plot_resized_image",
     "plot_recovered_image",
     "plot_difference_image",
+    "show_roi_zoom",
 ]

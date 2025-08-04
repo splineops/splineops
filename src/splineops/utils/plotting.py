@@ -11,13 +11,19 @@ from __future__ import annotations
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from typing import Sequence, Tuple, Union
+from typing import Sequence, Tuple, Union, Optional
+from io import BytesIO
+from pathlib import Path
+import requests
+from PIL import Image
 
 __all__ = [
     "plot_resized_image",
     "plot_recovered_image",
     "plot_difference_image",
+    "show_roi_zoom",
 ]
 
 _ZoomT = Union[Sequence[float], Tuple[float, float], float]
@@ -116,3 +122,126 @@ def plot_difference_image(
 
     plt.tight_layout()
     plt.show()
+
+def show_roi_zoom(
+    img_source: Union[str, Path, np.ndarray],
+    roi_height_frac: float = 1 / 3,
+    grayscale: bool = True,
+    roi_xy: Optional[Tuple[int, int]] = None,
+    ax_titles: Optional[Tuple[str, str]] = None,
+    fig_size: Optional[Tuple[float, float]] = None,
+) -> Tuple[plt.Figure, Tuple[plt.Axes, plt.Axes]]:
+    """
+    Display an image with a square ROI and a magnified (nearest-neighbour) view
+    of that ROI.  Both panels share *identical display height*.
+
+    Parameters
+    ----------
+    img_source : str | Path | ndarray
+        URL, local path, or already-loaded NumPy array (H×W×C or H×W).
+    roi_height_frac : float, default 1/3
+        ROI side length as a fraction of the image height (0 < frac < 1).
+    grayscale : bool, default True
+        If True → convert colour images to grayscale and plot with `cmap="gray"`.
+    roi_xy : (row, col) or None
+        Top-left corner of the ROI.  If None → ROI is centred.
+    ax_titles : (str, str) or None
+        Titles for the (full image, magnified ROI) axes.  Defaults are used if
+        None.
+    fig_size : (width, height) or None
+        Size in inches; if None → auto-scaled to keep reasonable aspect.
+
+    Returns
+    -------
+    fig, (ax_left, ax_right)
+        The Matplotlib figure and its two axes.
+    """
+    # ------------------------------------------------------------------ #
+    # 1. Load image → NumPy array in [0, 1]                              #
+    # ------------------------------------------------------------------ #
+    if isinstance(img_source, np.ndarray):
+        img = img_source.astype(np.float64)
+    else:
+        # URL or local path
+        if str(img_source).startswith(("http://", "https://")):
+            data = requests.get(img_source, timeout=10).content
+            img = np.asarray(Image.open(BytesIO(data)), dtype=np.float64)
+        else:
+            img = np.asarray(Image.open(Path(img_source)), dtype=np.float64)
+
+    if img.max() > 1.0:
+        img /= 255.0
+
+    # ------------------------------------------------------------------ #
+    # 2. Optional grayscale conversion                                   #
+    # ------------------------------------------------------------------ #
+    if grayscale and img.ndim == 3 and img.shape[2] != 1:
+        img = (
+            0.2989 * img[..., 0] +
+            0.5870 * img[..., 1] +
+            0.1140 * img[..., 2]
+        )
+        img = img[..., None]                # keep channel dim for consistency
+
+    # Drop trailing channel dim for plotting if grayscale
+    plot_img = img.squeeze() if img.shape[-1] == 1 else img
+
+    h_img, w_img = plot_img.shape[:2]
+
+    # ------------------------------------------------------------------ #
+    # 3. Choose square ROI                                               #
+    # ------------------------------------------------------------------ #
+    roi_size = max(1, int(h_img * roi_height_frac))
+    # Guarantee integer magnification factor (image height / roi_size)
+    while h_img % roi_size:
+        roi_size -= 1
+
+    if roi_xy is None:
+        row0 = h_img // 2 - roi_size // 2
+        col0 = w_img // 2 - roi_size // 2
+    else:
+        row0 = np.clip(roi_xy[0], 0, h_img - roi_size)
+        col0 = np.clip(roi_xy[1], 0, w_img - roi_size)
+
+    if plot_img.ndim == 2:
+        roi = plot_img[row0:row0 + roi_size, col0:col0 + roi_size]
+    else:
+        roi = plot_img[row0:row0 + roi_size, col0:col0 + roi_size, :]
+
+    # ------------------------------------------------------------------ #
+    # 4. Magnify ROI with nearest-neighbour                              #
+    # ------------------------------------------------------------------ #
+    mag = h_img // roi_size
+    roi_big = np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
+
+    # ------------------------------------------------------------------ #
+    # 5. Plot – widths proportional to pixel widths                      #
+    # ------------------------------------------------------------------ #
+    if fig_size is None:
+        fig_w = 10
+        fig_h = fig_w * h_img / (w_img + roi_big.shape[1])
+        fig_size = (fig_w, fig_h)
+
+    fig, ax = plt.subplots(
+        1, 2,
+        figsize=fig_size,
+        gridspec_kw={"width_ratios": [w_img, roi_big.shape[1]]},
+    )
+
+    # left panel
+    ax[0].imshow(plot_img, cmap="gray" if grayscale else None)
+    ax[0].add_patch(patches.Rectangle((col0, row0), roi_size, roi_size,
+                                      linewidth=2, edgecolor="red",
+                                      facecolor="none"))
+    ax[0].set_aspect("equal"); ax[0].axis("off")
+    ax[0].set_title(ax_titles[0] if ax_titles else "Image with ROI")
+
+    # right panel
+    ax[1].imshow(roi_big, cmap="gray" if grayscale else None,
+                 interpolation="nearest")
+    ax[1].set_aspect("equal"); ax[1].axis("off")
+    ax[1].set_title(ax_titles[1] if ax_titles else f"ROI x{mag} (nearest)")
+
+    plt.tight_layout()
+    plt.show()
+    return fig, ax
