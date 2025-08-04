@@ -14,6 +14,10 @@ It offers three distinct modes, each designed for a different balance of **speed
 - **Least-Squares Projection** – Highest quality. Designed for applications where fidelity matters most (e.g. medical imaging, scientific computing). Optimized for float64 precision.
 - **Oblique Projection** – The sweet spot. Balances quality and performance, using smart approximations to deliver nearly least-squares quality at interpolation-level speed.
 
+..  image:: resizefig01.png
+    :width: 288pt
+    :align: center
+
 Each method is built on solid spline theory and engineered for performance in real-world applications. Whether you're building fast visualizations or precision-critical 
 pipelines, `resize` adapts to your needs with consistent, artifact-resistant output and a clean API.
 
