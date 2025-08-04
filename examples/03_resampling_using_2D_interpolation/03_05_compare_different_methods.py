@@ -131,22 +131,37 @@ for method_name, snr_val, mse_val, time_val in methods:
     row_line = f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_val:>12.4f}"
     print(row_line)
 
+#plot_recovered_image(recovered_2d_scipy)
+
 # %%
-# Visual Comparison of all Methods
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Visual Comparison of Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-recovered_stack = [
-    ("Standard (Cubic)",       recovered_2d_interp, snr_2d_interp, mse_2d_interp),
-    ("Least-Squares (Best)",   recovered_2d_ls,     snr_2d_ls,     mse_2d_ls),
-    ("Oblique (Fast AA)",      recovered_2d_ob,     snr_2d_ob,     mse_2d_ob),
-]
+show_roi_zoom(
+    recovered_2d_interp,     # image to inspect
+    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
+    grayscale=True,        # keep plotting in gray
+    ax_titles=("Standard (Cubic)", None),  # customise left title; right auto
+)
 
-fig, axes = plt.subplots(3, 1, figsize=(8, 12))
+# %%
+# Visual Comparison of Least-Squares Projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-for ax, (label, img, snr_val, mse_val) in zip(axes, recovered_stack):
-    ax.imshow(img, cmap="gray", aspect="equal")
-    ax.set_title(f"{label}\nSNR: {snr_val:.2f} dB  ·  MSE: {mse_val:.2e}")
-    ax.axis("off")
+show_roi_zoom(
+    recovered_2d_ls,     # image to inspect
+    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
+    grayscale=True,        # keep plotting in gray
+    ax_titles=("Least-Squares (Best)", None),  # customise left title; right auto
+)
 
-plt.tight_layout()
-plt.show()
+# %%
+# Visual Comparison of Oblique Projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_zoom(
+    recovered_2d_ob,     # image to inspect
+    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
+    grayscale=True,        # keep plotting in gray
+    ax_titles=("Oblique (Fast AA)", None),  # customise left title; right auto
+)
