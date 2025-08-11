@@ -57,27 +57,31 @@ border_fraction = 0.3
 #plt.axis("off")
 #plt.show()
 
-# Get image dimensions
+# Consistent ROI across all plots
+roi_frac = 1/3
 h_img, w_img = input_image_normalized.shape
-
-# Same ROI size as before
-roi_size = int(h_img * (1/3))
+roi_size = int(h_img * roi_frac)
 row_center = h_img // 2 - roi_size // 2
 col_center = w_img // 2 - roi_size // 2
 
-# Shift down and right by 10% of height/width
-shift_down = int(h_img * 0.10)   # 10% downward
-shift_right = int(w_img * 0.10)  # 10% to the right
+# Shift: 10% down and 10% right
+shift_down  = int(h_img * 0.10)
+shift_right = int(w_img * 0.10)
 
 roi_xy_shifted = (row_center + shift_down, col_center + shift_right)
 
-# Show with shifted ROI
-show_roi_zoom(
-    input_image_normalized,
-    roi_height_frac=1/3,
+# Reusable kwargs for all ROI zooms
+roi_kwargs = dict(
+    roi_height_frac=roi_frac,
     grayscale=True,
     roi_xy=roi_xy_shifted,
-    ax_titles=("Original Image", None)
+)
+
+# Original (shifted ROI)
+show_roi_zoom(
+    input_image_normalized,
+    ax_titles=("Original Image", None),
+    **roi_kwargs
 )
 
 # %%
@@ -107,11 +111,11 @@ show_roi_zoom(
 
 #plot_recovered_image(recovered_2d_interp)
 
+# Recovered (standard interpolation) – same ROI
 show_roi_zoom(
-    recovered_2d_interp,     # image to inspect
-    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
-    grayscale=True,        # keep plotting in gray
-    ax_titles=("Recovered Image", None),  # customise left title; right auto
+    recovered_2d_interp,
+    ax_titles=("Recovered Image (cubic)", None),
+    **roi_kwargs
 )
 
 # %%
@@ -169,11 +173,11 @@ plot_difference_image(
 
 #plot_recovered_image(recovered_2d_scipy)
 
+# Recovered (SciPy) – same ROI
 show_roi_zoom(
-    recovered_2d_scipy,     # image to inspect
-    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
-    grayscale=True,        # keep plotting in gray
-    ax_titles=("Recovered Image", None),  # customise left title; right auto
+    recovered_2d_scipy,
+    ax_titles=("Recovered Image (SciPy)", None),
+    **roi_kwargs
 )
 
 # %%
