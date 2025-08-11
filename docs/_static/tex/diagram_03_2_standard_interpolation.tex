@@ -1,0 +1,48 @@
+\documentclass[tikz,border=16pt]{standalone}
+\usepackage{circuitikz}
+\usetikzlibrary{arrows.meta}
+
+\begin{document}
+\begin{circuitikz}
+\tikzset{every node/.style={font=\LARGE}}
+
+\draw [->, >=Stealth] (4.25,13.25) -- (8,13.25);
+\draw  (9,13.25) circle (1cm) node {\LARGE $\downarrow 4$} ;
+\draw [->, >=Stealth] (10,13.25) -- (14.5,13.25);
+\node at (12,13.25) [circ] {};
+\draw [short] (12,13.25) -- (12,8.25);
+\draw [->, >=Stealth] (12,8.25) -- (14.5,8.25);
+\draw  (14.5,14) rectangle  node {\LARGE Standard Interpolation} (20.75,12.25);
+\draw  (14.5,9) rectangle  node {\LARGE SciPy Interpolation} (20.75,7.25);
+\draw [short] (20.75,13) -- (32.25,13);
+\draw  (30,10.75) circle (1cm) node {\LARGE $\sum$} ;
+\draw [short] (23.75,8.25) -- (32.25,8.25);
+\draw  (25,5.5) circle (1cm) node {\LARGE $\sum$} ;
+\draw  (27.25,2) circle (1cm) node {\LARGE $\sum$} ;
+\node at (25,8.25) [circ] {};
+\draw (5.5,13.25) to[short] (5.5,2);
+\draw [->, >=Stealth] (5.5,5.5) -- (24,5.5);
+\draw [->, >=Stealth] (5.5,2) -- (26.25,2);
+\draw [->, >=Stealth] (25,8.25) -- (25,6.5);
+\node at (30,8.25) [circ] {};
+\node at (30,13) [circ] {};
+\draw [->, >=Stealth] (30,13) -- (30,11.75);
+\draw [->, >=Stealth] (30,8.25) -- (30,9.75);
+\draw [dashed] (10.75,15.5) -- (10.75,0.25);
+\node at (5.5,13.25) [circ] {};
+\node at (5.5,5.5) [circ] {};
+\node [font=\Huge] at (45.5,6.25) {+};
+\draw  (22.75,8.25) circle (1cm) node {\Huge $-$} ;
+\draw [->, >=Stealth] (20.75,8.25) -- (21.75,8.25);
+\draw [->, >=Stealth] (25,4.5) -- (25,0);
+\draw [->, >=Stealth] (27.25,1) -- (27.25,0);
+\draw [short] (31,10.75) -- (33.5,10.75);
+\node at (27.25,13) [circ] {};
+\draw [->, >=Stealth] (27.25,13) -- (27.25,6.5);
+\draw  (27.25,5.5) circle (1cm) node {\Huge $-$} ;
+\draw [->, >=Stealth] (27.25,4.5) -- (27.25,3);
+\draw [->, >=Stealth] (33.5,10.75) -- (33.5,0);
+\draw  (23.75,-0.25) rectangle  node {\LARGE Difference Images} (34.25,-2);
+\draw  (-2,14.25) rectangle  node {\LARGE Original Image} (4.25,12.5);
+\end{circuitikz}
+\end{document}

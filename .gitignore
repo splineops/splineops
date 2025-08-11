@@ -18,6 +18,13 @@ __pycache__/
 # Environments
 splineops_env/
 
+# Tex files
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.pdf
+
 # Distribution / packaging
 .Python
 build/
