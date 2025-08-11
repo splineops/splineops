@@ -20,7 +20,6 @@ from splineops.utils import (
     resize_and_compute_metrics,      # resampling + metrics
     compute_snr_and_mse_cropped,     # used once later
     plot_resized_image,              # visual helpers
-    plot_recovered_image,
     plot_difference_image,
     show_roi_zoom,
 )
@@ -58,11 +57,27 @@ border_fraction = 0.3
 #plt.axis("off")
 #plt.show()
 
+# Get image dimensions
+h_img, w_img = input_image_normalized.shape
+
+# Same ROI size as before
+roi_size = int(h_img * (1/3))
+row_center = h_img // 2 - roi_size // 2
+col_center = w_img // 2 - roi_size // 2
+
+# Shift down and right by 10% of height/width
+shift_down = int(h_img * 0.10)   # 10% downward
+shift_right = int(w_img * 0.10)  # 10% to the right
+
+roi_xy_shifted = (row_center + shift_down, col_center + shift_right)
+
+# Show with shifted ROI
 show_roi_zoom(
-    input_image_normalized,     # image to inspect
-    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
-    grayscale=True,        # keep plotting in gray
-    ax_titles=("Original Image", None),  # customise left title; right auto
+    input_image_normalized,
+    roi_height_frac=1/3,
+    grayscale=True,
+    roi_xy=roi_xy_shifted,
+    ax_titles=("Original Image", None)
 )
 
 # %%
