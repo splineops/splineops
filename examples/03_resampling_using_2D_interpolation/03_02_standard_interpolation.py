@@ -94,8 +94,8 @@ def draw_pipeline_diagram():
     arrow(12, 8.25, 14.5, 8.25)
 
     # Method boxes
-    rect(14.5, 14, 20.75, 12.25, "Standard Interpolation", fs=12)
-    rect(14.5, 9, 20.75, 7.25, "SciPy Interpolation", fs=12)
+    rect(14.5, 14, 20.75, 12.25, "Standard Interpolation\n$\\uparrow 4$", fs=12)
+    rect(14.5, 9, 20.75, 7.25, "SciPy Interpolation\n$\\uparrow 4$", fs=12)
 
     # Top branch to the right
     line(20.75, 13, 32.25, 13)
