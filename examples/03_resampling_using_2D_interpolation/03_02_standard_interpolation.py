@@ -47,26 +47,8 @@ input_image_normalized = (
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
 
-# --- Reduce resolution by half on each axis (anti-aliased) ---
-#h, w = input_image_normalized.shape
-# If the image has odd dims, crop 1 pixel so reshape works cleanly
-#h2, w2 = h - (h % 2), w - (w % 2)
-#img_cropped = input_image_normalized[:h2, :w2]
-
-# Average 2×2 blocks → halves both H and W
-#input_image_normalized = img_cropped.reshape(h2//2, 2, w2//2, 2).mean(axis=(1, 3))
-# ----------------------------------------------------------------
-
 zoom_factors_2d = (0.25, 0.25)
 border_fraction = 0.3
-
-# We plot the original grayscale image.
-
-#plt.figure(figsize=(6, 5))
-#plt.imshow(input_image_normalized, cmap='gray', aspect='equal')
-#plt.title("Original Image")
-#plt.axis("off")
-#plt.show()
 
 # Face-centered 64×64 ROI
 ROI_SIZE_PX = 64
