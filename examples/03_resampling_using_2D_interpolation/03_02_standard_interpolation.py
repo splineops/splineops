@@ -67,24 +67,20 @@ border_fraction = 0.3
 #plt.axis("off")
 #plt.show()
 
-# Consistent ROI across all plots
-roi_frac = 1/3
+# Face-centered 64×64 ROI
+ROI_SIZE_PX = 64
+FACE_ROW, FACE_COL = 250, 445  # (row, col)
+
 h_img, w_img = input_image_normalized.shape
-roi_size = int(h_img * roi_frac)
-row_center = h_img // 2 - roi_size // 2
-col_center = w_img // 2 - roi_size // 2
 
-# Shift: 10% down and 10% right
-shift_down  = int(h_img * 0.10)
-shift_right = int(w_img * 0.10)
+# Top-left of the 64×64 box, clipped to stay inside the image
+row_top = int(np.clip(FACE_ROW - ROI_SIZE_PX // 2, 0, h_img - ROI_SIZE_PX))
+col_left = int(np.clip(FACE_COL - ROI_SIZE_PX // 2, 0, w_img - ROI_SIZE_PX))
 
-roi_xy_shifted = (row_center + shift_down, col_center + shift_right)
-
-# Reusable kwargs for all ROI zooms
 roi_kwargs = dict(
-    roi_height_frac=roi_frac,
+    roi_height_frac=ROI_SIZE_PX / h_img,  # keeps height at 64 px (square ROI)
     grayscale=True,
-    roi_xy=roi_xy_shifted,
+    roi_xy=(row_top, col_left),           # top-left of the ROI
 )
 
 # Original (shifted ROI)
