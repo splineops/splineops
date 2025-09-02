@@ -85,7 +85,7 @@ roi_kwargs = dict(
 )
 
 # Original (shifted ROI)
-show_roi_zoom(
+_ = show_roi_zoom(
     input_image_normalized,
     ax_titles=("Original Image", None),
     **roi_kwargs
@@ -95,7 +95,7 @@ show_roi_zoom(
 # Pipeline Diagram
 # ----------------
 #
-draw_standard_vs_scipy_pipeline(
+_ = draw_standard_vs_scipy_pipeline(
     show_separator=True,         # keep dashed divider
     show_plus=False,             # no far-right '+'
     include_upsample_labels=True,# show '↑ 4' inside the boxes
@@ -130,7 +130,7 @@ draw_standard_vs_scipy_pipeline(
 #plot_recovered_image(recovered_2d_interp)
 
 # Recovered (standard interpolation) – same ROI
-show_roi_zoom(
+_ = show_roi_zoom(
     recovered_2d_interp,
     ax_titles=("Recovered Image (cubic)", None),
     **roi_kwargs
@@ -192,7 +192,7 @@ plot_difference_image(
 #plot_recovered_image(recovered_2d_scipy)
 
 # Recovered (SciPy) – same ROI
-show_roi_zoom(
+_ = show_roi_zoom(
     recovered_2d_scipy,
     ax_titles=("Recovered Image (SciPy)", None),
     **roi_kwargs
