@@ -1,4 +1,4 @@
-# conf.py
+# splineops/docs/conf.py
 
 # Import necessary modules
 import os

@@ -1,3 +1,5 @@
+.. splineops/examples/07_differentiate/GALLERY_HEADER.rst
+
 Differentiate examples
 ======================
 

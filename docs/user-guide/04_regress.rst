@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/04_regress.rst
+
 Regress
 =======
 

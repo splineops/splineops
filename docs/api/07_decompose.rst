@@ -1,3 +1,5 @@
+.. splineops/docs/api/07_decompose.rst
+
 .. _api-decompose:
 
 Decompose

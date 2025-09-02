@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/03_rotate.rst
+
 Rotate
 ======
 

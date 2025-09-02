@@ -1,3 +1,5 @@
+.. splineops/docs/index.rst
+
 SplineOps—Spline Operations
 ===========================
 

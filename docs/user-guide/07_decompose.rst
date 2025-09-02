@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/07_decompose.rst
+
 Decompose
 =========
 

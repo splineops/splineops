@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/01_interpolate.rst
+
 Spline Interpolation
 ====================
 

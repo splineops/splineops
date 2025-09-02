@@ -1,3 +1,5 @@
+.. splineops/docs/api/02_resize.rst
+
 .. _api-resize:
 
 Resize

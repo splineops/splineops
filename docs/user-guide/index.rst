@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/index.rst
+
 User Guide
 ==========
 

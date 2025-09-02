@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/05_denoise.rst
+
 Denoise
 =======
 

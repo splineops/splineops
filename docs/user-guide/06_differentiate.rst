@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/06_differentiate.rst
+
 Differentiate
 =============
 

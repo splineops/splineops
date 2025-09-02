@@ -1,3 +1,5 @@
+.. splineops/docs/api/05_denoise.rst
+
 .. _api-denoise:
 
 Denoise

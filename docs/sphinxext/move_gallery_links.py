@@ -1,5 +1,6 @@
-"""
+# splineops/docs/sphinxext/move_gallery_links.py
 
+"""
 This script comes from Scikit-Learn repository: https://github.com/scikit-learn/scikit-learn/blob/main/doc/sphinxext/move_gallery_links.py
 
 This script intends to better integrate sphinx-gallery into pydata-sphinx-theme. In

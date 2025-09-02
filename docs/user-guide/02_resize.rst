@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/02_resize.rst
+
 Resize
 ======
 

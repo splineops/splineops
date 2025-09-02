@@ -1,3 +1,5 @@
+.. splineops/docs/api/01_interpolate.rst
+
 .. _api-interpolate:
 
 Interpolate

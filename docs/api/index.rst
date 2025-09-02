@@ -1,3 +1,5 @@
+.. splineops/docs/api/index.rst
+
 API Reference
 =============
 
