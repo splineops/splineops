@@ -1,8 +1,9 @@
+# splineops/src/splineops/denoise/fBmper.py
+
 from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 from splineops.denoise.fractsplineautocorr import fractsplineautocorr
-
 
 def fBmper(
     epsH: float,

@@ -1,7 +1,8 @@
+# splineops/src/splineops/utils/metrics.py
+
 from __future__ import annotations
 import numpy as np
 from .image import crop_to_central_region
-
 
 def compute_snr_and_mse_cropped(
     original: np.ndarray,

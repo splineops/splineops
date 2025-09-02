@@ -1,3 +1,5 @@
+# splineops/src/splineops/interpolate/utils.py
+
 import numpy as np
 
 # TODO(dperdios): use scipy-stubs (https://github.com/microsoft/python-type-stubs)

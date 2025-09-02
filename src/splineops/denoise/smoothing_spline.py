@@ -1,9 +1,10 @@
+# splineops/src/splineops/denoise/smoothing_spline.py
+
 from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 from splineops.denoise.fractsplineautocorr import fractsplineautocorr
 from scipy.fft import fftn, ifftn
-
 
 def periodize(x: npt.NDArray, m: int) -> npt.NDArray:
     """

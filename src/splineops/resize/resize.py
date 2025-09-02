@@ -1,3 +1,5 @@
+# splineops/src/splineops/resize/resize.py
+
 # splineops.resize.resize
 # =======================
 

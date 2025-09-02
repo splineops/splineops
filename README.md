@@ -1,3 +1,5 @@
+<!-- splineops/README.md -->
+
 # SplineOps: Spline Operations
 
 See https://splineops.github.io/ for the documentation.

@@ -1,10 +1,11 @@
+# splineops/src/splineops/bases/splinebasis.py
+
 from abc import ABCMeta, abstractmethod
 from typing import Sequence, Optional
 from numbers import Real
 from collections import abc
 import numpy.typing as npt
 import numpy as np
-
 
 class SplineBasis(metaclass=ABCMeta):
     def __init__(

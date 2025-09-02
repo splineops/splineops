@@ -1,3 +1,5 @@
+# splineops/src/splineops/utils/image.py
+
 """
 splineops.utils.image
 =====================

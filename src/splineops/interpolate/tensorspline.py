@@ -1,3 +1,5 @@
+# splineops/src/splineops/interpolate/tensorspline.py
+
 import numpy as np
 import numpy.typing as npt
 from typing import Sequence, Union, Tuple, cast
@@ -12,7 +14,6 @@ TSplineBasis = Union[SplineBasis, str]
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
 TExtensionMode = Union[ExtensionMode, str]
 TExtensionModes = Union[TExtensionMode, Sequence[TExtensionMode]]
-
 
 class TensorSpline:
     """

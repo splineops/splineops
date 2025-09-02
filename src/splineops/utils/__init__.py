@@ -1,4 +1,4 @@
-# utils/__init__.py
+# splineops/src/splineops/utils/__init__.py
 
 from .image import crop_to_central_region, adjust_size_for_zoom
 from .metrics import compute_snr_and_mse_cropped

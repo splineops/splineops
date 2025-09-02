@@ -1,3 +1,5 @@
+# splineops/src/splineops/utils/diagram.py
+
 """
 splineops.utils.diagram
 =======================

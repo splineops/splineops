@@ -1,3 +1,5 @@
+# splineops/src/splineops/decompose/wavelets/splinewaveletstool.py
+
 """
 splinewaveletstool.py
 ---------------------

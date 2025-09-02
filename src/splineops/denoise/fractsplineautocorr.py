@@ -1,7 +1,8 @@
+# splineops/src/splineops/denoise/fractsplineautocorr.py
+
 from typing import Union
 import numpy as np
 import numpy.typing as npt
-
 
 def fractsplineautocorr(
     alpha: float,

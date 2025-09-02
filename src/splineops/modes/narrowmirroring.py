@@ -1,3 +1,5 @@
+# splineops/src/splineops/modes/narrowmirroring.py
+
 import numpy as np
 from typing import Tuple
 import numpy.typing as npt
@@ -5,7 +7,6 @@ import numpy.typing as npt
 from splineops.bases.splinebasis import SplineBasis
 from splineops.modes.extensionmode import ExtensionMode
 from splineops.interpolate.utils import _data_to_coeffs
-
 
 class NarrowMirroring(ExtensionMode):
 

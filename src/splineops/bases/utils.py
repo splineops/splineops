@@ -1,3 +1,5 @@
+# splineops/src/splineops/bases/utils.py
+
 from typing import Union, Mapping, Type
 from splineops.bases.splinebasis import SplineBasis
 from splineops.bases.bspline0basis import BSpline0Basis, BSpline0SymBasis

@@ -1,3 +1,5 @@
+# splineops/src/splineops/resize/utils.py
+
 import numpy as np
 import numpy.typing as npt
 from typing import Sequence, Tuple, Union, Optional

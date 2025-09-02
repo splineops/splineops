@@ -1,3 +1,5 @@
+# splineops/tests/test_05_01_denoise.py
+
 import numpy as np
 import pytest
 from splineops.denoise.smoothing_spline import smoothing_spline, smoothing_spline_nd, recursive_smoothing_spline

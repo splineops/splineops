@@ -1,3 +1,5 @@
+# splineops/src/splineops/decompose/wavelets/abstractwavelets.py
+
 """
 abstractwavelets.py
 -------------------

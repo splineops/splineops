@@ -1,3 +1,5 @@
+# splineops/src/splineops/regress/sparsification.py
+
 # Sparsest Piecewise-Linear Interpolation
 # =======================================
 

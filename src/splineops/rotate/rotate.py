@@ -1,8 +1,9 @@
+# splineops/src/splineops/rotate/rotate.py
+
 import numpy as np
 import numpy.typing as npt
 from typing import Optional, Tuple
 from splineops.interpolate.tensorspline import TensorSpline
-
 
 def rotate(
     data: npt.NDArray,

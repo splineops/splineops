@@ -1,3 +1,5 @@
+# splineops/src/splineops/utils/plotting.py
+
 """
 splineops.utils.plotting
 ========================
