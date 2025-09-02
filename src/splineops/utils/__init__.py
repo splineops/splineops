@@ -1,3 +1,5 @@
+# utils/__init__.py
+
 from .image import crop_to_central_region, adjust_size_for_zoom
 from .metrics import compute_snr_and_mse_cropped
 from .resample import (
@@ -11,6 +13,7 @@ from .plotting import (
     plot_difference_image,
     show_roi_zoom,
 )
+from .diagram import draw_standard_vs_scipy_pipeline
 
 __all__ = [
     "crop_to_central_region",
@@ -23,4 +26,5 @@ __all__ = [
     "plot_recovered_image",
     "plot_difference_image",
     "show_roi_zoom",
+    "draw_standard_vs_scipy_pipeline",
 ]
