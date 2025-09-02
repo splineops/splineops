@@ -30,10 +30,17 @@ def draw_pipeline_diagram():
     import matplotlib.pyplot as plt
     from matplotlib.patches import FancyBboxPatch, Circle
 
-    fig, ax = plt.subplots(figsize=(14, 5.2))
-    # Match the TikZ coordinate span (roughly x: -2..45.5, y: -2..15.5)
-    ax.set_xlim(-2.5, 46.5)
-    ax.set_ylim(-2.5, 16.0)
+    # data extents WITHOUT the far-right plus
+    XMIN, XMAX = -2.5, 34.8
+    YMIN, YMAX = -2.5, 16.0
+    ratio = (XMAX - XMIN) / (YMAX - YMIN)  # ~2.027
+
+    width = 12.0
+    height = width / ratio
+
+    fig, ax = plt.subplots(figsize=(width, height))
+    ax.set_xlim(XMIN, XMAX)
+    ax.set_ylim(YMIN, YMAX)
     ax.set_aspect("equal", adjustable="box")
     ax.axis("off")
 
