@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/07_differentiate/07_01_differentiate_module.py
+# sphinx_gallery_end_ignore
+
 """
 Differentiate Module
 ====================

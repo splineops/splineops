@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/04_rotate/04_02_rotation_animation.py
+# sphinx_gallery_end_ignore
+
 """
 Rotation Animation
 ==================

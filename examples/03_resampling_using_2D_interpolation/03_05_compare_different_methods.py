@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/03_resampling_using_2d_interpolation/03_05_compare_different_methods.py
+# sphinx_gallery_end_ignore
+
 """
 Compare Different Methods
 =========================

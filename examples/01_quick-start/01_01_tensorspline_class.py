@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/01_quick-start/01_01_tensorspline_class.py
+# sphinx_gallery_end_ignore
+
 """
 Class TensorSpline
 ==================

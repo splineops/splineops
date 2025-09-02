@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/05_regress/05_01_regress_module.py
+# sphinx_gallery_end_ignore
+
 """
 Regress Module
 ==============

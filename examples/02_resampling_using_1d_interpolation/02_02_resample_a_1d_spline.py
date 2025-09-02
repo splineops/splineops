@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/02_resampling_using_1d_interpolation/02_02_resample_a_1d_spline.py
+# sphinx_gallery_end_ignore
+
 """
 Resample a 1D spline
 ====================

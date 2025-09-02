@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/06_denoise/06_03_3d_volume_smoothing.py
+# sphinx_gallery_end_ignore
+
 """
 3D Volume Smoothing
 ===================

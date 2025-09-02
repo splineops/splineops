@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/04_rotate/04_01_rotate_image.py
+# sphinx_gallery_end_ignore
+
 """
 Rotate Image
 ============

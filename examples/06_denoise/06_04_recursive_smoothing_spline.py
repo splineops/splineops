@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/06_denoise/06_04_recursive_smoothing_spline.py
+# sphinx_gallery_end_ignore
+
 """
 Recursive Smoothing Spline
 ==========================

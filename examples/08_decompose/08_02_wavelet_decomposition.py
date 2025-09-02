@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/08_decompose/08_02_wavelet_decomposition.py
+# sphinx_gallery_end_ignore
+
 """
 Wavelet Decomposition
 =====================

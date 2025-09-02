@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/06_denoise/06_01_1d_fractional_brownian_motion.py
+# sphinx_gallery_end_ignore
+
 """
 1D Fractional Brownian Motion
 =============================

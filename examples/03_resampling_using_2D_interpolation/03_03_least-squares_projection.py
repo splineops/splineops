@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/03_resampling_using_2d_interpolation/03_03_least-squares_projection.py
+# sphinx_gallery_end_ignore
+
 """
 Least-Squares Projection
 ========================

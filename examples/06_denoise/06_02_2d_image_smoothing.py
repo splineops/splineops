@@ -1,3 +1,7 @@
+# sphinx_gallery_start_ignore
+# splineops/examples/06_denoise/06_02_2d_image_smoothing.py
+# sphinx_gallery_end_ignore
+
 """
 2D Image Smoothing
 ==================
