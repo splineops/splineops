@@ -25,6 +25,122 @@ from splineops.utils import (
 )
 
 # %%
+# Pipeline Diagram — TikZ-faithful re-creation in Matplotlib
+def draw_pipeline_diagram():
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, Circle
+
+    fig, ax = plt.subplots(figsize=(14, 5.2))
+    # Match the TikZ coordinate span (roughly x: -2..45.5, y: -2..15.5)
+    ax.set_xlim(-2.5, 46.5)
+    ax.set_ylim(-2.5, 16.0)
+    ax.set_aspect("equal", adjustable="box")
+    ax.axis("off")
+
+    # ---------- helpers ----------
+    def rect(x1, y1, x2, y2, label, fs=12):
+        # TikZ gave two opposite corners; convert to lower-left + size
+        x_lo, x_hi = min(x1, x2), max(x1, x2)
+        y_lo, y_hi = min(y1, y2), max(y1, y2)
+        w, h = x_hi - x_lo, y_hi - y_lo
+        r = FancyBboxPatch(
+            (x_lo, y_lo), w, h,
+            boxstyle="round,pad=0.18,rounding_size=0.18",
+            linewidth=1.6, edgecolor="black", facecolor="white"
+        )
+        ax.add_patch(r)
+        ax.text((x1 + x2) / 2, (y1 + y2) / 2, label, ha="center", va="center", fontsize=fs)
+        return r
+
+    def circ(x, y, r, label=None, fs=16):
+        c = Circle((x, y), r, fill=False, linewidth=1.6, edgecolor="black")
+        ax.add_patch(c)
+        if label is not None:
+            ax.text(x, y, label, ha="center", va="center", fontsize=fs)
+        return c
+
+    def dot(x, y, s=4.5):
+        ax.plot([x], [y], marker="o", markersize=s, color="black")
+
+    def line(x1, y1, x2, y2, style="solid", lw=1.6, z=2):
+        ax.plot([x1, x2], [y1, y2], linestyle=style, linewidth=lw, color="black", zorder=z)
+
+    def arrow(x1, y1, x2, y2, lw=1.6):
+        # Use annotate for data→data arrows
+        ax.annotate(
+            "", xy=(x2, y2), xytext=(x1, y1),
+            arrowprops=dict(arrowstyle="->", linewidth=lw, shrinkA=0, shrinkB=0)
+        )
+
+    # ---------- nodes (matching your TikZ coordinates) ----------
+    # Left: Original
+    rect(-2, 14.25, 4.25, 12.5, "Original Image", fs=12)
+    arrow(4.25, 13.25, 8, 13.25)
+
+    # Downsample circle
+    circ(9, 13.25, 1.0, r"$\downarrow 4$", fs=18)
+    arrow(10, 13.25, 14.5, 13.25)
+
+    # Junctions and split to two branches
+    dot(12, 13.25)
+    line(12, 13.25, 12, 8.25)
+    arrow(12, 8.25, 14.5, 8.25)
+
+    # Method boxes
+    rect(14.5, 14, 20.75, 12.25, "Standard Interpolation", fs=12)
+    rect(14.5, 9, 20.75, 7.25, "SciPy Interpolation", fs=12)
+
+    # Top branch to the right
+    line(20.75, 13, 32.25, 13)
+    dot(27.25, 13)
+    dot(30, 13)
+    arrow(30, 13, 30, 11.75)
+
+    # Middle sum node
+    circ(30, 10.75, 1.0, r"$\sum$", fs=18)
+    line(31, 10.75, 33.5, 10.75)
+    arrow(33.5, 10.75, 33.5, 0)
+
+    # Bottom right plumbing
+    circ(25, 5.5, 1.0, r"$\sum$", fs=18)
+    circ(27.25, 2, 1.0, r"$\sum$", fs=18)
+    arrow(25, 4.5, 25, 0)
+    arrow(27.25, 1, 27.25, 0)
+
+    # Lower minus node and feed
+    circ(27.25, 5.5, 1.0, r"$-$", fs=20)
+    arrow(27.25, 13, 27.25, 6.5)
+    arrow(27.25, 4.5, 27.25, 3)
+
+    # Middle horizontal from SciPy, with minus and junctions
+    line(23.75, 8.25, 32.25, 8.25)
+    circ(22.75, 8.25, 1.0, r"$-$", fs=20)
+    arrow(20.75, 8.25, 21.75, 8.25)
+    dot(25, 8.25)
+    dot(30, 8.25)
+    arrow(25, 8.25, 25, 6.5)
+    arrow(30, 8.25, 30, 9.75)
+
+    # Left vertical trunk feeding two lower rows
+    line(5.5, 13.25, 5.5, 2)
+    dot(5.5, 13.25)
+    dot(5.5, 5.5)
+    arrow(5.5, 5.5, 24, 5.5)
+    arrow(5.5, 2, 26.25, 2)
+
+    # Dashed separator
+    line(10.75, 15.5, 10.75, 0.25, style="dashed", lw=1.2, z=1)
+
+    # Collector box at the bottom
+    rect(23.75, -0.25, 34.25, -2, "Difference Images", fs=12)
+
+    fig.tight_layout(pad=0.4)
+    plt.show()
+
+draw_pipeline_diagram()
+
+
+# %%
 # Load and Normalize an Image
 # ---------------------------
 #
