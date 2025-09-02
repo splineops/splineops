@@ -1,3 +1,4 @@
+# splineops/docs/Makefile
 # Minimal makefile for Sphinx documentation
 #
 
