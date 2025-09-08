@@ -173,16 +173,17 @@ def draw_standard_vs_scipy_pipeline(
     ax: Optional[Axes] = None,
 ) -> Tuple[Figure, Axes]:
     """Standard/SciPy pipeline with TensorSpline branch, equal rail spacing,
-    independent outputs to the collector, and junction dots on SciPy/TS paths."""
-    # Wider canvas to fit lower collector
+    independent outputs to the collector, and inbound arrows stopping before boxes."""
+    # canvas
     xmin, xmax = -2.5, (46.5 if show_plus else 34.8)
     ymin, ymax = -3.0, 16.0
     fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
 
-    # Common y's
-    y_std   = 13.00
-    y_scipy = 8.25
-    y_ts    = 3.50
+    # layout constants
+    y_std, y_scipy, y_ts = 13.0, 8.25, 3.5
+    box_left = 14.5
+    box_right = 21.75
+    box_gap = 0.25  # how far before the box edge arrows should stop
 
     # Left: Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
@@ -190,64 +191,63 @@ def draw_standard_vs_scipy_pipeline(
 
     # Downsample circle ↓4
     circle(ax, 9, 13.25, 1.0, r"$\downarrow 4$", fontsize=18)
-    arrow(ax, 10, 13.25, 14.5, 13.25)  # into Standard box
+    # into Standard box (stop before the edge)
+    arrow(ax, 10, 13.25, box_left - box_gap, 13.25)
 
     # Junctions and split to lower rails
     dot(ax, 12, 13.25)
     seg(ax, 12, 13.25, 12, y_scipy)
-    arrow(ax, 12, y_scipy, 14.5, y_scipy)  # into SciPy box
+    # into SciPy box (stop before the edge)
+    arrow(ax, 12, y_scipy, box_left - box_gap, y_scipy)
 
     # Method boxes (wider right edge = 21.75)
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
-    box(ax, 14.5, 14, 21.75, 12.25, f"Standard Interpolation{ups}", fontsize=12)
-    box(ax, 14.5, 9,  21.75, 7.25,  f"SciPy Interpolation{ups}",    fontsize=12)
+    box(ax, box_left, 14, box_right, 12.25, f"Standard Interpolation{ups}", fontsize=12)
+    box(ax, box_left, 9,  box_right, 7.25,  f"SciPy Interpolation{ups}",    fontsize=12)
 
     # TensorSpline branch (rail spacing matched to Standard↔SciPy)
     seg(ax, 12, y_scipy, 12, y_ts)
-    arrow(ax, 12, y_ts, 14.5, y_ts)
-    box(ax, 14.5, y_ts + 0.875, 21.75, y_ts - 0.875, f"TensorSpline Interpolation{ups}", fontsize=12)
+    # into TensorSpline box (stop before the edge)
+    arrow(ax, 12, y_ts, box_left - box_gap, y_ts)
+    box(ax, box_left, y_ts + 0.875, box_right, y_ts - 0.875,
+        f"TensorSpline Interpolation{ups}", fontsize=12)
 
     # Rails to the right of the three boxes
-    seg(ax, 21.75, y_std,   32.25, y_std)   # Standard rail
-    seg(ax, 21.75, y_scipy, 32.25, y_scipy) # SciPy rail
-    seg(ax, 21.75, y_ts,    32.25, y_ts)    # TensorSpline rail
+    seg(ax, box_right, y_std,   32.25, y_std)   # Standard rail
+    seg(ax, box_right, y_scipy, 32.25, y_scipy) # SciPy rail
+    seg(ax, box_right, y_ts,    32.25, y_ts)    # TensorSpline rail
 
     # Taps / junction dots
     dot(ax, 27.25, y_std)
     dot(ax, 30.00, y_std)
     dot(ax, 32.00, y_std)   # tap for Standard↔TensorSpline sum
-    dot(ax, 30.00, y_scipy) # NEW: SciPy→sum junction
-    dot(ax, 32.00, y_ts)    # NEW: TensorSpline→sum junction
+    dot(ax, 30.00, y_scipy) # SciPy→sum junction
+    dot(ax, 32.00, y_ts)    # TensorSpline→sum junction
 
-    # Middle sum (Standard + SciPy)
+    # Standard + SciPy sum
     mid_cx, mid_cy, mid_r = 30.0, 10.75, 1.0
     circle(ax, mid_cx, mid_cy, mid_r, r"$\sum$", fontsize=18)
-    # connectors into the middle sum
     arrow(ax, 30.0, y_std,   mid_cx, mid_cy + mid_r)  # from Standard ↓
     arrow(ax, 30.0, y_scipy, mid_cx, mid_cy - mid_r)  # from SciPy ↑
-    # out to its own collector column (x=33.5)
     seg(ax, mid_cx + mid_r, mid_cy, 33.5, mid_cy)
-    label(ax, mid_cx - 0.7, mid_cy + mid_r + 0.6, r"$+$", fontsize=18)  # Standard side
-    label(ax, mid_cx - 0.7, mid_cy - mid_r - 0.6, r"$-$", fontsize=18)  # SciPy side
+    label(ax, mid_cx - 0.7, mid_cy + mid_r + 0.6, r"$+$", fontsize=18)
+    label(ax, mid_cx - 0.7, mid_cy - mid_r - 0.6, r"$-$", fontsize=18)
 
-    # Standard ± TensorSpline sum (centered between SciPy & TensorSpline rails)
+    # Standard ± TensorSpline sum (centered between y_scipy & y_ts)
     st_ts_cx, st_ts_cy, st_ts_r = 32.0, (y_scipy + y_ts) / 2.0, 1.0  # 5.875
     circle(ax, st_ts_cx, st_ts_cy, st_ts_r, r"$\sum$", fontsize=18)
-    # feeds
-    arrow(ax, 32.0, y_std, st_ts_cx, st_ts_cy + st_ts_r)  # from Standard ↓
-    arrow(ax, st_ts_cx, y_ts, st_ts_cx, st_ts_cy - st_ts_r)  # from TensorSpline ↑
-    # signs tucked in the gap
+    arrow(ax, 32.0, y_std, st_ts_cx, st_ts_cy + st_ts_r)    # from Standard ↓
+    arrow(ax, st_ts_cx, y_ts, st_ts_cx, st_ts_cy - st_ts_r) # from TensorSpline ↑
     label(ax, st_ts_cx - 0.7, st_ts_cy + st_ts_r + 0.2, r"$+$", fontsize=18)
     label(ax, st_ts_cx - 0.7, st_ts_cy - st_ts_r - 0.2, r"$-$", fontsize=18)
-    # independent output column at x=34.0
     exit_x = 34.0
     seg(ax, st_ts_cx + st_ts_r, st_ts_cy, exit_x, st_ts_cy)
 
-    # Bottom sum (Standard vs Original) — kept lower for more space
+    # Bottom sum (Standard vs Original) — lower for more space
     sum_cx, sum_cy, sum_r = 27.25, 1.25, 1.0
     circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
-    label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)   # Original side
-    label(ax, sum_cx - 0.7,         sum_cy + sum_r + 0.6, r"$-$", fontsize=18)  # above the sum
+    label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)
+    label(ax, sum_cx - 0.7,         sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
     # Original lowest rail aligned to bottom sum y
     seg(ax, 5.5, 13.25, 5.5, sum_cy)
     dot(ax, 5.5, 13.25)
@@ -255,18 +255,15 @@ def draw_standard_vs_scipy_pipeline(
     # tap from Standard to bottom sum
     arrow(ax, 27.25, y_std, sum_cx, sum_cy + sum_r)
 
-    # ---------- Collector box & down arrows that TOUCH it ---------- #
+    # Collector box & down arrows that TOUCH it
     collector_left, collector_right = 23.75, 34.25
-    collector_top, collector_bottom = -1.0, -2.6  # lowered
-    # arrows landing on the collector top
-    arrow(ax, 33.5,  mid_cy,        33.5,  collector_top)   # from Std↔SciPy sum
-    arrow(ax, exit_x, st_ts_cy,     exit_x, collector_top)  # from Std↔TS sum
-    arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top)  # from bottom sum
-    # draw the collector box last
+    collector_top, collector_bottom = -1.0, -2.6
+    arrow(ax, 33.5,  mid_cy,         33.5,  collector_top)   # from Std↔SciPy sum
+    arrow(ax, exit_x, st_ts_cy,      exit_x, collector_top)  # from Std↔TS sum
+    arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top) # from bottom sum
     box(ax, collector_left, collector_top, collector_right, collector_bottom,
         "Difference Images", fontsize=12)
 
-    # Optional dashed separator
     if show_separator:
         seg(ax, 10.75, 15.5, 10.75, 0.25, style="dashed", linewidth=1.2, zorder=1)
 
