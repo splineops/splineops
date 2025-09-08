@@ -172,11 +172,7 @@ def draw_standard_vs_scipy_pipeline(
     width: float = 12.0,
     ax: Optional[Axes] = None,
 ) -> Tuple[Figure, Axes]:
-    """Standard/SciPy pipeline diagram with:
-      • + (Standard side) and − (SciPy side) around the middle sum
-      • − above the bottom sum
-      • + on the Original-image side (left) of the bottom sum
-    """
+    """Standard/SciPy pipeline diagram with a wider set of method boxes (+1.0 unit)."""
     xmin, xmax = -2.5, (46.5 if show_plus else 34.8)
     ymin, ymax = -2.5, 16.0
     fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
@@ -194,13 +190,21 @@ def draw_standard_vs_scipy_pipeline(
     seg(ax, 12, 13.25, 12, 8.25)
     arrow(ax, 12, 8.25, 14.5, 8.25)
 
-    # Method boxes
+    # Method boxes (wider: x2 = 21.75)
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
-    box(ax, 14.5, 14, 20.75, 12.25, f"Standard Interpolation{ups}", fontsize=12)
-    box(ax, 14.5, 9, 20.75, 7.25,   f"SciPy Interpolation{ups}",    fontsize=12)
+    box(ax, 14.5, 14, 21.75, 12.25, f"Standard Interpolation{ups}", fontsize=12)
+    box(ax, 14.5, 9,  21.75, 7.25,  f"SciPy Interpolation{ups}",    fontsize=12)
 
-    # Top branch to the right (Standard)
-    seg(ax, 20.75, 13, 32.25, 13)
+    # NEW: TensorSpline branch from the same junction (also wider)
+    ts_y = 5.5
+    seg(ax, 12, 8.25, 12, ts_y)                     # extend the vertical split down
+    arrow(ax, 12, ts_y, 14.5, ts_y)                 # feed into TensorSpline box
+    box(ax, 14.5, ts_y + 0.875, 21.75, ts_y - 0.875,
+        f"TensorSpline Interpolation{ups}", fontsize=12)
+    seg(ax, 21.75, ts_y, 32.25, ts_y)               # output goes to the right
+
+    # Top branch to the right (Standard) — start at new right edge
+    seg(ax, 21.75, 13, 32.25, 13)
     dot(ax, 27.25, 13)
     dot(ax, 30, 13)
     arrow(ax, 30, 13, 30, 11.75)
@@ -218,24 +222,21 @@ def draw_standard_vs_scipy_pipeline(
     # Bottom sum + output
     sum_cx, sum_cy, sum_r = 27.25, 2.0, 1.0
     circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
-    # New: "+" on the Original image side (left of the circle), bumped up a bit
-    label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)
-    # Existing: "−" above the bottom sum
-    label(ax, sum_cx - 0.7, sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
+    label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)  # Original side
+    label(ax, sum_cx - 0.7,         sum_cy + sum_r + 0.6, r"$-$", fontsize=18)  # above the sum
     arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, 0)
 
-    # Feed from top branch directly into the bottom sum
+    # Feed from Standard branch directly into the bottom sum
     arrow(ax, 27.25, 13, sum_cx, sum_cy + sum_r)
 
-    # SciPy mid path (no separate diff vs original)
-    seg(ax, 20.75, 8.25, 32.25, 8.25)
+    # SciPy mid path (start at new right edge)
+    seg(ax, 21.75, 8.25, 32.25, 8.25)
     dot(ax, 30, 8.25)
     arrow(ax, 30, 8.25, 30, 9.75)
 
-    # Left vertical trunk
+    # Left vertical trunk (stray dot previously removed)
     seg(ax, 5.5, 13.25, 5.5, 2)
     dot(ax, 5.5, 13.25)
-    dot(ax, 5.5, 5.5)
     arrow(ax, 5.5, 2, 26.25, 2)
 
     if show_separator:
