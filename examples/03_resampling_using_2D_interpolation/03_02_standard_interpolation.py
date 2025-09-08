@@ -111,35 +111,12 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Recovered Image
-# ~~~~~~~~~~~~~~~
-#
-# We plot the recovered image after a reversing of the zoom factors.
-
-#plot_recovered_image(recovered_2d_interp)
-
-# Recovered (standard interpolation) – same ROI
-_ = show_roi_zoom(
-    recovered_2d_interp,
-    ax_titles=("Recovered Image (cubic)", None),
-    **roi_kwargs
-)
-
-# %%
 # Resized Image
 # ~~~~~~~~~~~~~
 #
 # We plot the resized image with standard interpolation.
 
-plot_resized_image(
-    original=input_image_normalized,
-    resized=resized_2d_interp,
-    method="cubic",
-    zoom_factors=zoom_factors_2d,
-    time_elapsed=time_2d_interp
-)
-
-# === Zoomed face detail for the *resized (cubic)* image ===
+# Zoomed face detail for the resized (cubic) image — pasted onto original-size canvas ===
 h_res, w_res = resized_2d_interp.shape
 zoom_r, zoom_c = zoom_factors_2d
 
@@ -155,18 +132,36 @@ center_c_res = int(round(FACE_COL * zoom_c))
 row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res - roi_h_res))
 col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, w_res - roi_w_res))
 
-# Use a fraction relative to the resized height so the ROI shows the right number of pixels
-roi_kwargs_resized = dict(
-    roi_height_frac=roi_h_res / h_res,   # keeps the inset square at roi_h_res pixels high
+# --- Build original-size white canvas and paste the small resized image at top-left (0,0) ---
+h_img, w_img = input_image_normalized.shape  # original size
+canvas = np.ones((h_img, w_img), dtype=resized_2d_interp.dtype)  # white background in [0,1]
+canvas[:h_res, :w_res] = resized_2d_interp
+
+# IMPORTANT: roi_height_frac must be relative to the canvas height (original size),
+# but the ROI dimensions are those of the resized image region.
+roi_kwargs_on_canvas = dict(
+    roi_height_frac=roi_h_res / h_img,   # keeps the inset square at roi_h_res pixels high
     grayscale=True,
-    roi_xy=(row_top_res, col_left_res),  # top-left in the resized image
+    roi_xy=(row_top_res, col_left_res),  # same coords since pasted at (0,0)
 )
 
-# This renders the resized image on the left and a pixel-magnified inset on the right
 _ = show_roi_zoom(
-    resized_2d_interp,
+    canvas,
     ax_titles=("Resized Image (cubic)", None),
-    **roi_kwargs_resized
+    **roi_kwargs_on_canvas
+)
+
+# %%
+# Recovered Image
+# ~~~~~~~~~~~~~~~
+#
+# We plot the recovered image after a reversing of the zoom factors.
+
+# Recovered (standard interpolation) – same ROI
+_ = show_roi_zoom(
+    recovered_2d_interp,
+    ax_titles=("Recovered Image (cubic)", None),
+    **roi_kwargs
 )
 
 # %%
@@ -190,32 +185,56 @@ _ = show_roi_zoom(
 )
 
 # %%
+# Resized Image
+# ~~~~~~~~~~~~~
+#
+# We plot the resized image with SciPy interpolation.
+
+# Zoomed face detail for the resized (SciPy) image — pasted onto original-size canvas ===
+h_res_s, w_res_s = resized_2d_scipy.shape
+zoom_r, zoom_c = zoom_factors_2d
+
+# ROI size in the resized image (e.g., 64 -> 16 px when zoom=0.25)
+roi_h_res_s = max(1, int(round(ROI_SIZE_PX * zoom_r)))
+roi_w_res_s = max(1, int(round(ROI_SIZE_PX * zoom_c)))
+
+# ROI center mapped into the resized image
+center_r_res_s = int(round(FACE_ROW * zoom_r))
+center_c_res_s = int(round(FACE_COL * zoom_c))
+
+# Top-left of the ROI in the resized image, clipped to bounds
+row_top_res_s = int(np.clip(center_r_res_s - roi_h_res_s // 2, 0, h_res_s - roi_h_res_s))
+col_left_res_s = int(np.clip(center_c_res_s - roi_w_res_s // 2, 0, w_res_s - roi_w_res_s))
+
+# --- Build original-size white canvas and paste the small SciPy-resized image at top-left (0,0) ---
+# (values are in [0,1]; white background = 1.0)
+canvas_scipy = np.ones((h_img, w_img), dtype=resized_2d_scipy.dtype)
+canvas_scipy[:h_res_s, :w_res_s] = resized_2d_scipy
+
+# roi_height_frac is relative to the canvas height (original size)
+roi_kwargs_on_canvas_scipy = dict(
+    roi_height_frac=roi_h_res_s / h_img,      # inset height in pixels = roi_h_res_s
+    grayscale=True,
+    roi_xy=(row_top_res_s, col_left_res_s),   # same coords since pasted at (0,0)
+)
+
+_ = show_roi_zoom(
+    canvas_scipy,
+    ax_titles=("Resized Image (SciPy)", None),
+    **roi_kwargs_on_canvas_scipy
+)
+
+# %%
 # Recovered Image
 # ~~~~~~~~~~~~~~~
 #
 # We plot the recovered image after a reversing of the zoom factors.
-
-#plot_recovered_image(recovered_2d_scipy)
 
 # Recovered (SciPy) – same ROI
 _ = show_roi_zoom(
     recovered_2d_scipy,
     ax_titles=("Recovered Image (SciPy)", None),
     **roi_kwargs
-)
-
-# %%
-# Resized Image
-# ~~~~~~~~~~~~~
-#
-# We plot the resized image with SciPy interpolation.
-
-plot_resized_image(
-    original=input_image_normalized,
-    resized=resized_2d_scipy,
-    method="scipy",
-    zoom_factors=zoom_factors_2d,
-    time_elapsed=time_2d_scipy
 )
 
 # %%
