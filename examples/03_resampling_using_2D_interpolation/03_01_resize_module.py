@@ -84,8 +84,10 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Resize Stages (Original → Shrink → Expand)
-# ------------------------------------------
+# Resize Stages
+# -------------
+#
+# We go through the stages of shrinking the image and then expanding it.
 
 fig, axes = plt.subplots(3, 1, figsize=(8, 18))
 axes[0].imshow(adjusted_uint8); 
