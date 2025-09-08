@@ -164,10 +164,6 @@ def label(
 ):
     return ax.text(x, y, text, ha=ha, va=va, fontsize=fontsize)
 
-# -----------------------------------------------------------------------------#
-# Ready-made: Standard vs SciPy pipeline
-# -----------------------------------------------------------------------------#
-
 def draw_standard_vs_scipy_pipeline(
     *,
     show_separator: bool = True,
@@ -176,29 +172,10 @@ def draw_standard_vs_scipy_pipeline(
     width: float = 12.0,
     ax: Optional[Axes] = None,
 ) -> Tuple[Figure, Axes]:
-    """Recreate the Standard/SciPy pipeline diagram (TikZ-faithful).
-
-    Parameters
-    ----------
-    show_separator : bool
-        Draw the vertical dashed divider at x=10.75.
-    show_plus : bool
-        Show the far-right "+" (also expands x-limits to include it).
-    include_upsample_labels : bool
-        Include “↑ 4” as a second line inside each method rectangle.
-    width : float
-        Figure width in inches (height auto-computed to match data aspect).
-    ax : matplotlib Axes or None
-        Draw onto an existing axes or create a new figure/axes.
-
-    Returns
-    -------
-    fig, ax
-    """
-    # data extents (expand if plus requested)
+    """Standard/SciPy pipeline diagram with minus labels at the bottom sum
+    and at the SciPy side of the middle sum."""
     xmin, xmax = -2.5, (46.5 if show_plus else 34.8)
     ymin, ymax = -2.5, 16.0
-
     fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
 
     # Left: Original
@@ -214,57 +191,53 @@ def draw_standard_vs_scipy_pipeline(
     seg(ax, 12, 13.25, 12, 8.25)
     arrow(ax, 12, 8.25, 14.5, 8.25)
 
-    # Method boxes (with optional ↑4 inside)
+    # Method boxes
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
     box(ax, 14.5, 14, 20.75, 12.25, f"Standard Interpolation{ups}", fontsize=12)
     box(ax, 14.5, 9, 20.75, 7.25,   f"SciPy Interpolation{ups}",    fontsize=12)
 
-    # Top branch to the right
+    # Top branch to the right (Standard)
     seg(ax, 20.75, 13, 32.25, 13)
     dot(ax, 27.25, 13)
     dot(ax, 30, 13)
     arrow(ax, 30, 13, 30, 11.75)
 
-    # Middle sum node
-    circle(ax, 30, 10.75, 1.0, r"$\sum$", fontsize=18)
-    seg(ax, 31, 10.75, 33.5, 10.75)
-    arrow(ax, 33.5, 10.75, 33.5, 0)
+    # Middle sum node (joins Standard + SciPy)
+    mid_cx, mid_cy, mid_r = 30.0, 10.75, 1.0
+    circle(ax, mid_cx, mid_cy, mid_r, r"$\sum$", fontsize=18)
+    seg(ax, mid_cx + 1.0, mid_cy, 33.5, mid_cy)
+    arrow(ax, 33.5, mid_cy, 33.5, 0)
 
-    # Bottom right plumbing
-    circle(ax, 25, 5.5, 1.0, r"$\sum$", fontsize=18)
-    circle(ax, 27.25, 2, 1.0, r"$\sum$", fontsize=18)
-    arrow(ax, 25, 4.5, 25, 0)
-    arrow(ax, 27.25, 1, 27.25, 0)
+    # Add "−" at the SciPy side (bottom) of the middle sum
+    # horizontally shifted left by 0.7 to avoid the vertical arrow
+    label(ax, mid_cx - 0.7, mid_cy - mid_r - 0.6, r"$-$", fontsize=18)
 
-    # Lower minus node and feed
-    circle(ax, 27.25, 5.5, 1.0, r"$-$", fontsize=20)
-    arrow(ax, 27.25, 13, 27.25, 6.5)
-    arrow(ax, 27.25, 4.5, 27.25, 3)
+    # Bottom sum + output
+    sum_cx, sum_cy, sum_r = 27.25, 2.0, 1.0
+    circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
+    # Your chosen offset: 0.7 left
+    label(ax, sum_cx - 0.7, sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
+    arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, 0)
 
-    # Middle horizontal from SciPy
-    seg(ax, 23.75, 8.25, 32.25, 8.25)
-    circle(ax, 22.75, 8.25, 1.0, r"$-$", fontsize=20)
-    arrow(ax, 20.75, 8.25, 21.75, 8.25)
-    dot(ax, 25, 8.25)
+    # Feed from top branch directly into the bottom sum (minus node removed)
+    arrow(ax, 27.25, 13, sum_cx, sum_cy + sum_r)
+
+    # SciPy mid path (still no separate diff vs original)
+    seg(ax, 20.75, 8.25, 32.25, 8.25)
     dot(ax, 30, 8.25)
-    arrow(ax, 25, 8.25, 25, 6.5)
     arrow(ax, 30, 8.25, 30, 9.75)
 
     # Left vertical trunk
     seg(ax, 5.5, 13.25, 5.5, 2)
     dot(ax, 5.5, 13.25)
     dot(ax, 5.5, 5.5)
-    arrow(ax, 5.5, 5.5, 24, 5.5)
     arrow(ax, 5.5, 2, 26.25, 2)
 
-    # Optional dashed separator
     if show_separator:
         seg(ax, 10.75, 15.5, 10.75, 0.25, style="dashed", linewidth=1.2, zorder=1)
 
-    # Collector box
     box(ax, 23.75, -0.25, 34.25, -2, "Difference Images", fontsize=12)
 
-    # Optional far-right plus
     if show_plus:
         label(ax, 45.5, 6.25, "+", fontsize=28)
 
