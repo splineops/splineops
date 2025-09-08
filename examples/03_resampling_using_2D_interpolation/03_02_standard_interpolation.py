@@ -15,6 +15,8 @@ to exclude boundary artifacts.
 # -------
 
 import numpy as np
+
+# sphinx_gallery_thumbnail_number = 4 # show fourth figure as thumbnail
 import requests
 from io import BytesIO
 from PIL import Image

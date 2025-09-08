@@ -74,6 +74,7 @@ sphinx_gallery_conf = {
         'use_jupyter_lab': True, # Whether JupyterLite links should start Jupyter Lab instead of the Retrolab Notebook interface.
         'jupyterlite_contents': 'notebooks_jupyterlite', # where to copy the example notebooks (relative to Sphinx source directory)
     },
+    'remove_config_comments': True,
 }
 
 html_theme_options = {
