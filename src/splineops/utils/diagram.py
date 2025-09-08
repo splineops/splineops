@@ -172,8 +172,11 @@ def draw_standard_vs_scipy_pipeline(
     width: float = 12.0,
     ax: Optional[Axes] = None,
 ) -> Tuple[Figure, Axes]:
-    """Standard/SciPy pipeline diagram with + (Standard side) and − (SciPy side)
-    around the middle sum, and − above the bottom sum."""
+    """Standard/SciPy pipeline diagram with:
+      • + (Standard side) and − (SciPy side) around the middle sum
+      • − above the bottom sum
+      • + on the Original-image side (left) of the bottom sum
+    """
     xmin, xmax = -2.5, (46.5 if show_plus else 34.8)
     ymin, ymax = -2.5, 16.0
     fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
@@ -208,14 +211,17 @@ def draw_standard_vs_scipy_pipeline(
     seg(ax, mid_cx + 1.0, mid_cy, 33.5, mid_cy)
     arrow(ax, 33.5, mid_cy, 33.5, 0)
 
-    # Signs around the middle sum: "+" for Standard (top), "−" for SciPy (bottom)
-    label(ax, mid_cx - 0.7, mid_cy + mid_r + 0.6, r"$+$", fontsize=18)  # Standard side
-    label(ax, mid_cx - 0.7, mid_cy - mid_r - 0.6, r"$-$", fontsize=18)  # SciPy side
+    # Signs around the middle sum
+    label(ax, mid_cx - 0.7, mid_cy + mid_r + 0.6, r"$+$", fontsize=18)  # Standard side (top)
+    label(ax, mid_cx - 0.7, mid_cy - mid_r - 0.6, r"$-$", fontsize=18)  # SciPy side (bottom)
 
     # Bottom sum + output
     sum_cx, sum_cy, sum_r = 27.25, 2.0, 1.0
     circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
-    label(ax, sum_cx - 0.7, sum_cy + sum_r + 0.6, r"$-$", fontsize=18)  # your 0.7 offset
+    # New: "+" on the Original image side (left of the circle), bumped up a bit
+    label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)
+    # Existing: "−" above the bottom sum
+    label(ax, sum_cx - 0.7, sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
     arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, 0)
 
     # Feed from top branch directly into the bottom sum
