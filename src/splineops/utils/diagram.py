@@ -173,7 +173,7 @@ def draw_standard_vs_scipy_pipeline(
     ax: Optional[Axes] = None,
 ) -> Tuple[Figure, Axes]:
     """Standard/SciPy pipeline with TensorSpline branch, equal rail spacing,
-    independent outputs to the collector, and restored upper connectors."""
+    independent outputs to the collector, and junction dots on SciPy/TS paths."""
     # Wider canvas to fit lower collector
     xmin, xmax = -2.5, (46.5 if show_plus else 34.8)
     ymin, ymax = -3.0, 16.0
@@ -212,17 +212,19 @@ def draw_standard_vs_scipy_pipeline(
     seg(ax, 21.75, y_scipy, 32.25, y_scipy) # SciPy rail
     seg(ax, 21.75, y_ts,    32.25, y_ts)    # TensorSpline rail
 
-    # Taps on Standard rail
+    # Taps / junction dots
     dot(ax, 27.25, y_std)
     dot(ax, 30.00, y_std)
-    dot(ax, 32.00, y_std)  # tap for Standard↔TensorSpline sum
+    dot(ax, 32.00, y_std)   # tap for Standard↔TensorSpline sum
+    dot(ax, 30.00, y_scipy) # NEW: SciPy→sum junction
+    dot(ax, 32.00, y_ts)    # NEW: TensorSpline→sum junction
 
     # Middle sum (Standard + SciPy)
     mid_cx, mid_cy, mid_r = 30.0, 10.75, 1.0
     circle(ax, mid_cx, mid_cy, mid_r, r"$\sum$", fontsize=18)
-    # connectors into the middle sum (explicit drop/raise arrows)
-    arrow(ax, 30.0, y_std,   mid_cx, mid_cy + mid_r)  # Standard ↓
-    arrow(ax, 30.0, y_scipy, mid_cx, mid_cy - mid_r)  # SciPy ↑
+    # connectors into the middle sum
+    arrow(ax, 30.0, y_std,   mid_cx, mid_cy + mid_r)  # from Standard ↓
+    arrow(ax, 30.0, y_scipy, mid_cx, mid_cy - mid_r)  # from SciPy ↑
     # out to its own collector column (x=33.5)
     seg(ax, mid_cx + mid_r, mid_cy, 33.5, mid_cy)
     label(ax, mid_cx - 0.7, mid_cy + mid_r + 0.6, r"$+$", fontsize=18)  # Standard side
@@ -241,7 +243,7 @@ def draw_standard_vs_scipy_pipeline(
     exit_x = 34.0
     seg(ax, st_ts_cx + st_ts_r, st_ts_cy, exit_x, st_ts_cy)
 
-    # Bottom sum (Standard vs Original) — kept lower for more space (“oxygen”)
+    # Bottom sum (Standard vs Original) — kept lower for more space
     sum_cx, sum_cy, sum_r = 27.25, 1.25, 1.0
     circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
     label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)   # Original side
