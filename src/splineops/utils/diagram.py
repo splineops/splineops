@@ -193,6 +193,14 @@ def draw_standard_vs_scipy_pipeline(
     circle(ax, 9, 13.25, 1.0, r"$\downarrow 4$", fontsize=18)
     # into Standard box (stop before the edge)
     arrow(ax, 10, 13.25, box_left - box_gap, 13.25)
+    # label the outgoing (resized) signal from the ↓4 stage
+    label(
+        ax,
+        (10 + (box_left - box_gap)) / 2.0,  # midpoint of the segment
+        13.25 + 0.6,                        # a bit above the line
+        "Resized",
+        fontsize=12,
+    )
 
     # Junctions and split to lower rails
     dot(ax, 12, 13.25)
@@ -216,6 +224,11 @@ def draw_standard_vs_scipy_pipeline(
     seg(ax, box_right, y_std,   32.25, y_std)   # Standard rail
     seg(ax, box_right, y_scipy, 32.25, y_scipy) # SciPy rail
     seg(ax, box_right, y_ts,    32.25, y_ts)    # TensorSpline rail
+    # Labels over the outgoing rails from each interpolation ("Recovered")
+    rail_label_dx, rail_label_dy = 1.75, 0.6
+    label(ax, box_right + rail_label_dx, y_std   + rail_label_dy, "Recovered", fontsize=12)
+    label(ax, box_right + rail_label_dx, y_scipy + rail_label_dy, "Recovered", fontsize=12)
+    label(ax, box_right + rail_label_dx, y_ts    + rail_label_dy, "Recovered", fontsize=12)
 
     # Taps / junction dots
     dot(ax, 27.25, y_std)

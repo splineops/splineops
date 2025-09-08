@@ -15,7 +15,6 @@ to exclude boundary artifacts.
 # -------
 
 import numpy as np
-import matplotlib.pyplot as plt
 import requests
 from io import BytesIO
 from PIL import Image
@@ -23,7 +22,6 @@ from PIL import Image
 from splineops.utils import (
     resize_and_compute_metrics,      # resampling + metrics
     compute_snr_and_mse_cropped,     # used once later
-    plot_resized_image,              # visual helpers
     plot_difference_image,
     show_roi_zoom,
     draw_standard_vs_scipy_pipeline,
