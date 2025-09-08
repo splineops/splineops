@@ -81,6 +81,9 @@ _ = show_roi_zoom(
 # Pipeline Diagram
 # ----------------
 #
+# These experiments are supposed to validate the standard interpolation against SciPy's
+# by showing that they give the same result.
+
 _ = draw_standard_vs_scipy_pipeline(
     show_separator=True,         # keep dashed divider
     show_plus=False,             # no far-right '+'
