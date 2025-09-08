@@ -114,7 +114,7 @@ _ = show_roi_zoom(
 # Resized Image
 # ~~~~~~~~~~~~~
 #
-# We plot the resized image with standard interpolation.
+# We plot the resized image.
 
 # Zoomed face detail for the resized (cubic) image — pasted onto original-size canvas ===
 h_res, w_res = resized_2d_interp.shape
@@ -147,7 +147,7 @@ roi_kwargs_on_canvas = dict(
 
 _ = show_roi_zoom(
     canvas,
-    ax_titles=("Resized Image (cubic)", None),
+    ax_titles=("Resized Image", None),
     **roi_kwargs_on_canvas
 )
 
@@ -160,7 +160,7 @@ _ = show_roi_zoom(
 # Recovered (standard interpolation) – same ROI
 _ = show_roi_zoom(
     recovered_2d_interp,
-    ax_titles=("Recovered Image (cubic)", None),
+    ax_titles=("Recovered Image (standard interpolation)", None),
     **roi_kwargs
 )
 
@@ -182,46 +182,6 @@ _ = show_roi_zoom(
     scipy_order=3,
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction
-)
-
-# %%
-# Resized Image
-# ~~~~~~~~~~~~~
-#
-# We plot the resized image with SciPy interpolation.
-
-# Zoomed face detail for the resized (SciPy) image — pasted onto original-size canvas ===
-h_res_s, w_res_s = resized_2d_scipy.shape
-zoom_r, zoom_c = zoom_factors_2d
-
-# ROI size in the resized image (e.g., 64 -> 16 px when zoom=0.25)
-roi_h_res_s = max(1, int(round(ROI_SIZE_PX * zoom_r)))
-roi_w_res_s = max(1, int(round(ROI_SIZE_PX * zoom_c)))
-
-# ROI center mapped into the resized image
-center_r_res_s = int(round(FACE_ROW * zoom_r))
-center_c_res_s = int(round(FACE_COL * zoom_c))
-
-# Top-left of the ROI in the resized image, clipped to bounds
-row_top_res_s = int(np.clip(center_r_res_s - roi_h_res_s // 2, 0, h_res_s - roi_h_res_s))
-col_left_res_s = int(np.clip(center_c_res_s - roi_w_res_s // 2, 0, w_res_s - roi_w_res_s))
-
-# --- Build original-size white canvas and paste the small SciPy-resized image at top-left (0,0) ---
-# (values are in [0,1]; white background = 1.0)
-canvas_scipy = np.ones((h_img, w_img), dtype=resized_2d_scipy.dtype)
-canvas_scipy[:h_res_s, :w_res_s] = resized_2d_scipy
-
-# roi_height_frac is relative to the canvas height (original size)
-roi_kwargs_on_canvas_scipy = dict(
-    roi_height_frac=roi_h_res_s / h_img,      # inset height in pixels = roi_h_res_s
-    grayscale=True,
-    roi_xy=(row_top_res_s, col_left_res_s),   # same coords since pasted at (0,0)
-)
-
-_ = show_roi_zoom(
-    canvas_scipy,
-    ax_titles=("Resized Image (SciPy)", None),
-    **roi_kwargs_on_canvas_scipy
 )
 
 # %%
