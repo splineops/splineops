@@ -114,7 +114,8 @@ _ = show_roi_zoom(
 # Resized Image
 # ~~~~~~~~~~~~~
 #
-# We plot the resized image.
+# We plot the resized image. Note that this is the same for all methods; we just compute it using the standard interpolation
+# tools for convenience.
 
 # Zoomed face detail for the resized (cubic) image — pasted onto original-size canvas ===
 h_res, w_res = resized_2d_interp.shape
