@@ -137,19 +137,6 @@ plot_resized_image(
 )
 
 # %%
-# Difference image
-# ~~~~~~~~~~~~~~~~
-#
-# Display the difference image (original - recovered) with colorbar.
-
-plot_difference_image(
-    original=input_image_normalized,
-    recovered=recovered_2d_interp,
-    snr=snr_2d_interp,
-    mse=mse_2d_interp
-)
-
-# %%
 # SciPy Interpolation
 # -------------------
 #
@@ -199,19 +186,6 @@ plot_resized_image(
 )
 
 # %%
-# Difference Image
-# ~~~~~~~~~~~~~~~~
-#
-# Display the difference image (original - recovered) with colorbar.
-
-plot_difference_image(
-    original=input_image_normalized,
-    recovered=recovered_2d_scipy,
-    snr=snr_2d_scipy,
-    mse=mse_2d_scipy
-)
-
-# %%
 # Difference with SciPy
 # ---------------------
 #
@@ -230,6 +204,19 @@ plot_difference_image(
     recovered=recovered_2d_interp,
     snr=snr_scipy_vs_interp,
     mse=mse_scipy_vs_interp
+)
+
+# %%
+# Difference image
+# ~~~~~~~~~~~~~~~~
+#
+# For completeness, display the difference image (original - recovered with standard interpolation) with colorbar.
+
+plot_difference_image(
+    original=input_image_normalized,
+    recovered=recovered_2d_interp,
+    snr=snr_2d_interp,
+    mse=mse_2d_interp
 )
 
 # %%
