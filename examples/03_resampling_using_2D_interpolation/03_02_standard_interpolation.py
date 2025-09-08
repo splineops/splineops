@@ -139,6 +139,36 @@ plot_resized_image(
     time_elapsed=time_2d_interp
 )
 
+# === Zoomed face detail for the *resized (cubic)* image ===
+h_res, w_res = resized_2d_interp.shape
+zoom_r, zoom_c = zoom_factors_2d
+
+# ROI size in the resized image (e.g., 64 -> 16 px when zoom=0.25)
+roi_h_res = max(1, int(round(ROI_SIZE_PX * zoom_r)))
+roi_w_res = max(1, int(round(ROI_SIZE_PX * zoom_c)))
+
+# ROI center mapped into the resized image
+center_r_res = int(round(FACE_ROW * zoom_r))
+center_c_res = int(round(FACE_COL * zoom_c))
+
+# Top-left of the ROI in the resized image, clipped to bounds
+row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res - roi_h_res))
+col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, w_res - roi_w_res))
+
+# Use a fraction relative to the resized height so the ROI shows the right number of pixels
+roi_kwargs_resized = dict(
+    roi_height_frac=roi_h_res / h_res,   # keeps the inset square at roi_h_res pixels high
+    grayscale=True,
+    roi_xy=(row_top_res, col_left_res),  # top-left in the resized image
+)
+
+# This renders the resized image on the left and a pixel-magnified inset on the right
+_ = show_roi_zoom(
+    resized_2d_interp,
+    ax_titles=("Resized Image (cubic)", None),
+    **roi_kwargs_resized
+)
+
 # %%
 # SciPy Interpolation
 # -------------------
