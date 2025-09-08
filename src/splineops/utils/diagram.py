@@ -173,7 +173,7 @@ def draw_standard_vs_scipy_pipeline(
     ax: Optional[Axes] = None,
 ) -> Tuple[Figure, Axes]:
     """Standard/SciPy pipeline with TensorSpline branch, equal rail spacing,
-    independent outputs to the collector, and inbound arrows stopping before boxes."""
+    independent outputs, and collector arrows that stop before the box."""
     # canvas
     xmin, xmax = -2.5, (46.5 if show_plus else 34.8)
     ymin, ymax = -3.0, 16.0
@@ -183,7 +183,7 @@ def draw_standard_vs_scipy_pipeline(
     y_std, y_scipy, y_ts = 13.0, 8.25, 3.5
     box_left = 14.5
     box_right = 21.75
-    box_gap = 0.25  # how far before the box edge arrows should stop
+    box_gap = 0.25  # inbound arrows stop before method box edges
 
     # Left: Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
@@ -255,12 +255,17 @@ def draw_standard_vs_scipy_pipeline(
     # tap from Standard to bottom sum
     arrow(ax, 27.25, y_std, sum_cx, sum_cy + sum_r)
 
-    # Collector box & down arrows that TOUCH it
+    # Collector box & down arrows that STOP BEFORE the box
     collector_left, collector_right = 23.75, 34.25
     collector_top, collector_bottom = -1.0, -2.6
-    arrow(ax, 33.5,  mid_cy,         33.5,  collector_top)   # from Std↔SciPy sum
-    arrow(ax, exit_x, st_ts_cy,      exit_x, collector_top)  # from Std↔TS sum
-    arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top) # from bottom sum
+    collector_gap = 0.25  # how far above the box the arrows should end
+
+    # arrows landing just above the collector top (no overlap)
+    arrow(ax, 33.5,  mid_cy,        33.5,  collector_top + collector_gap)   # from Std↔SciPy sum
+    arrow(ax, exit_x, st_ts_cy,     exit_x, collector_top + collector_gap)  # from Std↔TS sum
+    arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top + collector_gap) # from bottom sum
+
+    # draw the collector box last
     box(ax, collector_left, collector_top, collector_right, collector_bottom,
         "Difference Images", fontsize=12)
 

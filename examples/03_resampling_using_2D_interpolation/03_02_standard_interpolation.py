@@ -11,20 +11,6 @@ to exclude boundary artifacts.
 """
 
 # %%
-# Pipeline Diagram
-# ----------------
-#
-# These experiments are supposed to validate the standard interpolation against SciPy's
-# by showing that they give the same result.
-
-_ = draw_standard_vs_scipy_pipeline(
-    show_separator=True,         # keep dashed divider
-    show_plus=False,             # no far-right '+'
-    include_upsample_labels=True,# show '↑ 4' inside the boxes
-    width=12.0                   # figure width in inches (height auto)
-)
-
-# %%
 # Imports
 # -------
 
@@ -41,6 +27,20 @@ from splineops.utils import (
     plot_difference_image,
     show_roi_zoom,
     draw_standard_vs_scipy_pipeline,
+)
+
+# %%
+# Pipeline Diagram
+# ----------------
+#
+# These experiments are supposed to validate the standard interpolation against SciPy's
+# by showing that they give the same result.
+
+_ = draw_standard_vs_scipy_pipeline(
+    show_separator=True,         # keep dashed divider
+    show_plus=False,             # no far-right '+'
+    include_upsample_labels=True,# show '↑ 4' inside the boxes
+    width=12.0                   # figure width in inches (height auto)
 )
 
 # %%
