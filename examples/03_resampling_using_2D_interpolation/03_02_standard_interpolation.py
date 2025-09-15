@@ -34,7 +34,7 @@ from splineops.utils import (
 # ----------------
 #
 # These experiments are supposed to validate the standard interpolation against SciPy's
-# by showing that they give the same result.
+# by showing that they give the same result. You'll see here how SciPy can be improved.
 
 _ = draw_standard_vs_scipy_pipeline(
     show_separator=True,         # keep dashed divider
@@ -220,8 +220,8 @@ plot_difference_image(
 )
 
 # %%
-# Difference image
-# ~~~~~~~~~~~~~~~~
+# Difference with original image
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # For completeness, display the difference image (original - recovered with standard interpolation) with colorbar.
 
