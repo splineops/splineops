@@ -24,7 +24,6 @@ from PIL import Image
 
 from splineops.utils import (
     resize_and_compute_metrics,      # resampling + metrics
-    compute_snr_and_mse_cropped,     # used for detail comparisons
     plot_difference_image,
     show_roi_zoom,
     draw_standard_vs_scipy_pipeline, # reused diagram helper (for layout consistency)
@@ -202,24 +201,6 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Difference on resized images (least-squares vs standard)
-# -------------------------------------------------------
-#
-# Compute the difference between the *resized* outputs and report SNR/MSE
-# on a central region to exclude boundaries.
-
-snr_resized_std_vs_ls, mse_resized_std_vs_ls = compute_snr_and_mse_cropped(
-    resized_2d_std, resized_2d_ls, border_fraction
-)
-
-plot_difference_image(
-    original=resized_2d_std,
-    recovered=resized_2d_ls,
-    snr=snr_resized_std_vs_ls,
-    mse=mse_resized_std_vs_ls
-)
-
-# %%
 # Recovered Image (least-squares projection)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
@@ -244,33 +225,27 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Difference on recovered images (least-squares vs standard)
-# ----------------------------------------------------------
-#
-# Compute the difference between the *recovered* outputs and report SNR/MSE
-# on a central region to exclude boundaries.
-
-snr_std_vs_ls, mse_std_vs_ls = compute_snr_and_mse_cropped(
-    recovered_2d_std, recovered_2d_ls, border_fraction
-)
-
-plot_difference_image(
-    original=recovered_2d_std,
-    recovered=recovered_2d_ls,
-    snr=snr_std_vs_ls,
-    mse=mse_std_vs_ls
-)
-
-# %%
 # Difference with original image (least-squares)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# For completeness, display the difference image (original - recovered with least-squares)
-# with colorbar.
+# Display the difference image (original - recovered with least-squares) with colorbar.
 
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ls,
     snr=snr_2d_ls,
     mse=mse_2d_ls
+)
+
+# %%
+# Difference with original image (standard)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Display the difference image (original - recovered with standard interpolation) with colorbar.
+
+plot_difference_image(
+    original=input_image_normalized,
+    recovered=recovered_2d_std,
+    snr=snr_2d_std,
+    mse=mse_2d_std
 )
