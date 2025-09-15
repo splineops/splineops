@@ -251,8 +251,8 @@ plot_difference_image(
 )
 
 # %%
-# Antialiasing sanity check (A/B 2×2 corner pattern)
-# --------------------------------------------------
+# Antialiasing check (A/B 2×2 corner pattern)
+# -------------------------------------------
 #
 # Load image B (same resolution as A), convert both to grayscale in [0, 1],
 # and build a synthetic image where, for every 2×2 tile starting at (0,0),
@@ -296,8 +296,8 @@ plt.show()
 # bottom-right: mixed_ab[1::2, 1::2] = input_image_normalized[1::2, 1::2]
 
 # %%
-# Antialiasing sanity check (B/A 2×2 corner pattern — opposite)
-# -------------------------------------------------------------
+# Antialiasing check (B/A 2×2 corner pattern — opposite)
+# ------------------------------------------------------
 #
 # Reuse A ('input_image_normalized') and B ('img_b_gray') from above.
 # For every 2×2 tile starting at (0,0), we take the *top-left* pixel from B
