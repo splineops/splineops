@@ -249,3 +249,72 @@ plot_difference_image(
     snr=snr_2d_std,
     mse=mse_2d_std
 )
+
+# %%
+# Antialiasing sanity check (A/B 2×2 corner pattern)
+# --------------------------------------------------
+#
+# Load image B (same resolution as A), convert both to grayscale in [0, 1],
+# and build a synthetic image where, for every 2×2 tile starting at (0,0),
+# the *top-left* pixel comes from A while the other three pixels come from B.
+# This makes naive 2× downsampling-by-picking-corners recover A, whereas
+# anti-aliased downsampling averages roughly 25% A and 75% B.
+
+import matplotlib.pyplot as plt
+
+# Reuse A from earlier: 'input_image_normalized'
+url_b = 'https://r0k.us/graphics/kodak/kodak/kodim08.png'
+response_b = requests.get(url_b)
+img_b = Image.open(BytesIO(response_b.content))
+data_b = np.array(img_b, dtype=np.float64)
+
+# B to grayscale in [0,1]
+img_b_gray = data_b / 255.0
+img_b_gray = (
+    img_b_gray[:, :, 0] * 0.2989 +  # R
+    img_b_gray[:, :, 1] * 0.5870 +  # G
+    img_b_gray[:, :, 2] * 0.1140    # B
+)
+
+# Sanity: shapes should match exactly
+assert img_b_gray.shape == input_image_normalized.shape, "Images A and B must have identical shape."
+
+# Build the A/B mixed image: A at each 2×2 block's top-left pixel
+mixed_ab = img_b_gray.copy()
+mixed_ab[0::2, 0::2] = input_image_normalized[0::2, 0::2]
+
+# Show the result
+plt.figure(figsize=(6, 6 * mixed_ab.shape[0] / mixed_ab.shape[1]))
+plt.imshow(mixed_ab, cmap="gray", vmin=0.0, vmax=1.0)
+plt.title("A/B 2×2 corner mix (A at block corners, B elsewhere)")
+plt.axis("off")
+plt.show()
+
+# Optional: use a different corner by changing the strides below:
+# top-right:    mixed_ab[0::2, 1::2] = input_image_normalized[0::2, 1::2]
+# bottom-left:  mixed_ab[1::2, 0::2] = input_image_normalized[1::2, 0::2]
+# bottom-right: mixed_ab[1::2, 1::2] = input_image_normalized[1::2, 1::2]
+
+# %%
+# Antialiasing sanity check (B/A 2×2 corner pattern — opposite)
+# -------------------------------------------------------------
+#
+# Reuse A ('input_image_normalized') and B ('img_b_gray') from above.
+# For every 2×2 tile starting at (0,0), we take the *top-left* pixel from B
+# and the other three pixels from A. Naive 2× downsampling-by-picking-corners
+# now recovers B, while anti-aliased downsampling blends ~25% B and ~75% A.
+
+# Build the B/A mixed image: B at each 2×2 block's top-left pixel
+mixed_ba = input_image_normalized.copy()
+mixed_ba[0::2, 0::2] = img_b_gray[0::2, 0::2]
+
+plt.figure(figsize=(6, 6 * mixed_ba.shape[0] / mixed_ba.shape[1]))
+plt.imshow(mixed_ba, cmap="gray", vmin=0.0, vmax=1.0)
+plt.title("B/A 2×2 corner mix (B at block corners, A elsewhere)")
+plt.axis("off")
+plt.show()
+
+# Optional: switch which corner uses B by changing the strides:
+# top-right:    mixed_ba[0::2, 1::2] = img_b_gray[0::2, 1::2]
+# bottom-left:  mixed_ba[1::2, 0::2] = img_b_gray[1::2, 0::2]
+# bottom-right: mixed_ba[1::2, 1::2] = img_b_gray[1::2, 1::2]
