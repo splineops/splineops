@@ -298,26 +298,22 @@ def draw_standard_vs_leastsq_pipeline(
     include_upsample_labels: bool = True,
     width: float = 12.0,
     ax: Optional[Axes] = None,
-) -> Tuple[Figure, Axes]:
+):
     """
     Two-branch pipeline with level main rail:
       Original → [Standard Interpolation ↓4] → (Resized) → [Standard Interpolation ↑4] ──●
           └──→ [Least-Squares Projection ↓4] → (Resized) → [Least-Squares Projection ↑4] ──●
     Each ● taps to its own sum with Original at different vertical levels.
-    LS sum is pushed slightly further right to avoid visual crowding.
+    Junction nodes are shown at the first bifurcation and at the Original→sum elbows.
     """
-    # canvas
-    xmin, xmax = -2.5, 35.0
-    ymin, ymax = -3.0, 16.0
-    fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
+    from typing import Tuple
+    fig, ax = figure_for_extents(-2.5, 35.0, -3.0, 16.0, width=width, ax=ax)
 
-    # layout
     rail_y = 13.25
     y_std  = rail_y
     y_ls   = 9.50
     bifurc_x = 7.25
 
-    # Method boxes (narrow so “Resized” breathes)
     left_box_x1, left_box_x2   = 9.25, 16.50
     right_box_x1, right_box_x2 = 20.75, 28.25
 
@@ -325,14 +321,14 @@ def draw_standard_vs_leastsq_pipeline(
     box_gap_out = 0.30
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
 
-    # --- Original
+    # Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
-    # Main rail → junction
+    # Main rail → first bifurcation (with junction dot)
     arrow(ax, 4.25, rail_y, bifurc_x, rail_y)
-    dot(ax, bifurc_x, rail_y)
+    dot(ax, bifurc_x, rail_y)  # junction node at bifurcation
 
-    # ---------- Standard (top) ----------
+    # Standard (top)
     arrow(ax, bifurc_x, y_std, left_box_x1 - box_gap_in, y_std)
     box(ax, left_box_x1, y_std + 1.0, left_box_x2, y_std - 1.0,
         "Standard Interpolation\n$\\downarrow 4$", fontsize=12)
@@ -343,7 +339,7 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_std + 1.0, right_box_x2, y_std - 1.0,
         f"Standard Interpolation{ups}", fontsize=12)
 
-    # ---------- Least-Squares (lower) ----------
+    # Least-Squares (lower)
     seg(ax, bifurc_x, rail_y, bifurc_x, y_ls); dot(ax, bifurc_x, y_ls)
     arrow(ax, bifurc_x, y_ls, left_box_x1 - box_gap_in, y_ls)
     box(ax, left_box_x1, y_ls + 1.0, left_box_x2, y_ls - 1.0,
@@ -355,26 +351,31 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
         f"Least-Squares Projection{ups}", fontsize=12)
 
-    # ---------- Outgoing rails ----------
+    # Outgoing rails
     seg(ax, right_box_x2, y_std, 33.25, y_std)
     seg(ax, right_box_x2, y_ls,  33.25, y_ls)
 
-    # Taps (placed INTO their rails)
-    tap_x_std = right_box_x2 + 1.25      # Standard tap (unchanged)
-    tap_x_ls  = right_box_x2 + 4.25      # LS tap moved a bit further right
+    # Taps (into rails)
+    tap_x_std = right_box_x2 + 1.25
+    tap_x_ls  = right_box_x2 + 4.25
     dot(ax, tap_x_std, y_std)
     dot(ax, tap_x_ls,  y_ls)
 
     label(ax, tap_x_std + 0.9, y_std + 0.6, "Recovered", fontsize=12)
-    label(ax, right_box_x2 + 1.4, y_ls  + 0.6, "Recovered", fontsize=12)
+    label(ax, tap_x_ls  + 1.2, y_ls  + 0.6, "Recovered", fontsize=12)
 
-    # ---------- Bottom sums (different vertical levels, spaced horizontally) ----------
+    # Bottom sums (different vertical levels, spaced horizontally)
     sum_r = 1.0
     sum_y_std = 1.25
     sum_y_ls  = 3.10
 
-    # Original’s lower rail
-    seg(ax, 5.0, rail_y, 5.0, sum_y_ls); dot(ax, 5.0, rail_y)
+    # Original’s vertical drops to BOTH sum levels
+    seg(ax, 5.0, rail_y, 5.0, sum_y_ls);  # drop to LS sum level
+    seg(ax, 5.0, rail_y, 5.0, sum_y_std); # drop to Standard sum level
+
+    # Junction dots at the elbows where Original’s vertical meets horizontals
+    dot(ax, 5.0, sum_y_std)  # new: elbow/junction for Standard sum feed
+    dot(ax, 5.0, sum_y_ls)   # new: elbow/junction for LS sum feed
 
     # Standard sum
     circle(ax, tap_x_std, sum_y_std, sum_r, r"$\sum$", fontsize=18)
@@ -383,14 +384,14 @@ def draw_standard_vs_leastsq_pipeline(
     arrow(ax, 5.0,       sum_y_std, tap_x_std - 1.0, sum_y_std)
     arrow(ax, tap_x_std, y_std,      tap_x_std,      sum_y_std + sum_r)
 
-    # LS sum (shifted further right)
+    # LS sum (shifted right; separate vertical level)
     circle(ax, tap_x_ls, sum_y_ls, sum_r, r"$\sum$", fontsize=18)
     label(ax, tap_x_ls - sum_r - 0.7, sum_y_ls + 0.6, r"$+$", fontsize=18)
     label(ax, tap_x_ls - 0.7,         sum_y_ls + sum_r + 0.6, r"$-$", fontsize=18)
     arrow(ax, 5.0,     sum_y_ls, tap_x_ls - 1.0,  sum_y_ls)
     arrow(ax, tap_x_ls, y_ls,     tap_x_ls,       sum_y_ls + sum_r)
 
-    # ---------- Collector fed by BOTH sums ----------
+    # Collector fed by BOTH sums
     collector_left, collector_right = 23.75, 34.0
     collector_top, collector_bottom = -1.0, -2.6
     collector_gap = 0.25
