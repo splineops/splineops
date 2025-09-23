@@ -30,5 +30,5 @@ __all__ = [
     "plot_difference_image",
     "show_roi_zoom",
     "draw_standard_vs_scipy_pipeline",
-    draw_standard_vs_leastsq_pipeline,
+    "draw_standard_vs_leastsq_pipeline",
 ]
