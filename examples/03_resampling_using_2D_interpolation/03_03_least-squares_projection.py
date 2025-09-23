@@ -78,6 +78,7 @@ h_img, w_img = input_image_normalized.shape
 # Top-left of the 64×64 box, clipped to stay inside the image
 row_top = int(np.clip(FACE_ROW - ROI_SIZE_PX // 2, 0, h_img - ROI_SIZE_PX))
 col_left = int(np.clip(FACE_COL - ROI_SIZE_PX // 2, 0, w_img - ROI_SIZE_PX))
+roi_rect = (row_top, col_left, ROI_SIZE_PX, ROI_SIZE_PX)  # (r, c, h, w)
 
 roi_kwargs = dict(
     roi_height_frac=ROI_SIZE_PX / h_img,  # keeps height at 64 px (square ROI)
@@ -108,7 +109,8 @@ _ = show_roi_zoom(
     input_image_normalized,
     method="cubic-best_antialiasing",
     zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction
+    border_fraction=border_fraction,
+    roi=roi_rect
 )
 
 # %%
@@ -168,7 +170,8 @@ _ = show_roi_zoom(
     input_image_normalized,
     method="cubic",
     zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction
+    border_fraction=border_fraction,
+    roi=roi_rect
 )
 
 # %%
@@ -234,7 +237,9 @@ plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ls,
     snr=snr_2d_ls,
-    mse=mse_2d_ls
+    mse=mse_2d_ls,
+    roi=roi_rect,
+    title_prefix="Difference (least-squares)"
 )
 
 # %%
@@ -247,7 +252,9 @@ plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_std,
     snr=snr_2d_std,
-    mse=mse_2d_std
+    mse=mse_2d_std,
+    roi=roi_rect,
+    title_prefix="Difference (standard)"
 )
 
 # %%

@@ -89,7 +89,6 @@ def plot_recovered_image(recovered: np.ndarray) -> None:
     plt.axis("off")
     plt.show()
 
-
 def plot_difference_image(
     original: np.ndarray,
     recovered: np.ndarray,
@@ -98,13 +97,39 @@ def plot_difference_image(
     *,
     vmin: float = -0.8,
     vmax: float = 0.8,
+    roi: Optional[Tuple[int, int, int, int]] = None,  # NEW
+    mask: Optional[np.ndarray] = None,                # NEW
+    title_prefix: str = "Difference",                 # NEW (helps label ROI vs full)
 ) -> None:
-    """Visualise *original – recovered* with a diverging colour map and colourbar.
-
-    The fixed `vmin`/`vmax` keeps scales consistent across multiple plots;
-    adjust them if you need a different dynamic range.
     """
-    diff = original - recovered
+    Visualise *original – recovered* with a diverging colour map and colourbar.
+
+    If `roi` or `mask` is provided, the plot shows only that region.
+    `roi` takes (row_top, col_left, height, width). `mask` must be H×W boolean.
+    """
+    diff_full = original - recovered
+
+    if mask is not None:
+        # Plot a compact view of just the masked pixels by cropping to mask bbox
+        if mask.shape != diff_full.shape:
+            # if original had channels already handled before this point
+            raise ValueError("mask must match spatial shape of the images")
+        rows, cols = np.where(mask)
+        r0, r1 = rows.min(), rows.max() + 1
+        c0, c1 = cols.min(), cols.max() + 1
+        diff = diff_full[r0:r1, c0:c1]
+        # keep values outside mask out of view by zeroing them
+        local_mask = mask[r0:r1, c0:c1]
+        diff = np.where(local_mask, diff, 0.0)
+        region_label = " (masked)"
+    elif roi is not None:
+        r, c, h, w = roi
+        diff = diff_full[r:r+h, c:c+w]
+        region_label = " (ROI)"
+    else:
+        diff = diff_full
+        region_label = ""
+
     h, w = diff.shape
     aspect = h / float(w)
 
@@ -113,10 +138,10 @@ def plot_difference_image(
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
     im = ax.imshow(diff, cmap="bwr", aspect="equal", vmin=vmin, vmax=vmax)
-    ax.set_title(f"Difference\nSNR: {snr:.2f} dB, MSE: {mse:.2e}")
+    ax.set_title(f"{title_prefix}{region_label}\nSNR: {snr:.2f} dB, MSE: {mse:.2e}")
     ax.axis("off")
 
-    # Add a colourbar whose height matches the image
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cb = fig.colorbar(im, cax=cax)

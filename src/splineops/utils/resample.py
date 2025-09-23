@@ -9,11 +9,11 @@ Resize helpers on top of ``splineops.resize.resize`` and SciPy’s
 
 from __future__ import annotations
 import time
-from typing import Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import numpy as np
 from scipy.ndimage import zoom as _scipy_zoom
-from .metrics import compute_snr_and_mse_cropped
+from .metrics import compute_snr_and_mse_region
 
 __all__ = [
     "resize_with_scipy_zoom",
@@ -23,22 +23,33 @@ __all__ = [
 
 _ZoomT = Union[Sequence[float], Tuple[float, float], float]
 
-# -----------------------------------------------------------------------------#
-# SciPy reference routine (unchanged)
-# -----------------------------------------------------------------------------#
+
 def resize_with_scipy_zoom(
     img: np.ndarray,
     zoom_factors: _ZoomT,
     *,
     scipy_order: int = 3,
     border_fraction: float = 0.2,
+    roi: Optional[Tuple[int, int, int, int]] = None,
+    mask: Optional[np.ndarray] = None,
 ):
+    """
+    Reference implementation using SciPy's ndimage.zoom, with SNR/MSE computed
+    on either a region-of-interest (roi), a boolean mask, a central crop
+    (border_fraction), or the full image (in that priority order).
+    """
+    # Normalize zoom_factors to (z_h, z_w)
+    if np.isscalar(zoom_factors):
+        zoom_factors = (float(zoom_factors), float(zoom_factors))
+
     t0 = time.perf_counter()
     out = _scipy_zoom(img, zoom_factors, order=scipy_order)
     elapsed = time.perf_counter() - t0
 
     recovered = _scipy_zoom(out, 1.0 / np.asarray(zoom_factors), order=scipy_order)
-    snr, mse = compute_snr_and_mse_cropped(img, recovered, border_fraction)
+    snr, mse = compute_snr_and_mse_region(
+        img, recovered, roi=roi, mask=mask, border_fraction=border_fraction
+    )
     return out, recovered, snr, mse, elapsed
 
 
@@ -61,13 +72,26 @@ def resize_and_compute_metrics(
     zoom_factors: _ZoomT,
     border_fraction: float = 0.2,
     scipy_order: int = 3,
+    roi: Optional[Tuple[int, int, int, int]] = None,
+    mask: Optional[np.ndarray] = None,
 ):
+    """
+    Resize with a splineops method (or SciPy if method == 'scipy'), then
+    resize back to the original shape and compute SNR/MSE on the selected
+    region (roi/mask/crop/full).
+    """
+    # Normalize zoom_factors to (z_h, z_w)
     if np.isscalar(zoom_factors):
-        zoom_factors = (zoom_factors, zoom_factors)
+        zoom_factors = (float(zoom_factors), float(zoom_factors))
 
     if method == "scipy":
         return resize_with_scipy_zoom(
-            img, zoom_factors, scipy_order=scipy_order, border_fraction=border_fraction
+            img,
+            zoom_factors,
+            scipy_order=scipy_order,
+            border_fraction=border_fraction,
+            roi=roi,
+            mask=mask,
         )
 
     t0 = time.perf_counter()
@@ -75,7 +99,9 @@ def resize_and_compute_metrics(
     elapsed = time.perf_counter() - t0
 
     recovered = _resize(resized, output_size=img.shape, method=method)
-    snr, mse = compute_snr_and_mse_cropped(img, recovered, border_fraction)
+    snr, mse = compute_snr_and_mse_region(
+        img, recovered, roi=roi, mask=mask, border_fraction=border_fraction
+    )
     return resized, recovered, snr, mse, elapsed
 
 
@@ -89,11 +115,14 @@ def resize_multichannel(
     method: str = "cubic",
     modes: str | Tuple[str, ...] = "mirror",
 ) -> np.ndarray:
+    """
+    Channel-wise wrapper for H×W×C arrays. Returns uint8 in [0, 255].
+    """
     if img.ndim != 3:
         raise ValueError("Expected an H×W×C array")
 
     if np.isscalar(zoom):
-        zoom = (zoom, zoom)
+        zoom = (float(zoom), float(zoom))
 
     channels = [
         _resize(img[..., c], zoom_factors=zoom, method=method, modes=modes)
