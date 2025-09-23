@@ -301,88 +301,97 @@ def draw_standard_vs_leastsq_pipeline(
 ) -> Tuple[Figure, Axes]:
     """
     Two-branch pipeline with level main rail:
-      Original → [Standard Interpolation ↓4] → [Standard Interpolation ↑4]
-          └──→ [Least-Squares Projection ↓4] → [Least-Squares Projection ↑4]
-    No SciPy branch, no Std↔LS diff node, and no vertical separator.
-    Arrows stop before box edges. Standard tap appears a bit into the outgoing rail.
+      Original → [Standard Interpolation ↓4] → (Resized) → [Standard Interpolation ↑4]
+          └──→ [Least-Squares Projection ↓4] → (Resized) → [Least-Squares Projection ↑4]
+    No SciPy branch, no diff node, no separator. Arrows stop before box edges.
     """
     # canvas
-    xmin, xmax = -2.5, 36.0
+    xmin, xmax = -2.5, 37.0
     ymin, ymax = -3.0, 16.0
     fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
 
-    # ---- layout (align y_std to the original rail y) ----
+    # ---- layout ----
     rail_y = 13.25          # original rail height (center of Original box)
-    y_std  = rail_y         # Standard rail level with Original
-    y_ls   = 6.75           # LS rail
+    y_std  = rail_y
+    y_ls   = 9.50           # slightly raised (shorter vertical from junction)
 
-    # Box columns (left boxes moved closer; both columns widened for better text fit)
-    left_box_x1, left_box_x2   = 12.25, 19.75   # left “↓4” method boxes (wider & closer)
-    right_box_x1, right_box_x2 = 21.0, 29.25    # right “↑4” method boxes (wider)
+    # Box columns
+    left_box_x1, left_box_x2   = 11.75, 20.25
+    # Push right boxes further to create room for "Resized" labels
+    right_box_x1, right_box_x2 = 23.25, 33.00
 
     # gaps so arrows don't enter boxes
-    box_gap_in  = 0.28  # stop BEFORE entering any box
-    box_gap_out = 0.28  # start AFTER leaving any box
+    box_gap_in  = 0.30
+    box_gap_out = 0.30
 
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
 
     # Left: Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
-    # Main straight rail to a bifurcation (shrunk distance to left boxes)
+    # Main straight rail → bifurcation
     bifurc_x = 10.75
     arrow(ax, 4.25, rail_y, bifurc_x, rail_y)
-    dot(ax, bifurc_x, rail_y)  # junction
+    dot(ax, bifurc_x, rail_y)
 
     # -----------------------------
-    # Standard branch (top, straight)
+    # Standard branch (top)
     # -----------------------------
-    # junction → (just before) left Standard (↓4) box
     arrow(ax, bifurc_x, y_std, left_box_x1 - box_gap_in, y_std)
-    # left Standard box (contains text + ↓4)
     box(ax, left_box_x1, y_std + 1.0, left_box_x2, y_std - 1.0,
         "Standard Interpolation\n$\\downarrow 4$", fontsize=12)
-    # left Standard box → (just before) right Standard (↑4) box
-    arrow(ax, left_box_x2 + box_gap_out, y_std, right_box_x1 - box_gap_in, y_std)
-    # right Standard box
+
+    # DS→US arrow (Standard)
+    std_ds_out_x = left_box_x2 + box_gap_out
+    std_us_in_x  = right_box_x1 - box_gap_in
+    arrow(ax, std_ds_out_x, y_std, std_us_in_x, y_std)
+
+    # Label "Resized" above the Standard DS→US arrow
+    label(ax, (std_ds_out_x + std_us_in_x) / 2.0, y_std + 0.8, "Resized", fontsize=12)
+
+    # Right Standard box
     box(ax, right_box_x1, y_std + 1.0, right_box_x2, y_std - 1.0,
         f"Standard Interpolation{ups}", fontsize=12)
 
     # -----------------------------
     # Least-Squares branch (lower)
     # -----------------------------
-    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls)  # crisp vertical drop
+    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls)
     dot(ax, bifurc_x, y_ls)
-    # bend → (just before) left LS (↓4) box
+
     arrow(ax, bifurc_x, y_ls, left_box_x1 - box_gap_in, y_ls)
-    # left LS box (contains text + ↓4)
     box(ax, left_box_x1, y_ls + 1.0, left_box_x2, y_ls - 1.0,
         "Least-Squares Projection\n$\\downarrow 4$", fontsize=12)
-    # left LS box → (just before) right LS (↑4) box
-    arrow(ax, left_box_x2 + box_gap_out, y_ls, right_box_x1 - box_gap_in, y_ls)
-    # right LS box
+
+    # DS→US arrow (LS)
+    ls_ds_out_x = left_box_x2 + box_gap_out
+    ls_us_in_x  = right_box_x1 - box_gap_in
+    arrow(ax, ls_ds_out_x, y_ls, ls_us_in_x, y_ls)
+
+    # Label "Resized" above the LS DS→US arrow
+    label(ax, (ls_ds_out_x + ls_us_in_x) / 2.0, y_ls + 0.8, "Resized", fontsize=12)
+
+    # Right LS box
     box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
         f"Least-Squares Projection{ups}", fontsize=12)
 
     # -----------------------------
     # Outgoing rails & labels
     # -----------------------------
-    seg(ax, right_box_x2, y_std, 33.0, y_std)
-    seg(ax, right_box_x2, y_ls,  33.0, y_ls)
+    seg(ax, right_box_x2, y_std, 35.5, y_std)
+    seg(ax, right_box_x2, y_ls,  35.5, y_ls)
 
-    # STANDARD tap/junction a bit into the rail (not at box edge)
-    tap_dx = 1.25
+    # Standard tap a bit into the rail
+    tap_dx = 1.5
     tap_x  = right_box_x2 + tap_dx
     dot(ax, tap_x, y_std)
 
-    # Labels—place after the tap so they don't collide with the junction
     label(ax, tap_x + 1.0, y_std + 0.6, "Recovered", fontsize=12)
     label(ax, right_box_x2 + 1.75, y_ls  + 0.6, "Recovered", fontsize=12)
 
     # -----------------------------
     # Bottom sum (Standard vs Original)
     # -----------------------------
-    # Align the sum under the new tap so the arrow drops vertically
     sum_cx, sum_cy, sum_r = tap_x, 1.25, 1.0
     circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
     label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)
@@ -397,14 +406,12 @@ def draw_standard_vs_leastsq_pipeline(
     arrow(ax, tap_x, y_std, sum_cx, sum_cy + sum_r)
 
     # Collector fed only by the bottom sum
-    collector_left, collector_right = 23.75, 34.25
+    collector_left, collector_right = 24.5, 36.5
     collector_top, collector_bottom = -1.0, -2.6
     collector_gap = 0.25
     arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top + collector_gap)
     box(ax, collector_left, collector_top, collector_right, collector_bottom,
         "Difference Images", fontsize=12)
-
-    # (No dashed separator anymore)
 
     fig.tight_layout(pad=0.4)
     plt.show()
