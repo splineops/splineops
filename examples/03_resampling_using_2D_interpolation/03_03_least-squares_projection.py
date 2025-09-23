@@ -37,7 +37,6 @@ from splineops.utils import (
 # by showing how close their results are (and where they differ).
 
 _ = draw_standard_vs_leastsq_pipeline(
-    show_separator=True,          # keep dashed divider
     include_upsample_labels=True, # show '↑ 4' inside both boxes
     width=12.0                    # figure width in inches (height auto)
 )

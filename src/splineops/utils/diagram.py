@@ -295,7 +295,6 @@ def draw_standard_vs_scipy_pipeline(
 
 def draw_standard_vs_leastsq_pipeline(
     *,
-    show_separator: bool = True,
     include_upsample_labels: bool = True,
     width: float = 12.0,
     ax: Optional[Axes] = None,
@@ -304,82 +303,79 @@ def draw_standard_vs_leastsq_pipeline(
     Two-branch pipeline with level main rail:
       Original → [Standard Interpolation ↓4] → [Standard Interpolation ↑4]
           └──→ [Least-Squares Projection ↓4] → [Least-Squares Projection ↑4]
-    No SciPy branch, no Std↔LS diff node. Bottom 'Standard vs Original' diff remains.
+    No SciPy branch, no Std↔LS diff node, and no vertical separator.
     Arrows stop before box edges. Standard tap appears a bit into the outgoing rail.
     """
     # canvas
-    xmin, xmax = -2.5, 34.8
+    xmin, xmax = -2.5, 36.0
     ymin, ymax = -3.0, 16.0
     fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
 
     # ---- layout (align y_std to the original rail y) ----
     rail_y = 13.25          # original rail height (center of Original box)
-    y_std = rail_y          # Standard rail level with Original
-    y_ls  = 6.75            # LS rail
+    y_std  = rail_y         # Standard rail level with Original
+    y_ls   = 6.75           # LS rail
 
-    # Box columns
-    left_box_x1, left_box_x2   = 14.0, 18.75   # left “↓4” method boxes (wider than before)
-    right_box_x1, right_box_x2 = 20.0, 27.25   # right “↑4” method boxes
+    # Box columns (left boxes moved closer; both columns widened for better text fit)
+    left_box_x1, left_box_x2   = 12.25, 19.75   # left “↓4” method boxes (wider & closer)
+    right_box_x1, right_box_x2 = 21.0, 29.25    # right “↑4” method boxes (wider)
 
     # gaps so arrows don't enter boxes
-    box_gap_in  = 0.25   # stop BEFORE entering any box
-    box_gap_out = 0.25   # start AFTER leaving any box
+    box_gap_in  = 0.28  # stop BEFORE entering any box
+    box_gap_out = 0.28  # start AFTER leaving any box
 
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
 
     # Left: Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
-    # Main straight rail to a bifurcation (level with y_std)
-    bifurc_x = 12.0
-    arrow(ax, 4.25, rail_y, bifurc_x, rail_y)  # perfectly level
-    dot(ax, bifurc_x, rail_y)                  # junction
+    # Main straight rail to a bifurcation (shrunk distance to left boxes)
+    bifurc_x = 10.75
+    arrow(ax, 4.25, rail_y, bifurc_x, rail_y)
+    dot(ax, bifurc_x, rail_y)  # junction
 
     # -----------------------------
-    # Standard branch (top, straight; perfectly level)
+    # Standard branch (top, straight)
     # -----------------------------
-    # Arrow from junction to JUST BEFORE the left Standard (↓4) box
+    # junction → (just before) left Standard (↓4) box
     arrow(ax, bifurc_x, y_std, left_box_x1 - box_gap_in, y_std)
-    # Left Standard box: includes method name and a down-arrow
-    box(ax, left_box_x1, y_std + 0.9, left_box_x2, y_std - 0.9,
+    # left Standard box (contains text + ↓4)
+    box(ax, left_box_x1, y_std + 1.0, left_box_x2, y_std - 1.0,
         "Standard Interpolation\n$\\downarrow 4$", fontsize=12)
-    # Arrow from JUST AFTER left box to JUST BEFORE right Standard (↑4) box
+    # left Standard box → (just before) right Standard (↑4) box
     arrow(ax, left_box_x2 + box_gap_out, y_std, right_box_x1 - box_gap_in, y_std)
-    # Right Standard box: upsample label (unchanged)
-    box(ax, right_box_x1, y_std + 0.9, right_box_x2, y_std - 0.9,
+    # right Standard box
+    box(ax, right_box_x1, y_std + 1.0, right_box_x2, y_std - 1.0,
         f"Standard Interpolation{ups}", fontsize=12)
 
     # -----------------------------
     # Least-Squares branch (lower)
     # -----------------------------
-    # crisp vertical drop from the main rail, then level horizontal
-    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls)
+    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls)  # crisp vertical drop
     dot(ax, bifurc_x, y_ls)
-
-    # Arrow from bend to JUST BEFORE the left LS (↓4) box
+    # bend → (just before) left LS (↓4) box
     arrow(ax, bifurc_x, y_ls, left_box_x1 - box_gap_in, y_ls)
-    # Left LS box: includes method name and a down-arrow
-    box(ax, left_box_x1, y_ls + 0.9, left_box_x2, y_ls - 0.9,
+    # left LS box (contains text + ↓4)
+    box(ax, left_box_x1, y_ls + 1.0, left_box_x2, y_ls - 1.0,
         "Least-Squares Projection\n$\\downarrow 4$", fontsize=12)
-    # Arrow from JUST AFTER left LS box to JUST BEFORE right LS (↑4) box
+    # left LS box → (just before) right LS (↑4) box
     arrow(ax, left_box_x2 + box_gap_out, y_ls, right_box_x1 - box_gap_in, y_ls)
-    # Right LS box: upsample label (unchanged)
-    box(ax, right_box_x1, y_ls + 0.9, right_box_x2, y_ls - 0.9,
+    # right LS box
+    box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
         f"Least-Squares Projection{ups}", fontsize=12)
 
     # -----------------------------
     # Outgoing rails & labels
     # -----------------------------
-    # Horizontal rails leaving the method boxes
-    seg(ax, right_box_x2, y_std, 31.75, y_std)
-    seg(ax, right_box_x2, y_ls,  31.75, y_ls)
+    seg(ax, right_box_x2, y_std, 33.0, y_std)
+    seg(ax, right_box_x2, y_ls,  33.0, y_ls)
 
     # STANDARD tap/junction a bit into the rail (not at box edge)
     tap_dx = 1.25
     tap_x  = right_box_x2 + tap_dx
     dot(ax, tap_x, y_std)
 
-    # Labels—put the "Recovered" after the tap for the Standard rail
+    # Labels—place after the tap so they don't collide with the junction
     label(ax, tap_x + 1.0, y_std + 0.6, "Recovered", fontsize=12)
     label(ax, right_box_x2 + 1.75, y_ls  + 0.6, "Recovered", fontsize=12)
 
@@ -408,8 +404,7 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, collector_left, collector_top, collector_right, collector_bottom,
         "Difference Images", fontsize=12)
 
-    if show_separator:
-        seg(ax, 10.75, 15.5, 10.75, 0.25, style="dashed", linewidth=1.2, zorder=1)
+    # (No dashed separator anymore)
 
     fig.tight_layout(pad=0.4)
     plt.show()
