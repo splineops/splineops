@@ -293,8 +293,6 @@ def draw_standard_vs_scipy_pipeline(
     plt.show()
     return fig, ax
 
-# splineops/src/splineops/utils/diagram.py
-
 def draw_standard_vs_leastsq_pipeline(
     *,
     include_upsample_labels: bool = True,
@@ -306,9 +304,8 @@ def draw_standard_vs_leastsq_pipeline(
     rail_y = 13.25
     y_std  = rail_y
     y_ls   = 9.50
-    bifurc_x = 7.25  # T-junction x for Standard/LS split
+    bifurc_x = 7.25
 
-    # Method boxes (narrow so “Resized” breathes)
     left_box_x1, left_box_x2   = 9.25, 16.50
     right_box_x1, right_box_x2 = 20.75, 28.25
 
@@ -320,10 +317,10 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
     # --- First bifurcation (Original → Standard/LS)
-    arrow(ax, 4.25, rail_y, bifurc_x, rail_y)   # horizontal from Original
-    dot(ax, bifurc_x, rail_y)                   # junction node at the T
+    arrow(ax, 4.25, rail_y, bifurc_x, rail_y)
+    dot(ax, bifurc_x, rail_y)  # T-junction node
 
-    # ---------- Standard (top) ----------
+    # Standard (top)
     arrow(ax, bifurc_x, y_std, left_box_x1 - box_gap_in, y_std)
     box(ax, left_box_x1, y_std + 1.0, left_box_x2, y_std - 1.0,
         "Standard Interpolation\n$\\downarrow 4$", fontsize=12)
@@ -334,9 +331,8 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_std + 1.0, right_box_x2, y_std - 1.0,
         f"Standard Interpolation{ups}", fontsize=12)
 
-    # ---------- Least-Squares (lower) ----------
-    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls)   # vertical leg of T
-    dot(ax, bifurc_x, y_ls)                     # bend node on LS rail
+    # Least-Squares (lower)
+    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls); dot(ax, bifurc_x, y_ls)
     arrow(ax, bifurc_x, y_ls, left_box_x1 - box_gap_in, y_ls)
     box(ax, left_box_x1, y_ls + 1.0, left_box_x2, y_ls - 1.0,
         "Least-Squares Projection\n$\\downarrow 4$", fontsize=12)
@@ -347,11 +343,11 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
         f"Least-Squares Projection{ups}", fontsize=12)
 
-    # ---------- Outgoing rails ----------
+    # Outgoing rails
     seg(ax, right_box_x2, y_std, 33.25, y_std)
     seg(ax, right_box_x2, y_ls,  33.25, y_ls)
 
-    # Taps (placed into their rails)
+    # Taps
     tap_x_std = right_box_x2 + 1.25
     tap_x_ls  = right_box_x2 + 4.25
     dot(ax, tap_x_std, y_std)
@@ -360,18 +356,16 @@ def draw_standard_vs_leastsq_pipeline(
     label(ax, tap_x_std + 0.9, y_std + 0.6, "Recovered", fontsize=12)
     label(ax, tap_x_ls  + 1.2, y_ls  + 0.6, "Recovered", fontsize=12)
 
-    # ---------- Bottom sums (different vertical levels, spaced horizontally) ----------
+    # Bottom sums (different vertical levels, spaced horizontally)
     sum_r = 1.0
     sum_y_std = 1.25
-    sum_y_ls  = 3.10
+    sum_y_ls  = 4.25   # CHANGED: raise LS sum higher up (was 3.10)
 
-    # Original’s vertical drops to BOTH sum levels
-    # (these start at x=5.0; add a T-junction node where vertical meets the horizontal rail)
-    seg(ax, 5.0, rail_y, 5.0, sum_y_ls)   # vertical to LS level
-    seg(ax, 5.0, rail_y, 5.0, sum_y_std)  # vertical to Standard level
-    dot(ax, 5.0, rail_y)                  # <-- T-junction node on Original rail (ADDED)
-    # elbow nodes at the bottoms of those drops
-    dot(ax, 5.0, sum_y_std)
+    # Original’s vertical drops to BOTH sum levels + explicit junction at the T
+    seg(ax, 5.0, rail_y, 5.0, sum_y_ls)
+    seg(ax, 5.0, rail_y, 5.0, sum_y_std)
+    dot(ax, 5.0, rail_y)      # T-junction node on Original rail
+    dot(ax, 5.0, sum_y_std)   # elbows
     dot(ax, 5.0, sum_y_ls)
 
     # Standard sum
@@ -381,14 +375,14 @@ def draw_standard_vs_leastsq_pipeline(
     arrow(ax, 5.0,       sum_y_std, tap_x_std - 1.0, sum_y_std)
     arrow(ax, tap_x_std, y_std,      tap_x_std,      sum_y_std + sum_r)
 
-    # LS sum
+    # LS sum (higher)
     circle(ax, tap_x_ls, sum_y_ls, sum_r, r"$\sum$", fontsize=18)
     label(ax, tap_x_ls - sum_r - 0.7, sum_y_ls + 0.6, r"$+$", fontsize=18)
     label(ax, tap_x_ls - 0.7,         sum_y_ls + sum_r + 0.6, r"$-$", fontsize=18)
     arrow(ax, 5.0,     sum_y_ls, tap_x_ls - 1.0,  sum_y_ls)
     arrow(ax, tap_x_ls, y_ls,     tap_x_ls,       sum_y_ls + sum_r)
 
-    # ---------- Collector fed by BOTH sums ----------
+    # Collector fed by BOTH sums
     collector_left, collector_right = 23.75, 34.0
     collector_top, collector_bottom = -1.0, -2.6
     collector_gap = 0.25
