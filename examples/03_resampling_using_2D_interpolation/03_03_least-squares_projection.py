@@ -26,7 +26,7 @@ from splineops.utils import (
     resize_and_compute_metrics,      # resampling + metrics
     plot_difference_image,
     show_roi_zoom,
-    draw_standard_vs_scipy_pipeline, # reused diagram helper (for layout consistency)
+    draw_standard_vs_leastsq_pipeline, # reused diagram helper (for layout consistency)
 )
 
 # %%
@@ -35,12 +35,10 @@ from splineops.utils import (
 #
 # These experiments validate least-squares projection against *standard interpolation*
 # by showing how close their results are (and where they differ).
-# We reuse the same diagram helper for consistency with other examples.
 
-_ = draw_standard_vs_scipy_pipeline(
+_ = draw_standard_vs_leastsq_pipeline(
     show_separator=True,          # keep dashed divider
-    show_plus=False,              # no far-right '+'
-    include_upsample_labels=True, # show '↑ 4' inside the boxes
+    include_upsample_labels=True, # show '↑ 4' inside both boxes
     width=12.0                    # figure width in inches (height auto)
 )
 

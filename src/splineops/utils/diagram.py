@@ -38,6 +38,7 @@ __all__ = [
     "label",
     # ready-made diagrams
     "draw_standard_vs_scipy_pipeline",
+    "draw_standard_vs_leastsq_pipeline",
 ]
 
 # -----------------------------------------------------------------------------#
@@ -287,6 +288,121 @@ def draw_standard_vs_scipy_pipeline(
 
     if show_plus:
         label(ax, 45.5, 6.25, "+", fontsize=28)
+
+    fig.tight_layout(pad=0.4)
+    plt.show()
+    return fig, ax
+
+def draw_standard_vs_leastsq_pipeline(
+    *,
+    show_separator: bool = True,
+    include_upsample_labels: bool = True,
+    width: float = 12.0,
+    ax: Optional[Axes] = None,
+) -> Tuple[Figure, Axes]:
+    """
+    Two-branch pipeline:
+      - Main straight rail: Original → (↓4) → Standard Interpolation (↑4)
+      - Clean vertical bifurcation off that rail to: (↓4) → Least-Squares Projection (↑4)
+    No SciPy branch and no Standard↔LS difference node. Bottom 'Standard vs Original'
+    difference remains. Arrows stop before box edges.
+    """
+    # canvas
+    xmin, xmax = -2.5, 34.8
+    ymin, ymax = -3.0, 16.0
+    fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
+
+    # layout
+    y_std, y_ls = 12.5, 6.75
+    box_left = 20.0
+    box_right = 27.25
+
+    # gaps so arrows don't enter boxes
+    ds_gap_in  = 0.25   # stop BEFORE entering a downsample box
+    ds_gap_out = 0.25   # start AFTER leaving a downsample box
+    meth_gap   = 0.25   # stop BEFORE entering a method box
+
+    ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
+
+    # Left: Original
+    box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
+
+    # Main straight rail to a bifurcation
+    bifurc_x = 12.0
+    arrow(ax, 4.25, 13.25, bifurc_x, 13.25)   # Original → junction
+    dot(ax, bifurc_x, 13.25)                  # junction on straight rail
+
+    # -----------------------------
+    # Standard branch (top, straight)
+    # -----------------------------
+    # Downsample (↓4) box position
+    ds_std_x1, ds_std_x2 = 14.0, 16.0
+    ds_std_y1, ds_std_y2 = y_std + 0.75, y_std - 0.75
+    # straight horizontal arrow from junction to JUST BEFORE ds box
+    arrow(ax, bifurc_x, y_std, ds_std_x1 - ds_gap_in, y_std)
+    # the ds box itself
+    box(ax, ds_std_x1, ds_std_y1, ds_std_x2, ds_std_y2, r"$\downarrow 4$", fontsize=16)
+    # arrow from JUST AFTER ds box to JUST BEFORE method box
+    arrow(ax, ds_std_x2 + ds_gap_out, y_std, box_left - meth_gap, y_std)
+    # Standard method box
+    box(ax, box_left, y_std + 0.75, box_right, y_std - 0.75,
+        f"Standard Interpolation{ups}", fontsize=12)
+
+    # -----------------------------
+    # Least-Squares branch (lower)
+    # -----------------------------
+    # clean vertical drop from junction (no arrow head; keeps the bend crisp)
+    seg(ax, bifurc_x, 13.25, bifurc_x, y_ls)
+    dot(ax, bifurc_x, y_ls)  # bend point
+
+    # LS downsample (↓4) box position
+    ds_ls_x1, ds_ls_x2 = 14.0, 16.0
+    ds_ls_y1, ds_ls_y2 = y_ls + 0.75, y_ls - 0.75
+    # straight horizontal arrow from bend to JUST BEFORE ls ds box
+    arrow(ax, bifurc_x, y_ls, ds_ls_x1 - ds_gap_in, y_ls)
+    # the ls ds box
+    box(ax, ds_ls_x1, ds_ls_y1, ds_ls_x2, ds_ls_y2, r"$\downarrow 4$", fontsize=16)
+    # arrow from JUST AFTER ls ds box to JUST BEFORE ls method box
+    arrow(ax, ds_ls_x2 + ds_gap_out, y_ls, box_left - meth_gap, y_ls)
+    # LS method box
+    box(ax, box_left, y_ls + 0.75, box_right, y_ls - 0.75,
+        f"Least-Squares Projection{ups}", fontsize=12)
+
+    # -----------------------------
+    # Outgoing rails & labels
+    # -----------------------------
+    seg(ax, box_right, y_std, 31.75, y_std)
+    seg(ax, box_right, y_ls,  31.75, y_ls)
+    label(ax, box_right + 1.75, y_std + 0.6, "Recovered", fontsize=12)
+    label(ax, box_right + 1.75, y_ls  + 0.6, "Recovered", fontsize=12)
+
+    # Tap on Standard rail for bottom difference
+    dot(ax, 27.25, y_std)
+
+    # Bottom sum (Standard vs Original)
+    sum_cx, sum_cy, sum_r = 27.25, 1.25, 1.0
+    circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
+    label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)
+    label(ax, sum_cx - 0.7,         sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
+
+    # Original lowest rail aligned to bottom sum y
+    seg(ax, 5.5, 13.25, 5.5, sum_cy)
+    dot(ax, 5.5, 13.25)
+    arrow(ax, 5.5, sum_cy, 26.25, sum_cy)
+
+    # tap from Standard to bottom sum
+    arrow(ax, 27.25, y_std, sum_cx, sum_cy + sum_r)
+
+    # Collector fed only by the bottom sum
+    collector_left, collector_right = 23.75, 34.25
+    collector_top, collector_bottom = -1.0, -2.6
+    collector_gap = 0.25
+    arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top + collector_gap)
+    box(ax, collector_left, collector_top, collector_right, collector_bottom,
+        "Difference Images", fontsize=12)
+
+    if show_separator:
+        seg(ax, 10.75, 15.5, 10.75, 0.25, style="dashed", linewidth=1.2, zorder=1)
 
     fig.tight_layout(pad=0.4)
     plt.show()

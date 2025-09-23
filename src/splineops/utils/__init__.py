@@ -13,7 +13,10 @@ from .plotting import (
     plot_difference_image,
     show_roi_zoom,
 )
-from .diagram import draw_standard_vs_scipy_pipeline
+from .diagram import (
+    draw_standard_vs_scipy_pipeline,
+    draw_standard_vs_leastsq_pipeline
+)
 
 __all__ = [
     "crop_to_central_region",
@@ -27,4 +30,5 @@ __all__ = [
     "plot_difference_image",
     "show_roi_zoom",
     "draw_standard_vs_scipy_pipeline",
+    draw_standard_vs_leastsq_pipeline,
 ]
