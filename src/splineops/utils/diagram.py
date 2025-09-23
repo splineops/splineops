@@ -303,44 +303,41 @@ def draw_standard_vs_leastsq_pipeline(
     Two-branch pipeline with level main rail:
       Original → [Standard Interpolation ↓4] → (Resized) → [Standard Interpolation ↑4]
           └──→ [Least-Squares Projection ↓4] → (Resized) → [Least-Squares Projection ↑4]
-    No SciPy branch, no diff node, no separator. Arrows stop before box edges.
-    The Original→junction arrow is shorter; all right-hand elements are shifted left.
+    Boxes are slightly narrower so the 'Resized' labels have more space.
     """
-    # canvas (slightly narrower since we pulled things left)
+    # canvas
     xmin, xmax = -2.5, 35.0
     ymin, ymax = -3.0, 16.0
     fig, ax = figure_for_extents(xmin, xmax, ymin, ymax, width=width, ax=ax)
 
-    # ---- layout ----
-    rail_y = 13.25          # original rail height (center of Original box)
+    # layout
+    rail_y = 13.25
     y_std  = rail_y
-    y_ls   = 9.50           # tighter vertical between junctions
+    y_ls   = 9.50
 
-    # Shorter Original→junction; shift columns left so labels breathe
+    # Junction closer to Original (shorter left arrow)
     bifurc_x = 7.25
 
-    # Left (↓4) method boxes — closer & wider for text
-    left_box_x1, left_box_x2   = 9.25, 17.75
+    # ⬇ Narrower LEFT (↓4) method boxes
+    left_box_x1, left_box_x2   = 9.25, 16.50   # was 17.75
 
-    # Right (↑4) method boxes — pulled left but keep ample DS→US span
-    right_box_x1, right_box_x2 = 19.25, 28.75
+    # ⬇ Narrower RIGHT (↑4) method boxes
+    right_box_x1, right_box_x2 = 20.75, 28.25  # was 19.25..28.75
 
-    # gaps so arrows don't enter boxes
+    # Arrow stop/start gaps so tips don't enter boxes
     box_gap_in  = 0.30
     box_gap_out = 0.30
 
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
 
-    # Left: Original
+    # Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
-    # Shorter main rail → junction
+    # Main rail → junction
     arrow(ax, 4.25, rail_y, bifurc_x, rail_y)
-    dot(ax, bifurc_x, rail_y)  # junction
+    dot(ax, bifurc_x, rail_y)
 
-    # -----------------------------
-    # Standard branch (top)
-    # -----------------------------
+    # ---------- Standard (top) ----------
     arrow(ax, bifurc_x, y_std, left_box_x1 - box_gap_in, y_std)
     box(ax, left_box_x1, y_std + 1.0, left_box_x2, y_std - 1.0,
         "Standard Interpolation\n$\\downarrow 4$", fontsize=12)
@@ -353,9 +350,7 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_std + 1.0, right_box_x2, y_std - 1.0,
         f"Standard Interpolation{ups}", fontsize=12)
 
-    # -----------------------------
-    # Least-Squares branch (lower)
-    # -----------------------------
+    # ---------- Least-Squares (lower) ----------
     seg(ax, bifurc_x, rail_y, bifurc_x, y_ls); dot(ax, bifurc_x, y_ls)
     arrow(ax, bifurc_x, y_ls, left_box_x1 - box_gap_in, y_ls)
     box(ax, left_box_x1, y_ls + 1.0, left_box_x2, y_ls - 1.0,
@@ -369,9 +364,7 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
         f"Least-Squares Projection{ups}", fontsize=12)
 
-    # -----------------------------
-    # Outgoing rails, tap, labels
-    # -----------------------------
+    # Outgoing rails & labels
     seg(ax, right_box_x2, y_std, 32.25, y_std)
     seg(ax, right_box_x2, y_ls,  32.25, y_ls)
 
@@ -382,23 +375,17 @@ def draw_standard_vs_leastsq_pipeline(
     label(ax, tap_x + 0.9, y_std + 0.6, "Recovered", fontsize=12)
     label(ax, right_box_x2 + 1.4, y_ls  + 0.6, "Recovered", fontsize=12)
 
-    # -----------------------------
     # Bottom sum (Standard vs Original)
-    # -----------------------------
     sum_cx, sum_cy, sum_r = tap_x, 1.25, 1.0
     circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
     label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)
     label(ax, sum_cx - 0.7,         sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
 
-    # Original lowest rail aligned to bottom sum y
-    seg(ax, 5.0, rail_y, 5.0, sum_cy)
-    dot(ax, 5.0, rail_y)
+    seg(ax, 5.0, rail_y, 5.0, sum_cy); dot(ax, 5.0, rail_y)
     arrow(ax, 5.0, sum_cy, sum_cx - 1.0, sum_cy)
-
-    # Straight down from the Standard tap into the sum
     arrow(ax, tap_x, y_std, sum_cx, sum_cy + sum_r)
 
-    # Collector fed only by the bottom sum (shifted left a touch)
+    # Collector
     collector_left, collector_right = 23.75, 34.0
     collector_top, collector_bottom = -1.0, -2.6
     collector_gap = 0.25
