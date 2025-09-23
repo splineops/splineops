@@ -293,27 +293,22 @@ def draw_standard_vs_scipy_pipeline(
     plt.show()
     return fig, ax
 
+# splineops/src/splineops/utils/diagram.py
+
 def draw_standard_vs_leastsq_pipeline(
     *,
     include_upsample_labels: bool = True,
     width: float = 12.0,
     ax: Optional[Axes] = None,
 ):
-    """
-    Two-branch pipeline with level main rail:
-      Original → [Standard Interpolation ↓4] → (Resized) → [Standard Interpolation ↑4] ──●
-          └──→ [Least-Squares Projection ↓4] → (Resized) → [Least-Squares Projection ↑4] ──●
-    Each ● taps to its own sum with Original at different vertical levels.
-    Junction nodes are shown at the first bifurcation and at the Original→sum elbows.
-    """
-    from typing import Tuple
     fig, ax = figure_for_extents(-2.5, 35.0, -3.0, 16.0, width=width, ax=ax)
 
     rail_y = 13.25
     y_std  = rail_y
     y_ls   = 9.50
-    bifurc_x = 7.25
+    bifurc_x = 7.25  # T-junction x for Standard/LS split
 
+    # Method boxes (narrow so “Resized” breathes)
     left_box_x1, left_box_x2   = 9.25, 16.50
     right_box_x1, right_box_x2 = 20.75, 28.25
 
@@ -321,14 +316,14 @@ def draw_standard_vs_leastsq_pipeline(
     box_gap_out = 0.30
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
 
-    # Original
+    # --- Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
-    # Main rail → first bifurcation (with junction dot)
-    arrow(ax, 4.25, rail_y, bifurc_x, rail_y)
-    dot(ax, bifurc_x, rail_y)  # junction node at bifurcation
+    # --- First bifurcation (Original → Standard/LS)
+    arrow(ax, 4.25, rail_y, bifurc_x, rail_y)   # horizontal from Original
+    dot(ax, bifurc_x, rail_y)                   # junction node at the T
 
-    # Standard (top)
+    # ---------- Standard (top) ----------
     arrow(ax, bifurc_x, y_std, left_box_x1 - box_gap_in, y_std)
     box(ax, left_box_x1, y_std + 1.0, left_box_x2, y_std - 1.0,
         "Standard Interpolation\n$\\downarrow 4$", fontsize=12)
@@ -339,8 +334,9 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_std + 1.0, right_box_x2, y_std - 1.0,
         f"Standard Interpolation{ups}", fontsize=12)
 
-    # Least-Squares (lower)
-    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls); dot(ax, bifurc_x, y_ls)
+    # ---------- Least-Squares (lower) ----------
+    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls)   # vertical leg of T
+    dot(ax, bifurc_x, y_ls)                     # bend node on LS rail
     arrow(ax, bifurc_x, y_ls, left_box_x1 - box_gap_in, y_ls)
     box(ax, left_box_x1, y_ls + 1.0, left_box_x2, y_ls - 1.0,
         "Least-Squares Projection\n$\\downarrow 4$", fontsize=12)
@@ -351,11 +347,11 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
         f"Least-Squares Projection{ups}", fontsize=12)
 
-    # Outgoing rails
+    # ---------- Outgoing rails ----------
     seg(ax, right_box_x2, y_std, 33.25, y_std)
     seg(ax, right_box_x2, y_ls,  33.25, y_ls)
 
-    # Taps (into rails)
+    # Taps (placed into their rails)
     tap_x_std = right_box_x2 + 1.25
     tap_x_ls  = right_box_x2 + 4.25
     dot(ax, tap_x_std, y_std)
@@ -364,18 +360,19 @@ def draw_standard_vs_leastsq_pipeline(
     label(ax, tap_x_std + 0.9, y_std + 0.6, "Recovered", fontsize=12)
     label(ax, tap_x_ls  + 1.2, y_ls  + 0.6, "Recovered", fontsize=12)
 
-    # Bottom sums (different vertical levels, spaced horizontally)
+    # ---------- Bottom sums (different vertical levels, spaced horizontally) ----------
     sum_r = 1.0
     sum_y_std = 1.25
     sum_y_ls  = 3.10
 
     # Original’s vertical drops to BOTH sum levels
-    seg(ax, 5.0, rail_y, 5.0, sum_y_ls);  # drop to LS sum level
-    seg(ax, 5.0, rail_y, 5.0, sum_y_std); # drop to Standard sum level
-
-    # Junction dots at the elbows where Original’s vertical meets horizontals
-    dot(ax, 5.0, sum_y_std)  # new: elbow/junction for Standard sum feed
-    dot(ax, 5.0, sum_y_ls)   # new: elbow/junction for LS sum feed
+    # (these start at x=5.0; add a T-junction node where vertical meets the horizontal rail)
+    seg(ax, 5.0, rail_y, 5.0, sum_y_ls)   # vertical to LS level
+    seg(ax, 5.0, rail_y, 5.0, sum_y_std)  # vertical to Standard level
+    dot(ax, 5.0, rail_y)                  # <-- T-junction node on Original rail (ADDED)
+    # elbow nodes at the bottoms of those drops
+    dot(ax, 5.0, sum_y_std)
+    dot(ax, 5.0, sum_y_ls)
 
     # Standard sum
     circle(ax, tap_x_std, sum_y_std, sum_r, r"$\sum$", fontsize=18)
@@ -384,14 +381,14 @@ def draw_standard_vs_leastsq_pipeline(
     arrow(ax, 5.0,       sum_y_std, tap_x_std - 1.0, sum_y_std)
     arrow(ax, tap_x_std, y_std,      tap_x_std,      sum_y_std + sum_r)
 
-    # LS sum (shifted right; separate vertical level)
+    # LS sum
     circle(ax, tap_x_ls, sum_y_ls, sum_r, r"$\sum$", fontsize=18)
     label(ax, tap_x_ls - sum_r - 0.7, sum_y_ls + 0.6, r"$+$", fontsize=18)
     label(ax, tap_x_ls - 0.7,         sum_y_ls + sum_r + 0.6, r"$-$", fontsize=18)
     arrow(ax, 5.0,     sum_y_ls, tap_x_ls - 1.0,  sum_y_ls)
     arrow(ax, tap_x_ls, y_ls,     tap_x_ls,       sum_y_ls + sum_r)
 
-    # Collector fed by BOTH sums
+    # ---------- Collector fed by BOTH sums ----------
     collector_left, collector_right = 23.75, 34.0
     collector_top, collector_bottom = -1.0, -2.6
     collector_gap = 0.25
