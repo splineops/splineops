@@ -1,5 +1,5 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/03_04_oblique_projection.py
+# splineops/examples/03_resampling_using_2d_interpolation/03_05_oblique_projection.py
 # sphinx_gallery_end_ignore
 
 """

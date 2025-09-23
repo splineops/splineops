@@ -172,8 +172,9 @@ Resize Example
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_01_resize_module.py`
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_02_standard_interpolation.py`
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_03_least-squares_projection.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_04_oblique_projection.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_05_compare_different_methods.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_04_antialiasing.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_05_oblique_projection.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_06_compare_different_methods.py`
 
 References
 ----------
