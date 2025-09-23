@@ -301,9 +301,10 @@ def draw_standard_vs_leastsq_pipeline(
 ) -> Tuple[Figure, Axes]:
     """
     Two-branch pipeline with level main rail:
-      Original → [Standard Interpolation ↓4] → (Resized) → [Standard Interpolation ↑4]
-          └──→ [Least-Squares Projection ↓4] → (Resized) → [Least-Squares Projection ↑4]
-    Boxes are slightly narrower so the 'Resized' labels have more space.
+      Original → [Standard Interpolation ↓4] → (Resized) → [Standard Interpolation ↑4] ──●
+          └──→ [Least-Squares Projection ↓4] → (Resized) → [Least-Squares Projection ↑4] ──●
+    Each ● taps to its own sum with Original at DIFFERENT vertical levels (no overlap).
+    LS sum is placed further right to avoid visual overlap with the Standard sum.
     """
     # canvas
     xmin, xmax = -2.5, 35.0
@@ -314,23 +315,17 @@ def draw_standard_vs_leastsq_pipeline(
     rail_y = 13.25
     y_std  = rail_y
     y_ls   = 9.50
-
-    # Junction closer to Original (shorter left arrow)
     bifurc_x = 7.25
 
-    # ⬇ Narrower LEFT (↓4) method boxes
-    left_box_x1, left_box_x2   = 9.25, 16.50   # was 17.75
+    # Method boxes (narrower so "Resized" breathes)
+    left_box_x1, left_box_x2   = 9.25, 16.50     # left (↓4)
+    right_box_x1, right_box_x2 = 20.75, 28.25    # right (↑4)
 
-    # ⬇ Narrower RIGHT (↑4) method boxes
-    right_box_x1, right_box_x2 = 20.75, 28.25  # was 19.25..28.75
-
-    # Arrow stop/start gaps so tips don't enter boxes
     box_gap_in  = 0.30
     box_gap_out = 0.30
-
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
 
-    # Original
+    # --- Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
     # Main rail → junction
@@ -364,32 +359,49 @@ def draw_standard_vs_leastsq_pipeline(
     box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
         f"Least-Squares Projection{ups}", fontsize=12)
 
-    # Outgoing rails & labels
-    seg(ax, right_box_x2, y_std, 32.25, y_std)
-    seg(ax, right_box_x2, y_ls,  32.25, y_ls)
+    # ---------- Outgoing rails ----------
+    seg(ax, right_box_x2, y_std, 32.75, y_std)
+    seg(ax, right_box_x2, y_ls,  32.75, y_ls)
 
-    tap_dx = 1.25
-    tap_x  = right_box_x2 + tap_dx
-    dot(ax, tap_x, y_std)
+    # Taps (junction dots) placed INTO their rails
+    tap_x_std = right_box_x2 + 1.25          # Standard tap (unchanged)
+    tap_x_ls  = right_box_x2 + 3.25          # LS tap moved further right
+    dot(ax, tap_x_std, y_std)
+    dot(ax, tap_x_ls,  y_ls)
 
-    label(ax, tap_x + 0.9, y_std + 0.6, "Recovered", fontsize=12)
+    label(ax, tap_x_std + 0.9, y_std + 0.6, "Recovered", fontsize=12)
     label(ax, right_box_x2 + 1.4, y_ls  + 0.6, "Recovered", fontsize=12)
 
-    # Bottom sum (Standard vs Original)
-    sum_cx, sum_cy, sum_r = tap_x, 1.25, 1.0
-    circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
-    label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)
-    label(ax, sum_cx - 0.7,         sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
+    # ---------- Bottom sums (different vertical levels, separated horizontally) ----------
+    sum_r = 1.0
+    sum_y_std = 1.25    # Standard sum level
+    sum_y_ls  = 3.10    # LS sum level (different y)
 
-    seg(ax, 5.0, rail_y, 5.0, sum_cy); dot(ax, 5.0, rail_y)
-    arrow(ax, 5.0, sum_cy, sum_cx - 1.0, sum_cy)
-    arrow(ax, tap_x, y_std, sum_cx, sum_cy + sum_r)
+    # Build Original's lower rails
+    seg(ax, 5.0, rail_y, 5.0, sum_y_ls); dot(ax, 5.0, rail_y)
 
-    # Collector
+    # Standard sum (under its tap)
+    circle(ax, tap_x_std, sum_y_std, sum_r, r"$\sum$", fontsize=18)
+    label(ax, tap_x_std - sum_r - 0.7, sum_y_std + 0.6, r"$+$", fontsize=18)
+    label(ax, tap_x_std - 0.7,         sum_y_std + sum_r + 0.6, r"$-$", fontsize=18)
+    arrow(ax, 5.0,        sum_y_std, tap_x_std - 1.0, sum_y_std)
+    arrow(ax, tap_x_std,  y_std,      tap_x_std,      sum_y_std + sum_r)
+
+    # LS sum (shifted right to avoid overlap with Standard sum)
+    circle(ax, tap_x_ls, sum_y_ls, sum_r, r"$\sum$", fontsize=18)
+    label(ax, tap_x_ls - sum_r - 0.7, sum_y_ls + 0.6, r"$+$", fontsize=18)
+    label(ax, tap_x_ls - 0.7,         sum_y_ls + sum_r + 0.6, r"$-$", fontsize=18)
+    arrow(ax, 5.0,      sum_y_ls, tap_x_ls - 1.0,  sum_y_ls)
+    arrow(ax, tap_x_ls, y_ls,      tap_x_ls,       sum_y_ls + sum_r)
+
+    # ---------- Collector fed by BOTH sums ----------
     collector_left, collector_right = 23.75, 34.0
     collector_top, collector_bottom = -1.0, -2.6
     collector_gap = 0.25
-    arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top + collector_gap)
+
+    arrow(ax, tap_x_std, sum_y_std - sum_r, tap_x_std, collector_top + collector_gap)
+    arrow(ax, tap_x_ls,  sum_y_ls  - sum_r, tap_x_ls,  collector_top + collector_gap)
+
     box(ax, collector_left, collector_top, collector_right, collector_bottom,
         "Difference Images", fontsize=12)
 
