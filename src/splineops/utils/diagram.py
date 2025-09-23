@@ -301,12 +301,11 @@ def draw_standard_vs_leastsq_pipeline(
     ax: Optional[Axes] = None,
 ) -> Tuple[Figure, Axes]:
     """
-    Two-branch pipeline with a perfectly level main rail:
-      Original → (↓4) → Standard Interpolation (↑4)
-          └──→ (↓4) → Least-Squares Projection (↑4)
-    No SciPy branch and no Std↔LS diff node. Bottom 'Standard vs Original'
-    difference remains. Arrows stop before box edges. The Standard tap/junction
-    appears a bit into the outgoing rail (not at box edge).
+    Two-branch pipeline with level main rail:
+      Original → [Standard Interpolation ↓4] → [Standard Interpolation ↑4]
+          └──→ [Least-Squares Projection ↓4] → [Least-Squares Projection ↑4]
+    No SciPy branch, no Std↔LS diff node. Bottom 'Standard vs Original' diff remains.
+    Arrows stop before box edges. Standard tap appears a bit into the outgoing rail.
     """
     # canvas
     xmin, xmax = -2.5, 34.8
@@ -317,12 +316,14 @@ def draw_standard_vs_leastsq_pipeline(
     rail_y = 13.25          # original rail height (center of Original box)
     y_std = rail_y          # Standard rail level with Original
     y_ls  = 6.75            # LS rail
-    box_left, box_right = 20.0, 27.25
+
+    # Box columns
+    left_box_x1, left_box_x2   = 14.0, 18.75   # left “↓4” method boxes (wider than before)
+    right_box_x1, right_box_x2 = 20.0, 27.25   # right “↑4” method boxes
 
     # gaps so arrows don't enter boxes
-    ds_gap_in  = 0.25
-    ds_gap_out = 0.25
-    meth_gap   = 0.25
+    box_gap_in  = 0.25   # stop BEFORE entering any box
+    box_gap_out = 0.25   # start AFTER leaving any box
 
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
 
@@ -337,45 +338,50 @@ def draw_standard_vs_leastsq_pipeline(
     # -----------------------------
     # Standard branch (top, straight; perfectly level)
     # -----------------------------
-    ds_std_x1, ds_std_x2 = 14.0, 16.0
-    ds_std_y1, ds_std_y2 = y_std + 0.75, y_std - 0.75
-
-    arrow(ax, bifurc_x, y_std, ds_std_x1 - ds_gap_in, y_std)
-    box(ax, ds_std_x1, ds_std_y1, ds_std_x2, ds_std_y2, r"$\downarrow 4$", fontsize=16)
-    arrow(ax, ds_std_x2 + ds_gap_out, y_std, box_left - meth_gap, y_std)
-    box(ax, box_left, y_std + 0.75, box_right, y_std - 0.75,
+    # Arrow from junction to JUST BEFORE the left Standard (↓4) box
+    arrow(ax, bifurc_x, y_std, left_box_x1 - box_gap_in, y_std)
+    # Left Standard box: includes method name and a down-arrow
+    box(ax, left_box_x1, y_std + 0.9, left_box_x2, y_std - 0.9,
+        "Standard Interpolation\n$\\downarrow 4$", fontsize=12)
+    # Arrow from JUST AFTER left box to JUST BEFORE right Standard (↑4) box
+    arrow(ax, left_box_x2 + box_gap_out, y_std, right_box_x1 - box_gap_in, y_std)
+    # Right Standard box: upsample label (unchanged)
+    box(ax, right_box_x1, y_std + 0.9, right_box_x2, y_std - 0.9,
         f"Standard Interpolation{ups}", fontsize=12)
 
     # -----------------------------
     # Least-Squares branch (lower)
     # -----------------------------
-    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls)  # crisp vertical drop
+    # crisp vertical drop from the main rail, then level horizontal
+    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls)
     dot(ax, bifurc_x, y_ls)
 
-    ds_ls_x1, ds_ls_x2 = 14.0, 16.0
-    ds_ls_y1, ds_ls_y2 = y_ls + 0.75, y_ls - 0.75
-
-    arrow(ax, bifurc_x, y_ls, ds_ls_x1 - ds_gap_in, y_ls)
-    box(ax, ds_ls_x1, ds_ls_y1, ds_ls_x2, ds_ls_y2, r"$\downarrow 4$", fontsize=16)
-    arrow(ax, ds_ls_x2 + ds_gap_out, y_ls, box_left - meth_gap, y_ls)
-    box(ax, box_left, y_ls + 0.75, box_right, y_ls - 0.75,
+    # Arrow from bend to JUST BEFORE the left LS (↓4) box
+    arrow(ax, bifurc_x, y_ls, left_box_x1 - box_gap_in, y_ls)
+    # Left LS box: includes method name and a down-arrow
+    box(ax, left_box_x1, y_ls + 0.9, left_box_x2, y_ls - 0.9,
+        "Least-Squares Projection\n$\\downarrow 4$", fontsize=12)
+    # Arrow from JUST AFTER left LS box to JUST BEFORE right LS (↑4) box
+    arrow(ax, left_box_x2 + box_gap_out, y_ls, right_box_x1 - box_gap_in, y_ls)
+    # Right LS box: upsample label (unchanged)
+    box(ax, right_box_x1, y_ls + 0.9, right_box_x2, y_ls - 0.9,
         f"Least-Squares Projection{ups}", fontsize=12)
 
     # -----------------------------
     # Outgoing rails & labels
     # -----------------------------
     # Horizontal rails leaving the method boxes
-    seg(ax, box_right, y_std, 31.75, y_std)
-    seg(ax, box_right, y_ls,  31.75, y_ls)
+    seg(ax, right_box_x2, y_std, 31.75, y_std)
+    seg(ax, right_box_x2, y_ls,  31.75, y_ls)
 
-    # Place the STANDARD tap/junction a bit into the rail (not at box edge)
-    tap_dx = 1.25                         # how far from the box edge
-    tap_x  = box_right + tap_dx           # junction position on the standard rail
+    # STANDARD tap/junction a bit into the rail (not at box edge)
+    tap_dx = 1.25
+    tap_x  = right_box_x2 + tap_dx
     dot(ax, tap_x, y_std)
 
-    # Labels—put the "Recovered" label after the tap so it doesn't collide
+    # Labels—put the "Recovered" after the tap for the Standard rail
     label(ax, tap_x + 1.0, y_std + 0.6, "Recovered", fontsize=12)
-    label(ax, box_right + 1.75, y_ls  + 0.6, "Recovered", fontsize=12)
+    label(ax, right_box_x2 + 1.75, y_ls  + 0.6, "Recovered", fontsize=12)
 
     # -----------------------------
     # Bottom sum (Standard vs Original)
@@ -389,9 +395,9 @@ def draw_standard_vs_leastsq_pipeline(
     # Original lowest rail aligned to bottom sum y
     seg(ax, 5.5, rail_y, 5.5, sum_cy)
     dot(ax, 5.5, rail_y)
-    arrow(ax, 5.5, sum_cy, sum_cx - 1.0, sum_cy)  # into the sum from left
+    arrow(ax, 5.5, sum_cy, sum_cx - 1.0, sum_cy)
 
-    # tap from Standard to bottom sum (straight down from the tap)
+    # Straight down from the Standard tap into the sum
     arrow(ax, tap_x, y_std, sum_cx, sum_cy + sum_r)
 
     # Collector fed only by the bottom sum
