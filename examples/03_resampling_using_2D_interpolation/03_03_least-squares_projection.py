@@ -61,8 +61,14 @@ if "input_image_normalized" not in locals():
 zoom_factors_2d = locals().get("zoom_factors_2d", (0.25, 0.25))
 border_fraction = locals().get("border_fraction", 0.3)
 ROI_SIZE_PX = locals().get("ROI_SIZE_PX", 64)
-FACE_ROW    = locals().get("FACE_ROW", 250)
-FACE_COL    = locals().get("FACE_COL", 445)
+
+# ROI A
+#FACE_ROW    = locals().get("FACE_ROW", 250)
+#FACE_COL    = locals().get("FACE_COL", 445)
+
+# ROI B
+FACE_ROW    = locals().get("FACE_ROW", 400)
+FACE_COL    = locals().get("FACE_COL", 600)
 
 # --- Compute both pipelines ONCE and keep recovered+metrics (reused later) ---
 if not all(v in locals() for v in ("resized_2d_std","recovered_2d_std","snr_2d_std","mse_2d_std","time_2d_std")):
@@ -108,8 +114,8 @@ fig.tight_layout()
 plt.show()
 
 # %%
-# Load and Normalize an Image (reuse-aware)
-# -----------------------------------------
+# Load and Normalize an Image
+# ---------------------------
 
 if "input_image_normalized" not in locals():
     url = 'https://r0k.us/graphics/kodak/kodak/kodim14.png'
@@ -162,8 +168,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares Projection (compute only if missing)
-# --------------------------------------------------
+# Least-Squares Projection
+# ------------------------
 
 need_ls = not all(
     v in locals()
@@ -204,8 +210,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard Interpolation (compute only if missing)
-# ------------------------------------------------
+# Standard Interpolation
+# ----------------------
 
 need_std = not all(
     v in locals()
