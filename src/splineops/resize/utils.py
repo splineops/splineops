@@ -392,7 +392,7 @@ def get_initial_causal_coefficient(
 
     n = np.arange(1, horizon - 1)
     z1_array = z ** n
-    zn_array = (zn / z ** n) * z ** n  # simplifies to zn since (zn / z**n) * z**n = zn
+    zn_array = zn / (z ** n)
     sum_ += np.sum((z1_array + zn_array) * c[1:horizon-1])
 
     return sum_ / (1.0 - z ** (2 * len(c) - 2))
