@@ -328,7 +328,7 @@ def draw_standard_vs_leastsq_pipeline(
     arrow(ax, std_ds_out_x, y_std, std_us_in_x, y_std)
     label(ax, (std_ds_out_x + std_us_in_x) / 2.0, y_std + 0.8, "Resized", fontsize=12)
     box(ax, right_box_x1, y_std + 1.0, right_box_x2, y_std - 1.0,
-        f"Interpolation{ups}", fontsize=12)
+        f"Standard Interpolation{ups}", fontsize=12)
 
     # Least-Squares (lower)
     seg(ax, bifurc_x, rail_y, bifurc_x, y_ls); dot(ax, bifurc_x, y_ls)
@@ -340,7 +340,7 @@ def draw_standard_vs_leastsq_pipeline(
     arrow(ax, ls_ds_out_x, y_ls, ls_us_in_x, y_ls)
     label(ax, (ls_ds_out_x + ls_us_in_x) / 2.0, y_ls + 0.8, "Resized", fontsize=12)
     box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
-        f"Interpolation{ups}", fontsize=12)
+        f"Least-Squares Projection{ups}", fontsize=12)
 
     # Outgoing rails
     seg(ax, right_box_x2, y_std, 33.25, y_std)
