@@ -32,6 +32,7 @@ __all__ = [
     "figure_for_extents",
     "box",
     "circle",
+    "capsule",
     "dot",
     "seg",
     "arrow",
@@ -105,6 +106,32 @@ def box(
                 ha="center", va="center", fontsize=fontsize)
     return r
 
+def capsule(
+    ax: Axes,
+    x1: float, y1: float, x2: float, y2: float,
+    label_text: Optional[str] = None,
+    *,
+    fontsize: int = 12,
+    linewidth: float = 1.6,
+    facecolor: str = "white",
+    edgecolor: str = "black",
+    padding: float = 0.12,
+):
+    x_lo, x_hi = (x1, x2) if x1 <= x2 else (x2, x1)
+    y_lo, y_hi = (y1, y2) if y1 <= y2 else (y2, y1)
+    w, h = x_hi - x_lo, y_hi - y_lo
+    r = min(w, h) * 0.5  # semicircular ends
+
+    patch = FancyBboxPatch(
+        (x_lo, y_lo), w, h,
+        boxstyle=f"round,pad={padding},rounding_size={r}",
+        linewidth=linewidth, edgecolor=edgecolor, facecolor=facecolor,
+    )
+    ax.add_patch(patch)
+    if label_text:
+        ax.text((x1 + x2) / 2, (y1 + y2) / 2, label_text,
+                ha="center", va="center", fontsize=fontsize)
+    return patch
 
 def circle(
     ax: Axes,
@@ -189,7 +216,7 @@ def draw_standard_vs_scipy_pipeline(
     box_gap = 0.25  # inbound arrows stop before method box edges
 
     # Left: Original
-    box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
+    capsule(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
     arrow(ax, 4.25, 13.25, 8, 13.25)
 
     # Downsample circle ↓4
@@ -282,7 +309,7 @@ def draw_standard_vs_scipy_pipeline(
     arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top + collector_gap) # from bottom sum
 
     # draw the collector box last
-    box(ax, collector_left, collector_top, collector_right, collector_bottom,
+    capsule(ax, collector_left, collector_top, collector_right, collector_bottom,
         "Difference Images", fontsize=12)
 
     if show_separator:
@@ -379,7 +406,7 @@ def draw_two_method_comparisons(
     ups = f"\n$\\uparrow {scale_factor}$" if include_upsample_labels else ""
 
     # Original
-    box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
+    capsule(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
     # First bifurcation (T-junction)
     arrow(ax, 4.25, rail_y, bifurc_x, rail_y); dot(ax, bifurc_x, rail_y)
@@ -448,7 +475,7 @@ def draw_two_method_comparisons(
     collector_gap = 0.25
     arrow(ax, tap_x_top, sum_y_top - sum_r, tap_x_top, collector_top + collector_gap)
     arrow(ax, tap_x_bot, sum_y_bot - sum_r, tap_x_bot, collector_top + collector_gap)
-    box(ax, collector_left, collector_top, collector_right, collector_bottom,
+    capsule(ax, collector_left, collector_top, collector_right, collector_bottom,
         "Difference Images", fontsize=12)
 
     fig.tight_layout(pad=0.4)
