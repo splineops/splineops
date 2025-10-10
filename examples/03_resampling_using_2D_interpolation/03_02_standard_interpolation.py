@@ -71,7 +71,7 @@ border_fraction = 0.3  # still available as a fallback (unused when roi=... is s
 
 # Face-centered 64×64 ROI (focus region for metrics & diffs)
 ROI_SIZE_PX = 64
-FACE_ROW, FACE_COL = 250, 445  # (row, col) approx center of the face
+FACE_ROW, FACE_COL = 400, 600  # (row, col) approx center of the detail
 
 h_img, w_img = input_image_normalized.shape
 
@@ -215,8 +215,8 @@ plot_difference_image(
 )
 
 # %%
-# Difference with original image (on ROI)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Difference with original image
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # For completeness, show the difference image
 # (original - recovered with standard interpolation) on the ROI.

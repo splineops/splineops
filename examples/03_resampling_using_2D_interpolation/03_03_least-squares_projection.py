@@ -135,7 +135,7 @@ if "input_image_normalized" not in locals():
 zoom_factors_2d = locals().get("zoom_factors_2d", (0.25, 0.25))
 border_fraction = locals().get("border_fraction", 0.3)
 
-# Face-centered 64×64 ROI
+# ROI
 ROI_SIZE_PX = locals().get("ROI_SIZE_PX", 64)
 FACE_ROW    = locals().get("FACE_ROW", 250)
 FACE_COL    = locals().get("FACE_COL", 445)

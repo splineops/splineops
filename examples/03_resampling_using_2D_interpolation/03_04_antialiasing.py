@@ -6,18 +6,12 @@
 Antialiasing
 ============
 
-We construct an **A/B corner mix** image where, in each 2×2 tile, the
-top-left pixel comes from image **A** and the other three come from **B**.
-Then we downsample by 0.5× using:
+We construct an A/B corner mix image where, in each 2x2 tile, the
+top-left pixel comes from image A and the other three come from B.
+Then we downsample by 0.5 using:
 
-- **Standard interpolation (cubic)** – a non-anti-aliased decimation
-- **Least-squares projection (cubic-best anti-aliasing)** – an anti-aliased decimation
-
-To make the comparison visually meaningful:
-
-* The downsampled images are pasted onto an **original-size canvas**.
-* The downsampled ROI is placed at the **same relative position** as in the
-  original images, with the ROI size **exactly half** (64 → 32 px).
+- Standard interpolation (cubic): a non-anti-aliased decimation.
+- Least-squares projection (cubic-best anti-aliasing): an anti-aliased decimation.
 """
 
 # %%
@@ -99,12 +93,12 @@ _ = show_roi_zoom(B, ax_titles=("Image B (with ROI)", None), **roi_kwargs_orig)
 mixed = B.copy()
 mixed[0::2, 0::2] = A[0::2, 0::2]
 
-_ = show_roi_zoom(mixed, ax_titles=("A/B corner mix (A at TL of each 2×2)", None), **roi_kwargs_orig)
+_ = show_roi_zoom(mixed, ax_titles=("A/B corner mix (A at TL of each 2x2)", None), **roi_kwargs_orig)
 
 # %%
 # Phase alignment for 0.5× interpolation
 # --------------------------------------
-# Crop to **odd** height/width so a 0.5× interpolation grid lands on (0,0) corners.
+# Crop to odd height/width so a 0.5× interpolation grid lands on (0,0) corners.
 # (This preserves the intended A-at-corners behavior for the standard path.)
 
 H, W = mixed.shape
@@ -169,21 +163,21 @@ _ = show_resized_on_original_canvas_same_relpos(
 # In this synthetic A/B mix, each 2×2 block has A at the top-left pixel and B
 # elsewhere (i.e., 25% A, 75% B per block).
 #
-# • **Standard interpolation (cubic)** does *no* prefiltering before decimation.
+# • Standard interpolation (cubic) does no prefiltering before decimation.
 #   With our odd-size tweak, the 0.5× sampling grid lands exactly on the 2×2
 #   block corners (the A pixels). So it effectively *picks* A at every step,
 #   yielding the A-by-corners image. That’s not anti-aliasing; it’s just
 #   point-sampling at a favorable phase for this pattern.
 #
-# • **Least-squares projection (best AA)** performs a proper low-pass
+# • Least-squares projection (best AA) performs a proper low-pass
 #   (anti-aliasing) filtering matched to the downsampling, then decimates.
 #   On this pattern, that filter averages over each 2×2 neighborhood, so the
-#   result tends toward **25% A + 75% B** — visually “more B,” i.e., more like
+#   result tends toward 25% A + 75% B — visually “more B,” i.e., more like
 #   the mix. This is exactly what anti-aliasing should do: remove the high-freq
 #   checkerboard content so it doesn’t fold (alias) into the downsample.
 #
-# In short: **interpolation without AA = sample-and-alias** (here it locks onto A
-# due to phase); **least-squares = low-pass-then-sample**, preserving what would
+# In short: interpolation without AA = sample-and-alias (here it locks onto A
+# due to phase); least-squares = low-pass-then-sample, preserving what would
 # survive an ideal anti-aliased decimation.
 
 _ = show_resized_on_original_canvas_same_relpos(
