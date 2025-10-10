@@ -33,6 +33,7 @@ from splineops.utils import (
 # %%
 # Pipeline Diagram
 # ----------------
+
 _ = draw_standard_vs_leastsq_pipeline(
     include_upsample_labels=True,
     width=12.0
@@ -41,6 +42,7 @@ _ = draw_standard_vs_leastsq_pipeline(
 # %%
 # Highlights: ROI comparison
 # --------------------------
+#
 # Load once, compute BOTH methods (keeping recovered + metrics) *if missing*,
 # then show a 1×3 ROI triptych.
 
