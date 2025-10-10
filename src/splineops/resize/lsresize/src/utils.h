@@ -1,4 +1,4 @@
-// splineops/src/splineops/resize/lsresize/include/lsresize/utils.h
+// splineops/src/splineops/resize/lsresize/src/utils.h
 #pragma once
 #include <vector>
 #include <cmath>

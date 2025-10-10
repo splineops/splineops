@@ -1,8 +1,8 @@
 // splineops/src/splineops/resize/lsresize/src/resize1d.cpp
-#include "lsresize/resize1d.h"
-#include "lsresize/bspline.h"
-#include "lsresize/filters.h"
-#include "lsresize/utils.h"
+#include "resize1d.h"
+#include "bspline.h"
+#include "filters.h"
+#include "utils.h"
 
 #include <cmath>
 #include <vector>

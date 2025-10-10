@@ -1,6 +1,6 @@
 // splineops/src/splineops/resize/lsresize/src/resizend.cpp
-#include "lsresize/resizend.h"
-#include "lsresize/utils.h"
+#include "resizend.h"
+#include "utils.h"
 #include <vector>
 #include <numeric>
 #include <cstdint>

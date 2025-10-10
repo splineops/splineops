@@ -1,10 +1,10 @@
-# splineops/src/splineops/resize/lsresize/src/run_demo.cpp
+// splineops/src/splineops/resize/lsresize/src/run_demo.cpp
 #include <iostream>
 #include <vector>
 #include <cstdint>
 #include <cmath>
-#include "lsresize/resize1d.h"
-#include "lsresize/resizend.h"
+#include "resize1d.h"
+#include "resizend.h"
 
 using namespace lsresize;
 
