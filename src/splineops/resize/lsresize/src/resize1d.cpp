@@ -28,7 +28,7 @@ void resize_1d(const std::vector<double>& in,
     shift += (t - std::floor(t)) * (1.0 / p.zoom - 1.0);
   }
 
-  const int total_degree = p.interp_degree + std::max(p.analy_degree, 0) + 1;
+  const int total_degree = p.interp_degree + p.analy_degree + 1;
   const int corr_degree  = (p.analy_degree < 0) ? p.interp_degree
                                                : (p.analy_degree + p.synthe_degree + 1);
 
@@ -66,35 +66,35 @@ void resize_1d(const std::vector<double>& in,
 
   // 4) Build the finite extended buffer (Python-compatible)
   //    length_total = ny + ceil(add_border / zoom)
-  const bool symmetric_ext = ((p.analy_degree + 1) % 2 == 0);   // analy_even in Python
-  const int  ny            = workN;                             // Python uses "working" size for period
-  const int  length_total  = ny + static_cast<int>(std::ceil(add_border / p.zoom));
+  const bool symmetric_ext = ((p.analy_degree + 1) % 2 == 0);
+  const int  N = static_cast<int>(coeff.size());
+
+  // Python: length_total = length_input + ceil(add_border / zoom)
+  const int  length_total = N + static_cast<int>(std::ceil(add_border / p.zoom));
 
   std::vector<double> ext(length_total);
-  // Copy original coefficients
   std::copy(coeff.begin(), coeff.end(), ext.begin());
 
-  // Extend to the right using symmetric/antisymmetric rules
-  if (length_total > inputN) {
+  if (length_total > N) {
     if (symmetric_ext) {
-      // Symmetric: period = 2*ny - 2
-      const int period = 2 * ny - 2;
-      for (int l = inputN; l < length_total; ++l) {
-        int t0 = l;
-        if (period > 0 && t0 >= period) t0 = t0 % period;  // l2 = where(l >= period, abs(l % period), l)
-        int t = (t0 >= inputN) ? (period - t0) : t0;       // l2 = where(l2 >= N, period - l2, l2)
-        t = std::clamp(t, 0, inputN - 1);
+      // Symmetric extension with period based on *N*
+      const int period = 2 * N - 2;
+      for (int l = N; l < length_total; ++l) {
+        int t = l;
+        if (period > 0 && t >= period) t = t % period;
+        if (t >= N) t = period - t;          // reflect
+        t = std::clamp(t, 0, N - 1);
         ext[l] = coeff[t];
       }
     } else {
-      // Antisymmetric: period = 2*ny - 3
-      const int period = 2 * ny - 3;
-      for (int l = inputN; l < length_total; ++l) {
-        int t0 = l;
-        if (period > 0 && t0 >= period) t0 = t0 % period;
-        int t = (t0 >= inputN) ? (period - t0) : t0;
-        t = std::clamp(t, 0, inputN - 1);
-        ext[l] = -coeff[t];  // leading minus for antisymmetric extension
+      // Antisymmetric extension with period based on *N*
+      const int period = 2 * N - 3;
+      for (int l = N; l < length_total; ++l) {
+        int t = l;
+        if (period > 0 && t >= period) t = t % period;
+        if (t >= N) t = period - t;          // reflect
+        t = std::clamp(t, 0, N - 1);
+        ext[l] = -coeff[t];
       }
     }
   }
