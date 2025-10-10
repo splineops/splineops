@@ -65,11 +65,15 @@ inline void get_interpolation_coefficients(std::vector<double>& c, int deg) {
   for (double& v : c) v *= lambda;
 
   for (double z : poles) {
+    // forward (causal)
     c[0] = initial_causal(c, z);
-    for (size_t n = 1; n < c.size(); ++n) c[n] += z * c[n-1];
+    for (size_t n = 1; n < c.size(); ++n)
+      c[n] += z * c[n-1];
 
+    // backward (anti-causal) — must include n == 0
     c.back() = initial_anti_causal(c, z);
-    for (size_t n = c.size() - 1; n-- > 0; ) c[n] = z * (c[n+1] - c[n]);
+    for (int n = static_cast<int>(c.size()) - 2; n >= 0; --n)
+      c[n] = z * (c[n+1] - c[n]);
   }
 }
 
