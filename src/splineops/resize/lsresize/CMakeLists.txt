@@ -47,3 +47,7 @@ include(CTest)
 if (BUILD_TESTING)
   add_test(NAME run_demo_ok COMMAND run_demo)
 endif()
+
+# cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+# cmake --build build --config Release
+# .\build\Release\run_demo.exe 
