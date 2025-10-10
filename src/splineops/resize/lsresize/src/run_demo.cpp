@@ -1,4 +1,4 @@
-# splineops/src/splineops/resize/lsresize/tests/main.cpp
+# splineops/src/splineops/resize/lsresize/src/run_demo.cpp
 #include <iostream>
 #include <vector>
 #include <cstdint>
