@@ -25,13 +25,13 @@ from splineops.utils import (
     resize_and_compute_metrics,          # resampling + metrics
     plot_difference_image,
     show_roi_zoom,
-    draw_standard_vs_leastsq_pipeline,    # reused diagram helper (for layout consistency)
+    draw_leastsq_vs_oblique_pipeline,    # reused diagram helper (for layout consistency)
 )
 
 # %%
 # Pipeline Diagram
 # ----------------
-_ = draw_standard_vs_leastsq_pipeline(
+_ = draw_leastsq_vs_oblique_pipeline(
     include_upsample_labels=True,
     width=12.0
 )

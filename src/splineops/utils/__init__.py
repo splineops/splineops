@@ -15,7 +15,8 @@ from .plotting import (
 )
 from .diagram import (
     draw_standard_vs_scipy_pipeline,
-    draw_standard_vs_leastsq_pipeline
+    draw_standard_vs_leastsq_pipeline,
+    draw_leastsq_vs_oblique_pipeline
 )
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     "show_roi_zoom",
     "draw_standard_vs_scipy_pipeline",
     "draw_standard_vs_leastsq_pipeline",
+    "draw_leastsq_vs_oblique_pipeline",
 ]

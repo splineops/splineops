@@ -39,6 +39,8 @@ __all__ = [
     # ready-made diagrams
     "draw_standard_vs_scipy_pipeline",
     "draw_standard_vs_leastsq_pipeline",
+    "draw_leastsq_vs_oblique_pipeline",
+    "draw_two_method_comparisons",
 ]
 
 # -----------------------------------------------------------------------------#
@@ -297,13 +299,74 @@ def draw_standard_vs_leastsq_pipeline(
     *, 
     include_upsample_labels: bool = True, 
     width: float = 12.0, 
-    ax=None,
-):
+    ax: Optional[Axes] = None,
+) -> Tuple[Figure, Axes]:
+    return draw_two_method_comparisons(
+        "Standard Interpolation",
+        "Least-Squares Projection",
+        include_downsample_labels=True,
+        include_upsample_labels=include_upsample_labels,
+        scale_factor=4,
+        width=width,
+        ax=ax,
+    )
+
+def draw_leastsq_vs_oblique_pipeline(
+    *, 
+    include_upsample_labels: bool = True, 
+    width: float = 12.0, 
+    ax: Optional[Axes] = None,
+) -> Tuple[Figure, Axes]:
+    return draw_two_method_comparisons(
+        "Least-Squares Projection",
+        "Oblique Projection",
+        include_downsample_labels=True,
+        include_upsample_labels=include_upsample_labels,
+        scale_factor=4,
+        width=width,
+        ax=ax,
+    )
+
+def draw_two_method_comparisons(
+    top_method: str,
+    bottom_method: str,
+    *,
+    include_downsample_labels: bool = True,
+    include_upsample_labels: bool = True,
+    scale_factor: int = 4,
+    width: float = 12.0,
+    ax: Optional[Axes] = None,
+) -> Tuple[Figure, Axes]:
+    """
+    Draw a two-rail resampling pipeline diagram with identical layout to
+    `draw_standard_vs_leastsq_pipeline`, but with configurable method names.
+
+    Parameters
+    ----------
+    top_method : str
+        Label for the top rail (e.g., "Standard Interpolation").
+    bottom_method : str
+        Label for the bottom rail (e.g., "Least-Squares Projection").
+    include_downsample_labels : bool
+        If True, shows "$\\downarrow K$" inside the left boxes.
+    include_upsample_labels : bool
+        If True, shows "$\\uparrow K$" inside the right boxes.
+    scale_factor : int
+        The K in up/down arrows (default 4).
+    width : float
+        Figure width in inches.
+    ax : matplotlib.axes.Axes or None
+        Optionally draw into an existing Axes.
+
+    Returns
+    -------
+    (fig, ax)
+    """
     fig, ax = figure_for_extents(-2.5, 35.0, -1.5, 16.0, width=width, ax=ax)
 
     rail_y = 13.25
-    y_std  = rail_y
-    y_ls   = 9.50
+    y_top  = rail_y
+    y_bot  = 9.50
     bifurc_x = 7.25
 
     left_box_x1, left_box_x2   = 9.25, 16.50
@@ -311,7 +374,9 @@ def draw_standard_vs_leastsq_pipeline(
 
     box_gap_in  = 0.30
     box_gap_out = 0.30
-    ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
+
+    ds = f"\n$\\downarrow {scale_factor}$" if include_downsample_labels else ""
+    ups = f"\n$\\uparrow {scale_factor}$" if include_upsample_labels else ""
 
     # Original
     box(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
@@ -319,70 +384,70 @@ def draw_standard_vs_leastsq_pipeline(
     # First bifurcation (T-junction)
     arrow(ax, 4.25, rail_y, bifurc_x, rail_y); dot(ax, bifurc_x, rail_y)
 
-    # Standard (top)
-    arrow(ax, bifurc_x, y_std, left_box_x1 - box_gap_in, y_std)
-    box(ax, left_box_x1, y_std + 1.0, left_box_x2, y_std - 1.0,
-        "Standard Interpolation\n$\\downarrow 4$", fontsize=12)
-    std_ds_out_x = left_box_x2 + box_gap_out
-    std_us_in_x  = right_box_x1 - box_gap_in
-    arrow(ax, std_ds_out_x, y_std, std_us_in_x, y_std)
-    label(ax, (std_ds_out_x + std_us_in_x) / 2.0, y_std + 0.8, "Resized", fontsize=12)
-    box(ax, right_box_x1, y_std + 1.0, right_box_x2, y_std - 1.0,
-        f"Standard Interpolation{ups}", fontsize=12)
+    # --- Top rail ---
+    arrow(ax, bifurc_x, y_top, left_box_x1 - box_gap_in, y_top)
+    box(ax, left_box_x1, y_top + 1.0, left_box_x2, y_top - 1.0,
+        f"{top_method}{ds}", fontsize=12)
+    top_ds_out_x = left_box_x2 + box_gap_out
+    top_us_in_x  = right_box_x1 - box_gap_in
+    arrow(ax, top_ds_out_x, y_top, top_us_in_x, y_top)
+    label(ax, (top_ds_out_x + top_us_in_x) / 2.0, y_top + 0.8, "Resized", fontsize=12)
+    box(ax, right_box_x1, y_top + 1.0, right_box_x2, y_top - 1.0,
+        f"{top_method}{ups}", fontsize=12)
 
-    # Least-Squares (lower)
-    seg(ax, bifurc_x, rail_y, bifurc_x, y_ls); dot(ax, bifurc_x, y_ls)
-    arrow(ax, bifurc_x, y_ls, left_box_x1 - box_gap_in, y_ls)
-    box(ax, left_box_x1, y_ls + 1.0, left_box_x2, y_ls - 1.0,
-        "Least-Squares Projection\n$\\downarrow 4$", fontsize=12)
-    ls_ds_out_x = left_box_x2 + box_gap_out
-    ls_us_in_x  = right_box_x1 - box_gap_in
-    arrow(ax, ls_ds_out_x, y_ls, ls_us_in_x, y_ls)
-    label(ax, (ls_ds_out_x + ls_us_in_x) / 2.0, y_ls + 0.8, "Resized", fontsize=12)
-    box(ax, right_box_x1, y_ls + 1.0, right_box_x2, y_ls - 1.0,
-        f"Least-Squares Projection{ups}", fontsize=12)
+    # --- Bottom rail ---
+    seg(ax, bifurc_x, rail_y, bifurc_x, y_bot); dot(ax, bifurc_x, y_bot)
+    arrow(ax, bifurc_x, y_bot, left_box_x1 - box_gap_in, y_bot)
+    box(ax, left_box_x1, y_bot + 1.0, left_box_x2, y_bot - 1.0,
+        f"{bottom_method}{ds}", fontsize=12)
+    bot_ds_out_x = left_box_x2 + box_gap_out
+    bot_us_in_x  = right_box_x1 - box_gap_in
+    arrow(ax, bot_ds_out_x, y_bot, bot_us_in_x, y_bot)
+    label(ax, (bot_ds_out_x + bot_us_in_x) / 2.0, y_bot + 0.8, "Resized", fontsize=12)
+    box(ax, right_box_x1, y_bot + 1.0, right_box_x2, y_bot - 1.0,
+        f"{bottom_method}{ups}", fontsize=12)
 
     # Outgoing rails
-    seg(ax, right_box_x2, y_std, 33.25, y_std)
-    seg(ax, right_box_x2, y_ls,  33.25, y_ls)
+    seg(ax, right_box_x2, y_top, 33.25, y_top)
+    seg(ax, right_box_x2, y_bot, 33.25, y_bot)
 
-    # Taps
-    tap_x_std = right_box_x2 + 1.25
-    tap_x_ls  = right_box_x2 + 4.25
-    dot(ax, tap_x_std, y_std); dot(ax, tap_x_ls, y_ls)
-    label(ax, tap_x_std + 0.9, y_std + 0.6, "Recovered", fontsize=12)
-    label(ax, tap_x_ls  - 1.0, y_ls  + 0.6, "Recovered", fontsize=12)
+    # Taps + labels
+    tap_x_top = right_box_x2 + 1.25
+    tap_x_bot = right_box_x2 + 4.25
+    dot(ax, tap_x_top, y_top); dot(ax, tap_x_bot, y_bot)
+    label(ax, tap_x_top + 0.9, y_top + 0.6, "Recovered", fontsize=12)
+    label(ax, tap_x_bot - 1.0, y_bot + 0.6, "Recovered", fontsize=12)
 
-    # Bottom sums (LS higher, Standard lowered)
+    # Bottom sums (keep layout consistent with previous function)
     sum_r     = 1.0
-    sum_y_std = 3.75   # lowered
-    sum_y_ls  = 6.25   # unchanged
+    sum_y_top = 3.75
+    sum_y_bot = 6.25
 
     # Original’s vertical drops + T node + elbow dots
-    seg(ax, 5.0, rail_y, 5.0, sum_y_ls)
-    seg(ax, 5.0, rail_y, 5.0, sum_y_std)
-    dot(ax, 5.0, rail_y); dot(ax, 5.0, sum_y_std); dot(ax, 5.0, sum_y_ls)
+    seg(ax, 5.0, rail_y, 5.0, sum_y_bot)
+    seg(ax, 5.0, rail_y, 5.0, sum_y_top)
+    dot(ax, 5.0, rail_y); dot(ax, 5.0, sum_y_top); dot(ax, 5.0, sum_y_bot)
 
-    # Standard sum
-    circle(ax, tap_x_std, sum_y_std, sum_r, r"$\sum$", fontsize=18)
-    label(ax, tap_x_std - sum_r - 0.7, sum_y_std + 0.6, r"$+$", fontsize=18)
-    label(ax, tap_x_std - 0.7,         sum_y_std + sum_r + 0.6, r"$-$", fontsize=18)
-    arrow(ax, 5.0,       sum_y_std, tap_x_std - 1.0, sum_y_std)
-    arrow(ax, tap_x_std, y_std,      tap_x_std,      sum_y_std + sum_r)
+    # Top sum
+    circle(ax, tap_x_top, sum_y_top, sum_r, r"$\sum$", fontsize=18)
+    label(ax, tap_x_top - sum_r - 0.7, sum_y_top + 0.6, r"$+$", fontsize=18)
+    label(ax, tap_x_top - 0.7,         sum_y_top + sum_r + 0.6, r"$-$", fontsize=18)
+    arrow(ax, 5.0,       sum_y_top, tap_x_top - 1.0, sum_y_top)
+    arrow(ax, tap_x_top, y_top,      tap_x_top,      sum_y_top + sum_r)
 
-    # LS sum
-    circle(ax, tap_x_ls, sum_y_ls, sum_r, r"$\sum$", fontsize=18)
-    label(ax, tap_x_ls - sum_r - 0.7, sum_y_ls + 0.6, r"$+$", fontsize=18)
-    label(ax, tap_x_ls - 0.7,         sum_y_ls + sum_r + 0.6, r"$-$", fontsize=18)
-    arrow(ax, 5.0,     sum_y_ls, tap_x_ls - 1.0,  sum_y_ls)
-    arrow(ax, tap_x_ls, y_ls,     tap_x_ls,       sum_y_ls + sum_r)
+    # Bottom sum
+    circle(ax, tap_x_bot, sum_y_bot, sum_r, r"$\sum$", fontsize=18)
+    label(ax, tap_x_bot - sum_r - 0.7, sum_y_bot + 0.6, r"$+$", fontsize=18)
+    label(ax, tap_x_bot - 0.7,         sum_y_bot + sum_r + 0.6, r"$-$", fontsize=18)
+    arrow(ax, 5.0,     sum_y_bot, tap_x_bot - 1.0,  sum_y_bot)
+    arrow(ax, tap_x_bot, y_bot,    tap_x_bot,       sum_y_bot + sum_r)
 
-    # Collector (kept up)
+    # Collector
     collector_left, collector_right = 23.75, 34.0
     collector_top, collector_bottom = 1.00, -0.60
     collector_gap = 0.25
-    arrow(ax, tap_x_std, sum_y_std - sum_r, tap_x_std, collector_top + collector_gap)
-    arrow(ax, tap_x_ls,  sum_y_ls  - sum_r, tap_x_ls,  collector_top + collector_gap)
+    arrow(ax, tap_x_top, sum_y_top - sum_r, tap_x_top, collector_top + collector_gap)
+    arrow(ax, tap_x_bot, sum_y_bot - sum_r, tap_x_bot, collector_top + collector_gap)
     box(ax, collector_left, collector_top, collector_right, collector_bottom,
         "Difference Images", fontsize=12)
 
