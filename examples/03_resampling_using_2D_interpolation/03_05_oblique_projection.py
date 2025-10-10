@@ -205,7 +205,7 @@ roi_kwargs_on_canvas_ls = dict(
 
 _ = show_roi_zoom(
     canvas_ls,
-    ax_titles=("Resized Image (least-squares)", None),
+    ax_titles=(f"Resized Image (least-squares; t={time_2d_ls*1000:.1f} ms)", None),
     **roi_kwargs_on_canvas_ls
 )
 
@@ -246,7 +246,7 @@ roi_kwargs_on_canvas_ob = dict(
 
 _ = show_roi_zoom(
     canvas_ob,
-    ax_titles=("Resized Image (oblique)", None),
+    ax_titles=(f"Resized Image (oblique; t={time_2d_ob*1000:.1f} ms)", None),
     **roi_kwargs_on_canvas_ob
 )
 
@@ -295,3 +295,29 @@ plot_difference_image(
     roi=roi_rect,
     title_prefix="Difference (oblique)"
 )
+
+# %%
+# Performance: timing comparison
+# ------------------------------
+# Wall-clock time reported by `resize_and_compute_metrics` for the full
+# downsample+recover pipeline (smaller is better).
+
+speedup = (time_2d_ls / time_2d_ob) if time_2d_ob > 0 else np.inf
+impr_pct = max(0.0, (1.0 - time_2d_ob / max(time_2d_ls, 1e-12)) * 100.0)
+
+print(f"[Timing] Least-Squares: {time_2d_ls*1000:.1f} ms")
+print(f"[Timing] Oblique      : {time_2d_ob*1000:.1f} ms")
+print(f"[Timing] Speedup (LS/OB): {speedup:.2f}×  (~{impr_pct:.1f}% less time)")
+
+fig, ax = plt.subplots(figsize=(6.5, 3.6))
+methods = ["Least-Squares", "Oblique"]
+times_s = [time_2d_ls, time_2d_ob]
+bars = ax.bar(methods, times_s)
+ax.set_ylabel("Time (s)")
+ax.set_title(f"Oblique is ≈ {speedup:.2f}× faster ({impr_pct:.1f}% less time)")
+for rect, t in zip(bars, times_s):
+    h = rect.get_height()
+    ax.text(rect.get_x() + rect.get_width()/2, h, f"{t*1000:.1f} ms",
+            ha="center", va="bottom", fontsize=9)
+fig.tight_layout()
+plt.show()
