@@ -15,7 +15,7 @@ Interpolate 2D images with and oblique projection.
 
 import numpy as np
 
-# sphinx_gallery_thumbnail_number = 4  # show fourth figure as thumbnail
+# sphinx_gallery_thumbnail_number = 2  # show second figure as thumbnail
 import requests
 from io import BytesIO
 from PIL import Image
