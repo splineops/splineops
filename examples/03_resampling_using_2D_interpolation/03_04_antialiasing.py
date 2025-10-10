@@ -29,9 +29,9 @@ from splineops.utils import show_roi_zoom
 # sphinx_gallery_thumbnail_number = 5  # show the fifth figure (std canvas) as thumbnail
 
 # %%
-# Configuration
-# -------------
-# Source images (Kodak), ROI definition, and downsampling factor.
+# Load and prepare base ROI
+# -------------------------
+# Load A and B, convert to grayscale, and define the ROI on the originals.
 
 URL_A = "https://r0k.us/graphics/kodak/kodak/kodim14.png"
 URL_B = "https://r0k.us/graphics/kodak/kodak/kodim08.png"
@@ -41,19 +41,9 @@ FACE_ROW, FACE_COL = 250, 445  # ROI center (approx) in ORIGINAL coordinates
 
 zoom = (0.5, 0.5)              # 0.5× downsampling demo
 
-# %%
-# Helpers
-# -------
-# Small utility to convert RGB uint8 → grayscale [0, 1].
-
 def to_gray01(img_rgb_uint8: np.ndarray) -> np.ndarray:
     g = img_rgb_uint8.astype(np.float64) / 255.0
     return 0.2989 * g[..., 0] + 0.5870 * g[..., 1] + 0.1140 * g[..., 2]
-
-# %%
-# Load and prepare base ROI
-# -------------------------
-# Load A and B, convert to grayscale, and define the ROI on the originals.
 
 A = to_gray01(np.array(Image.open(BytesIO(requests.get(URL_A, timeout=10).content))))
 B = to_gray01(np.array(Image.open(BytesIO(requests.get(URL_B, timeout=10).content))))
@@ -96,10 +86,8 @@ mixed[0::2, 0::2] = A[0::2, 0::2]
 _ = show_roi_zoom(mixed, ax_titles=("A/B corner mix (A at TL of each 2x2)", None), **roi_kwargs_orig)
 
 # %%
-# Phase alignment for 0.5× interpolation
-# --------------------------------------
-# Crop to odd height/width so a 0.5× interpolation grid lands on (0,0) corners.
-# (This preserves the intended A-at-corners behavior for the standard path.)
+# Resized (standard cubic)
+# ------------------------
 
 H, W = mixed.shape
 if (H % 2 == 0) or (W % 2 == 0):
@@ -110,19 +98,8 @@ else:
 h_odd, w_odd = mixed_odd.shape
 assert (h_odd % 2 == 1) and (w_odd % 2 == 1), "Expect odd H×W after the crop."
 
-# %%
-# Downsample (two methods)
-# ------------------------
-# We downsample the ODD-sized mix for the correct phase; display happens later.
-
 res_std = resize(mixed_odd, zoom_factors=zoom, method="cubic")                    # standard (cubic)
 res_ls  = resize(mixed_odd, zoom_factors=zoom, method="cubic-best_antialiasing")  # least-squares (best AA)
-
-# %%
-# Resized (standard cubic) on original-size canvas
-# ------------------------------------------------
-# Paste the downsampled image at (0,0) on an original-size white canvas.
-# The ROI is at the SAME RELATIVE POSITION as original and is EXACTLY half-size (32 px).
 
 def show_resized_on_original_canvas_same_relpos(resized: np.ndarray, title: str):
     h_res, w_res = resized.shape
@@ -157,8 +134,16 @@ _ = show_resized_on_original_canvas_same_relpos(
 )
 
 # %%
-# Resized (least-squares, best AA) on original-size canvas
-# --------------------------------------------------------
+# Resized (least-squares, best AA)
+# --------------------------------
+
+_ = show_resized_on_original_canvas_same_relpos(
+    res_ls, "Resized (least-squares, best AA) — same relative ROI, 32 px"
+)
+
+# %%
+# Discussion
+# ----------
 #
 # In this synthetic A/B mix, each 2×2 block has A at the top-left pixel and B
 # elsewhere (i.e., 25% A, 75% B per block).
@@ -179,7 +164,3 @@ _ = show_resized_on_original_canvas_same_relpos(
 # In short: interpolation without AA = sample-and-alias (here it locks onto A
 # due to phase); least-squares = low-pass-then-sample, preserving what would
 # survive an ideal anti-aliased decimation.
-
-_ = show_resized_on_original_canvas_same_relpos(
-    res_ls, "Resized (least-squares, best AA) — same relative ROI, 32 px"
-)
