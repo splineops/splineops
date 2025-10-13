@@ -259,7 +259,7 @@ _ = show_roi_zoom(
 
 # %%
 # Recovered Image (standard)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
     recovered_2d_std,
