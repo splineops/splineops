@@ -50,6 +50,22 @@ input_image_normalized = (
 zoom_factors_2d = (0.25, 0.25)
 border_fraction = 0.3
 
+# --- ROI: match the LS/Oblique examples ---
+ROI_SIZE_PX = 64
+FACE_ROW, FACE_COL = 400, 600  # ROI center in ORIGINAL coordinates
+
+h_img, w_img = input_image_normalized.shape
+row_top  = int(np.clip(FACE_ROW - ROI_SIZE_PX // 2, 0, h_img - ROI_SIZE_PX))
+col_left = int(np.clip(FACE_COL - ROI_SIZE_PX // 2, 0, w_img - ROI_SIZE_PX))
+roi_rect = (row_top, col_left, ROI_SIZE_PX, ROI_SIZE_PX)  # (r, c, h, w)
+
+# Reusable kwargs for consistent ROI zooms below
+roi_kwargs = dict(
+    roi_height_frac=ROI_SIZE_PX / h_img,
+    grayscale=True,
+    roi_xy=(row_top, col_left),
+)
+
 # %%
 # Standard Interpolation
 # ----------------------
@@ -66,7 +82,8 @@ border_fraction = 0.3
     input_image_normalized,
     method="cubic",
     zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction
+    border_fraction=border_fraction,
+    roi=roi_rect,  # <-- compute metrics on the shared ROI
 )
 
 # %%
@@ -85,7 +102,8 @@ border_fraction = 0.3
     input_image_normalized,
     method="cubic-best_antialiasing",
     zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction
+    border_fraction=border_fraction,
+    roi=roi_rect,  # <-- compute metrics on the shared ROI
 )
 
 # %%
@@ -104,7 +122,8 @@ border_fraction = 0.3
     input_image_normalized,
     method="cubic-fast_antialiasing",
     zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction
+    border_fraction=border_fraction,
+    roi=roi_rect,  # <-- compute metrics on the shared ROI
 )
 
 # %%
@@ -161,9 +180,8 @@ plt.show()
 
 _ = show_roi_zoom(
     recovered_2d_interp,     # image to inspect
-    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
-    grayscale=True,        # keep plotting in gray
     ax_titles=("Standard (Cubic)", None),  # customise left title; right auto
+    **roi_kwargs
 )
 
 # %%
@@ -172,9 +190,8 @@ _ = show_roi_zoom(
 
 _ = show_roi_zoom(
     recovered_2d_ls,     # image to inspect
-    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
-    grayscale=True,        # keep plotting in gray
     ax_titles=("Least-Squares (Best)", None),  # customise left title; right auto
+    **roi_kwargs
 )
 
 # %%
@@ -183,7 +200,6 @@ _ = show_roi_zoom(
 
 _ = show_roi_zoom(
     recovered_2d_ob,     # image to inspect
-    roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
-    grayscale=True,        # keep plotting in gray
     ax_titles=("Oblique (Fast AA)", None),  # customise left title; right auto
+    **roi_kwargs
 )
