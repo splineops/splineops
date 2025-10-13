@@ -1,3 +1,5 @@
+.. splineops/docs/api/03_rotate.rst
+
 .. _api-rotate:
 
 Rotate

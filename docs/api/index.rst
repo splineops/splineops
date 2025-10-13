@@ -1,3 +1,5 @@
+.. splineops/docs/api/index.rst
+
 API Reference
 =============
 
@@ -15,8 +17,8 @@ API Reference
      - Rotate 2D/3D data about a user-defined center.
    * - :ref:`Regress <api-regress>`
      - Perform sparsest linear regression on 1D data.
-   * - :ref:`Smooth <api-smooth>`
-     - Smooth N-D data.
+   * - :ref:`Denoise <api-denoise>`
+     - Denoise N-D data.
    * - :ref:`Differentiate <api-differentiate>`
      - Differentiate 2D images.
    * - :ref:`Decompose <api-decompose>`
@@ -30,6 +32,6 @@ API Reference
    02_resize
    03_rotate
    04_regress
-   05_smooth
+   05_denoise
    06_differentiate
    07_decompose

@@ -1,3 +1,5 @@
+# splineops/src/splineops/regress/denoising.py
+
 # Total Variation Denoising with ADMM
 # ====================================
 
@@ -20,6 +22,7 @@
 from typing import Tuple
 import numpy as np
 import scipy.sparse as sp
+import scipy.sparse.linalg as spla
 
 def denoise_y(
     x: np.ndarray, 
@@ -72,9 +75,10 @@ def denoise_y(
     elif lamb > 0:
         # Otherwise, solve denoising problem using ADMM
         # Define matrices
-        L = _regularization_matrix(x)  # Regularization matrix
-        Lt = L.transpose()
-        M = sp.identity(len(x)) + rho * (Lt @ L)  # Matrix to be inverted at every x-update step in ADMM
+        L  = _regularization_matrix(x, fmt="csc")   # build as CSC directly
+        Lt = L.transpose().tocsr()                  # transpose -> CSR
+        A  = Lt @ L                                 # CSR @ CSC -> sparse
+        M  = sp.eye(len(x), format="csc") + rho * A.tocsc()
         # ADMM initialization
         xk, zk, yk = y, L @ y, np.zeros(L.shape[0])
         # Run ADMM
@@ -82,7 +86,7 @@ def denoise_y(
             z_prev = zk  # Needed for stopping criterion
             # ADMM updates (notations follow Boyd et al. 2011)
             b = y + rho * Lt @ (zk - yk / rho)
-            xk = sp.linalg.spsolve(M, b)
+            xk = spla.spsolve(M, b)
             Lxk = L @ xk  # Precomputation
             zk = _prox_L1(Lxk + yk / rho, lamb / rho)
             yk += rho * (Lxk - zk)
@@ -140,8 +144,9 @@ def _lambda_max(
     return lamb_max, polynomial
 
 def _regularization_matrix(
-    x: np.ndarray
-) -> sp.diags:
+    x: np.ndarray,
+    fmt: str = "csc"
+) -> sp.sparray:
     """
     Constructs the second-order difference matrix for total variation regularization.
 
@@ -161,7 +166,8 @@ def _regularization_matrix(
 
     M = len(x)
     v = 1 / (x[1:] - x[:-1])
-    return sp.diags([v[:-1], -(v[:-1] + v[1:]), v[1:]], [0, 1, 2], shape=(M-2, M))
+    return sp.diags([v[:-1], -(v[:-1] + v[1:]), v[1:]],
+                    [0, 1, 2], shape=(M-2, M), format=fmt)
 
 def _prox_L1(
     x: np.ndarray, 

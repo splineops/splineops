@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/03_rotate.rst
+
 Rotate
 ======
 
@@ -98,10 +100,11 @@ dimensions while minimizing artifacts like aliasing. The process asks one to fir
 with the origin, then to apply the appropriate 2D or 3D rotation matrix to the recentered coordinates, followed by a translation of the rotated recentered coordinates 
 back to their original reference frame, to compensate for the recentering step, and finally to use spline interpolation to determine the data values at these new positions.
 
-Rotate Example
---------------
+Rotate Examples
+---------------
 
-* :ref:`sphx_glr_auto_examples_005_rotate_module.py`
+* :ref:`sphx_glr_auto_examples_04_rotate_04_01_rotate_image.py`
+* :ref:`sphx_glr_auto_examples_04_rotate_04_02_rotation_animation.py`
 
 References
 ----------

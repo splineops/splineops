@@ -1,3 +1,5 @@
+.. splineops/docs/api/04_regress.rst
+
 .. _api-regress:
 
 Regress

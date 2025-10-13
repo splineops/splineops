@@ -1,5 +1,6 @@
-import numpy.typing as npt
+# splineops/src/splineops/utils/interop.py
 
+import numpy.typing as npt
 
 def is_cupy_type(x: npt.NDArray) -> bool:
     # Note: it avoids explicit reference to CuPy

@@ -1,3 +1,4 @@
+# splineops/pyproject.toml
 # https://learn.scientific-python.org/development/guides/packaging-simple/
 
 [build-system]
@@ -21,7 +22,9 @@ dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = [
     "numpy >=1.26",
-    "scipy >=1.11",
+    "scipy >=1.15",
+    "matplotlib >=3.8",
+    "requests >=2.32.3",
 ]
 classifiers = [
     "Topic :: Scientific/Engineering",
@@ -37,7 +40,6 @@ urls.homepage = "https://splineops.github.io/"
 
 [project.optional-dependencies]
 visualization = [
-    "matplotlib >=3.8",
     "pooch >= 1.8",
     "IPython >= 8.26",
 ]

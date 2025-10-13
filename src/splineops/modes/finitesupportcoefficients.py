@@ -1,3 +1,5 @@
+# splineops/src/splineops/modes/finitesupportcoefficients.py
+
 import numpy as np
 from typing import Tuple
 import numpy.typing as npt
@@ -6,7 +8,6 @@ from splineops.bases.splinebasis import SplineBasis
 from splineops.modes.extensionmode import ExtensionMode
 from splineops.interpolate.utils import _compute_ck_zero_matrix_banded_v1
 from splineops.utils.interop import is_cupy_type
-
 
 class FiniteSupportCoefficients(ExtensionMode):
 

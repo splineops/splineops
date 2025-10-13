@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/07_decompose.rst
+
 Decompose
 =========
 
@@ -58,10 +60,11 @@ Implementation Details
 - Wavelet transforms such as Haar wavelets or spline wavelets (analysis and synthesis) are implemented by the combination of pyramid steps with detail sub-bands.
 - Various spline degrees (e.g., degree 3) are supported. They allow one to control how the data are dispatched in the approximation channel and the sub-bands.
 
-Example
--------
+Decompose Examples
+------------------
 
-- :ref:`sphx_glr_auto_examples_009_decompose_module.py`
+* :ref:`sphx_glr_auto_examples_08_decompose_08_01_pyramid_decomposition.py`
+* :ref:`sphx_glr_auto_examples_08_decompose_08_02_wavelet_decomposition.py`
 
 References
 ----------

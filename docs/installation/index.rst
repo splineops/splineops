@@ -1,3 +1,5 @@
+.. splineops/docs/installation/index.rst
+
 Installation
 ============
 

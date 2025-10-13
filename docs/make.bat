@@ -1,4 +1,5 @@
 @ECHO OFF
+:: splineops/docs/make.bat
 
 pushd %~dp0
 

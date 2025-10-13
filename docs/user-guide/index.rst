@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/index.rst
+
 User Guide
 ==========
 
@@ -12,7 +14,7 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
    02_resize
    03_rotate
    04_regress
-   05_smooth
+   05_denoise
    06_differentiate
    07_decompose
 

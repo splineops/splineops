@@ -1,3 +1,5 @@
+.. splineops/docs/api/06_differentiate.rst
+
 .. _api-differentiate:
 
 Differentiate

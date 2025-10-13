@@ -1,3 +1,5 @@
+.. splineops/docs/user-guide/06_differentiate.rst
+
 Differentiate
 =============
 
@@ -100,10 +102,10 @@ The `Differentials` class implements these operations as follows: the input imag
 its interpolation coefficients. The differential-based computations that we perform are then perfectly consistent with this continuously defined function.
 We finally build the output image by sampling the ideal, continuously defined intermediate result.
 
-Differentiate Example
+Differentiate Examples
 ----------------------
 
-* :ref:`sphx_glr_auto_examples_008_differentiate_module.py`
+* :ref:`sphx_glr_auto_examples_07_differentiate_07_01_differentiate_module.py`
 
 References
 ----------

@@ -1,6 +1,20 @@
+# splineops/tests/test_02_02_resize_ls_oblique.py
+
 import numpy as np
 import pytest
 from splineops.resize.resize import resize
+
+# --- helper to map (method, degree) -> new method preset string ---
+def to_preset(method: str, degree: int) -> str:
+    name = {0: "fast", 1: "linear", 2: "quadratic", 3: "cubic"}[degree]
+    if method == "least-squares":
+        return f"{name}-best_antialiasing"
+    elif method == "oblique":
+        return f"{name}-fast_antialiasing"
+    elif method in {"interpolation", "standard"}:
+        return name
+    else:
+        raise ValueError(f"Unknown method '{method}'")
 
 # Mathematical functions for expected values in each pattern
 def expected_gradient_value(coords, shape):
@@ -13,11 +27,8 @@ def expected_sinusoidal_value(coords, shape, freqs=None):
     return (np.sum(values) / len(values)) * 0.25 + 0.5
 
 def expected_checkerboard_value(coords, square_sizes):
-    # Calculate the "row/column" equivalent for each dimension by dividing by the square size
     indices = [int(coord // square_size) for coord, square_size in zip(coords, square_sizes)]
-    # Sum indices and perform modulo 2 for checkerboard alternation
-    return (sum(indices) % 2) * 1.0  # Return 1.0 for white, 0.0 for black
-
+    return (sum(indices) % 2) * 1.0  # 1.0 for white, 0.0 for black
 
 # Calculate MSE with expected values for N-dimensional patterns
 def calculate_mse_with_expected(pattern_name, shape, zoom_factors, resized_image, freqs=None, square_sizes=None):
@@ -52,9 +63,11 @@ def generate_pattern(pattern_name, shape, zoom_factors, freqs=None, square_sizes
 
 # Test function for resizing N-dimensional patterns
 def resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, method, freqs=None, square_sizes=None):
+    preset = to_preset(method, degree)
+
     pattern = generate_pattern(pattern_name, shape, zoom_factors, freqs=freqs, square_sizes=square_sizes)
     pattern = pattern.astype(np.float64)
-    resized_image = resize(pattern, zoom_factors=zoom_factors, degree=degree, method=method)
+    resized_image = resize(pattern, zoom_factors=zoom_factors, method=preset)
     mse = calculate_mse_with_expected(pattern_name, shape, zoom_factors, resized_image, freqs, square_sizes)
     psnr = 10 * np.log10(1 / mse) if mse != 0 else float('inf')
     return mse, psnr

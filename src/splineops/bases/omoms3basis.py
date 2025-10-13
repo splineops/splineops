@@ -1,8 +1,9 @@
+# splineops/src/splineops/bases/omoms3basis.py
+
 import numpy as np
 import numpy.typing as npt
 
 from splineops.bases.splinebasis import SplineBasis
-
 
 class OMOMS3Basis(SplineBasis):
     def __init__(self) -> None:

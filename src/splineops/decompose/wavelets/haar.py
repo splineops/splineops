@@ -1,3 +1,5 @@
+# splineops/src/splineops/decompose/wavelets/haar.py
+
 """
 haar.py
 -------

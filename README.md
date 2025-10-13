@@ -1,4 +1,8 @@
+<!-- splineops/README.md -->
+
 # SplineOps: Spline Operations
+
+See https://splineops.github.io/ for the documentation.
 
 `splineops` is a Python-based N-dimensional signal-processing library with
 support for GPU computing.

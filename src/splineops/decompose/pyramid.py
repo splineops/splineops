@@ -1,3 +1,5 @@
+# splineops/src/splineops/decompose/pyramid.py
+
 """
 pyramid.py
 ----------

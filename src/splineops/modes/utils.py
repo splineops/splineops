@@ -1,3 +1,5 @@
+# splineops/src/splineops/modes/utils.py
+
 from typing import Union, Mapping, Type
 from splineops.modes.extensionmode import ExtensionMode
 from splineops.modes.narrowmirroring import NarrowMirroring
@@ -9,7 +11,6 @@ mode_map: Mapping[str, Type[ExtensionMode]] = {
     "mirror": NarrowMirroring,
     "periodic": PeriodicPadding,
 }
-
 
 def create_mode(name: str) -> ExtensionMode:
     # Check if valid mode name
