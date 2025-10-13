@@ -1,14 +1,15 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/magnify_from_tif.py
+# splineops/scripts/magnify_from_tif.py
 # sphinx_gallery_end_ignore
 
 """
-Least-Squares Magnification (TIFF from disk)
-============================================
+Least-Squares Magnification (TIFF from disk) — Full image
+=========================================================
 
-Pick a local ``.tif/.tiff`` image via a native file dialog (or by passing a
-path on the CLI / setting IMAGE_PATH), convert to grayscale in [0, 1], and
-magnify it with the Least-Squares preset (``method="cubic-best_antialiasing"``).
+Pick a local .tif/.tiff (via CLI arg, native dialog, or console prompt),
+convert to grayscale in [0, 1], magnify with the Least-Squares preset
+(method="cubic-best_antialiasing"), and display the full original and
+full magnified images side-by-side.
 """
 
 # %%
@@ -23,28 +24,24 @@ from typing import Optional
 
 import numpy as np
 from PIL import Image
+import matplotlib.pyplot as plt
 
 from splineops.resize.resize import resize
-from splineops.utils import show_roi_zoom
 
-# sphinx_gallery_thumbnail_number = 2
+# sphinx_gallery_thumbnail_number = 1
 
 # %%
 # Configuration + robust file selection
 # -------------------------------------
 
-# You can pass a path on the CLI:
+# Usage:
 #   python magnify_from_tif.py "C:\path\to\image.tif"
 cli_path = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else None
 
 USE_FILE_DIALOG = bool(locals().get("USE_FILE_DIALOG", True))
-# If not using CLI, you can also set IMAGE_PATH via locals() when re-running
 IMAGE_PATH = Path(locals().get("IMAGE_PATH", "")).expanduser() if cli_path is None else cli_path
 
-MAG = float(locals().get("MAG", 2.0))            # >1 = upsample
-ROI_SIZE_PX = int(locals().get("ROI_SIZE_PX", 64))
-FACE_ROW = locals().get("FACE_ROW", None)        # ROI center row (optional)
-FACE_COL = locals().get("FACE_COL", None)        # ROI center col (optional)
+MAG = float(locals().get("MAG", 4.0))  # >1 = upsample
 
 def _missing_or_not_file(p: Optional[Path]) -> bool:
     if p is None:
@@ -67,17 +64,16 @@ def _try_open_file_dialog() -> Optional[Path]:
         )
         root.destroy()
         return Path(path).expanduser() if path else None
-    except Exception as e:
-        print(f"[info] GUI file dialog unavailable ({e}); falling back...", file=sys.stderr)
+    except Exception:
         return None
 
-# Use dialog if requested and we don't already have a good file
+# Try dialog if needed
 if USE_FILE_DIALOG and _missing_or_not_file(IMAGE_PATH):
     picked = _try_open_file_dialog()
     if picked is not None:
         IMAGE_PATH = picked
 
-# Optional last-resort prompt in interactive terminals
+# Optional terminal prompt
 if _missing_or_not_file(IMAGE_PATH) and sys.stdin.isatty():
     try:
         typed = input("Enter path to a .tif/.tiff image (or leave blank to cancel): ").strip()
@@ -86,7 +82,7 @@ if _missing_or_not_file(IMAGE_PATH) and sys.stdin.isatty():
     except EOFError:
         pass
 
-# Final validation: must be an actual file, not a directory like "."
+# Final validation
 if _missing_or_not_file(IMAGE_PATH):
     raise FileNotFoundError(
         "No valid file selected. Pass a path on the CLI, set IMAGE_PATH, "
@@ -96,19 +92,16 @@ if _missing_or_not_file(IMAGE_PATH):
 # %%
 # Load image and verify TIFF (by suffix or actual format)
 # -------------------------------------------------------
-
-# Open first so we can detect actual format even if the suffix is odd/missing
 im = Image.open(str(IMAGE_PATH))
 if getattr(im, "is_animated", False):
     try:
-        im.seek(0)  # first frame of multi-page TIFF
+        im.seek(0)  # first frame if multi-page
     except Exception:
         pass
 
 fmt = (im.format or "").upper()
 suffix_ok = IMAGE_PATH.suffix.lower() in (".tif", ".tiff")
 format_ok = (fmt == "TIFF")
-
 if not (suffix_ok or format_ok):
     im.close()
     raise ValueError(
@@ -127,7 +120,6 @@ def to_gray01_from_any(a: np.ndarray) -> np.ndarray:
     orig_dtype = a.dtype
 
     if a.ndim == 3:
-        # Drop alpha if present
         if a.shape[2] == 1:
             a = a[..., 0]
         else:
@@ -158,56 +150,33 @@ def to_gray01_from_any(a: np.ndarray) -> np.ndarray:
     return np.clip(a.astype(np.float64), 0.0, 1.0)
 
 img_gray01 = to_gray01_from_any(arr)
-h_img, w_img = img_gray01.shape
 
 # %%
-# ROI on the original image
-# -------------------------
-if FACE_ROW is None or FACE_COL is None:
-    center_r, center_c = h_img // 2, w_img // 2
-else:
-    center_r, center_c = int(FACE_ROW), int(FACE_COL)
-
-row_top = int(np.clip(center_r - ROI_SIZE_PX // 2, 0, h_img - ROI_SIZE_PX))
-col_left = int(np.clip(center_c - ROI_SIZE_PX // 2, 0, w_img - ROI_SIZE_PX))
-
-roi_kwargs_orig = dict(
-    roi_height_frac=ROI_SIZE_PX / h_img,
-    grayscale=True,
-    roi_xy=(row_top, col_left),
-)
-
-_ = show_roi_zoom(img_gray01, ax_titles=("Original (from TIFF)", None), **roi_kwargs_orig)
-
-# %%
-# Least-Squares magnification
-# ---------------------------
-zoom_factors = (MAG, MAG)
+# Least-Squares magnification (full-image)
+# ----------------------------------------
 t0 = time.perf_counter()
-img_mag = resize(img_gray01, zoom_factors=zoom_factors, method="cubic-best_antialiasing")
+img_mag = resize(img_gray01, zoom_factors=(MAG, MAG), method="cubic-best_antialiasing")
 elapsed = time.perf_counter() - t0
 
-# Map the same ROI center into the magnified image
-h_res, w_res = img_mag.shape
-center_r_res = int(round(center_r * MAG))
-center_c_res = int(round(center_c * MAG))
-roi_h_res = max(1, int(round(ROI_SIZE_PX * MAG)))
-roi_w_res = roi_h_res
+print(f"[info] Original shape:  {img_gray01.shape}, dtype={img_gray01.dtype}")
+print(f"[info] Magnified shape: {img_mag.shape}  (×{MAG:.2f})")
+print(f"[info] Resize time:     {elapsed*1000:.1f} ms")
 
-row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res - roi_h_res))
-col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, w_res - roi_w_res))
+# %%
+# Display: original and magnified side-by-side
+# --------------------------------------------
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
-roi_kwargs_mag = dict(
-    roi_height_frac=roi_h_res / h_res,
-    grayscale=True,
-    roi_xy=(row_top_res, col_left_res),
-)
+axes[0].imshow(img_gray01, cmap="gray", aspect="equal")
+axes[0].set_title("Original (grayscale)")
+axes[0].axis("off")
 
-_ = show_roi_zoom(
-    img_mag,
-    ax_titles=(f"Magnified ×{MAG:.2f} (Least-Squares)\nTime: {elapsed*1000:.1f} ms", None),
-    **roi_kwargs_mag
-)
+axes[1].imshow(img_mag, cmap="gray", aspect="equal")
+axes[1].set_title(f"Magnified ×{MAG:.2f} (Least-Squares)\nTime: {elapsed*1000:.1f} ms")
+axes[1].axis("off")
+
+plt.tight_layout()
+plt.show()
 
 # %%
 # (Optional) Save the magnified image
