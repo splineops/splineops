@@ -10,11 +10,11 @@ Overview
 
 The `resize` function in the `splineops` library delivers high-performance, high-fidelity resizing for N-dimensional data arrays using advanced spline-based methods [1]_, [2]_, [3]_.
 
-It offers three distinct modes, each designed for a different balance of **speed**, **accuracy**, and **control**:
+It offers three distinct modes, each designed for a different balance of speed, accuracy and control:
 
-- **Standard Interpolation** – Fast and smooth. Ideal for real-time and general-purpose applications. Efficient in memory and compatible with float32 precision.
-- **Least-Squares Projection** – Highest quality. Designed for applications where fidelity matters most (e.g. medical imaging, scientific computing). Optimized for float64 precision.
-- **Oblique Projection** – The sweet spot. Balances quality and performance, using smart approximations to deliver nearly least-squares quality at interpolation-level speed.
+- Standard Interpolation: fast and smooth. Ideal for real-time and general-purpose applications. Efficient in memory and compatible with float32 precision.
+- Least-Squares Projection: highest quality. Designed for applications where fidelity matters most (e.g. medical imaging, scientific computing). Optimized for float64 precision.
+- Oblique Projection: the sweet spot. Balances quality and performance, using smart approximations to deliver nearly least-squares quality at interpolation-level speed.
 
 ..  image:: resizefig01.png
     :width: 288pt
@@ -60,10 +60,10 @@ error between the original signal and its resized version.
 
 This approach uses two spline families:
 
-- **Synthesis spline**: defines the space onto which the resized image is reconstructed (e.g., cubic B-spline basis).
-- **Analysis spline**: used to analyze the input image before projection, typically chosen to be biorthogonal to the synthesis spline to ensure a true orthogonal projection.
+- Synthesis spline: defines the space onto which the resized image is reconstructed (e.g., cubic B-spline basis).
+- Analysis spline: used to analyze the input image before projection, typically chosen to be biorthogonal to the synthesis spline to ensure a true orthogonal projection.
 
-Both the **analysis** and **synthesis** functions are typically B-splines of the same degree (e.g., degree 3 for cubic splines), 
+Both the analysis and synthesis functions are typically B-splines of the same degree (e.g., degree 3 for cubic splines), 
 ensuring that the projection is orthogonal and optimal in the least-squares sense. The interpolation spline is also of the same degree, providing a consistent model throughout.
 
 The goal is to find the spline function :math:`s(x)` in the synthesis space :math:`V_n` that best approximates a given input :math:`f(x)` by minimizing the squared error:
@@ -95,9 +95,9 @@ ensures an orthogonal projection and yields the best possible approximation in t
 
 This method is especially powerful for:
 
-- **downsampling**, where aliasing suppression is critical,
-- **interpolating scientific or medical data**, where signal fidelity matters most,
-- **use in invertible pipelines**, as the projection preserves information structure well.
+- downsampling, where aliasing suppression is critical,
+- interpolating scientific or medical data, where signal fidelity matters most,
+- use in invertible pipelines, as the projection preserves information structure well.
 
 While least-squares projection is computationally more intensive and designed for float64 precision, it offers the gold standard in quality 
 among the available resizing methods in `splineops`.
@@ -128,9 +128,9 @@ Spline Degrees
 
 In the `splineops.resize` implementation, the oblique projection is configured to use:
 
-- **Interpolation degree**: Determines the input model and spline interpolation order.
-- **Synthesis spline**: Matches the interpolation degree (used to reconstruct the resized image).
-- **Analysis spline**: Set to a lower degree, typically `interpolation degree - 1`.
+- Interpolation degree: determines the input model and spline interpolation order.
+- Synthesis spline: matches the interpolation degree (used to reconstruct the resized image).
+- Analysis spline: set to a lower degree, typically `interpolation degree - 1`.
 
 For example:
 
