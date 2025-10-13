@@ -1,4 +1,4 @@
-// splineops/src/splineops/resize/lsresize/src/filters.cpp
+// splineops/cpp/lsresize/src/filters.cpp
 #include "filters.h"
 #include <algorithm>
 #include <numeric>

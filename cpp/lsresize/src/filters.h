@@ -1,4 +1,4 @@
-// splineops/src/splineops/resize/lsresize/src/filters.h
+// splineops/cpp/lsresize/src/filters.h
 #pragma once
 #include <vector>
 #include <cmath>

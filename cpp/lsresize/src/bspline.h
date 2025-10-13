@@ -1,4 +1,4 @@
-// splineops/src/splineops/resize/lsresize/src/bspline.h
+// splineops/cpp/lsresize/src/bspline.h
 #pragma once
 #include <cmath>
 #include <stdexcept>

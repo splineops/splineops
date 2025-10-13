@@ -1,4 +1,4 @@
-# splineops/src/splineops/resize/lsresize/src/CMakeLists.txt
+# splineops/cpp/lsresize/src/CMakeLists.txt
 cmake_minimum_required(VERSION 3.20)
 project(lsresize LANGUAGES CXX)
 

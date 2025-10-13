@@ -1,4 +1,4 @@
-// splineops/src/splineops/resize/lsresize/src/resizend.cpp
+// splineops/cpp/lsresize/src/resizend.cpp
 #include "resizend.h"
 #include "utils.h"
 #include <vector>
