@@ -166,8 +166,8 @@ using finite differences.
 
 This makes oblique projection a compelling compromise: faster and more stable than least-squares, but still significantly more accurate than naive interpolation.
 
-Resize Example
---------------
+Resize Examples
+---------------
 
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_01_resize_module.py`
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_02_standard_interpolation.py`

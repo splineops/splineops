@@ -83,10 +83,10 @@ Algorithm
 
 The solver uses two stages\*:
 
-1. **Data fitting** – solve a discrete :math:`L^1`-regularised problem to obtain
+1. Data fitting: solve a discrete :math:`L^1`-regularised problem to obtain
    :math:`y_\lambda` (each ADMM iteration costs :math:`\mathcal{O}(M)` and the
    residual decreases like :math:`\mathcal{O}(1/n)`).
-2. **Sparsification** – in exactly :math:`\mathcal{O}(M)` time, extract the
+2. Sparsification: in exactly :math:`\mathcal{O}(M)` time, extract the
    spline with the fewest knots.
 
 \*Stage 2 is linear-time; stage 1 is linear per iteration.
@@ -94,13 +94,13 @@ The solver uses two stages\*:
 Advantages and applications
 ---------------------------
 
-* **Few-knot guarantee** – the returned spline is the sparsest among all
+* Few-knot guarantee: the returned spline is the sparsest among all
   feasible solutions.
-* **Exact interpolation** – with :math:`\lambda=0`, the method finds the least
+* Exact interpolation: with :math:`\lambda=0`, the method finds the least
   angular spline through every point.
-* **Segmented regression** – ideal for interpretable fits in finance,
+* Segmented regression: ideal for interpretable fits in finance,
   epidemiology, etc.
-* **ReLU connection** – in 1-D this outperforms naïve ReLU networks in terms of
+* ReLU connection: in 1-D this outperforms naïve ReLU networks in terms of
   parameter count.
 
 Regularisation parameter
@@ -111,7 +111,7 @@ Choosing :math:`\lambda`:
 * Small :math:`\lambda` → exact or near-exact interpolation (risk of over-fit).  
 * Large :math:`\lambda` → smoother, eventually linear.
 
-**Practical tip:** run the solver on a grid of :math:`\lambda` values and
+Practical tip: run the solver on a grid of :math:`\lambda` values and
 *plot sparsity vs. data-fidelity* (e.g., root-MSE) to pick a balanced point.
 
 Example

@@ -14,15 +14,15 @@ exhibit repeating, self-similar patterns.
 
 You will find:
 
-* **Exact 1D routine** -
+* Exact 1D routine:
   Works on a 1D array and returns the mathematically exact
   fractional-spline result.
 
-* **Isotropic N-D routine** -
+* Isotropic N-D routine:
   Extends the idea to 2D pictures or 3D volumes through one FFT;
   internally it behaves like a Butterworth low-pass filter.
 
-* **Fast cubic shortcut** -
+* Fast cubic shortcut:
   A lightweight forward/backward IIR filter that approximates the cubic
   case and runs in a single pass—handy for real-time
   streams.
@@ -71,7 +71,7 @@ Core idea in higher dimensions
 ------------------------------
 
 For a 2D image or a 3D volume we replace the one-dimensional
-fractional derivative with the **fractional Laplacian**
+fractional derivative with the fractional Laplacian
 :math:`(-\Delta)^{\gamma/2}`.  The variational cost therefore becomes
 
 .. math::
@@ -91,8 +91,8 @@ version of the 1D one:
    \frac{1}{1+\lambda\,\lVert\boldsymbol\omega\rVert^{2\gamma}}\,
    Y(\boldsymbol\omega).
 
-This looks and behaves like an order :math:`2\gamma` **Butterworth
-low-pass** but now works the same in every direction.  The practical
+This looks and behaves like an order :math:`2\gamma` Butterworth
+low-pass but now works the same in every direction.  The practical
 algorithm is identical to the 1D case:
 
 #. Run an *n*-dimensional FFT to obtain :math:`Y(\boldsymbol\omega)`.  
@@ -106,7 +106,7 @@ whatever the data dimension.
 Fast recursive cubic smoother
 -----------------------------
 
-When you only need the **cubic** case (:math:`\gamma = 1`) the frequency
+When you only need the cubic case (:math:`\gamma = 1`) the frequency
 response above simplifies so much that it can be implemented with two
 tiny first-order filters—one run forward, the other backward.  The key
 quantity is the *pole*  
@@ -117,11 +117,11 @@ quantity is the *pole*
 
 With that number in hand the algorithm is
 
-#. **Causal pass**  
+#. Causal pass:
    start at :math:`k = 0` and accumulate  
    :math:`c[k] = y[k] + z_1\,c[k-1]`.
 
-#. **Anti-causal pass**  
+#. Anti-causal pass:
    start at the last sample and run backwards  
    :math:`s[k] = c[k] + z_1\,s[k+1]`.
 
@@ -133,17 +133,17 @@ appears in [1]_, Section IV-B.
 Choosing the parameters
 -----------------------
 
-* **gamma** - controls how steeply the filter rolls off  
+* gamma: controls how steeply the filter rolls off  
   (larger values ⇒ steeper transition).  Typical range:
   :math:`0.5 \le \gamma \le 3`.
 
-* **lambda** - moves the cut-off frequency  
+* lambda: moves the cut-off frequency  
   (small values keep more detail, large values smooth harder).
   For most images, :math:`10^{-3} \le \lambda \le 10^{-1}` is a
   good starting interval.
 
-Example scripts
----------------
+Denoise examples
+----------------
 
 * :ref:`sphx_glr_auto_examples_06_denoise_06_01_1d_fractional_brownian_motion.py`
 * :ref:`sphx_glr_auto_examples_06_denoise_06_02_2d_image_smoothing.py`
