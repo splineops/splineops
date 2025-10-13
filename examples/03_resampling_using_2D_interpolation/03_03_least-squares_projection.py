@@ -14,7 +14,6 @@ central region to exclude boundary artifacts.
 # %%
 # Imports
 # -------
-
 import numpy as np
 
 # sphinx_gallery_thumbnail_number = 2  # show second figure as thumbnail
@@ -33,7 +32,6 @@ from splineops.utils import (
 # %%
 # Pipeline Diagram
 # ----------------
-
 _ = draw_standard_vs_leastsq_pipeline(
     include_upsample_labels=True,
     width=12.0
@@ -113,7 +111,6 @@ plt.show()
 # %%
 # Load and Normalize an Image
 # ---------------------------
-
 if "input_image_normalized" not in locals():
     url = 'https://r0k.us/graphics/kodak/kodak/kodim14.png'
     response = requests.get(url, timeout=10)
@@ -167,7 +164,6 @@ _ = show_roi_zoom(
 # %%
 # Least-Squares Projection
 # ------------------------
-
 need_ls = not all(
     v in locals()
     for v in ("resized_2d_ls", "recovered_2d_ls", "snr_2d_ls", "mse_2d_ls", "time_2d_ls")
@@ -183,8 +179,7 @@ if need_ls:
 
 # %%
 # Resized Image (least-squares)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 h_res_ls, w_res_ls = resized_2d_ls.shape
 
 row_top_res_ls = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res_ls - roi_h_res))
@@ -209,7 +204,6 @@ _ = show_roi_zoom(
 # %%
 # Standard Interpolation
 # ----------------------
-
 need_std = not all(
     v in locals()
     for v in ("resized_2d_std", "recovered_2d_std", "snr_2d_std", "mse_2d_std", "time_2d_std")
@@ -226,7 +220,6 @@ if need_std:
 # %%
 # Resized Image (standard)
 # ~~~~~~~~~~~~~~~~~~~~~~~~
-
 h_res_std, w_res_std = resized_2d_std.shape
 
 row_top_res_std = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res_std - roi_h_res))
@@ -249,8 +242,7 @@ _ = show_roi_zoom(
 
 # %%
 # Recovered Image (least-squares)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 _ = show_roi_zoom(
     recovered_2d_ls,
     ax_titles=("Recovered Image (least-squares projection)", None),
@@ -259,8 +251,7 @@ _ = show_roi_zoom(
 
 # %%
 # Recovered Image (standard)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~
 _ = show_roi_zoom(
     recovered_2d_std,
     ax_titles=("Recovered Image (standard interpolation)", None),
@@ -270,7 +261,6 @@ _ = show_roi_zoom(
 # %%
 # Difference with original image (least-squares)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ls,
@@ -283,7 +273,6 @@ plot_difference_image(
 # %%
 # Difference with original image (standard)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_std,
