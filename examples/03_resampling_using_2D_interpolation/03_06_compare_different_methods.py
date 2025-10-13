@@ -159,7 +159,7 @@ plt.show()
 # Visual Comparison of Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-show_roi_zoom(
+_ = show_roi_zoom(
     recovered_2d_interp,     # image to inspect
     roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
     grayscale=True,        # keep plotting in gray
@@ -170,7 +170,7 @@ show_roi_zoom(
 # Visual Comparison of Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-show_roi_zoom(
+_ = show_roi_zoom(
     recovered_2d_ls,     # image to inspect
     roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
     grayscale=True,        # keep plotting in gray
@@ -181,7 +181,7 @@ show_roi_zoom(
 # Visual Comparison of Oblique Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-show_roi_zoom(
+_ = show_roi_zoom(
     recovered_2d_ob,     # image to inspect
     roi_height_frac=1 / 3, # ROI ≈ one-third of the image height
     grayscale=True,        # keep plotting in gray

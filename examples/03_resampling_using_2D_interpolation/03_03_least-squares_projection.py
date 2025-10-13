@@ -7,7 +7,7 @@ Least-Squares Projection
 ========================
 
 Interpolate 2D images with least-squares projection.
-Compare them to *standard interpolation*. We compute SNR and MSE only on a
+Compare them to standard interpolation. We compute SNR and MSE only on a
 central region to exclude boundary artifacts.
 """
 
@@ -43,8 +43,7 @@ _ = draw_standard_vs_leastsq_pipeline(
 # Highlights: ROI comparison
 # --------------------------
 #
-# Load once, compute BOTH methods (keeping recovered + metrics) *if missing*,
-# then show a 1×3 ROI triptych.
+# Load once, compute BOTH methods (keeping recovered + metrics) if missing
 
 # --- Load (only if not already available) ---
 if "input_image_normalized" not in locals():
@@ -64,11 +63,7 @@ zoom_factors_2d = locals().get("zoom_factors_2d", (0.25, 0.25))
 border_fraction = locals().get("border_fraction", 0.3)
 ROI_SIZE_PX = locals().get("ROI_SIZE_PX", 64)
 
-# ROI A
-#FACE_ROW    = locals().get("FACE_ROW", 250)
-#FACE_COL    = locals().get("FACE_COL", 445)
-
-# ROI B
+# ROI
 FACE_ROW    = locals().get("FACE_ROW", 400)
 FACE_COL    = locals().get("FACE_COL", 600)
 
@@ -144,7 +139,7 @@ FACE_COL    = locals().get("FACE_COL", 445)
 
 h_img, w_img = input_image_normalized.shape
 
-# Top-left of the 64×64 box, clipped to stay inside the image
+# Top-left of the box, clipped to stay inside the image
 row_top = int(np.clip(FACE_ROW - ROI_SIZE_PX // 2, 0, h_img - ROI_SIZE_PX))
 col_left = int(np.clip(FACE_COL - ROI_SIZE_PX // 2, 0, w_img - ROI_SIZE_PX))
 roi_rect = (row_top, col_left, ROI_SIZE_PX, ROI_SIZE_PX)  # (r, c, h, w)
@@ -253,8 +248,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Recovered Image (least-squares projection)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Recovered Image (least-squares)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
     recovered_2d_ls,
@@ -263,8 +258,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Recovered Image (standard interpolation)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Recovered Image (standard)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
     recovered_2d_std,
