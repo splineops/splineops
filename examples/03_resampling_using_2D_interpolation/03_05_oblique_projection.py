@@ -31,6 +31,7 @@ from splineops.utils import (
 # %%
 # Pipeline Diagram
 # ----------------
+
 _ = draw_leastsq_vs_oblique_pipeline(
     include_upsample_labels=True,
     width=12.0
@@ -164,8 +165,12 @@ _ = show_roi_zoom(
 )
 
 # %%
+# Resized Images
+# --------------
+
+# %%
 # Least-Squares Projection
-# ------------------------
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 need_ls = not all(
     v in locals()
@@ -179,10 +184,6 @@ if need_ls:
         border_fraction=border_fraction,
         roi=roi_rect
     )
-
-# %%
-# Resized Image (least-squares)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 h_res_ls, w_res_ls = resized_2d_ls.shape
 
@@ -207,7 +208,7 @@ _ = show_roi_zoom(
 
 # %%
 # Oblique Projection
-# ------------------
+# ~~~~~~~~~~~~~~~~~~
 
 need_ob = not all(
     v in locals()
@@ -221,10 +222,6 @@ if need_ob:
         border_fraction=border_fraction,
         roi=roi_rect
     )
-
-# %%
-# Resized Image (oblique)
-# ~~~~~~~~~~~~~~~~~~~~~~~
 
 h_res_ob, w_res_ob = resized_2d_ob.shape
 
@@ -247,8 +244,12 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Recovered Image (least-squares projection)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Recovered Images
+# ----------------
+
+# %%
+# Least-Squares Projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
     recovered_2d_ls,
@@ -257,8 +258,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Recovered Image (oblique projection)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
     recovered_2d_ob,
@@ -267,8 +268,14 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Difference with original image (least-squares)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Difference Images
+# -----------------
+
+# %%
+# Least-Squares Projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Difference with original image on ROI.
 
 plot_difference_image(
     original=input_image_normalized,
@@ -280,8 +287,10 @@ plot_difference_image(
 )
 
 # %%
-# Difference with original image (oblique)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
+#
+# Difference with original image on ROI.
 
 plot_difference_image(
     original=input_image_normalized,
@@ -293,10 +302,8 @@ plot_difference_image(
 )
 
 # %%
-# Performance: timing comparison
-# ------------------------------
-# Wall-clock time reported by `resize_and_compute_metrics` for the full
-# downsample+recover pipeline (smaller is better).
+# Performance: Time Comparison
+# ----------------------------
 
 speedup = (time_2d_ls / time_2d_ob) if time_2d_ob > 0 else np.inf
 impr_pct = max(0.0, (1.0 - time_2d_ob / max(time_2d_ls, 1e-12)) * 100.0)

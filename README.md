@@ -34,7 +34,7 @@ deactivate
 Minimal requirement:
 
 ```shell
-pip install numpy scipy
+pip install numpy scipy matplotlib requests
 ```
 
 Simply install `splineops` using `pip`
@@ -43,11 +43,10 @@ Simply install `splineops` using `pip`
 pip install splineops
 ```
 
-To run the examples, `matplotlib`
-and `IPython` (for Python UI widgets) will also be required
+To run the examples, `IPython` (for Python UI widgets) will also be required
 
 ```shell
-pip install matplotlib IPython
+pip install IPython
 ```
 
 ## Formatting, Type Checking, and Testing
@@ -98,7 +97,7 @@ hatch build -t wheel
 Easiest way to install dev dependencies
 
 ```shell
-pip install numpy scipy matplotlib IPython black mypy tox hatch pytest
+pip install numpy scipy matplotlib requests IPython black mypy tox hatch pytest
 ```
 
 Install `splineops` development environment in editable mode
@@ -133,7 +132,7 @@ pip install cupy cutensor cudnn nccl
 To build the Sphinx documentation, install `splineops` doc dependencies
 
 ```shell
-pip install numpy scipy matplotlib IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme sphinx-design myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
+pip install numpy scipy matplotlib requests IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme sphinx-design myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
 ```
 
 Install `splineops` doc environment in editable mode

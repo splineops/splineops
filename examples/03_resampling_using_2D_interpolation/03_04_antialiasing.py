@@ -17,11 +17,11 @@ Then we downsample by 0.5 using:
 # %%
 # Imports
 # -------
+
 import numpy as np
 import requests
 from io import BytesIO
 from PIL import Image
-import matplotlib.pyplot as plt
 
 from splineops.resize.resize import resize
 from splineops.utils import show_roi_zoom
@@ -68,11 +68,13 @@ roi_kwargs_orig = dict(
 # %%
 # Image A (with ROI)
 # ------------------
+
 _ = show_roi_zoom(A, ax_titles=("Image A (with ROI)", None), **roi_kwargs_orig)
 
 # %%
 # Image B (with ROI)
 # ------------------
+
 _ = show_roi_zoom(B, ax_titles=("Image B (with ROI)", None), **roi_kwargs_orig)
 
 # %%
@@ -86,8 +88,8 @@ mixed[0::2, 0::2] = A[0::2, 0::2]
 _ = show_roi_zoom(mixed, ax_titles=("A/B corner mix (A at TL of each 2x2)", None), **roi_kwargs_orig)
 
 # %%
-# Resized (standard cubic)
-# ------------------------
+# Resized (standard)
+# ------------------
 
 H, W = mixed.shape
 if (H % 2 == 0) or (W % 2 == 0):
@@ -157,10 +159,10 @@ _ = show_resized_on_original_canvas_same_relpos(
 # • Least-squares projection (best AA) performs a proper low-pass
 #   (anti-aliasing) filtering matched to the downsampling, then decimates.
 #   On this pattern, that filter averages over each 2×2 neighborhood, so the
-#   result tends toward 25% A + 75% B — visually “more B,” i.e., more like
-#   the mix. This is exactly what anti-aliasing should do: remove the high-freq
+#   result tends toward 25% A + 75% B — visually “more B”, more like
+#   the mix. This is exactly what anti-aliasing should do: remove the high-frequency
 #   checkerboard content so it doesn’t fold (alias) into the downsample.
 #
-# In short: interpolation without AA = sample-and-alias (here it locks onto A
-# due to phase); least-squares = low-pass-then-sample, preserving what would
+# In short: interpolation without AA does sample-and-aliasing (here it locks onto A
+# due to phase). Least-squares proejction does low-pass-then-sample, preserving what would
 # survive an ideal anti-aliased decimation.
