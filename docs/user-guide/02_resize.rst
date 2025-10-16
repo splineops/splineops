@@ -8,20 +8,20 @@ Resize
 Overview
 --------
 
-The `resize` function in the `splineops` library delivers high-performance, high-fidelity resizing for N-dimensional data arrays using advanced spline-based methods [1]_, [2]_, [3]_.
+The *resize* function in the *splineops* library delivers high-performance, high-fidelity resizing for N-dimensional data arrays using advanced spline-based methods [1]_, [2]_, [3]_.
 
 It offers three distinct modes, each designed for a different balance of speed, accuracy and control:
 
-- Standard Interpolation: fast and smooth. Ideal for real-time and general-purpose applications. Efficient in memory and compatible with float32 precision.
-- Least-Squares Projection: highest quality. Designed for applications where fidelity matters most (e.g. medical imaging, scientific computing). Optimized for float64 precision.
-- Oblique Projection: the sweet spot. Balances quality and performance, using smart approximations to deliver nearly least-squares quality at interpolation-level speed.
+- **Standard Interpolation**: *fast and smooth*. Ideal for real-time and general-purpose applications. Efficient in memory and compatible with float32 precision.
+- **Least-Squares Projection**: *highest quality*. Designed for applications where fidelity matters most (e.g. medical imaging, scientific computing). Optimized for float64 precision.
+- **Oblique Projection**: *the sweet spot*. Balances quality and performance, using smart approximations to deliver nearly least-squares quality at interpolation-level speed.
 
 ..  image:: resizefig01.png
     :width: 288pt
     :align: center
 
 Each method is built on solid spline theory and engineered for performance in real-world applications. Whether you're building fast visualizations or precision-critical 
-pipelines, `resize` adapts to your needs with consistent, artifact-resistant output and a clean API.
+pipelines, *resize* adapts to your needs with consistent, artifact-resistant output and a clean API.
 
 Standard Interpolation
 ----------------------
@@ -130,7 +130,7 @@ In the `splineops.resize` implementation, the oblique projection is configured t
 
 - Interpolation degree: determines the input model and spline interpolation order.
 - Synthesis spline: matches the interpolation degree (used to reconstruct the resized image).
-- Analysis spline: set to a lower degree, typically `interpolation degree - 1`.
+- Analysis spline: set to a lower degree, typically *interpolation degree - 1*.
 
 For example:
 

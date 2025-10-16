@@ -7,7 +7,7 @@ Differentiate
 
 Overview
 --------
-The `differentiate` module in `splineops` provides a collection of algorithms for the computation of image differentials based on cubic B‑spline interpolation [1]_, [2]_. 
+The *differentiate* module in *splineops* provides a collection of algorithms for the computation of image differentials based on cubic B‑spline interpolation [1]_, [2]_. 
 By modeling a grayscale image as a continuous function reconstructed from its discrete samples, the module enables the accurate computation of derivatives. 
 It offers several operations such as
 
@@ -98,7 +98,7 @@ Based on the spline representation, the module computes several differential ope
 Implementation Details
 ----------------------
 
-The `Differentials` class implements these operations as follows: the input image is provided by its samples. We assume it to be a cubic B-spline and first determine 
+The *Differentials* class implements these operations as follows: the input image is provided by its samples. We assume it to be a cubic B-spline and first determine 
 its interpolation coefficients. The differential-based computations that we perform are then perfectly consistent with this continuously defined function.
 We finally build the output image by sampling the ideal, continuously defined intermediate result.
 
