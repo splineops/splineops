@@ -166,8 +166,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# SciPy Interpolation (reference)
-# -------------------------------
+# SciPy Interpolation
+# -------------------
 #
 # For comparison, we also use SciPy's zoom method. Metrics are computed on the ROI.
 
@@ -196,8 +196,12 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Difference: Standard vs SciPy (on ROI)
-# --------------------------------------
+# Difference Images
+# -----------------
+
+# %%
+# Standard vs SciPy
+# ~~~~~~~~~~~~~~~~~
 #
 # Compare the two recovered images on the face ROI and plot that difference.
 
@@ -215,8 +219,8 @@ plot_difference_image(
 )
 
 # %%
-# Difference with original image
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Original vs Standard
+# ~~~~~~~~~~~~~~~~~~~~
 #
 # For completeness, show the difference image
 # (original - recovered with standard interpolation) on the ROI.
