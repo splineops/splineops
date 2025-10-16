@@ -155,8 +155,8 @@ for method_name, snr_val, mse_val, time_val in methods:
     print(row_line)
 
 # %%
-# Visual Comparison of all Methods
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# All Methods
+# ~~~~~~~~~~~
 
 recovered_stack = [
     ("Standard (Cubic)",       recovered_2d_interp, snr_2d_interp, mse_2d_interp),
@@ -175,8 +175,8 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Visual Comparison of Standard Interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
     recovered_2d_interp,     # image to inspect
@@ -185,8 +185,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Visual Comparison of Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares Projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
     recovered_2d_ls,     # image to inspect
@@ -195,8 +195,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Visual Comparison of Oblique Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
     recovered_2d_ob,     # image to inspect
