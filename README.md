@@ -14,15 +14,15 @@ You need at least `Python 3.10` to install `splineops` (ideally `Python 3.12`). 
 Create and activate your Python virtual environment (on Unix or MacOS)
 
 ```shell
-python -m venv /path/to/splineops-env
-source /path/to/splineops-env/bin/activate
+python -m venv splineops-env
+source splineops-env/bin/activate
 ```
 
 On Windows,
 
 ```shell
-python -m venv /path/to/splineops-env
-./path/to/splineops-env/Scripts/Activate
+python -m venv splineops-env
+.splineops-env/Scripts/Activate
 ```
 
 To deactivate the environment use
@@ -41,12 +41,6 @@ Simply install `splineops` using `pip`
 
 ```shell
 pip install splineops
-```
-
-To run the examples, `IPython` (for Python UI widgets) will also be required
-
-```shell
-pip install IPython
 ```
 
 ## Formatting, Type Checking, and Testing
@@ -130,12 +124,6 @@ pip install cupy cutensor cudnn nccl
 ## Building of the Documentation
 
 To build the Sphinx documentation, install `splineops` doc dependencies
-
-```shell
-pip install numpy scipy matplotlib requests IPython sphinx sphinx-gallery sphinx-prompt sphinx-copybutton sphinx-remove-toctrees pydata-sphinx-theme sphinx-design myst-parser jupyterlite-sphinx jupyterlite-pyodide-kernel
-```
-
-Install `splineops` doc environment in editable mode
 
 ```shell
 pip install -e .[docs]

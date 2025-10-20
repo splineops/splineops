@@ -1,9 +1,11 @@
 // splineops/cpp/lsresize/src/resizend.cpp
 #include "resizend.h"
 #include "utils.h"
+
 #include <vector>
 #include <numeric>
 #include <cstdint>
+#include <algorithm>
 
 namespace lsresize {
 
@@ -23,37 +25,55 @@ void resize_along_axis(const double* in, double* out,
   const auto in_strides  = strides_from_shape(in_shape);
   const auto out_strides = strides_from_shape(out_shape);
 
+  // total number of independent 1-D lines (all dims except 'axis')
   int64_t nlines = 1;
   for (int d = 0; d < D; ++d) if (d != axis) nlines *= in_shape[d];
 
-  std::vector<int64_t> idx(D, 0);
+  // list non-axis dimensions (rightmost fastest)
   std::vector<int> bases;
   bases.reserve(D);
-  for (int d = D-1; d >= 0; --d) if (d != axis) bases.push_back(d);
+  for (int d = D - 1; d >= 0; --d) {
+    if (d != axis) bases.push_back(d);
+  }
 
-  #pragma omp parallel for if(nlines > 64)
+  // Parallelize over lines if problem is big enough
+  // (Pragmas are guarded so this compiles fine without OpenMP too.)
+  #if defined(_OPENMP)
+  #pragma omp parallel for if(nlines > 64) schedule(static)
+  #endif
   for (int64_t line = 0; line < nlines; ++line) {
+    // thread-local index buffer (prevents races)
+    std::vector<int64_t> idx(D, 0);
+
+    // unravel 'line' into coordinates for all dims except 'axis'
     int64_t t = line;
     for (int bi = 0; bi < (int)bases.size(); ++bi) {
-      int d = bases[bi];
-      const int64_t q = t % in_shape[d];
-      idx[d] = q;
-      t /= in_shape[d];
+      const int d = bases[bi];
+      idx[d] = t % in_shape[d];
+      t     /= in_shape[d];
     }
 
+    // offsets at the start of this line
     int64_t in_off = 0, out_off = 0;
     for (int d = 0; d < D; ++d) if (d != axis) {
       in_off  += idx[d] * in_strides[d];
       out_off += idx[d] * out_strides[d];
     }
 
+    // gather 1-D input line
     std::vector<double> line_in((size_t)in_shape[axis]);
-    for (int64_t i = 0; i < in_shape[axis]; ++i) line_in[i] = in[in_off + i*in_strides[axis]];
+    for (int64_t i = 0; i < in_shape[axis]; ++i) {
+      line_in[i] = in[in_off + i * in_strides[axis]];
+    }
 
+    // resize the 1-D line
     std::vector<double> line_out;
     resize_1d(line_in, line_out, p);
 
-    for (int64_t i = 0; i < (int64_t)line_out.size(); ++i) out[out_off + i*out_strides[axis]] = line_out[i];
+    // scatter to output
+    for (int64_t i = 0; i < (int64_t)line_out.size(); ++i) {
+      out[out_off + i * out_strides[axis]] = line_out[i];
+    }
   }
 }
 

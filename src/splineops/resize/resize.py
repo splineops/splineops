@@ -12,10 +12,12 @@
 # The concrete back-end and spline degree are chosen with a single *method* string
 # (see the *method* parameter in :pyfunc:`resize`).
 
+# splineops/src/splineops/resize/resize.py
 
 from __future__ import annotations
 
 from typing import Optional, Sequence, Tuple, Union, Dict, Literal
+import os
 
 import numpy as np
 import numpy.typing as npt
@@ -23,6 +25,18 @@ import numpy.typing as npt
 from splineops.bases.utils import asbasis
 from splineops.interpolate.tensorspline import TensorSpline
 from splineops.resize.ls_oblique_resize import ls_oblique_resize
+
+# Attempt to import the native acceleration module (optional)
+try:
+    from splineops._lsresize import resize_nd as _resize_nd_cpp  # type: ignore[attr-defined]
+    _HAS_CPP = True
+except Exception:  # pragma: no cover - if extension isn't built
+    _HAS_CPP = False
+    _resize_nd_cpp = None  # type: ignore[assignment]
+
+# Environment switch: "auto" (default), "never", "always"
+_ACCEL_ENV = os.environ.get("SPLINEOPS_ACCEL", "auto").lower()
+
 
 # --------------------------------------------------------------------------- #
 # Mapping from public `method` strings to (internal_algorithm, spline_degree)  #
@@ -47,8 +61,25 @@ METHOD_MAP: Dict[
     "cubic-best_antialiasing": ("least-squares", 3),
 }
 
-# Helper for ls_oblique_resize ↔︎ degree translation
+# Helper for ls_oblique_resize ↔︎ degree name (fallback path only)
 _DEGREE_TO_NAME = {0: "nearest", 1: "linear", 2: "quadratic", 3: "cubic"}
+
+
+def _resolve_degrees_for(algo: str, degree: int) -> Tuple[int, int, int]:
+    """
+    Map (algo, public_degree) -> (interp_degree, analy_degree, synthe_degree)
+    to match the Python implementation's behavior.
+    """
+    interp_degree = degree
+    synthe_degree = degree
+    if algo == "interpolation":
+        analy_degree = -1
+    elif algo == "least-squares":
+        analy_degree = degree
+    else:  # "oblique"
+        # Python version uses analy 0 for linear, 1 for quadratic/cubic
+        analy_degree = 0 if degree == 1 else 1
+    return interp_degree, analy_degree, synthe_degree
 
 
 def resize(
@@ -63,6 +94,16 @@ def resize(
     """
     Resize an *N*-dimensional array using splines.
 
+    This function will dynamically use a native C++ implementation for the
+    **least-squares** and **oblique** presets (degrees 1–3) when the optional
+    module :mod:`splineops._lsresize` is available. Otherwise, it falls back to
+    the pure-Python implementation. You can control this with the env var
+    ``SPLINEOPS_ACCEL``:
+
+      - ``auto`` (default): use C++ if available, else Python
+      - ``never``: always use Python
+      - ``always``: require C++; error if not available
+
     Parameters
     ----------
     data : ndarray
@@ -72,11 +113,9 @@ def resize(
         Per-axis scale factors. Ignored if *output_size* is given.
 
     output : ndarray or dtype, optional
-        If an ``ndarray`` is supplied, the result is written **in-place** and
-        the same array is returned.
-
-        If a ``dtype`` is supplied, a new array of that dtype is allocated and
-        returned.
+        If an ``ndarray`` is supplied, the result is written **in-place** into
+        that array and returned. If a ``dtype`` is supplied, a new array of that
+        dtype is allocated and returned.
 
     output_size : tuple of int, optional
         Desired shape (overrides *zoom_factors*).
@@ -95,7 +134,7 @@ def resize(
         - **quadratic-best_antialiasing**: least-squares, degree 2
         - **cubic-best_antialiasing**: least-squares, degree 3
 
-        Note that anti-aliasing variants are preferred when down-sampling.
+        Anti-aliasing variants are preferred for down-sampling.
 
     modes : str or sequence of str, optional
         Boundary handling passed to
@@ -121,22 +160,43 @@ def resize(
     elif zoom_factors is None:
         raise ValueError("Either 'output_size' or 'zoom_factors' must be provided.")
     elif isinstance(zoom_factors, (int, float)):
-        zoom_factors = [zoom_factors] * data.ndim
+        zoom_factors = [float(zoom_factors)] * data.ndim
+    else:
+        zoom_factors = [float(z) for z in zoom_factors]
 
     # --------------------------------------------------------------------- #
     # Choose implementation path                                            #
     # --------------------------------------------------------------------- #
     if algo in {"least-squares", "oblique"} and degree in (1, 2, 3):
-        # Use Arrate Muñoz' LS/oblique implementation
-        output_data = ls_oblique_resize(
-            input_img_normalized=data,
-            output_size=output_size,
-            zoom_factors=zoom_factors,
-            method=algo,
-            interpolation=_DEGREE_TO_NAME[degree],
-        )
+        interp_degree, analy_degree, synthe_degree = _resolve_degrees_for(algo, degree)
+
+        # C++ availability policy
+        use_cpp = _HAS_CPP and (_ACCEL_ENV != "never")
+        if _ACCEL_ENV == "always" and not _HAS_CPP:
+            raise RuntimeError("SPLINEOPS_ACCEL=always but native extension is not available")
+
+        if use_cpp:
+            # Native path: convert to float64 C-order (module expects that)
+            arr64 = np.asarray(data, dtype=np.float64, order="C")
+            output_data = _resize_nd_cpp(
+                arr64,
+                zoom_factors,
+                int(interp_degree),
+                int(analy_degree),
+                int(synthe_degree),
+                False,   # inversable sizing behavior: keep False to match Python default
+            )
+        else:
+            # Pure-Python fallback (existing implementation)
+            output_data = ls_oblique_resize(
+                input_img_normalized=data,
+                output_size=output_size,
+                zoom_factors=zoom_factors,
+                method=algo,
+                interpolation=_DEGREE_TO_NAME[degree],
+            )
     else:
-        # Fall back to TensorSpline – handles interpolation for deg 0‒9
+        # Interpolation-only path via TensorSpline (degrees 0–9)
         basis = asbasis(f"bspline{degree}")
         # source grid
         src_coords = [np.linspace(0, n - 1, n, dtype=data.dtype) for n in data.shape]
