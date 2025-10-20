@@ -88,12 +88,6 @@ hatch build -t wheel
 
 ## Development Environment
 
-Easiest way to install dev dependencies
-
-```shell
-pip install numpy scipy matplotlib requests IPython black mypy tox hatch pytest
-```
-
 Install `splineops` development environment in editable mode
 
 ```shell
