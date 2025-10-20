@@ -3,19 +3,12 @@
 # sphinx_gallery_end_ignore
 
 """
-Compare Python vs C++ Implementations (image-based)
-===================================================
+Compare Python vs C++ Implementations (synthetic images)
+=======================================================
 
 Measure the performance of **Least-Squares (best AA)** and **Oblique (fast AA)**
-using the **pure-Python** fallback versus the **C++-accelerated** path on one
-or more input images.
-
-Usage
------
-    python compare_python_cpp_resize.py [img1 ... imgN]
-
-If no images are given and a native file dialog is not possible, the script
-falls back to synthetic images.
+using the **pure-Python** fallback versus the **C++-accelerated** path on two
+synthetic test images.
 
 Notes
 -----
@@ -31,13 +24,9 @@ import sys
 import time
 import importlib
 import importlib.util as _util
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
-
 
 # ------------------------------------------------------------------ #
 # Environment for stable timings                                     #
@@ -68,99 +57,6 @@ print(f"[splineops] OMP_NUM_THREADS={os.environ.get('OMP_NUM_THREADS','<unset>')
 
 
 # ------------------------------------------------------------------ #
-# Image loading & grayscale conversion                               #
-# ------------------------------------------------------------------ #
-def to_gray01_from_any(a: np.ndarray) -> np.ndarray:
-    """
-    Convert H×W or H×W×C array to grayscale float64 in [0, 1].
-    Keeps intensity if already H×W; converts integer types via their full range.
-    """
-    a = np.asarray(a)
-    orig_dtype = a.dtype
-
-    if a.ndim == 3:
-        if a.shape[2] == 1:
-            a = a[..., 0]
-        else:
-            r = a[..., 0].astype(np.float64)
-            g = a[..., 1].astype(np.float64)
-            b = a[..., 2].astype(np.float64)
-            if np.issubdtype(orig_dtype, np.integer):
-                maxv = np.iinfo(orig_dtype).max
-                r, g, b = r / maxv, g / maxv, b / maxv
-            else:
-                lo = min(r.min(), g.min(), b.min())
-                hi = max(r.max(), g.max(), b.max())
-                if hi > 1.0 or lo < 0.0:
-                    r = (r - lo) / (hi - lo + 1e-12)
-                    g = (g - lo) / (hi - lo + 1e-12)
-                    b = (b - lo) / (hi - lo + 1e-12)
-            a = 0.2989 * r + 0.5870 * g + 0.1140 * b
-    else:
-        a = a.astype(np.float64)
-        if np.issubdtype(orig_dtype, np.integer):
-            a /= np.iinfo(orig_dtype).max
-        else:
-            amin, amax = a.min(), a.max()
-            if amax > 1.0 or amin < 0.0:
-                a = (a - amin) / (amax - amin + 1e-12)
-
-    return np.clip(a.astype(np.float64), 0.0, 1.0)
-
-
-def _missing_or_not_file(p: Optional[Path]) -> bool:
-    if p is None:
-        return True
-    s = str(p).strip()
-    if not s:
-        return True
-    return not p.exists() or not p.is_file()
-
-
-def _try_open_file_dialog(multiple: bool = True) -> list[Path]:
-    """Open native file dialog; return selected files or [] if cancelled/unavailable."""
-    try:
-        import tkinter as tk
-        from tkinter import filedialog
-
-        root = tk.Tk()
-        root.withdraw()
-        if multiple:
-            paths = filedialog.askopenfilenames(
-                title="Select image(s)",
-                filetypes=[
-                    ("Images", "*.tif *.tiff *.png *.jpg *.jpeg *.bmp"),
-                    ("All files", "*.*"),
-                ],
-            )
-        else:
-            single = filedialog.askopenfilename(
-                title="Select an image",
-                filetypes=[
-                    ("Images", "*.tif *.tiff *.png *.jpg *.jpeg *.bmp"),
-                    ("All files", "*.*"),
-                ],
-            )
-            paths = (single,) if single else ()
-        root.destroy()
-        return [Path(p).expanduser() for p in paths]
-    except Exception:
-        return []
-
-
-def _load_image_as_gray(path: Path) -> np.ndarray:
-    im = Image.open(str(path))
-    if getattr(im, "is_animated", False):
-        try:
-            im.seek(0)  # first frame if multi-page
-        except Exception:
-            pass
-    arr = np.asarray(im)
-    im.close()
-    return to_gray01_from_any(arr)
-
-
-# ------------------------------------------------------------------ #
 # Timing helpers                                                     #
 # ------------------------------------------------------------------ #
 def _time_resize(mode: str, img: np.ndarray, zoom: tuple[float, float], preset: str, repeats: int = 2):
@@ -184,27 +80,13 @@ def _time_resize(mode: str, img: np.ndarray, zoom: tuple[float, float], preset: 
 
 
 # ------------------------------------------------------------------ #
-# Main: collect images or synthesize                                 #
+# Synthetic images                                                   #
 # ------------------------------------------------------------------ #
-cli_paths = [Path(p).expanduser() for p in sys.argv[1:] if not p.startswith("-")]
-paths: list[Path] = [p for p in cli_paths if p.exists() and p.is_file()]
-
-if not paths:
-    picked = _try_open_file_dialog(multiple=True)
-    paths.extend(picked)
-
-# If still empty, synthesize a couple of images
-SYNTHETIC = False
-if not paths:
-    SYNTHETIC = True
-    print("[info] No images selected; using synthetic test arrays.")
-    rng = np.random.default_rng(0)
-    # Two synthetic images with simple texture
-    paths = []
-    synth_bank = [
-        ("synthetic_512x512", rng.random((512, 512), dtype=np.float64)),
-        ("synthetic_1024x1024", rng.random((1024, 1024), dtype=np.float64)),
-    ]
+rng = np.random.default_rng(0)
+images: list[tuple[str, np.ndarray]] = [
+    ("synthetic_1024x1024", rng.random((1024, 1024), dtype=np.float64)),
+    ("synthetic_640x480",   rng.random((480, 640),  dtype=np.float64)),
+]
 
 # Presets & zoom scenarios
 methods = [
@@ -220,25 +102,8 @@ zooms = [
 # Run comparisons                                                              #
 # ---------------------------------------------------------------------------- #
 all_rows = []  # (img_name, method_label, zoom_label, t_cpp, t_py, speedup, max_abs_diff)
-for entry in paths:
-    if SYNTHETIC:
-        # Already have (name, array) in synth_bank; entry is a fake path
-        continue
 
-# Build per-image arrays (either real images or synthetic)
-image_items: list[tuple[str, np.ndarray]] = []
-if SYNTHETIC:
-    image_items.extend(synth_bank)
-else:
-    for p in paths:
-        try:
-            img = _load_image_as_gray(p)
-        except Exception as e:
-            print(f"[warn] Skipping {p} (load error: {e})")
-            continue
-        image_items.append((p.name, img))
-
-for img_name, img in image_items:
+for img_name, img in images:
     print(f"\n=== {img_name}  shape={img.shape} ===")
     for meth_label, preset in methods:
         for zoom_label, zoom in zooms:
