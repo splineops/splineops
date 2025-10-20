@@ -88,8 +88,19 @@ plt.show()
 # GPU Support
 # -----------
 #
-# We leverage the GPU for TensorSpline if cupy is installed.
-# If cupy is not available, we skip this section.
+# We leverage the GPU for TensorSpline if CuPy is installed **and**
+# the device supports SM >= 7.0 (required by the demo kernels).
+# Otherwise, we skip this section gracefully.
+
+def _has_supported_cuda() -> bool:
+    try:
+        import cupy as cp
+        if cp.cuda.runtime.getDeviceCount() <= 0:
+            return False
+        major, minor = cp.cuda.Device().compute_capability
+        return major >= 7
+    except Exception:
+        return False
 
 try:
     import cupy as cp
@@ -97,26 +108,27 @@ try:
 except ImportError:
     HAS_CUPY = False
 
-if not HAS_CUPY:
-    print("CuPy is not installed, skipping GPU demonstration.")
+if not HAS_CUPY or not _has_supported_cuda():
+    print("CuPy GPU demo skipped (no GPU or compute capability < 7.0).")
 else:
-    # Convert existing data/coordinates to CuPy
-    data_cp = cp.asarray(data)
-    coords_cp = tuple(cp.asarray(c) for c in coordinates)
+    try:
+        # Convert existing data/coordinates to CuPy
+        data_cp = cp.asarray(data)
+        coords_cp = tuple(cp.asarray(c) for c in coordinates)
 
-    # Create CuPy-based spline
-    ts_cp = TensorSpline(data=data_cp, coordinates=coords_cp, bases=bases, modes=modes)
+        # Create CuPy-based spline
+        ts_cp = TensorSpline(data=data_cp, coordinates=coords_cp, bases=bases, modes=modes)
 
-    # Convert evaluation coordinates to CuPy
-    eval_coords_cp = tuple(cp.asarray(c) for c in eval_coords)
+        # Convert evaluation coordinates to CuPy
+        eval_coords_cp = tuple(cp.asarray(c) for c in eval_coords)
 
-    # Evaluate on the GPU
-    data_eval_cp = ts_cp(coordinates=eval_coords_cp)
-    
-    # Compare with NumPy evaluation
-    # (Ensure you already have data_eval from the CPU version above.)
-    data_eval_cp_np = data_eval_cp.get()  # Move from GPU to CPU
-    diff = data_eval_cp_np - data_eval  # 'data_eval' is from the CPU TensorSpline
-    mse = np.mean(diff**2)
-    print(f"Max abs diff (CPU vs GPU): {np.max(np.abs(diff)):.3e}")
-    print(f"MSE (CPU vs GPU): {mse:.3e}")
+        # Evaluate on the GPU
+        data_eval_cp = ts_cp(coordinates=eval_coords_cp)
+
+        # Compare with NumPy evaluation (from the CPU TensorSpline)
+        data_eval_cp_np = cp.asnumpy(data_eval_cp)
+        diff = data_eval_cp_np - data_eval
+        print(f"Max abs diff (CPU vs GPU): {np.max(np.abs(diff)):.3e}")
+        print(f"MSE (CPU vs GPU): {np.mean(diff**2):.3e}")
+    except Exception as e:
+        print(f"CuPy GPU demo skipped due to runtime compile error: {e}")
