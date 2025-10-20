@@ -1,4 +1,4 @@
-# .github/workflows/release.yml
+# splineops/.github/workflows/release.yml
 name: Build & publish to PyPI
 
 on:

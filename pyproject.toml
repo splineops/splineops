@@ -1,25 +1,29 @@
 # splineops/pyproject.toml
 # https://learn.scientific-python.org/development/guides/packaging-simple/
 
+# splineops/pyproject.toml
+
 [build-system]
 requires = [
-    "hatchling",
-    "hatch-vcs",
+    "scikit-build-core>=0.10",
+    "pybind11>=2.11",
+    "setuptools_scm[toml]>=8",
+    "numpy>=1.26",          # build-time headers available if needed
 ]
-build-backend = "hatchling.build"
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "splineops"
 description = "Spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 authors = [
     { name = "Dimitris Perdios" },
     { name = "Pablo Garcia-Amorena" },
     { name = "Philippe Thévenaz" },
 ]
-dynamic = ["version"]
 requires-python = ">=3.10"
+dynamic = ["version"]
 dependencies = [
     "numpy >=1.26",
     "scipy >=1.15",
@@ -35,8 +39,12 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-urls.download = "https://github.com/splineops/splineops.git"
-urls.homepage = "https://splineops.github.io/"
+
+[project.urls]
+Homepage = "https://splineops.github.io/"
+Source = "https://github.com/splineops/splineops"
+Issues = "https://github.com/splineops/splineops/issues"
+Download = "https://github.com/splineops/splineops.git"
 
 [project.optional-dependencies]
 visualization = [
@@ -45,14 +53,13 @@ visualization = [
 ]
 tests = [
     "tox >=4.13",
-    "hatch >=1.9",
     "pytest >=6.0",
 ]
 dev = [
-    "splineops[visualization]",
-    "splineops[tests]",
+    "splineops[visualization,tests]",
     "black >=23.10",
     "mypy >=1.8",
+    "build",  # local wheel/source builds: python -m build
 ]
 dev_cupy = [
     "splineops[dev]",
@@ -67,36 +74,37 @@ docs = [
     "sphinx-remove-toctrees >=1.0",
     "sphinx-design >=0.6",
     "pydata-sphinx-theme >=0.15",
-    "myst-parser >= 3.0",
-    "jupyterlite-sphinx >= 0.16",
-    "jupyterlite-pyodide-kernel >= 0.4",
+    "myst-parser >=3.0",
+    "jupyterlite-sphinx >=0.16",
+    "jupyterlite-pyodide-kernel >=0.4",
 ]
 
-# Hatch tool: dynamic version from git
-[tool.hatch.version]
-source = "vcs"
+# Version from VCS (writes src/splineops/_version.py when building)
+[tool.setuptools_scm]
+write_to = "src/splineops/_version.py"
 
-# Hatch build
-[tool.hatch.build]
-exclude = [
-    "/docs",
-    "/tests",
-    "/examples",
-]
-#include = [
-#    "/src",
-#]
-packages = [
-    "src/splineops",
+# scikit-build-core configuration
+[tool.scikit-build]
+wheel.packages = ["src/splineops"]
+editable.mode = "redirect"
+sdist.include = [
+  "src/splineops/**",
+  "splineops/cpp/**",
+  "splineops/CMakeLists.txt",
+  "README.md",
+  "LICENSE",
 ]
 
-# Tests: pytest config
+# You can uncomment/tweak these if you want to force options:
+# cmake.minimum-version = "3.20"
+# cmake.build-type = "Release"
+# cmake.args = ["-DLSRESIZE_USE_OPENMP=ON"]
+
+# pytest defaults (so `pytest -q` works everywhere)
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 xfail_strict = true
 filterwarnings = ["error"]
 log_cli_level = "info"
-testpaths = [
-  "tests",
-]
+testpaths = ["tests"]
