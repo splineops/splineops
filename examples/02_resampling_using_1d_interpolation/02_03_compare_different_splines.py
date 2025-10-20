@@ -40,7 +40,7 @@ plt.rcParams.update({
 
 number_of_samples = 27
 
-f_support = np.arange(number_of_samples)
+f_support = np.arange(number_of_samples, dtype=np.float64)
 f_support_length = len(f_support) # It's equal to number_of_samples
 
 f_samples = np.array([
@@ -49,7 +49,7 @@ f_samples = np.array([
     0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
     -0.00811776, 0.0153119, 0.106126, 0.21688, 0.347629, 0.419532,
     0.50695, 0.544767, 0.555373
-])
+], dtype=np.float64)
 
 plot_points_per_unit = 12
 
@@ -68,13 +68,12 @@ f_data = f(coordinates=(f_coords,), grid=False)
 val_T = np.pi
 
 g_support_length = round(f_support_length // val_T)
-g_support = np.arange(g_support_length)  
-f_resampled_coords = np.array([q * val_T for q in range(g_support_length)])
+g_support = np.arange(g_support_length, dtype=np.float64)
+f_resampled_coords = np.linspace(0, (g_support_length - 1) * val_T, g_support_length, dtype=np.float64)
 g_samples = f(coordinates=(f_resampled_coords,), grid=False)
 g = TensorSpline(data=g_samples, coordinates=g_support, bases=base, modes=mode)
 
-g_coords = np.array([q/plot_points_per_unit 
-                     for q in range(plot_points_per_unit * len(g_support))])
+g_coords = np.linspace(0, g_support_length - 1, plot_points_per_unit * g_support_length, dtype=np.float64)
 g_data = g(coordinates=(g_coords,), grid=False)
 
 # %%
@@ -233,7 +232,7 @@ padding_fraction = 0.2 # We avoid artifacts near the edges by excluding part of 
 a = (f_support_length - 1) * padding_fraction
 b = (f_support_length - 1) * (1 - padding_fraction)
 dx = (b - a) / N
-mid_x = np.linspace(a + dx/2, b - dx/2, N)  # midpoints
+mid_x = np.linspace(a + dx/2, b - dx/2, N, dtype=np.float64)  # midpoints
 
 # 2) Evaluate f(x) and h(x) at those midpoints
 f_mid = f(coordinates=(mid_x,), grid=False)
@@ -376,7 +375,7 @@ b = (f_support_length - 1) * (1 - padding_fraction)
 dx = (b - a) / N
 
 # mid_x are the midpoints of each subinterval
-mid_x = np.linspace(a + dx/2, b - dx/2, N)
+mid_x = np.linspace(a + dx/2, b - dx/2, N, dtype=np.float64)
 
 # Evaluate f_lin and h_lin at midpoints
 f_lin_mid = f_lin(coordinates=(mid_x,), grid=False)

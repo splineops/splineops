@@ -41,7 +41,7 @@ plt.rcParams.update({
 
 number_of_samples = 27
 
-f_support = np.arange(number_of_samples)
+f_support = np.arange(number_of_samples, dtype=np.float64)
 f_support_length = len(f_support) # It's equal to number_of_samples
 
 f_samples = np.array([
@@ -50,7 +50,7 @@ f_samples = np.array([
     0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
     -0.00811776, 0.0153119, 0.106126, 0.21688, 0.347629, 0.419532,
     0.50695, 0.544767, 0.555373
-])
+], dtype=np.float64)
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples")
@@ -123,7 +123,7 @@ desired_length = plot_points_per_unit * f_support_length
 # with `desired_length` points. This matches the domain and size that the `resize`
 # function will produce below, ensuring the two outputs are sampled at the exact
 # same x-positions, and thus comparable point-by-point.
-f_coords_resize = np.linspace(0, f_support_length - 1, desired_length)
+f_coords_resize = np.linspace(0, f_support_length - 1, desired_length, dtype=np.float64)
 
 f_data_resize = resize(
     data=f_samples,             # 1D input
