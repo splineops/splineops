@@ -13,7 +13,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "splineops"
-version = "0.5.4"
+version = "0.5.5"
 description = "Spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -74,8 +74,6 @@ docs = [
     "sphinx-design >=0.6",
     "pydata-sphinx-theme >=0.15",
     "myst-parser >=3.0",
-    "jupyterlite-sphinx >=0.16",
-    "jupyterlite-pyodide-kernel >=0.4",
 ]
 
 # scikit-build-core configuration

@@ -51,7 +51,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx_design',
     'myst_parser',
-    'jupyterlite_sphinx',
     'move_gallery_links', # Custom extension located in sphinxext folder
 ]
 
@@ -92,10 +91,6 @@ sphinx_gallery_conf = {
         'dependencies': '../.binder/requirements.txt',
         'notebooks_dir': 'notebooks_binder', # Jupyter notebooks for Binder will be copied to this directory (relative to built documentation root).
         'use_jupyter_lab': True,
-    },
-    'jupyterlite': { # https://sphinx-gallery.github.io/stable/configuration.html#generate-jupyterlite-links-for-gallery-notebooks-experimental
-        'use_jupyter_lab': True, # Whether JupyterLite links should start Jupyter Lab instead of the Retrolab Notebook interface.
-        'jupyterlite_contents': 'notebooks_jupyterlite', # where to copy the example notebooks (relative to Sphinx source directory)
     },
     'remove_config_comments': True,
 }
