@@ -132,6 +132,22 @@ roi_kwargs = dict(
 #
 # We compare the performance of the different methods being analyzed.
 
+# SciPy Interpolation (reference)
+(
+    resized_2d_scipy,
+    recovered_2d_scipy,
+    snr_2d_scipy,
+    mse_2d_scipy,
+    time_2d_scipy
+) = resize_and_compute_metrics(
+    input_image_normalized,
+    method="scipy",
+    scipy_order=3,  # cubic
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction,
+    roi=roi_rect,   # compute metrics on the same ROI
+)
+
 # %%
 # Comparison Table
 # ~~~~~~~~~~~~~~~~
@@ -139,9 +155,10 @@ roi_kwargs = dict(
 # We print the SNR, MSE, and timing data for each method.
 
 methods = [
-    ("Standard Interpolation", snr_2d_interp, mse_2d_interp, time_2d_interp),
-    ("Least-Squares Projection", snr_2d_ls, mse_2d_ls, time_2d_ls),
-    ("Oblique Projection", snr_2d_ob, mse_2d_ob, time_2d_ob),
+    ("SciPy Interpolation",      snr_2d_scipy,  mse_2d_scipy,  time_2d_scipy),
+    ("Standard Interpolation",   snr_2d_interp, mse_2d_interp, time_2d_interp),
+    ("Least-Squares Projection", snr_2d_ls,     mse_2d_ls,     time_2d_ls),
+    ("Oblique Projection",       snr_2d_ob,     mse_2d_ob,     time_2d_ob),
 ]
 
 # Print the table header using the same widths as we'll use for data
