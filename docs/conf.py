@@ -71,7 +71,7 @@ html_title = f"{project} Documentation"
 
 # Set html_static_path to an absolute path
 html_static_path = ['_static']
-html_css_files = ['_static/css/custom.css']
+html_css_files = ['css/custom.css']
 
 sg_examples_dir = "../examples"
 sg_gallery_dir = "auto_examples"
@@ -170,46 +170,25 @@ intersphinx_mapping = {
     "Matplotlib [stable]": ("https://matplotlib.org/stable/", None),
 }
 
-# Function to ensure the static directory path is absolute
-def resolve_static_path(app, exception):
-    """
-    Ensure the '_static' directory path is absolute.
-    This function is necessary to avoid the assertion error in the
-    'pydata_sphinx_theme.logo' extension, which requires 'staticdir'
-    to be an absolute path.
-    """
-    staticdir = Path(app.builder.outdir) / "_static"
-    if not staticdir.is_absolute():
-        staticdir = staticdir.resolve()
-    app.builder.outdir = str(staticdir.parent)  # Ensure outdir points to the correct directory
-
 # Function to replace unpicklable objects with their qualified names
 def make_sphinx_gallery_conf_picklable(app, config):
-    """
-    Replace unpicklable objects in 'sphinx_gallery_conf' with their
-    fully qualified names to prevent warnings about unpicklable values.
-    This ensures the configuration can be cached without issues.
-    """
     new_conf = config.sphinx_gallery_conf.copy()
-    # Replace 'within_subsection_order' with its fully qualified name if it's callable
     if 'within_subsection_order' in new_conf and callable(new_conf['within_subsection_order']):
-        new_conf['within_subsection_order'] = f"{new_conf['within_subsection_order'].__module__}.{new_conf['within_subsection_order'].__name__}"
+        new_conf['within_subsection_order'] = (
+            f"{new_conf['within_subsection_order'].__module__}."
+            f"{new_conf['within_subsection_order'].__name__}"
+        )
     config.sphinx_gallery_conf = new_conf
 
-# Setup function called by Sphinx to connect event handlers
 def setup(app):
-    # Connect the 'resolve_static_path' function to the 'build-finished' event
-    app.connect('build-finished', resolve_static_path)
-    
-    # Connect the 'make_sphinx_gallery_conf_picklable' function to the 'config-inited' event
+    # keep only what you actually use
     app.connect('config-inited', make_sphinx_gallery_conf_picklable)
-    
-    # Existing build-finished event setup for debugging
+
+    # optional: keep your end-of-build log
     def on_build_finished(app, exception):
         if exception:
             print(f"Build finished with exception: {exception}")
-            import traceback
-            traceback.print_exc()
+            import traceback; traceback.print_exc()
         else:
             print("Build finished successfully")
     app.connect('build-finished', on_build_finished)
