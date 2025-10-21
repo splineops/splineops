@@ -15,6 +15,7 @@ jobs:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
@@ -25,7 +26,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # macOS only: try to install libomp. Non-fatal if it fails or brew is unavailable.
+      # macOS only: try to install libomp. Non-fatal if it fails.
       - name: (macOS) Try to install libomp (non-fatal)
         if: matrix.os == 'macos-latest'
         run: |
@@ -41,28 +42,61 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir dist
         env:
+          # CPython only, for versions we support
           CIBW_BUILD: "cp310-* cp311-* cp312-*"
-          CIBW_SKIP: "pp* *musllinux*"
+
+          # Avoid unsupported/undesired targets
+          # - remove pp* warning by not listing it
+          # - skip musllinux explicitly (we don't ship those)
+          CIBW_SKIP: "*musllinux*"
+
+          # Limit architectures to where SciPy wheels exist & what we support
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+          # macOS: leave default ("auto") or pin to arm64; arm64 is safest on Apple Silicon runners
+          CIBW_ARCHS_MACOS: "arm64"
+
+          # Simple smoke test: import and check native module presence
           CIBW_TEST_COMMAND: >
             python -c "import importlib.util, numpy as np, splineops;
             print('ok', importlib.util.find_spec('splineops._lsresize') is not None)"
 
-      - name: Build sdist
+      # Build sdist only once (Ubuntu)
+      - name: Build sdist (once on Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
         run: python -m build -s -o dist
 
-      - name: Upload artifacts
+      # Upload wheels for this OS (unique name per matrix instance)
+      - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
-          path: dist/*
+          name: wheels-${{ matrix.os }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+      # Upload sdist only from Ubuntu
+      - name: Upload sdist artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
 
   publish:
     needs: [build_wheels]
     runs-on: ubuntu-latest
     steps:
+      # Download all wheel artifacts from all OSes & the sdist, merged into ./dist
       - uses: actions/download-artifact@v4
         with:
-          name: wheels
+          pattern: wheels-*
+          merge-multiple: true
           path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
