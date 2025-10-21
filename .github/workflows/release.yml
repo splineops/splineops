@@ -20,9 +20,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      # macOS only: try to install libomp. Non-fatal if it fails or brew is unavailable.
+      - name: (macOS) Try to install libomp (non-fatal)
+        if: matrix.os == 'macos-latest'
+        run: |
+          if command -v brew >/dev/null 2>&1; then
+            brew list libomp >/dev/null 2>&1 || brew install libomp || true
+          else
+            echo "Homebrew not available; building without libomp."
+          fi
 
       - name: Install cibuildwheel
         run: python -m pip install -U pip cibuildwheel build
@@ -30,10 +41,11 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir dist
         env:
-          # Optional: keep OpenMP ON by default; your CMake gracefully disables if not found
           CIBW_BUILD: "cp310-* cp311-* cp312-*"
           CIBW_SKIP: "pp* *musllinux*"
-          CIBW_TEST_COMMAND: "python -c \"import importlib.util; import numpy as np; import splineops; print('ok', importlib.util.find_spec('splineops._lsresize') is not None)\""
+          CIBW_TEST_COMMAND: >
+            python -c "import importlib.util, numpy as np, splineops;
+            print('ok', importlib.util.find_spec('splineops._lsresize') is not None)"
 
       - name: Build sdist
         run: python -m build -s -o dist

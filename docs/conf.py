@@ -7,9 +7,35 @@ from pathlib import Path
 from sphinx_gallery.sorting import FileNameSortKey
 from datetime import datetime
 
-# Path setup
-sys.path.insert(0, str(Path(__file__).parents[1]))
+# ------------------------------------------------------------------
+# Run examples with the native extension and full CPU usage
+# ------------------------------------------------------------------
+os.environ["SPLINEOPS_ACCEL"] = "always"               # force native path if present
+os.environ["OMP_NUM_THREADS"] = str(os.cpu_count() or 1)  # let OpenMP use all cores
+
+# ------------------------------------------------------------------
+# Make sure we import the *installed/editable* package first
+# (has the compiled extension). Fall back to src/ only if needed.
+# ------------------------------------------------------------------
+try:
+    import splineops  # noqa: F401
+except Exception:
+    sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
+
+# Keep custom extensions path
 sys.path.insert(0, os.path.abspath("sphinxext"))
+
+# (Optional) tiny sanity print in the build log
+def _log_native():
+    import importlib.util
+    try:
+        import splineops
+        print("[docs] splineops from:", getattr(splineops, "__file__", "<unknown>"))
+        print("[docs] native present:", importlib.util.find_spec("splineops._lsresize") is not None)
+        print("[docs] OMP_NUM_THREADS:", os.environ.get("OMP_NUM_THREADS"))
+    except Exception as e:
+        print("[docs] import failure:", e)
+_log_native()
 
 # Project information
 project = 'splineops'
