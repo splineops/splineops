@@ -66,24 +66,43 @@ roi_kwargs = dict(
     roi_xy=(row_top, col_left),
 )
 
+# --- timing helper -----------------------------------------------------------
+N_TRIALS = 10
+
+def run_with_repeats(img, *, trials=N_TRIALS, warmup=1, **kwargs):
+    """Run resize_and_compute_metrics multiple times; average the timings.
+    Returns: resized, recovered, snr, mse, time_mean, time_sd
+    """
+    # warm-up (not counted)
+    for _ in range(warmup):
+        resize_and_compute_metrics(img, **kwargs)
+
+    # first measured run (keep outputs & metrics)
+    resized, recovered, snr, mse, t = resize_and_compute_metrics(img, **kwargs)
+    times = [t]
+
+    # additional measured runs (timing only)
+    for _ in range(trials - 1):
+        _, _, _, _, t = resize_and_compute_metrics(img, **kwargs)
+        times.append(t)
+
+    time_mean = float(np.mean(times))
+    time_sd   = float(np.std(times, ddof=1)) if len(times) > 1 else 0.0
+    return resized, recovered, snr, mse, time_mean, time_sd
+
 # %%
 # Standard Interpolation
 # ----------------------
 #
 # We use our standard interpolation method.
 
-(
-    resized_2d_interp, 
-    recovered_2d_interp, 
-    snr_2d_interp, 
-    mse_2d_interp, 
-    time_2d_interp
-) = resize_and_compute_metrics(
+(resized_2d_interp, recovered_2d_interp, snr_2d_interp, mse_2d_interp,
+ time_2d_interp, time_2d_interp_sd) = run_with_repeats(
     input_image_normalized,
     method="cubic",
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction,
-    roi=roi_rect,  # <-- compute metrics on the shared ROI
+    roi=roi_rect,
 )
 
 # %%
@@ -92,18 +111,13 @@ roi_kwargs = dict(
 #
 # We use the least-squares projection method.
 
-(
-    resized_2d_ls,
-    recovered_2d_ls,
-    snr_2d_ls,
-    mse_2d_ls,
-    time_2d_ls
-) = resize_and_compute_metrics(
+(resized_2d_ls, recovered_2d_ls, snr_2d_ls, mse_2d_ls,
+ time_2d_ls, time_2d_ls_sd) = run_with_repeats(
     input_image_normalized,
     method="cubic-best_antialiasing",
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction,
-    roi=roi_rect,  # <-- compute metrics on the shared ROI
+    roi=roi_rect,
 )
 
 # %%
@@ -112,18 +126,13 @@ roi_kwargs = dict(
 #
 # We use the oblique-projection method.
 
-(
-    resized_2d_ob,
-    recovered_2d_ob,
-    snr_2d_ob,
-    mse_2d_ob,
-    time_2d_ob
-) = resize_and_compute_metrics(
+(resized_2d_ob, recovered_2d_ob, snr_2d_ob, mse_2d_ob,
+ time_2d_ob, time_2d_ob_sd) = run_with_repeats(
     input_image_normalized,
     method="cubic-fast_antialiasing",
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction,
-    roi=roi_rect,  # <-- compute metrics on the shared ROI
+    roi=roi_rect,
 )
 
 # %%
@@ -133,19 +142,14 @@ roi_kwargs = dict(
 # We compare the performance of the different methods being analyzed.
 
 # SciPy Interpolation (reference)
-(
-    resized_2d_scipy,
-    recovered_2d_scipy,
-    snr_2d_scipy,
-    mse_2d_scipy,
-    time_2d_scipy
-) = resize_and_compute_metrics(
+(resized_2d_scipy, recovered_2d_scipy, snr_2d_scipy, mse_2d_scipy,
+ time_2d_scipy, time_2d_scipy_sd) = run_with_repeats(
     input_image_normalized,
     method="scipy",
-    scipy_order=3,  # cubic
+    scipy_order=3,
     zoom_factors=zoom_factors_2d,
     border_fraction=border_fraction,
-    roi=roi_rect,   # compute metrics on the same ROI
+    roi=roi_rect,
 )
 
 # %%
@@ -155,21 +159,20 @@ roi_kwargs = dict(
 # We print the SNR, MSE, and timing data for each method.
 
 methods = [
-    ("SciPy Interpolation",      snr_2d_scipy,  mse_2d_scipy,  time_2d_scipy),
-    ("Standard Interpolation",   snr_2d_interp, mse_2d_interp, time_2d_interp),
-    ("Least-Squares Projection", snr_2d_ls,     mse_2d_ls,     time_2d_ls),
-    ("Oblique Projection",       snr_2d_ob,     mse_2d_ob,     time_2d_ob),
+    ("SciPy Interpolation",      snr_2d_scipy,  mse_2d_scipy,  time_2d_scipy,  time_2d_scipy_sd),
+    ("Standard Interpolation",   snr_2d_interp, mse_2d_interp, time_2d_interp, time_2d_interp_sd),
+    ("Least-Squares Projection", snr_2d_ls,     mse_2d_ls,     time_2d_ls,     time_2d_ls_sd),
+    ("Oblique Projection",       snr_2d_ob,     mse_2d_ob,     time_2d_ob,     time_2d_ob_sd),
 ]
 
-# Print the table header using the same widths as we'll use for data
-header_line = f"{'Method':<25} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
+header_line = f"{'Method':<25} {'SNR (dB)':>10} {'MSE':>16} {'Time (s, avg±sd)':>20}"
 print(header_line)
-print("-" * len(header_line))  # or manually set a dash length, e.g. 67
+print("-" * len(header_line))
+for method_name, snr_val, mse_val, t_mean, t_sd in methods:
+    time_str = f"{t_mean:.4f} ± {t_sd:.4f}"
+    print(f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_str:>20}")
 
-# Now print each row with the matching format
-for method_name, snr_val, mse_val, time_val in methods:
-    row_line = f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_val:>12.4f}"
-    print(row_line)
+print(f"\nTimings averaged over {N_TRIALS} runs (1 warm-up run not counted).")
 
 # %%
 # All Methods
