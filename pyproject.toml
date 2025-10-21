@@ -7,13 +7,13 @@
 requires = [
     "scikit-build-core>=0.10",
     "pybind11>=2.11",
-    "setuptools_scm[toml]>=8",
     "numpy>=1.26",          # build-time headers available if needed
 ]
 build-backend = "scikit_build_core.build"
 
 [project]
 name = "splineops"
+version = "0.5.4"
 description = "Spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -23,7 +23,6 @@ authors = [
     { name = "Philippe Thévenaz" },
 ]
 requires-python = ">=3.10"
-dynamic = ["version"]
 dependencies = [
     "numpy >=1.26",
     "scipy >=1.15",
@@ -78,10 +77,6 @@ docs = [
     "jupyterlite-sphinx >=0.16",
     "jupyterlite-pyodide-kernel >=0.4",
 ]
-
-# Version from VCS (writes src/splineops/_version.py when building)
-[tool.setuptools_scm]
-write_to = "src/splineops/_version.py"
 
 # scikit-build-core configuration
 [tool.scikit-build]

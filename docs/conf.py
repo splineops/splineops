@@ -17,10 +17,7 @@ os.environ["OMP_NUM_THREADS"] = str(os.cpu_count() or 1)  # let OpenMP use all c
 # Make sure we import the *installed/editable* package first
 # (has the compiled extension). Fall back to src/ only if needed.
 # ------------------------------------------------------------------
-try:
-    import splineops  # noqa: F401
-except Exception:
-    sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
+import splineops
 
 # Keep custom extensions path
 sys.path.insert(0, os.path.abspath("sphinxext"))
@@ -40,7 +37,7 @@ _log_native()
 # Project information
 project = 'splineops'
 copyright = f'{datetime.now().year}, SplineOps authors'
-release = '0.5.2'
+release = splineops.__version__
 
 # General configuration
 extensions = [
