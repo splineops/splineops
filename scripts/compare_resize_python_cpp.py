@@ -10,11 +10,10 @@ Measure the performance of **Least-Squares (best AA)** and **Oblique (fast AA)**
 using the **pure-Python** fallback versus the **C++-accelerated** path on two
 synthetic test images.
 
-Notes
------
-- We pin OpenMP/BLAS threads for reproducible wall-clock timings.
-- We toggle ``SPLINEOPS_ACCEL`` and **reload** ``splineops.resize.resize`` so
-  the implementation re-reads the policy for each timing.
+This version is tuned for **maximum throughput** by default:
+- OpenMP (C++ path) uses **all available CPU cores**.
+- BLAS stacks are capped to 1 thread to avoid oversubscription.
+- We reload the resize module on every timing to honor SPLINEOPS_ACCEL policy.
 """
 
 from __future__ import annotations
@@ -29,12 +28,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ------------------------------------------------------------------ #
-# Environment for stable timings                                     #
+# Max-throughput environment                                         #
 # ------------------------------------------------------------------ #
-os.environ.setdefault("OMP_NUM_THREADS", "1")
+# Let OpenMP use all cores for the C++ path:
+os.environ.setdefault("OMP_NUM_THREADS", str(os.cpu_count() or 1))
+# Keep BLAS stacks single-threaded to avoid oversubscription with OpenMP:
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+# Fix thread count instead of allowing OpenMP to shrink/expand:
+os.environ.setdefault("OMP_DYNAMIC", "false")
+# Prefer binding threads near each other for cache locality:
+os.environ.setdefault("OMP_PROC_BIND", "close")
+# Default policy (we’ll override per-call in timing):
 os.environ.setdefault("SPLINEOPS_ACCEL", "auto")
 
 
@@ -53,13 +59,15 @@ def _load_resize_module(*, force_reload: bool = False):
 
 HAS_CPP = _has_cpp()
 print(f"[splineops] C++ acceleration available: {HAS_CPP}")
-print(f"[splineops] OMP_NUM_THREADS={os.environ.get('OMP_NUM_THREADS','<unset>')}\n")
+print(f"[splineops] OMP_NUM_THREADS={os.environ.get('OMP_NUM_THREADS','<unset>')}")
+print(f"[splineops] OMP_DYNAMIC={os.environ.get('OMP_DYNAMIC','<unset>')}")
+print(f"[splineops] OMP_PROC_BIND={os.environ.get('OMP_PROC_BIND','<unset>')}\n")
 
 
 # ------------------------------------------------------------------ #
 # Timing helpers                                                     #
 # ------------------------------------------------------------------ #
-def _time_resize(mode: str, img: np.ndarray, zoom: tuple[float, float], preset: str, repeats: int = 2):
+def _time_resize(mode: str, img: np.ndarray, zoom: tuple[float, float], preset: str, repeats: int = 5):
     """
     Return (best_time_sec, output_array) for one policy ('always' C++, 'never' Python).
     Reloads resize module so it re-reads SPLINEOPS_ACCEL.
@@ -108,9 +116,9 @@ for img_name, img in images:
     for meth_label, preset in methods:
         for zoom_label, zoom in zooms:
             # C++
-            t_cpp, y_cpp = _time_resize("always", img, zoom, preset, repeats=2)
+            t_cpp, y_cpp = _time_resize("always", img, zoom, preset, repeats=5)
             # Python
-            t_py, y_py = _time_resize("never",  img, zoom, preset, repeats=2)
+            t_py, y_py = _time_resize("never",  img, zoom, preset, repeats=5)
 
             # numeric sanity (if C++ ran)
             if HAS_CPP and y_cpp is not None:
@@ -151,7 +159,7 @@ if SHOW_PLOT and len(all_rows) > 0:
         bars = ax.bar(x, speedups)
         ax.set_xticks(x, labels, rotation=35, ha="right")
         ax.set_ylabel("Speedup (Python time / C++ time)")
-        ax.set_title("C++ vs Python – LS/Oblique (best-of-2)")
+        ax.set_title("C++ vs Python – LS/Oblique (best-of-5)")
         for i, s in enumerate(speedups):
             ax.text(i, bars[i].get_height(), f"×{s:.1f}", ha="center", va="bottom", fontsize=9)
         fig.tight_layout()
