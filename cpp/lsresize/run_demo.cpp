@@ -311,7 +311,7 @@ int main() {
   ok &= resize_and_compare_square(DOWNSCALED_0_5_JAVA_SQUARE_LS_3_3_3,
                                   REVERTED_0_5_JAVA_SQUARE_LS_3_3_3,
                                   /*degree=*/3, /*method=*/"least-squares",
-                                  /*tol=*/0.04);
+                                  /*tol=*/4e-2);
 
   ok &= resize_and_compare_square(DOWNSCALED_0_5_JAVA_SQUARE_LS_1_1_1,
                                   REVERTED_0_5_JAVA_SQUARE_LS_1_1_1,
@@ -321,12 +321,12 @@ int main() {
   ok &= resize_and_compare_square(DOWNSCALED_0_5_JAVA_SQUARE_OBLIQUE_0_1_1,
                                   REVERTED_0_5_JAVA_SQUARE_OBLIQUE_0_1_1,
                                   /*degree=*/1, /*method=*/"oblique",
-                                  /*tol=*/1e-3);
+                                  /*tol=*/2e-4);
 
   ok &= resize_and_compare_square(DOWNSCALED_0_5_JAVA_SQUARE_OBLIQUE_1_3_3,
                                   REVERTED_0_5_JAVA_SQUARE_OBLIQUE_1_3_3,
                                   /*degree=*/3, /*method=*/"oblique",
-                                  /*tol=*/0.02);
+                                  /*tol=*/13e-3);
 
   // Sinusoid tests
   ok &= resize_and_compare_sinusoid(UPSCALED_2_0_JAVA_SINUSOID_LS_3_3_3,
