@@ -56,7 +56,7 @@ A compact Python implementation following this approach is available in the GitH
 Wavelet Decomposition
 ---------------------
 
-We construct a spline-based multiscale basis (wavelers) by capturing the detail lost at each reduction step. 
+We construct a spline-based multiscale basis (wavelets) by capturing the detail lost at each reduction step. 
 The wavelet (detail) coefficients together with the final coarse approximation allow perfect reconstruction (synthesis).
 
 At each scale (analysis):
