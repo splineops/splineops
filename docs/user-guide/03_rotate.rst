@@ -111,4 +111,4 @@ References
 
 .. [1] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
    IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
-   vol. 16, no. 6, pp. 22–38, November 1999.
+   vol. 16, no. 6, pp. 22-38, November 1999.

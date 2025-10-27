@@ -115,21 +115,21 @@ References
 .. [1] M. Unser, A. Aldroubi, M. Eden, 
    `B-Spline Signal Processing: Part I—Theory <https://doi.org/10.1109/78.193220>`_, 
    IEEE-SPS best paper award, IEEE Transactions on 
-   Signal Processing, vol. 41, no. 2, pp. 821–833, February 1993.
+   Signal Processing, vol. 41, no. 2, pp. 821-833, February 1993.
 
 .. [2] M. Unser, A. Aldroubi, M. Eden, 
    `B-Spline Signal Processing: Part II—Efficient Design and Applications <https://doi.org/10.1109/78.193221>`_, 
    IEEE Transactions 
-   on Signal Processing, vol. 41, no. 2, pp. 834–848, February 1993.
+   on Signal Processing, vol. 41, no. 2, pp. 834-848, February 1993.
 
 .. [3] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
    IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
-   vol. 16, no. 6, pp. 22–38, November 1999.
+   vol. 16, no. 6, pp. 22-38, November 1999.
 
 .. [4] M. Unser, J. Zerubia, 
    `A Generalized Sampling Theory Without Band-Limiting Constraints <https://doi.org/10.1109/82.718806>`_, 
    IEEE Transactions on Circuits and 
-   Systems—II: Analog and Digital Signal Processing, vol. 45, no. 8, pp. 959–969, August 1998.
+   Systems—II: Analog and Digital Signal Processing, vol. 45, no. 8, pp. 959-969, August 1998.
 
 .. [5] M. Unser, `Sampling—50 Years After Shannon <https://doi.org/10.1109/5.843002>`_, 
-   Proceedings of the IEEE, vol. 88, no. 4, pp. 569–587, April 2000.
+   Proceedings of the IEEE, vol. 88, no. 4, pp. 569-587, April 2000.
