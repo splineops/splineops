@@ -1,8 +1,8 @@
-# splineops/tests/test_04_01_regress.py
+# splineops/tests/test_04_01_adaptive_regression_splines.py
 
 import numpy as np
 import pytest
-from splineops.regress.denoising import denoise_y
+from splineops.adaptive_regression_splines.denoising import denoise_y
 
 @pytest.mark.parametrize("lambda_, expected_mse_upper_bound", [
     (0.0,   1e-2),

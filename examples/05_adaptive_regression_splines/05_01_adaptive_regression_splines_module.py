@@ -1,12 +1,12 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/05_regress/05_01_regress_module.py
+# splineops/examples/05_adaptive_regression_splines/05_01_regress_module.py
 # sphinx_gallery_end_ignore
 
 """
-Regress Module
-==============
+Adaptive regression splines Module
+==================================
 
-We use the regress module to perform linear regression on a set of 1D points.
+We perform linear regression on a set of 1D points.
 """
 
 # %%
@@ -16,8 +16,8 @@ We use the regress module to perform linear regression on a set of 1D points.
 import numpy as np
 from matplotlib import pyplot as plt
 
-from splineops.regress.denoising import denoise_y
-from splineops.regress.sparsification import sparsest_interpolant, linear_spline
+from splineops.adaptive_regression_splines.denoising import denoise_y
+from splineops.adaptive_regression_splines.sparsification import sparsest_interpolant, linear_spline
 
 # %%
 # Data Preparation

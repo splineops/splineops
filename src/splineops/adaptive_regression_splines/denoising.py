@@ -1,4 +1,4 @@
-# splineops/src/splineops/regress/denoising.py
+# splineops/src/splineops/adaptive_regression_splines/denoising.py
 
 # Total Variation Denoising with ADMM
 # ====================================

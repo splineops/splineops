@@ -1,14 +1,14 @@
-.. splineops/docs/user-guide/04_regress.rst
+.. splineops/docs/user-guide/04_adaptive_regression_splines.rst
 
-Regress
-=======
+Adaptive regression splines
+===========================
 
 .. currentmodule:: splineops
 
 Overview
 --------
 
-The *regress* module performs one-dimensional regression with
+This module performs one-dimensional regression with
 total-variation (TV) regularisation on the second derivative [1]_.  
 Because TV is measured with the measure norm (denoted
 :math:`\|\cdot\|_{\mathcal{M}}`), solutions are piecewise-linear splines that
@@ -117,7 +117,7 @@ Practical tip: run the solver on a grid of :math:`\lambda` values and
 Example
 -------
 
-* :ref:`sphx_glr_auto_examples_05_regress_05_01_regress_module.py`
+* :ref:`sphx_glr_auto_examples_05_adaptive_regression_splines_05_01_adaptive_regression_splines_module.py`
 
 References
 ----------

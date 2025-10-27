@@ -15,7 +15,7 @@ API Reference
      - Resize using splines or LS/Oblique projection.
    * - :ref:`Rotate <api-rotate>`
      - Rotate 2D/3D data about a user-defined center.
-   * - :ref:`Regress <api-regress>`
+   * - :ref:`Adaptive regression splines <api-adaptive_regression_splines>`
      - Perform sparsest linear regression on 1D data.
    * - :ref:`Smoothing splines <api-smoothing_splines>`
      - Fit splines to noisy data.
@@ -31,7 +31,7 @@ API Reference
    01_spline_interpolation
    02_resize
    03_rotate
-   04_regress
+   04_adaptive_regression_splines
    05_smoothing_splines
    06_differentials
    07_multiscale
