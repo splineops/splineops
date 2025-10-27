@@ -23,7 +23,7 @@ import numpy as np
 import numpy.typing as npt
 
 from splineops.bases.utils import asbasis
-from splineops.interpolate.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensorspline import TensorSpline
 from splineops.resize.ls_oblique_resize import ls_oblique_resize
 
 # Attempt to import the native acceleration module (optional)

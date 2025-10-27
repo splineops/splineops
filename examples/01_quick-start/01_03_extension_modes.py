@@ -18,7 +18,7 @@ Plotting different extension modes of signals.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.interpolate.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensorspline import TensorSpline
 
 x_values = np.linspace(0, 6, 101)
 

@@ -19,7 +19,7 @@ Interpolate 1D samples with standard interpolation.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.interpolate.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensorspline import TensorSpline
 
 plt.rcParams.update({
     "font.size": 14,     # Base font size

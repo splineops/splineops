@@ -241,7 +241,7 @@ plot_difference_image(
 # As an alternative, we can replicate the same interpolation manually using the 
 # ``TensorSpline`` class, which underpins the `resize()` function behind the scenes.
 
-from splineops.interpolate.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensorspline import TensorSpline
 
 # 1) Build uniform coordinate arrays that match the shape of 'input_image_normalized'
 height, width = input_image_normalized.shape
