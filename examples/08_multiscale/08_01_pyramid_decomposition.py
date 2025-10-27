@@ -157,10 +157,12 @@ def embed_center(small: np.ndarray, big_shape, fill=1.0) -> np.ndarray:
     canvas[y0:y0+h, x0:x0+w] = small
     return canvas
 
-def show_inverted_pyramid(levels, depth: int, fill=1.0, width=6, row_height=3):
+def show_inverted_pyramid(levels, depth: int, fill=1.0, width=6, row_height=3,
+                          title: str | None = None, title_fs: int = 14):
     """
     Show original (top) + first `depth` reduced levels stacked vertically,
     with reduced images centered on a full-size canvas. No per-row titles.
+    If `title` is given, add a figure-level title.
     """
     H, W = levels[0].shape
     fig, axes = plt.subplots(nrows=depth + 1, ncols=1,
@@ -171,26 +173,31 @@ def show_inverted_pyramid(levels, depth: int, fill=1.0, width=6, row_height=3):
         img = levels[0] if i == 0 else embed_center(levels[i], (H, W), fill=fill)
         ax.imshow(img, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
         ax.axis('off')
-    plt.tight_layout()
+
+    if title:
+        fig.suptitle(title, fontsize=title_fs)
+        fig.tight_layout(rect=[0, 0, 1, 0.96])  # leave room for the suptitle
+    else:
+        fig.tight_layout()
     return fig
 
 # %%
 # 1-Level Decomposition
 # ---------------------
 
-show_inverted_pyramid(levels, depth=1, fill=1.0)
+show_inverted_pyramid(levels, depth=1, fill=1.0, title="1-Level Decomposition")
 plt.show()
 
 # %%
 # 2-Level Decomposition
 # ---------------------
 
-show_inverted_pyramid(levels, depth=2, fill=1.0)
+show_inverted_pyramid(levels, depth=2, fill=1.0, title="2-Level Decomposition")
 plt.show()
 
 # %%
 # 3-Level Decomposition
 # ---------------------
 
-show_inverted_pyramid(levels, depth=3, fill=1.0)
+show_inverted_pyramid(levels, depth=3, fill=1.0, title="3-Level Decomposition")
 plt.show()
