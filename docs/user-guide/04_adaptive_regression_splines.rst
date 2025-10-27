@@ -34,12 +34,13 @@ Problem formulation
 ~~~~~~~~~~~~~~~~~~~
 
 .. math::
+   :label: eq:gblasso
 
-   \arg\min_{f}\;
+   f^\star = \operatorname*{arg\,min}_{f}\;
    \Biggl(
      \sum_{m=1}^{M} E\bigl(f(x_m),y_m\bigr)
      \;+\; \lambda\,\|\mathrm{D}^2 f\|_{\mathcal{M}}
-   \Biggr),
+   \Biggr).
 
 where
 
