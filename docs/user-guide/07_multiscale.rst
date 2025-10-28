@@ -39,8 +39,8 @@ When applied iteratively, these operations create a pyramid structure
 (approximation at multiple scales). In 2D, the same concept applies along rows
 and columns.
 
-Pyramid Approach to Subpixel Registration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Subpixel Registration
+~~~~~~~~~~~~~~~~~~~~~
 
 Method [5]_ does subpixel registration as least-squares matching of image intensities under a global transform 
 (affine, optionally restricted to rigid/similarity) with an optional contrast change, and solves it with a modified 
