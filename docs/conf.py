@@ -8,10 +8,13 @@ from sphinx_gallery.sorting import FileNameSortKey
 from datetime import datetime
 
 # ------------------------------------------------------------------
-# Run examples with the native extension and full CPU usage
+# Prefer native if available, but don't break builds if it isn't
 # ------------------------------------------------------------------
-os.environ["SPLINEOPS_ACCEL"] = "always"               # force native path if present
-os.environ["OMP_NUM_THREADS"] = str(os.cpu_count() or 1)  # let OpenMP use all cores
+import importlib.util
+has_native = importlib.util.find_spec("splineops._lsresize") is not None
+if "SPLINEOPS_ACCEL" not in os.environ:  # allow users/CI to override
+    os.environ["SPLINEOPS_ACCEL"] = "always" if has_native else "auto"
+os.environ["OMP_NUM_THREADS"] = str(os.cpu_count() or 1)
 
 # ------------------------------------------------------------------
 # Make sure we import the *installed/editable* package first

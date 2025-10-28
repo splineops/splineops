@@ -34,20 +34,21 @@ Problem formulation
 ~~~~~~~~~~~~~~~~~~~
 
 .. math::
+   :label: eq:gblasso
 
-   \arg\min_{f}\;
+   f^\star = \operatorname*{arg\,min}_{f}\;
    \Biggl(
      \sum_{m=1}^{M} E\bigl(f(x_m),y_m\bigr)
      \;+\; \lambda\,\|\mathrm{D}^2 f\|_{\mathcal{M}}
-   \Biggr),
+   \Biggr).
 
 where
 
-* The term :math:`E` is a data-fidelity term (e.g., squared loss
+* the term :math:`E` is a data-fidelity term (e.g., squared loss
   :math:`(f(x_m)-y_m)^2`);
-* The regularization parameter :math:`\lambda>0` balances fidelity and sparsity;
-* The operator :math:`\mathrm{D}^2 f` is the second derivative;
-* The norm :math:`\|\cdot\|_{\mathcal{M}}` is the total variation (TV) norm on measures, promoting sparse
+* the regularization parameter :math:`\lambda>0` balances fidelity and sparsity;
+* the operator :math:`\mathrm{D}^2 f` is the second derivative;
+* the norm :math:`\|\cdot\|_{\mathcal{M}}` is the total variation (TV) norm on measures, promoting sparse
   second derivatives.
 
 This is the generalised Beurling LASSO (g-BLASSO):  

@@ -144,46 +144,60 @@ for _ in range(num_reductions):
 original_shape = image_gray.shape  # (ny, nx)
 
 # %%
+# Inverted-pyramid helpers
+# ------------------------
+
+def embed_center(small: np.ndarray, big_shape, fill=1.0) -> np.ndarray:
+    """Return a 'big_shape' canvas with 'small' centered on it."""
+    H, W = big_shape
+    h, w = small.shape
+    canvas = np.full((H, W), fill, dtype=small.dtype)
+    y0 = (H - h) // 2
+    x0 = (W - w) // 2
+    canvas[y0:y0+h, x0:x0+w] = small
+    return canvas
+
+def show_inverted_pyramid(levels, depth: int, fill=1.0, width=6, row_height=3,
+                          title: str | None = None, title_fs: int = 14):
+    """
+    Show original (top) + first `depth` reduced levels stacked vertically,
+    with reduced images centered on a full-size canvas. No per-row titles.
+    If `title` is given, add a figure-level title.
+    """
+    H, W = levels[0].shape
+    fig, axes = plt.subplots(nrows=depth + 1, ncols=1,
+                             figsize=(width, row_height * (depth + 1)))
+    if depth == 0:
+        axes = [axes]
+    for i, ax in enumerate(axes):
+        img = levels[0] if i == 0 else embed_center(levels[i], (H, W), fill=fill)
+        ax.imshow(img, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
+        ax.axis('off')
+
+    if title:
+        fig.suptitle(title, fontsize=title_fs)
+        fig.tight_layout(rect=[0, 0, 1, 0.96])  # leave room for the suptitle
+    else:
+        fig.tight_layout()
+    return fig
+
+# %%
 # 1-Level Decomposition
-# ~~~~~~~~~~~~~~~~~~~~~
+# ---------------------
 
-canvas1 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
-h1, w1 = levels[1].shape
-canvas1[:h1, :w1] = levels[1]  # Place the reduced image in the top-left corner
-
-plt.figure(figsize=(6, 6))
-plt.imshow(canvas1, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
-plt.title("Pyramid 1-Level Decomposition", fontsize=14)
-plt.axis('off')
-plt.tight_layout()
+show_inverted_pyramid(levels, depth=1, fill=1.0, title="1-Level Decomposition")
 plt.show()
 
 # %%
 # 2-Level Decomposition
-# ~~~~~~~~~~~~~~~~~~~~~
+# ---------------------
 
-canvas2 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
-h2, w2 = levels[2].shape
-canvas2[:h2, :w2] = levels[2]  # Place the reduced image in the top-left corner
-
-plt.figure(figsize=(6, 6))
-plt.imshow(canvas2, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
-plt.title("Pyramid 2-Level Decomposition", fontsize=14)
-plt.axis('off')
-plt.tight_layout()
+show_inverted_pyramid(levels, depth=2, fill=1.0, title="2-Level Decomposition")
 plt.show()
 
 # %%
 # 3-Level Decomposition
-# ~~~~~~~~~~~~~~~~~~~~~
+# ---------------------
 
-canvas3 = np.ones(original_shape, dtype=image_gray.dtype)  # white canvas
-h3, w3 = levels[3].shape
-canvas3[:h3, :w3] = levels[3]  # Place the reduced image in the top-left corner
-
-plt.figure(figsize=(6, 6))
-plt.imshow(canvas3, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
-plt.title("Pyramid 3-Level Decomposition", fontsize=14)
-plt.axis('off')
-plt.tight_layout()
+show_inverted_pyramid(levels, depth=3, fill=1.0, title="3-Level Decomposition")
 plt.show()
