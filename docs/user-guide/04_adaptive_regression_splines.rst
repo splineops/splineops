@@ -1,6 +1,6 @@
 .. splineops/docs/user-guide/04_adaptive_regression_splines.rst
 
-Adaptive regression splines
+Adaptive Regression Splines
 ===========================
 
 .. currentmodule:: splineops

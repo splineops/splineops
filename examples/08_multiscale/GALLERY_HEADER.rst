@@ -1,6 +1,6 @@
 .. splineops/examples/08_multiscale/GALLERY_HEADER.rst
 
-Multiscale examples
+Multiscale Examples
 ===================
 
 Examples using the Multiscale module.

@@ -1,6 +1,6 @@
 .. splineops/docs/user-guide/05_smoothing_splines.rst
 
-Smoothing splines
+Smoothing Splines
 =================
 
 Overview

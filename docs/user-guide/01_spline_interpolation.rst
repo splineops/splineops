@@ -40,6 +40,7 @@ B-Splines
 A one-dimensional polynomial B-spline is a member of a family of real functions :math:`\beta^{n}:{\mathbb{R}}\rightarrow{\mathbb{R}},x\mapsto\beta^{n}(x)` that are characterized by their degree :math:`n\in{\mathbb{N}}` (*e.g.*, linear, quadratic, cubic). There, the degree :math:`n` is a superscript---as opposed to a power. Several equivalent explicit formulations of :math:`\beta^{n}` exist. One of them, valid for :math:`n\in{\mathbb{N}}_{>0}`, is
 
 ..  math::
+    
     \beta^{n}(x)=\frac{1}{n!}\,\sum_{k=0}^{n+1}\,\left(-1\right)^{k}\,{n\choose k}\,{\mathrm{ReLu}}^{n}(x+\frac{n+1}{2}-k),
 
 where :math:`x\in{\mathbb{R}}` is the argument of the B-spline and where one recognizes an interplay between signed binomial coefficients and the :math:`n`-th power of the celebrated :math:`{\mathrm{ReLu}}` function of artificial-intelligence fame.
@@ -118,11 +119,15 @@ Multidimensional Splines
 The class ``TensorSpline`` solves the difficulties for you in an efficient way and in multiple dimensions, for many degrees of splines. Internally, it considers the continuously defined :math:`d`-dimensional real function
 
 ..  math::
+
     f:{\mathbb{R}}^{d}\rightarrow{\mathbb{R}},{\mathbf{x}}\mapsto f({\mathbf{x}})=\sum_{{\mathbf{k}}\in{\mathbb{Z}}^{d}}\,c[{\mathbf{k}}]\,\prod_{p=1}^{d}\,\beta^{n}(x_{p}-k_{p}),
+
 where :math:`{\mathbf{x}}` is the function argument in :math:`d` dimensions and :math:`c` is an infinite list of real coefficients with indices in :math:`d` dimensions, too. These coefficients are carefully tuned in such a way that
 
 ..  math::
+
     \forall{\mathbf{q}}\in\Omega:f({\mathbf{q}})=s[{\mathbf{q}}],
+
 where the function :math:`f` is the spline and where the list :math:`s` contains the samples that we want to interpolate, as provided over a set :math:`\Omega\subset{\mathbb{N}}^{d}` of indices. Since this set is finite in practice while the coefficients :math:`c` must be defined for infinitely many indices, one has to invent values for those coefficients that are far away from :math:`\Omega`. Arbitrary recipes are followed to that effect. For instance, the argument ``modes`` of the class ``TensorSpline`` of this library allows one to choose from among a few recipes.
 
 Interpolation Examples

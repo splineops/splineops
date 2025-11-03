@@ -1,6 +1,6 @@
 .. splineops/examples/07_differentials/GALLERY_HEADER.rst
 
-Differentials examples
+Differentials Examples
 ======================
 
 Examples using the Differentials module.

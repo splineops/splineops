@@ -2,7 +2,7 @@
 
 .. _api-adaptive_regression_splines:
 
-Adaptive regression splines
+Adaptive Regression Splines
 ===========================
 
 Functions to perform regression on 1D data.
