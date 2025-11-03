@@ -273,6 +273,7 @@ def draw_standard_vs_scipy_pipeline(
     arrow(ax, 30.0, y_std,   mid_cx, mid_cy + mid_r)  # from Standard ↓
     arrow(ax, 30.0, y_scipy, mid_cx, mid_cy - mid_r)  # from SciPy ↑
     seg(ax, mid_cx + mid_r, mid_cy, 33.5, mid_cy)
+    dot(ax, 33.5, mid_cy)
     label(ax, mid_cx - 0.7, mid_cy + mid_r + 0.6, r"$+$", fontsize=18)
     label(ax, mid_cx - 0.7, mid_cy - mid_r - 0.6, r"$-$", fontsize=18)
 
@@ -285,6 +286,7 @@ def draw_standard_vs_scipy_pipeline(
     label(ax, st_ts_cx - 0.7, st_ts_cy - st_ts_r - 0.2, r"$-$", fontsize=18)
     exit_x = 34.0
     seg(ax, st_ts_cx + st_ts_r, st_ts_cy, exit_x, st_ts_cy)
+    dot(ax, exit_x, st_ts_cy)
 
     # Bottom sum (Standard vs Original) — lower for more space
     sum_cx, sum_cy, sum_r = 27.25, 1.25, 1.0
