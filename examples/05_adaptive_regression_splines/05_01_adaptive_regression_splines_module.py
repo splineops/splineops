@@ -114,8 +114,8 @@ ax.legend()
 plt.show()
 
 # %%
-# Visualization
-# -------------
+# Helpers
+# -------
 #
 # The original, denoised, and sparsest spline solutions are plotted for comparison.
 
@@ -138,25 +138,26 @@ def _run_lambda(lamb: float):
     plt.show()
 
 # %%
-# λ = 1e-4
-# ~~~~~~~~
+# Smallest lambda
+# ---------------
 _run_lambda(1e-4)
 
 # %%
-# λ = 1e-3
-# ~~~~~~~~
+# Small lambda
+# ------------
 _run_lambda(1e-3)
 
 # %%
-# λ = 1e-2
+# Medium lambda
+# -------------
 _run_lambda(1e-2)
 
 # %%
-# λ = 5e-2
-# ~~~~~~~~
+# Big lambda
+# ----------
 _run_lambda(5e-2)
 
 # %%
-# λ = 2e-1
-# ~~~~~~~~
+# Biggest lambda
+# --------------
 _run_lambda(2e-1)
