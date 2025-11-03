@@ -3,10 +3,32 @@
 # sphinx_gallery_end_ignore
 
 """
-Adaptive regression splines Module
+Adaptive Regression Splines Module
 ==================================
 
-We perform linear regression on a set of 1D points.
+This example shows how to fit a piecewise-linear, knot-sparse model to 1-D data
+using the adaptive regression splines module.
+
+What we do
+----------
+1. Visualize the raw data \((x,y)\).
+2. Denoise the samples by solving a TV-regularized least-squares problem on the
+   second derivative:
+   
+   .. math::
+      \min_f \sum_i (f(x_i) - y_i)^2 \;+\; \lambda\,\|\mathrm{D}^2 f\|_{\mathcal{M}}.
+
+   This promotes piecewise-linear solutions with few breakpoints (knots).
+3. From the denoised samples, extract the sparsest linear spline (fewest knots)
+   with :func:`sparsest_interpolant`, and evaluate it with :func:`linear_spline`.
+4. Sweep λ over several values to illustrate the fidelity-sparsity trade-off.
+   Each plot title reports the number of knots :math:`K`.
+
+Notes
+-----
+* Smaller :math:`\lambda` → closer to interpolation (more knots).
+* Larger :math:`\lambda` → smoother trend (fewer knots, eventually a line).
+* The helper cell below runs the full pipeline for any given :math:`\lambda`.
 """
 
 # %%
@@ -16,6 +38,7 @@ We perform linear regression on a set of 1D points.
 import numpy as np
 from matplotlib import pyplot as plt
 
+# sphinx_gallery_thumbnail_number = 2 # show second figure as thumbnail
 from splineops.adaptive_regression_splines.denoising import denoise_y
 from splineops.adaptive_regression_splines.sparsification import sparsest_interpolant, linear_spline
 
@@ -81,27 +104,14 @@ data = np.array([
 
 x, y = data[:, 0], data[:, 1]
 
-# %%
-# Denoising
-# ---------
-#
-# The function `denoise_y` applies a regularized least-squares method to smooth the noisy data.
-
-# Regularization parameter
-lamb = 1e-2
-
-# Compute denoised y
-y_denoised = denoise_y(x, y, lamb, rho=lamb)
-
-# %%
-# Sparsest Linear Regression
-# --------------------------
-#
-# The `sparsest_interpolant` function computes the sparsest set of knots that
-# fit the denoised data.
-
-# Compute sparsest linear spline that connects denoised data points
-knots, amplitudes, polynomial = sparsest_interpolant(x, y_denoised)
+fig, ax = plt.subplots()
+ax.plot(x, y, 'x', label='Original data', markersize=10)
+ax.set_title("Original data")
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+ax.grid(True, alpha=0.3)
+ax.legend()
+plt.show()
 
 # %%
 # Visualization
@@ -109,16 +119,44 @@ knots, amplitudes, polynomial = sparsest_interpolant(x, y_denoised)
 #
 # The original, denoised, and sparsest spline solutions are plotted for comparison.
 
-# Plot result
-margin = (x[-1]-x[0]) / 10
-t_grid = np.concatenate(([x[0]-margin], knots, [x[-1]+margin]))
-fig = plt.figure()
-ax = plt.gca()
-ax.plot(x, y, 'x', label='Original data', markersize=10)
-if lamb > 0:
-    ax.plot(x, y_denoised, 'x', label='Denoised data', markersize=10)
-ax.plot(t_grid, linear_spline(t_grid, knots, amplitudes, polynomial), label='Sparsest solution')
-if len(knots) > 0:
-    ax.plot(knots, linear_spline(knots, knots, amplitudes, polynomial), 'o', label='Knots')
-ax.legend()
-plt.show()
+# Helper for lambda sweeps (one-time cell)
+def _run_lambda(lamb: float):
+    y_d = denoise_y(x, y, lamb, rho=lamb)
+    knots, amplitudes, polynomial = sparsest_interpolant(x, y_d)
+
+    margin = (x[-1] - x[0]) / 10
+    t_grid = np.concatenate(([x[0] - margin], knots, [x[-1] + margin]))
+
+    fig, ax = plt.subplots()
+    ax.plot(x, y, 'x', label='Original', markersize=8)
+    ax.plot(x, y_d, 'x', label='Denoised', markersize=8)
+    ax.plot(t_grid, linear_spline(t_grid, knots, amplitudes, polynomial), label='Sparsest')
+    if len(knots) > 0:
+        ax.plot(knots, linear_spline(knots, knots, amplitudes, polynomial), 'o', label='Knots')
+    ax.set_title(f"λ = {lamb:g}   |   K = {len(knots)}")
+    ax.legend()
+    plt.show()
+
+# %%
+# λ = 1e-4
+# ~~~~~~~~
+_run_lambda(1e-4)
+
+# %%
+# λ = 1e-3
+# ~~~~~~~~
+_run_lambda(1e-3)
+
+# %%
+# λ = 1e-2
+_run_lambda(1e-2)
+
+# %%
+# λ = 5e-2
+# ~~~~~~~~
+_run_lambda(5e-2)
+
+# %%
+# λ = 2e-1
+# ~~~~~~~~
+_run_lambda(2e-1)
