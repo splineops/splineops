@@ -294,6 +294,7 @@ def draw_standard_vs_scipy_pipeline(
     # Original lowest rail aligned to bottom sum y
     seg(ax, 5.5, 13.25, 5.5, sum_cy)
     dot(ax, 5.5, 13.25)
+    dot(ax, 5.5, sum_cy)  
     arrow(ax, 5.5, sum_cy, 26.25, sum_cy)
     # tap from Standard to bottom sum
     arrow(ax, 27.25, y_std, sum_cx, sum_cy + sum_r)
