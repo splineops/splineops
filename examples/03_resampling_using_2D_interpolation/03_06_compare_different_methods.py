@@ -47,7 +47,8 @@ input_image_normalized = (
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
 
-zoom_factors_2d = (0.25, 0.25)
+zoom = 0.25
+zoom_factors_2d = (zoom, zoom)
 border_fraction = 0.3
 
 # --- ROI: match the LS/Oblique examples ---

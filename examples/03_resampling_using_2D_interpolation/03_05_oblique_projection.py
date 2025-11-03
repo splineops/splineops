@@ -57,7 +57,8 @@ if "input_image_normalized" not in locals():
     )
 
 # Reuse / set shared constants
-zoom_factors_2d = locals().get("zoom_factors_2d", (0.25, 0.25))
+zoom = np.e / 9          # ≈ 0.3020313142732272
+zoom_factors_2d = (zoom, zoom)
 border_fraction = locals().get("border_fraction", 0.3)
 ROI_SIZE_PX = locals().get("ROI_SIZE_PX", 64)
 
@@ -127,15 +128,6 @@ if "input_image_normalized" not in locals():
     ) + (
         input_image_normalized[:, :, 2] * 0.1140   # Blue
     )
-
-# Reuse constants if present; otherwise set them here.
-zoom_factors_2d = locals().get("zoom_factors_2d", (0.25, 0.25))
-border_fraction = locals().get("border_fraction", 0.3)
-
-# ROI
-ROI_SIZE_PX = locals().get("ROI_SIZE_PX", 64)
-FACE_ROW    = locals().get("FACE_ROW", 250)
-FACE_COL    = locals().get("FACE_COL", 445)
 
 h_img, w_img = input_image_normalized.shape
 

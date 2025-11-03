@@ -66,7 +66,8 @@ input_image_normalized = (
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
 
-zoom_factors_2d = (0.25, 0.25)
+zoom = np.pi / 6            # ≈ 0.5235987756
+zoom_factors_2d = (zoom, zoom)
 border_fraction = 0.3  # still available as a fallback (unused when roi=... is set)
 
 # Face-centered 64×64 ROI (focus region for metrics & diffs)
