@@ -26,6 +26,7 @@ from splineops.utils import (
     plot_difference_image,
     show_roi_zoom,
     draw_leastsq_vs_oblique_pipeline,    # reused diagram helper (for layout consistency)
+    print_runtime_context,
 )
 
 # %%
@@ -297,22 +298,70 @@ plot_difference_image(
 # Performance: Time Comparison
 # ----------------------------
 
-speedup = (time_2d_ls / time_2d_ob) if time_2d_ob > 0 else np.inf
-impr_pct = max(0.0, (1.0 - time_2d_ob / max(time_2d_ls, 1e-12)) * 100.0)
+N_TRIALS = 10
+WARMUP   = 1
 
-print(f"[Timing] Least-Squares: {time_2d_ls*1000:.1f} ms")
-print(f"[Timing] Oblique      : {time_2d_ob*1000:.1f} ms")
-print(f"[Timing] Speedup (LS/OB): {speedup:.2f}×  (~{impr_pct:.1f}% less time)")
+def _avg_time_over_runs(img, *, method, zoom_factors, border_fraction, roi,
+                        trials=N_TRIALS, warmup=WARMUP):
+    """Return (mean_s, sd_s) timing over multiple runs; warm-up not counted."""
+    # warm-up
+    for _ in range(warmup):
+        resize_and_compute_metrics(
+            img, method=method, zoom_factors=zoom_factors,
+            border_fraction=border_fraction, roi=roi
+        )
+    times = []
+    for _ in range(trials):
+        _, _, _, _, t = resize_and_compute_metrics(
+            img, method=method, zoom_factors=zoom_factors,
+            border_fraction=border_fraction, roi=roi
+        )
+        times.append(t)
+    times = np.asarray(times, dtype=np.float64)
+    mean_s = float(times.mean())
+    sd_s   = float(times.std(ddof=1)) if times.size > 1 else 0.0
+    return mean_s, sd_s
 
-fig, ax = plt.subplots(figsize=(6.5, 3.6))
-methods = ["Least-Squares", "Oblique"]
-times_s = [time_2d_ls, time_2d_ob]
-bars = ax.bar(methods, times_s)
+# Measure LS and Oblique averages (the single-run values computed earlier are kept for displays above)
+mean_ls, sd_ls = _avg_time_over_runs(
+    input_image_normalized,
+    method="cubic-best_antialiasing",
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction,
+    roi=roi_rect,
+)
+mean_ob, sd_ob = _avg_time_over_runs(
+    input_image_normalized,
+    method="cubic-fast_antialiasing",
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction,
+    roi=roi_rect,
+)
+
+speedup_mean = (mean_ls / mean_ob) if mean_ob > 0 else np.inf
+impr_pct_mean = max(0.0, (1.0 - mean_ob / max(mean_ls, 1e-12)) * 100.0)
+
+print(f"[Timing averages over {N_TRIALS} runs] Least-Squares: {mean_ls*1000:.1f} ± {sd_ls*1000:.1f} ms")
+print(f"[Timing averages over {N_TRIALS} runs] Oblique      : {mean_ob*1000:.1f} ± {sd_ob*1000:.1f} ms")
+print(f"[Timing] Speedup (LS/OB): {speedup_mean:.2f}×  (~{impr_pct_mean:.1f}% less time)")
+
+fig, ax = plt.subplots(figsize=(7.0, 3.8))
+methods   = ["Least-Squares", "Oblique"]
+means_s   = [mean_ls, mean_ob]
+errs_s    = [sd_ls, sd_ob]
+
+bars = ax.bar(methods, means_s, yerr=errs_s, capsize=6)
 ax.set_ylabel("Time (s)")
-ax.set_title(f"Oblique is ≈ {speedup:.2f}× faster ({impr_pct:.1f}% less time)")
-for rect, t in zip(bars, times_s):
+ax.set_title(f"Oblique is ≈ {speedup_mean:.2f}× faster on average "
+             f"({impr_pct_mean:.1f}% less time over {N_TRIALS} runs)")
+
+for rect, m, sd in zip(bars, means_s, errs_s):
     h = rect.get_height()
-    ax.text(rect.get_x() + rect.get_width()/2, h, f"{t*1000:.1f} ms",
+    ax.text(rect.get_x() + rect.get_width()/2, h,
+            f"{m*1000:.1f} ± {sd*1000:.1f} ms",
             ha="center", va="bottom", fontsize=9)
+
 fig.tight_layout()
 plt.show()
+
+print_runtime_context()
