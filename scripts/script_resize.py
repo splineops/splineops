@@ -15,6 +15,7 @@ Flow:
   5) Show COMPARISON figure: the four families at the same degree with timing
 
 Notes:
+  - Displays use RGB uint8 (no colormap) to avoid large float RGBA buffers in Matplotlib.
   - SciPy is optional. If missing and you choose a SciPy option, you'll get an error
     for the single-resize; in the comparison figure, the SciPy panel shows a friendly
     message instead of crashing.
@@ -112,6 +113,16 @@ def _open_as_gray01(path: Path) -> np.ndarray:
 
     im.close()
     return np.clip(arr, 0.0, 1.0)
+
+
+# -------------------------------
+# Display helpers (memory-friendly)
+# -------------------------------
+def _as_rgb_u8(img01: np.ndarray) -> np.ndarray:
+    """[0,1] float grayscale -> H×W×3 uint8 (avoid colormap path)."""
+    a = np.clip(img01, 0.0, 1.0)
+    u8 = np.rint(a * 255.0).astype(np.uint8)
+    return np.repeat(u8[..., None], 3, axis=2)  # RGB view
 
 
 # -------------------------------
@@ -273,12 +284,13 @@ def _select_image_with_dialog() -> Optional[Path]:
 
 
 def _show_gray_image(img01: np.ndarray):
-    """Borderless, pixel-accurate grayscale display (no text)."""
-    h, w = img01.shape
+    """Borderless, pixel-accurate grayscale display (no text), memory-friendly."""
+    rgb = _as_rgb_u8(img01)
+    h, w = rgb.shape[:2]
     dpi = 100.0
     fig = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
     ax = fig.add_axes([0, 0, 1, 1])  # full-bleed
-    ax.imshow(img01, cmap="gray", vmin=0.0, vmax=1.0, interpolation="nearest", aspect="equal")
+    ax.imshow(rgb, interpolation="nearest", aspect="equal")  # no cmap/vmin/vmax
     ax.set_axis_off()
     plt.show()
 
@@ -312,7 +324,7 @@ def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
 
 
 def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape: Tuple[int, int]):
-    """Single-row mosaic; each panel shows method + time."""
+    """Single-row mosaic; each panel shows method + time (drawn as titles)."""
     # Compute width ratios based on each image aspect
     heights, widths = [], []
     for r in results:
@@ -337,7 +349,7 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
         ax.set_axis_off()
         title = f"{r['label']}\n{_fmt_time(r['time'])}"
         if r["img"] is not None:
-            ax.imshow(r["img"], cmap="gray", vmin=0.0, vmax=1.0, interpolation="nearest", aspect="equal")
+            ax.imshow(_as_rgb_u8(r["img"]), interpolation="nearest", aspect="equal")
             ax.set_title(title, fontsize=10)
         else:
             ax.set_facecolor("0.92")
