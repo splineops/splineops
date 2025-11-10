@@ -1,25 +1,33 @@
 # splineops/scripts/script_resize.py
 # -*- coding: utf-8 -*-
 """
-Interactive image resize demo — grayscale-only, two windows (original then resized).
+Interactive image resize demo — grayscale-only
 
-- Prompts for an image (PNG/JPG/TIFF).
-- Asks for zoom factor (>0) + method (SciPy / Standard / Least-Squares / Oblique).
-- Converts to grayscale and processes that.
-- Shows the original grayscale first (no text), then the resized grayscale (no text).
+Flow:
+  1) Pick an image (PNG/JPG/TIFF)
+  2) Pick zoom (>0) + method (SciPy / Standard / Least-Squares / Oblique)
+  3) Show ORIGINAL grayscale (no text)
+  4) Show RESIZED grayscale (no text)
+  5) Show COMPARISON figure: all 4 methods horizontally with timing
+
+Notes:
+  - SciPy is optional. If missing, the SciPy panel in the comparison figure
+    says "SciPy not installed".
+  - Use the Matplotlib "Save" toolbar button to export any figure.
 """
 
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-from typing import Optional, Tuple
+import time
 from io import BytesIO
+from pathlib import Path
+from typing import Optional, Tuple, List, Dict
 
 import numpy as np
 from PIL import Image
 
-# Optional ICC → sRGB for accurate luminance (safe to skip if unavailable)
+# Optional ICC → sRGB (safe to skip if unavailable)
 try:
     from PIL import ImageCms  # type: ignore
     _HAS_IMAGECMS = True
@@ -27,6 +35,7 @@ except Exception:
     _HAS_IMAGECMS = False
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 # --- Tkinter UI ---
 try:
@@ -122,6 +131,12 @@ def _splineops_resize_gray(data01: np.ndarray, z: float, method_key: str) -> np.
     return np.clip(out, 0.0, 1.0)
 
 
+def _fmt_time(sec: Optional[float]) -> str:
+    if sec is None:
+        return "n/a"
+    return f"{sec*1000:.1f} ms" if sec < 1.0 else f"{sec:.3f} s"
+
+
 # ------------------------
 # Tiny settings UI (Tkinter)
 # ------------------------
@@ -205,7 +220,7 @@ class SettingsDialog:
 
 
 # ------------------------
-# Main flow
+# UI helpers
 # ------------------------
 def _select_image_with_dialog() -> Optional[Path]:
     filetypes = [
@@ -220,16 +235,96 @@ def _select_image_with_dialog() -> Optional[Path]:
 
 
 def _show_gray_image(img01: np.ndarray):
-    """Borderless, pixel-accurate grayscale display."""
+    """Borderless, pixel-accurate grayscale display (no text)."""
     h, w = img01.shape
     dpi = 100.0
     fig = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
-    ax = fig.add_axes([0, 0, 1, 1])  # full-bleed, no margins
+    ax = fig.add_axes([0, 0, 1, 1])  # full-bleed
     ax.imshow(img01, cmap="gray", vmin=0.0, vmax=1.0, interpolation="nearest", aspect="equal")
     ax.set_axis_off()
     plt.show()
 
 
+# ------------------------
+# Timing + comparison plot
+# ------------------------
+def _measure_all(gray01: np.ndarray, zoom: float):
+    """Run all four methods once; return list of dicts with 'key','label','img','time','error'."""
+    methods = [
+        ("scipy",         "SciPy (cubic)"),
+        ("standard",      "Standard (cubic)"),
+        ("least-squares", "Least-Squares (best AA)"),
+        ("oblique",       "Oblique (fast AA)"),
+    ]
+    results: List[Dict] = []
+
+    for key, label in methods:
+        img = None
+        elapsed = None
+        err = None
+        try:
+            t0 = time.perf_counter()
+            if key == "scipy":
+                img = _scipy_zoom_gray(gray01, zoom)
+            else:
+                img = _splineops_resize_gray(gray01, zoom, key)
+            elapsed = time.perf_counter() - t0
+        except Exception as e:
+            err = str(e)
+        results.append({"key": key, "label": label, "img": img, "time": elapsed, "error": err})
+    return results
+
+
+def _comparison_figure(results: List[Dict], zoom: float, base_shape: Tuple[int, int]):
+    """Build a single-row mosaic with variable-width panels and titles showing times."""
+    # Compute width ratios based on each image aspect to give each panel fair space
+    heights = []
+    widths = []
+    for r in results:
+        if r["img"] is not None:
+            h, w = r["img"].shape
+        else:
+            # fallback estimated size when missing: base_shape scaled
+            h = max(1, int(round(base_shape[0] * zoom)))
+            w = max(1, int(round(base_shape[1] * zoom)))
+        heights.append(h); widths.append(w)
+
+    # Normalize panel widths by aspect
+    ratios = [w / max(h, 1) for w, h in zip(widths, heights)]
+    # Set a fixed panel height (inches); width is proportional to each ratio
+    panel_h_in = 3.4
+    panel_ws_in = [max(2.2, panel_h_in * r) for r in ratios]  # min width for readability
+    fig_w_in = sum(panel_ws_in)
+    fig_h_in = panel_h_in + 0.7  # little room for titles
+
+    fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=100)
+    gs = gridspec.GridSpec(1, len(results), width_ratios=panel_ws_in, wspace=0.05, hspace=0.0)
+
+    for i, r in enumerate(results):
+        ax = fig.add_subplot(gs[0, i])
+        ax.set_axis_off()
+        title = f"{r['label']}\n{_fmt_time(r['time'])}"
+        if r["img"] is not None:
+            ax.imshow(r["img"], cmap="gray", vmin=0.0, vmax=1.0, interpolation="nearest", aspect="equal")
+            ax.set_title(title, fontsize=10)
+        else:
+            ax.set_facecolor("0.92")
+            ax.text(0.5, 0.55, r["label"], ha="center", va="center", fontsize=10)
+            msg = "Error" if r["error"] else "Unavailable"
+            detail = "SciPy not installed" if (r["key"] == "scipy" and r["error"]) else (r["error"] or "")
+            ax.text(0.5, 0.40, f"{msg}", ha="center", va="center", fontsize=9)
+            if detail:
+                ax.text(0.5, 0.28, detail[:48] + ("…" if len(detail) > 48 else ""), ha="center", va="center", fontsize=8)
+            ax.set_title(f"{r['label']}\n{_fmt_time(None)}", fontsize=10)
+
+    fig.suptitle(f"Resize comparison @ zoom ×{zoom:g}", y=0.98, fontsize=12)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+
+# ------------------------
+# Main flow
+# ------------------------
 def main(argv=None) -> int:
     if tk is None:
         print("Error: Tkinter is not available (install python3-tk).", file=sys.stderr)
@@ -254,12 +349,13 @@ def main(argv=None) -> int:
         messagebox.showerror("Open failed", f"Could not open image:\n{img_path}\n\n{e}")
         root.destroy(); return 1
 
+    h0, w0 = gray01.shape
     root.destroy()  # close Tk before showing figures
 
-    # First window: original grayscale
+    # 1) Original grayscale (no text)
     _show_gray_image(gray01)
 
-    # Resize grayscale
+    # 2) Resized grayscale (no text) — chosen method
     try:
         if method_key == "scipy":
             out = _scipy_zoom_gray(gray01, zoom)
@@ -268,9 +364,12 @@ def main(argv=None) -> int:
     except Exception as e:
         messagebox.showerror("Resize failed", f"An error occurred during resizing:\n\n{e}")
         return 1
-
-    # Second window: resized grayscale
     _show_gray_image(out)
+
+    # 3) Comparison figure: all 4 methods + timing
+    results = _measure_all(gray01, zoom)
+    _comparison_figure(results, zoom, base_shape=(h0, w0))
+
     return 0
 
 
