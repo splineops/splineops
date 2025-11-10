@@ -23,6 +23,7 @@ from PIL import Image
 from splineops.utils import (
     resize_and_compute_metrics,      # resampling + metrics
     show_roi_zoom,
+    print_runtime_context,
 )
 
 # %%
@@ -173,7 +174,8 @@ for method_name, snr_val, mse_val, t_mean, t_sd in methods:
     time_str = f"{t_mean:.4f} ± {t_sd:.4f}"
     print(f"{method_name:<25} {snr_val:>10.2f} {mse_val:>16.2e} {time_str:>20}")
 
-print(f"\nTimings averaged over {N_TRIALS} runs (1 warm-up run not counted).")
+print(f"\nTimings averaged over {N_TRIALS} runs (1 warm-up run not counted).\n")
+print_runtime_context()
 
 # %%
 # All Methods

@@ -18,6 +18,11 @@ from .diagram import (
     draw_standard_vs_leastsq_pipeline,
     draw_leastsq_vs_oblique_pipeline
 )
+from .specs import (
+    collect_runtime_context,
+    format_runtime_context,
+    print_runtime_context,
+)
 
 __all__ = [
     "crop_to_central_region",
@@ -33,4 +38,7 @@ __all__ = [
     "draw_standard_vs_scipy_pipeline",
     "draw_standard_vs_leastsq_pipeline",
     "draw_leastsq_vs_oblique_pipeline",
+    "collect_runtime_context",
+    "format_runtime_context",
+    "print_runtime_context",
 ]
