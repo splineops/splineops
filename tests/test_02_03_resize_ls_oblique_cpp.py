@@ -47,11 +47,11 @@ def _time_and_run(mode: str, arr: np.ndarray, zoom: tuple[float, float], method:
     "method_label,preset,shape,zoom,atol,speedup_min",
     [
         # Downsample: strong speedup expected
-        ("Least-Squares (best AA)", "cubic-best_antialiasing", (512, 512), (0.5, 0.5), 2e-3, 3.0),
-        ("Oblique (fast AA)",       "cubic-fast_antialiasing", (512, 512), (0.5, 0.5), 2e-3, 3.0),
+        ("Least-Squares (best AA)", "cubic-best_antialiasing", (512, 512), (0.5, 0.5), 6e-8, 3.0),
+        ("Oblique (fast AA)",       "cubic-fast_antialiasing", (512, 512), (0.5, 0.5), 2e-8, 3.0),
         # Upsample: also fast in C++; keep a slightly relaxed assertion
-        ("Least-Squares (best AA)", "cubic-best_antialiasing", (512, 512), (1.7, 1.7), 3e-3, 2.0),
-        ("Oblique (fast AA)",       "cubic-fast_antialiasing", (512, 512), (1.7, 1.7), 5e-8, 2.0),
+        ("Least-Squares (best AA)", "cubic-best_antialiasing", (512, 512), (2.5, 2.5), 6e-5, 2.0),
+        ("Oblique (fast AA)",       "cubic-fast_antialiasing", (512, 512), (2.5, 2.5), 5e-8, 2.0),
     ],
 )
 def test_cpp_vs_python_perf_and_equality(method_label, preset, shape, zoom, atol, speedup_min, monkeypatch):
