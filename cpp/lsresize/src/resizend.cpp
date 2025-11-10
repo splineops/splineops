@@ -1,6 +1,7 @@
 // splineops/cpp/lsresize/src/resizend.cpp
 #include "resizend.h"
 #include "utils.h"
+#include "resize1d.h"
 
 #include <vector>
 #include <numeric>
@@ -38,6 +39,10 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
     if (d != axis) bases.push_back(d);
   }
 
+  // Build the per-axis plan ONCE (shared read-only across threads)
+  const int N_line = static_cast<int>(in_shape[static_cast<size_t>(axis)]);
+  Plan1D plan = make_plan_1d(N_line, p);
+
 #if defined(_OPENMP)
   if (nlines > 64) {
     // Parallel path
@@ -45,8 +50,8 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
     {
       // per-thread reusable buffers
       std::vector<int64_t> idx(D, 0);
-      std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(in_shape[static_cast<size_t>(axis)]));
-      std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(out_shape[static_cast<size_t>(axis)]));
+      std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(N_line));
+      std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(plan.outN));
 
       #pragma omp for schedule(static, 32)
       for (int64_t line = 0; line < nlines; ++line) {
@@ -68,13 +73,13 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
         }
 
         // gather 1-D input line
-        line_in.resize(static_cast<size_t>(in_shape[static_cast<size_t>(axis)]));
+        line_in.resize(static_cast<size_t>(N_line));
         for (int64_t i = 0; i < in_shape[static_cast<size_t>(axis)]; ++i) {
           line_in[static_cast<size_t>(i)] = in[in_off + i * in_strides[static_cast<size_t>(axis)]];
         }
 
-        // resize the 1-D line
-        resize_1d(line_in, line_out, p);
+        // planned fast path
+        resize_1d_planned(line_in, line_out, p, plan);
 
         // scatter to output
         for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
@@ -89,8 +94,8 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
   // Serial path (or parallel disabled / small problem)
   {
     std::vector<int64_t> idx(D, 0);
-    std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(in_shape[static_cast<size_t>(axis)]));
-    std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(out_shape[static_cast<size_t>(axis)]));
+    std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(N_line));
+    std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(plan.outN));
 
     for (int64_t line = 0; line < nlines; ++line) {
       std::fill(idx.begin(), idx.end(), 0);
@@ -111,13 +116,13 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
       }
 
       // gather 1-D input line
-      line_in.resize(static_cast<size_t>(in_shape[static_cast<size_t>(axis)]));
+      line_in.resize(static_cast<size_t>(N_line));
       for (int64_t i = 0; i < in_shape[static_cast<size_t>(axis)]; ++i) {
         line_in[static_cast<size_t>(i)] = in[in_off + i * in_strides[static_cast<size_t>(axis)]];
       }
 
-      // resize the 1-D line
-      resize_1d(line_in, line_out, p);
+      // planned fast path
+      resize_1d_planned(line_in, line_out, p, plan);
 
       // scatter to output
       for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
