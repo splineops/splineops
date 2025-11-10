@@ -28,7 +28,7 @@ import sys
 import time
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict
+from typing import Optional, Tuple, List, Dict, TYPE_CHECKING  # <-- add TYPE_CHECKING
 
 import numpy as np
 from PIL import Image
@@ -48,7 +48,15 @@ try:
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
 except Exception:
-    tk = None  # we'll error gracefully later
+    # Runtime fallback; annotated as None so linters don't complain about unknowns
+    tk = None  # type: ignore[assignment]
+    filedialog = None  # type: ignore[assignment]
+    messagebox = None  # type: ignore[assignment]
+    ttk = None  # type: ignore[assignment]
+
+# Typing-only alias so we can write parent: "tkt.Tk" without Pylance warnings
+if TYPE_CHECKING:
+    import tkinter as tkt
 
 # Import splineops (works when run directly or as module)
 try:
@@ -200,7 +208,8 @@ def _fmt_time(sec: Optional[float]) -> str:
 # Tiny settings UI (Tkinter)
 # ------------------------
 class SettingsDialog:
-    def __init__(self, parent: tk.Tk, default_zoom: float = 0.5, default_method_key: str = "ls-cubic"):
+    def __init__(self, parent: "tkt.Tk", default_zoom: float = 0.5,
+                 default_method_key: str = "ls-cubic") -> None:
         self.parent = parent
         self.result: Optional[Tuple[float, str]] = None
 
