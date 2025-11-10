@@ -1,18 +1,23 @@
 # splineops/scripts/script_resize.py
 # -*- coding: utf-8 -*-
 """
-Interactive image resize demo — grayscale-only
+Interactive image resize demo — grayscale-only, degree-aware comparison
 
 Flow:
   1) Pick an image (PNG/JPG/TIFF)
-  2) Pick zoom (>0) + method (SciPy / Standard / Least-Squares / Oblique)
+  2) Pick zoom (>0) + method:
+       - SciPy Linear / Quadratic / Cubic
+       - Standard Linear / Quadratic / Cubic
+       - Least-Squares Linear / Quadratic / Cubic
+       - Oblique Linear / Quadratic / Cubic
   3) Show ORIGINAL grayscale (no text)
   4) Show RESIZED grayscale (no text)
-  5) Show COMPARISON figure: all 4 methods horizontally with timing
+  5) Show COMPARISON figure: the four families at the same degree with timing
 
 Notes:
-  - SciPy is optional. If missing, the SciPy panel in the comparison figure
-    says "SciPy not installed".
+  - SciPy is optional. If missing and you choose a SciPy option, you'll get an error
+    for the single-resize; in the comparison figure, the SciPy panel shows a friendly
+    message instead of crashing.
   - Use the Matplotlib "Save" toolbar button to export any figure.
 """
 
@@ -110,25 +115,68 @@ def _open_as_gray01(path: Path) -> np.ndarray:
 
 
 # -------------------------------
+# Method mapping (families & degrees)
+# -------------------------------
+DEGREES = ("linear", "quadratic", "cubic")
+FAMILIES = (
+    ("scipy",   "SciPy"),
+    ("standard","Standard"),
+    ("ls",      "Least-Squares"),
+    ("oblique", "Oblique"),
+)
+
+# Label ↔ key like "SciPy Cubic" ↔ "scipy-cubic"
+METHOD_LABELS = [f"{fam_name} {deg.title()}" for fam_key, fam_name in FAMILIES for deg in DEGREES]
+LABEL_TO_KEY = {
+    f"{fam_name} {deg.title()}": f"{fam_key}-{deg}"
+    for fam_key, fam_name in FAMILIES
+    for deg in DEGREES
+}
+KEY_TO_LABEL = {v: k for k, v in LABEL_TO_KEY.items()}
+
+
+def _parse_method_key(method_key: str) -> Tuple[str, str]:
+    """Return (family, degree) from 'family-degree'."""
+    family, degree = method_key.split("-", 1)
+    return family, degree  # e.g., ('ls', 'cubic')
+
+
+# -------------------------------
 # Resizing backends (grayscale)
 # -------------------------------
-def _scipy_zoom_gray(data01: np.ndarray, z: float) -> np.ndarray:
+def _scipy_zoom_gray(data01: np.ndarray, z: float, degree: str) -> np.ndarray:
     try:
         from scipy.ndimage import zoom as ndi_zoom
     except Exception as e:
-        raise RuntimeError("SciPy is required for the 'SciPy' method (pip install scipy).") from e
-    out = ndi_zoom(data01, (z, z), order=3, prefilter=True, mode="reflect")
+        raise RuntimeError("SciPy is required for the selected SciPy method (pip install scipy).") from e
+
+    order_map = {"linear": 1, "quadratic": 2, "cubic": 3}
+    order = order_map[degree]
+
+    out = ndi_zoom(data01, (z, z), order=order, prefilter=True, mode="reflect")
     return np.clip(out, 0.0, 1.0)
 
 
-def _splineops_resize_gray(data01: np.ndarray, z: float, method_key: str) -> np.ndarray:
-    preset_map = {
-        "standard": "cubic",
-        "least-squares": "cubic-best_antialiasing",
-        "oblique": "cubic-fast_antialiasing",
-    }
-    out = sp_resize(data01, zoom_factors=(z, z), method=preset_map[method_key])
+def _splineops_resize_gray(data01: np.ndarray, z: float, family: str, degree: str) -> np.ndarray:
+    # Map to splineops.resize method string
+    if family == "standard":
+        sp_method = degree  # "linear" / "quadratic" / "cubic"
+    elif family == "ls":
+        sp_method = f"{degree}-best_antialiasing"
+    elif family == "oblique":
+        sp_method = f"{degree}-fast_antialiasing"
+    else:
+        raise ValueError(f"Unsupported family for splineops: {family}")
+
+    out = sp_resize(data01, zoom_factors=(z, z), method=sp_method)
     return np.clip(out, 0.0, 1.0)
+
+
+def _resize_gray(gray01: np.ndarray, method_key: str, zoom: float) -> np.ndarray:
+    family, degree = _parse_method_key(method_key)
+    if family == "scipy":
+        return _scipy_zoom_gray(gray01, zoom, degree)
+    return _splineops_resize_gray(gray01, zoom, family, degree)
 
 
 def _fmt_time(sec: Optional[float]) -> str:
@@ -141,14 +189,7 @@ def _fmt_time(sec: Optional[float]) -> str:
 # Tiny settings UI (Tkinter)
 # ------------------------
 class SettingsDialog:
-    METHODS = [
-        ("SciPy (cubic)", "scipy"),
-        ("Standard (cubic)", "standard"),
-        ("Least-Squares (best AA)", "least-squares"),
-        ("Oblique (fast AA)", "oblique"),
-    ]
-
-    def __init__(self, parent: tk.Tk, default_zoom: float = 0.5, default_method_key: str = "least-squares"):
+    def __init__(self, parent: tk.Tk, default_zoom: float = 0.5, default_method_key: str = "ls-cubic"):
         self.parent = parent
         self.result: Optional[Tuple[float, str]] = None
 
@@ -166,16 +207,13 @@ class SettingsDialog:
         self.zoom_entry.grid(row=0, column=1, sticky="w", padx=(8, 0))
 
         ttk.Label(frm, text="Method:").grid(row=1, column=0, sticky="w", pady=(10, 0))
-        self.method_var = tk.StringVar(value=default_method_key)
         self.method_combo = ttk.Combobox(
             frm,
-            textvariable=self.method_var,
-            values=[label for label, _ in self.METHODS],
+            values=METHOD_LABELS,     # all 12 options
             state="readonly",
-            width=28,
+            width=30,
         )
-        self._label_to_key = {label: key for label, key in self.METHODS}
-        default_label = next(label for label, key in self.METHODS if key == default_method_key)
+        default_label = KEY_TO_LABEL.get(default_method_key, "Least-Squares Cubic")
         self.method_combo.set(default_label)
         self.method_combo.grid(row=1, column=1, sticky="w", padx=(8, 0), pady=(10, 0))
 
@@ -207,7 +245,7 @@ class SettingsDialog:
             messagebox.showerror("Invalid zoom", "Please enter a positive number for the zoom factor.")
             return
         label = self.method_combo.get()
-        key = self._label_to_key.get(label)
+        key = LABEL_TO_KEY.get(label)
         if key is None:
             messagebox.showerror("Invalid method", "Please choose a resize method.")
             return
@@ -248,26 +286,24 @@ def _show_gray_image(img01: np.ndarray):
 # ------------------------
 # Timing + comparison plot
 # ------------------------
-def _measure_all(gray01: np.ndarray, zoom: float):
-    """Run all four methods once; return list of dicts with 'key','label','img','time','error'."""
-    methods = [
-        ("scipy",         "SciPy (cubic)"),
-        ("standard",      "Standard (cubic)"),
-        ("least-squares", "Least-Squares (best AA)"),
-        ("oblique",       "Oblique (fast AA)"),
+def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
+    """Run the four families at a specific degree; return list of dicts."""
+    families = [
+        ("scipy",   "SciPy"),
+        ("standard","Standard"),
+        ("ls",      "Least-Squares"),
+        ("oblique", "Oblique"),
     ]
     results: List[Dict] = []
-
-    for key, label in methods:
+    for fam_key, fam_name in families:
+        key = f"{fam_key}-{degree}"
+        label = f"{fam_name} {degree.title()}"
         img = None
         elapsed = None
         err = None
         try:
             t0 = time.perf_counter()
-            if key == "scipy":
-                img = _scipy_zoom_gray(gray01, zoom)
-            else:
-                img = _splineops_resize_gray(gray01, zoom, key)
+            img = _resize_gray(gray01, key, zoom)
             elapsed = time.perf_counter() - t0
         except Exception as e:
             err = str(e)
@@ -275,27 +311,23 @@ def _measure_all(gray01: np.ndarray, zoom: float):
     return results
 
 
-def _comparison_figure(results: List[Dict], zoom: float, base_shape: Tuple[int, int]):
-    """Build a single-row mosaic with variable-width panels and titles showing times."""
-    # Compute width ratios based on each image aspect to give each panel fair space
-    heights = []
-    widths = []
+def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape: Tuple[int, int]):
+    """Single-row mosaic; each panel shows method + time."""
+    # Compute width ratios based on each image aspect
+    heights, widths = [], []
     for r in results:
         if r["img"] is not None:
             h, w = r["img"].shape
         else:
-            # fallback estimated size when missing: base_shape scaled
             h = max(1, int(round(base_shape[0] * zoom)))
             w = max(1, int(round(base_shape[1] * zoom)))
         heights.append(h); widths.append(w)
 
-    # Normalize panel widths by aspect
     ratios = [w / max(h, 1) for w, h in zip(widths, heights)]
-    # Set a fixed panel height (inches); width is proportional to each ratio
     panel_h_in = 3.4
-    panel_ws_in = [max(2.2, panel_h_in * r) for r in ratios]  # min width for readability
+    panel_ws_in = [max(2.2, panel_h_in * r) for r in ratios]
     fig_w_in = sum(panel_ws_in)
-    fig_h_in = panel_h_in + 0.7  # little room for titles
+    fig_h_in = panel_h_in + 0.7
 
     fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=100)
     gs = gridspec.GridSpec(1, len(results), width_ratios=panel_ws_in, wspace=0.05, hspace=0.0)
@@ -311,13 +343,13 @@ def _comparison_figure(results: List[Dict], zoom: float, base_shape: Tuple[int, 
             ax.set_facecolor("0.92")
             ax.text(0.5, 0.55, r["label"], ha="center", va="center", fontsize=10)
             msg = "Error" if r["error"] else "Unavailable"
-            detail = "SciPy not installed" if (r["key"] == "scipy" and r["error"]) else (r["error"] or "")
+            detail = "SciPy not installed" if (r["key"].startswith("scipy-") and r["error"]) else (r["error"] or "")
             ax.text(0.5, 0.40, f"{msg}", ha="center", va="center", fontsize=9)
             if detail:
                 ax.text(0.5, 0.28, detail[:48] + ("…" if len(detail) > 48 else ""), ha="center", va="center", fontsize=8)
             ax.set_title(f"{r['label']}\n{_fmt_time(None)}", fontsize=10)
 
-    fig.suptitle(f"Resize comparison @ zoom ×{zoom:g}", y=0.98, fontsize=12)
+    fig.suptitle(f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}", y=0.98, fontsize=12)
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
@@ -337,7 +369,7 @@ def main(argv=None) -> int:
     if img_path is None:
         root.destroy(); return 0  # cancelled
 
-    dlg = SettingsDialog(root, default_zoom=0.5, default_method_key="least-squares")
+    dlg = SettingsDialog(root, default_zoom=0.5, default_method_key="ls-cubic")
     if dlg.result is None:
         root.destroy(); return 0  # cancelled
     zoom, method_key = dlg.result
@@ -357,18 +389,18 @@ def main(argv=None) -> int:
 
     # 2) Resized grayscale (no text) — chosen method
     try:
-        if method_key == "scipy":
-            out = _scipy_zoom_gray(gray01, zoom)
-        else:
-            out = _splineops_resize_gray(gray01, zoom, method_key)
+        out = _resize_gray(gray01, method_key, zoom)
     except Exception as e:
+        # Show dialog (uses OS alert even after root destroyed)
+        print(f"Resize failed: {e}", file=sys.stderr)
         messagebox.showerror("Resize failed", f"An error occurred during resizing:\n\n{e}")
         return 1
     _show_gray_image(out)
 
-    # 3) Comparison figure: all 4 methods + timing
-    results = _measure_all(gray01, zoom)
-    _comparison_figure(results, zoom, base_shape=(h0, w0))
+    # 3) Degree-matched comparison across families
+    _, degree = _parse_method_key(method_key)
+    results = _measure_families_at_degree(gray01, zoom, degree)
+    _comparison_figure(results, zoom, degree, base_shape=(h0, w0))
 
     return 0
 
