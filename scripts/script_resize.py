@@ -282,11 +282,11 @@ class SettingsDialog:
 # ------------------------
 def _select_image_with_dialog() -> Optional[Path]:
     filetypes = [
-        ("Image files", "*.png;*.jpg;*.jpeg;*.tif;*.tiff"),
+        ("Image files", ("*.png", "*.jpg", "*.jpeg", "*.tif", "*.tiff")),
         ("PNG", "*.png"),
-        ("JPEG", "*.jpg;*.jpeg"),
-        ("TIFF", "*.tif;*.tiff"),
-        ("All files", "*.*"),
+        ("JPEG", ("*.jpg", "*.jpeg")),
+        ("TIFF", ("*.tif", "*.tiff")),
+        ("All files", "*"),
     ]
     path = filedialog.askopenfilename(title="Select an image", filetypes=filetypes)
     return Path(path).expanduser() if path else None
