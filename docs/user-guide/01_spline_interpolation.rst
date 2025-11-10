@@ -14,7 +14,7 @@ Splines are real functions that are *continuously* defined while being *paramete
 * arbitrary geometric transformations—it is very much desirable to be able to evaluate a function at any desired coordinate, while discrete data can be evaluated at the samples only;
 * specific geometric transformations such as resizing—the aliasing inherent with the downsizing of data can be handled much more safely in the continuous domain than it can with discrete data.
 
-There are many brands of splines. In the graphics world, one often relies on splines to represent curves, for instance with nonuniform rational B-splines. The SplineOps library is not meant to be used for such applications; in return, it is well-suited to the handling of data defined on a uniform Cartesian grid and offers highly successful tradeoffs between quality of representation and computational efficiency [1]_, [2]_, [3]_,  [4]_, [5]_.
+There are many brands of splines. In the graphics world, one often relies on splines to represent curves, for instance with nonuniform rational B-splines. The SplineOps library is not meant to be used for such applications; in return, it is well-suited to the handling of data defined on a uniform Cartesian grid and offers highly successful tradeoffs between quality of representation and computational efficiency [1]_, [2]_, [3]_, [4]_, [5]_.
 
 **Pros**
 
@@ -37,13 +37,13 @@ There are many brands of splines. In the graphics world, one often relies on spl
 B-Splines
 ---------
 
-A one-dimensional polynomial B-spline is a member of a family of real functions :math:`\beta^{n}:{\mathbb{R}}\rightarrow{\mathbb{R}},x\mapsto\beta^{n}(x)` that are characterized by their degree :math:`n\in{\mathbb{N}}` (*e.g.*, linear, quadratic, cubic). There, the degree :math:`n` is a superscript---as opposed to a power. Several equivalent explicit formulations of :math:`\beta^{n}` exist. One of them, valid for :math:`n\in{\mathbb{N}}_{>0}`, is
+A one-dimensional polynomial B-spline is a member of a family of real functions :math:`\beta^{n}:{\mathbb{R}}\rightarrow{\mathbb{R}},x\mapsto\beta^{n}(x)` that are characterized by their degree :math:`n\in{\mathbb{N}}` (*e.g.*, linear, cubic). There, the degree :math:`n` is a superscript---as opposed to a power. Several equivalent explicit formulations of :math:`\beta^{n}` exist. One of them, valid for :math:`n\in{\mathbb{N}}_{>0}`, is
 
 ..  math::
     
     \beta^{n}(x)=\frac{1}{n!}\,\sum_{k=0}^{n+1}\,\left(-1\right)^{k}\,{n\choose k}\,{\mathrm{ReLu}}^{n}(x+\frac{n+1}{2}-k),
 
-where :math:`x\in{\mathbb{R}}` is the argument of the B-spline and where one recognizes an interplay between signed binomial coefficients and the :math:`n`-th power of the celebrated :math:`{\mathrm{ReLu}}` function of artificial-intelligence fame.
+where :math:`x\in{\mathbb{R}}` is the argument of the B-spline and where one recognizes an interplay between signed binomial coefficients and the :math:`n`-th power of the celebrated :math:`{\mathrm{ReLu}}` function of artificial-intelligence fame, with :math:`{\mathrm{ReLu}}(x)=\max(x,0)` for all :math:`x\in{\mathbb{R}}.`
 
 Here is the plot of a cubic B-spline.
 
