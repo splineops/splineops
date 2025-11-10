@@ -5,6 +5,8 @@
 #include <cmath>
 #include <string>
 #include <algorithm>
+#include <chrono>
+#include <iomanip>
 
 #include "resize1d.h"
 #include "resizend.h"
@@ -225,6 +227,7 @@ static bool resize_and_compare_square(const double (&java_down)[5][5],
                                       const std::string& method,
                                       double tolerance)
 {
+  using clock = std::chrono::steady_clock;
   // Input: 10x10 with a 4x4 ones block at [3:7,3:7] (already normalized to 1.0)
   const int H=10, W=10;
   std::vector<double> img(H*W, 0.0);
@@ -232,10 +235,12 @@ static bool resize_and_compare_square(const double (&java_down)[5][5],
 
   std::vector<int64_t> in_shape = {H, W};
 
-  // Downscale by 0.5
+  auto t_all0 = clock::now();
+  auto t0 = clock::now();
   auto down = resize_nd(img, in_shape, {0.5, 0.5}, method, degree);
-  // Upscale back by 2.0
+  auto t1 = clock::now();
   auto up   = resize_nd(down, {5,5},   {2.0, 2.0}, method, degree);
+  auto t2 = clock::now();
 
   const auto ref_down = flat(java_down);
   const auto ref_up   = flat(java_reverted);
@@ -249,6 +254,15 @@ static bool resize_and_compare_square(const double (&java_down)[5][5],
             << "  tol=" << tolerance
             << ( (m1<tolerance && m2<tolerance) ? "  OK\n" : "  FAIL\n" );
 
+  const double ms_down  = std::chrono::duration<double, std::milli>(t1 - t0).count();
+  const double ms_up    = std::chrono::duration<double, std::milli>(t2 - t1).count();
+  const double ms_total = std::chrono::duration<double, std::milli>(t2 - t_all0).count();
+
+  std::cout << std::fixed << std::setprecision(3)
+            << "[Timing] " << method << " deg=" << degree
+            << " square: down x0.5 " << ms_down << " ms; up x2.0 " << ms_up
+            << " ms; total " << ms_total << " ms\n";
+
   return (m1 < tolerance && m2 < tolerance);
 }
 
@@ -258,6 +272,7 @@ static bool resize_and_compare_sinusoid(const double (&java_upscaled)[10][10],
                                         const std::string& method,
                                         double tolerance)
 {
+  using clock = std::chrono::steady_clock;
   // Build 5x5 sinusoid like Python
   const int N=5;
   std::vector<double> img(N*N, 0.0);
@@ -282,10 +297,12 @@ static bool resize_and_compare_sinusoid(const double (&java_upscaled)[10][10],
 
   std::vector<int64_t> in_shape = {N, N};
 
-  // Upscale by 2.0
+  auto t_all0 = clock::now();
+  auto t0 = clock::now();
   auto up = resize_nd(img, in_shape, {2.0, 2.0}, method, degree);
-  // Revert by downscaling back to 5x5
+  auto t1 = clock::now();
   auto back = resize_nd(up, {10,10}, {0.5, 0.5}, method, degree);
+  auto t2 = clock::now();
 
   const auto ref_up   = flat(java_upscaled);
   const auto ref_back = flat(java_reverted);
@@ -298,6 +315,15 @@ static bool resize_and_compare_sinusoid(const double (&java_upscaled)[10][10],
             << "  MSE revert=" << m2
             << "  tol=" << tolerance
             << ( (m1<tolerance && m2<tolerance) ? "  OK\n" : "  FAIL\n" );
+
+  const double ms_up    = std::chrono::duration<double, std::milli>(t1 - t0).count();
+  const double ms_down  = std::chrono::duration<double, std::milli>(t2 - t1).count();
+  const double ms_total = std::chrono::duration<double, std::milli>(t2 - t_all0).count();
+
+  std::cout << std::fixed << std::setprecision(3)
+            << "[Timing] " << method << " deg=" << degree
+            << " sinusoid: up x2.0 " << ms_up << " ms; down x0.5 " << ms_down
+            << " ms; total " << ms_total << " ms\n";
 
   return (m1 < tolerance && m2 < tolerance);
 }
