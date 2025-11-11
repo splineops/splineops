@@ -33,7 +33,7 @@ except Exception:  # pragma: no cover - if extension isn't built
     _resize_nd_cpp = None  # type: ignore[assignment]
 
 # Environment switch: "auto" (default), "never", "always"
-_ACCEL_ENV = os.environ.get("SPLINEOPS_ACCEL", "auto").lower()
+_ACCEL_ENV = os.environ.get("SPLINEOPS_ACCEL", "never").lower()
 
 
 # --------------------------------------------------------------------------- #

@@ -2,13 +2,12 @@
 from __future__ import annotations
 import numpy as np
 from typing import Sequence
-from .bspline import beta
 
-# poles and taps (Unser '93) – identical values to your current utils.py
+# poles z_k for degrees 2..7 (Unser '93)
 def spline_poles(deg: int) -> np.ndarray:
     if deg <= 1: return np.array([], dtype=float)
-    if   deg == 2: return np.array([np.sqrt(8.0)-3.0])
-    elif deg == 3: return np.array([np.sqrt(3.0)-2.0])
+    if   deg == 2: return np.array([np.sqrt(8.0) - 3.0])
+    elif deg == 3: return np.array([np.sqrt(3.0) - 2.0])
     elif deg == 4: return np.array([
         np.sqrt(664.0 - np.sqrt(438976.0)) + np.sqrt(304.0) - 19.0,
         np.sqrt(664.0 + np.sqrt(438976.0)) - np.sqrt(304.0) - 19.0
@@ -30,6 +29,7 @@ def spline_poles(deg: int) -> np.ndarray:
     else:
         raise ValueError("Invalid spline degree [0..7]")
 
+# symmetric FIR taps for sampling (Step 5)
 def sampling_fir(deg: int) -> np.ndarray:
     if deg <= 1: return np.array([], dtype=float)
     if   deg == 2: return np.array([3.0/4.0, 1.0/8.0])
@@ -50,7 +50,7 @@ def initial_causal(c: np.ndarray, z: float, tol: float = 1e-10) -> float:
     if horizon > 2:
         n = np.arange(1, horizon-1)
         s += np.sum((z**n + zn/(z**n)) * c[1:horizon-1])
-    return s / (1.0 - (zn*zn))
+    return s / (1.0 - (zn * zn))
 
 def initial_anti_causal(c: np.ndarray, z: float) -> float:
     if c.size < 2: return 0.0
@@ -67,17 +67,70 @@ def get_interpolation_coefficients(c: np.ndarray, deg: int) -> None:
         for n in range(1, c.size):
             c[n] += z * c[n-1]
         c[-1] = initial_anti_causal(c, z)
-        for n in range(c.size-2, -1, -1):
+        for n in range(c.size - 2, -1, -1):
             c[n] = z * (c[n+1] - c[n])
 
 def symmetric_fir(h: Sequence[float], c: np.ndarray, s: np.ndarray) -> None:
-    # identical logic to your current utils, condensed
+    """Symmetric FIR (exactly as before, self-contained)."""
+    if s.size != c.size:
+        raise IndexError("Incompatible size")
     H = len(h); N = c.size
-    if s.size != N: raise IndexError("Incompatible size")
-    if H not in (2,3,4): raise ValueError("Invalid filter half-length (2..4)")
-    # The long branching is correct and tested already in your repo:
-    from splineops.resize.utils import symmetric_fir as ref
-    ref(h, c, s)  # reuse the known-good implementation
+    if H == 2:
+        if N >= 2:
+            s[0]   = h[0]*c[0] + 2.0*h[1]*c[1]
+            s[1:-1]= h[0]*c[1:-1] + h[1]*(c[:-2]+c[2:])
+            s[-1]  = h[0]*c[-1] + 2.0*h[1]*c[-2]
+        else:
+            s[0] = (h[0] + 2.0*h[1]) * c[0]
+        return
+    if H == 3:
+        if N >= 4:
+            s[0]   = h[0]*c[0] + 2.0*h[1]*c[1] + 2.0*h[2]*c[2]
+            s[1]   = h[0]*c[1] + h[1]*(c[0]+c[2]) + h[2]*(c[1]+c[3])
+            s[2:-2]= h[0]*c[2:-2] + h[1]*(c[1:-3]+c[3:-1]) + h[2]*(c[0:-4]+c[4:])
+            s[-2]  = h[0]*c[-2] + h[1]*(c[-3]+c[-1]) + h[2]*(c[-4]+c[-2])
+            s[-1]  = h[0]*c[-1] + 2.0*h[1]*c[-2] + 2.0*h[2]*c[-3]
+        elif N == 3:
+            s[0] = h[0]*c[0] + 2.0*h[1]*c[1] + 2.0*h[2]*c[2]
+            s[1] = h[0]*c[1] + h[1]*(c[0]+c[2]) + 2.0*h[2]*c[1]
+            s[2] = h[0]*c[2] + 2.0*h[1]*c[1] + 2.0*h[2]*c[0]
+        elif N == 2:
+            s[0] = (h[0] + 2.0*h[2]) * c[0] + 2.0*h[1]*c[1]
+            s[1] = (h[0] + 2.0*h[2]) * c[1] + 2.0*h[1]*c[0]
+        else:  # N == 1
+            s[0] = (h[0] + 2.0*(h[1]+h[2])) * c[0]
+        return
+    if H == 4:
+        if N >= 6:
+            s[0]   = h[0]*c[0] + 2.0*h[1]*c[1] + 2.0*h[2]*c[2] + 2.0*h[3]*c[3]
+            s[1]   = h[0]*c[1] + h[1]*(c[0]+c[2]) + h[2]*(c[1]+c[3]) + h[3]*(c[2]+c[4])
+            s[2]   = h[0]*c[2] + h[1]*(c[1]+c[3]) + h[2]*(c[0]+c[4]) + h[3]*(c[1]+c[5])
+            s[3:-3]= (h[0]*c[3:-3] + h[1]*(c[2:-4]+c[4:-2]) + h[2]*(c[1:-5]+c[5:-1]) + h[3]*(c[0:-6]+c[6:]))
+            s[-3]  = h[0]*c[-3] + h[1]*(c[-4]+c[-2]) + h[2]*(c[-5]+c[-1]) + h[3]*(c[-6]+c[-2])
+            s[-2]  = h[0]*c[-2] + h[1]*(c[-3]+c[-1]) + h[2]*(c[-4]+c[-2]) + h[3]*(c[-5]+c[-3])
+            s[-1]  = h[0]*c[-1] + 2.0*h[1]*c[-2] + 2.0*h[2]*c[-3] + 2.0*h[3]*c[-4]
+        elif N == 5:
+            s[0]=h[0]*c[0]+2.0*h[1]*c[1]+2.0*h[2]*c[2]+2.0*h[3]*c[3]
+            s[1]=h[0]*c[1]+h[1]*(c[0]+c[2])+h[2]*(c[1]+c[3])+h[3]*(c[2]+c[4])
+            s[2]=h[0]*c[2]+(h[1]+h[3])*(c[1]+c[3])+h[2]*(c[0]+c[4])
+            s[3]=h[0]*c[3]+h[1]*(c[2]+c[4])+h[2]*(c[1]+c[3])+h[3]*(c[0]+c[2])
+            s[4]=h[0]*c[4]+2.0*h[1]*c[3]+2.0*h[2]*c[2]+2.0*h[3]*c[1]
+        elif N == 4:
+            s[0]=h[0]*c[0]+2.0*h[1]*c[1]+2.0*h[2]*c[2]+2.0*h[3]*c[3]
+            s[1]=h[0]*c[1]+h[1]*(c[0]+c[2])+h[2]*(c[1]+c[3])+2.0*h[3]*c[2]
+            s[2]=h[0]*c[2]+h[1]*(c[1]+c[3])+h[2]*(c[0]+c[2])+2.0*h[3]*c[1]
+            s[3]=h[0]*c[3]+2.0*h[1]*c[2]+2.0*h[2]*c[1]+2.0*h[3]*c[0]
+        elif N == 3:
+            s[0]=h[0]*c[0]+2.0*(h[1]+h[3])*c[1]+2.0*h[2]*c[2]
+            s[1]=h[0]*c[1]+(h[1]+h[3])*(c[0]+c[2])+2.0*h[2]*c[1]
+            s[2]=h[0]*c[2]+2.0*(h[1]+h[3])*c[1]+2.0*h[2]*c[0]
+        elif N == 2:
+            s[0]=(h[0]+2.0*h[2])*c[0]+2.0*(h[1]+h[3])*c[1]
+            s[1]=(h[0]+2.0*h[2])*c[1]+2.0*(h[1]+h[3])*c[0]
+        else:  # N == 1
+            s[0] = (h[0] + 2.0*(h[1]+h[2]+h[3])) * c[0]
+        return
+    raise ValueError("Invalid filter half-length (should be 2..4)")
 
 def get_samples(c: np.ndarray, deg: int) -> None:
     if deg <= 1: return
