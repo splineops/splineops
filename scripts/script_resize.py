@@ -60,13 +60,14 @@ if TYPE_CHECKING:
 
 # Import splineops (works when run directly or as module)
 try:
-    from splineops.resize.resize import resize as sp_resize
+    # Prefer the simpler, stable path now that resize/__init__.py exists
+    from splineops.resize import resize as sp_resize
 except Exception:
-    repo_root = Path(__file__).resolve().parents[2]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    from splineops.resize.resize import resize as sp_resize
-
+    repo_root = Path(__file__).resolve().parents[1]   # <repo>
+    src_dir   = repo_root / "src"                     # add src/, not repo root
+    if src_dir.exists() and str(src_dir) not in sys.path:
+        sys.path.insert(0, str(src_dir))
+    from splineops.resize import resize as sp_resize
 
 # -------------------------------
 # Image I/O → grayscale [0,1]

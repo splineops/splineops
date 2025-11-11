@@ -22,9 +22,7 @@ import os
 import numpy as np
 import numpy.typing as npt
 
-from splineops.bases.utils import asbasis
-from splineops.spline_interpolation.tensorspline import TensorSpline
-from splineops.resize.ls_oblique_resize import ls_oblique_resize
+from splineops.resize._pycore.engine import python_resize as _python_fallback_resize
 
 # Attempt to import the native acceleration module (optional)
 try:
@@ -185,19 +183,11 @@ def resize(
         )
     else:
         # Python fallback via reference LS/Oblique/Standard solver.
-        # Note: Fallback currently applies a single `method` across all axes.
         py_method = algo  # "interpolation" | "oblique" | "least-squares"
-        if py_method in {"oblique", "least-squares"} and any(z > 1.0 + 1e-12 for z in zoom_factors):
-            # Be conservative under magnification in pure-Python mode
-            py_method = "interpolation"
-        output_shape = tuple(int(round(n * z)) for n, z in zip(data.shape, zoom_factors))
-        output_data = ls_oblique_resize(
-            input_img_normalized=data,           # expects float; tests use float inputs
-            output_size=output_shape,
-            zoom_factors=zoom_factors,
-            method=py_method,
-            interpolation=_DEGREE_TO_NAME[degree],
-            inversable=False,
+        # Magnification policy is enforced per-axis inside python engine,
+        # so we can pass 'py_method' as-is.
+        output_data = _python_fallback_resize(
+            data, zoom_factors, py_method, degree, inversable=False
         )
 
     # ----------------------------
