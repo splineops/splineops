@@ -9,21 +9,25 @@ namespace lsresize {
 double initial_causal(const std::vector<double>& c, double z, double tol) {
   const size_t N = c.size();
   if (N == 0) return 0.0;
-  const double zn = std::pow(z, static_cast<double>(N-1));
 
+  const double zn = std::pow(z, double(N - 1));
   size_t horizon = N;
   if (tol > 0.0) {
-    horizon = std::min<size_t>(N, 2 + static_cast<size_t>(std::log(tol)/std::log(std::abs(z))));
+    horizon = std::min(N, size_t(2 + std::log(tol) / std::log(std::abs(z))));
   }
 
-  // sum = c0 + z^{N-1} c_{N-1} + Σ_{n=1}^{H-2} ( z^n + z^{N-1-n} ) c[n]
-  double sum = c[0] + zn * c[N-1];
+  double sum = c[0] + zn * c[N - 1];
+  // z^n and z^(N-1-n) without pow:
+  double p1 = z;          // z^1
+  double p2 = (N >= 2) ? (zn / z) : 1.0;  // z^(N-2) if N>=2 else 1
   for (size_t n = 1; n + 1 < horizon; ++n) {
-    const double z1 = std::pow(z, static_cast<double>(n));
-    const double z2 = std::pow(z, static_cast<double>(N-1-n));
-    sum += (z1 + z2) * c[n];
+    sum += (p1 + p2) * c[n];
+    p1 *= z;            // z^n -> z^(n+1)
+    p2 /= z;            // z^(N-1-n) -> z^(N-2-n)
   }
-  return sum / (1.0 - std::pow(z, 2.0*static_cast<double>(N-1)));
+
+  const double denom = 1.0 - (zn * zn);   // 1 - z^(2N-2)
+  return sum / denom;
 }
 
 double initial_anti_causal(const std::vector<double>& c, double z) {
