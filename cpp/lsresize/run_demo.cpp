@@ -38,6 +38,17 @@ static std::vector<double> resize_nd(const std::vector<double>& data,
     else if (algo == "oblique") analy_degree = (degree==1 ? 0 : 1);
 
     LSParams p{interp_degree, analy_degree, synthe_degree, zoom[ax], 0.0, inversable};
+
+    // Match Python/native binding policy:
+    const double eps = 1e-12;
+    if (std::abs(p.zoom - 1.0) <= eps) {
+      // identity safety: never project at unity zoom
+      p.analy_degree = -1;
+    } else if (p.zoom > 1.0 + eps && p.analy_degree >= 0) {
+      // magnification -> Standard interpolation
+      p.analy_degree = -1;
+    }
+
     resize_along_axis(tmp_in.data(), tmp_out.data(), cur_shape, next_shape, ax, p);
     tmp_in.swap(tmp_out);
     cur_shape.swap(next_shape);
