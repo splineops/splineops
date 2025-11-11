@@ -164,17 +164,22 @@ def _parse_method_key(method_key: str) -> Tuple[str, str]:
 # Resizing backends (grayscale)
 # -------------------------------
 def _scipy_zoom_gray(data01: np.ndarray, z: float, degree: str) -> np.ndarray:
-    try:
-        from scipy.ndimage import zoom as ndi_zoom
-    except Exception as e:
-        raise RuntimeError("SciPy is required for the selected SciPy method (pip install scipy).") from e
-
+    from scipy.ndimage import zoom as ndi_zoom
     order_map = {"linear": 1, "quadratic": 2, "cubic": 3}
     order = order_map[degree]
 
-    out = ndi_zoom(data01, (z, z), order=order, prefilter=True, mode="reflect")
-    return np.clip(out, 0.0, 1.0)
+    # prefilter only when needed (order >= 3). For linear, it's wasted work.
+    need_prefilter = (order >= 3)
 
+    out = ndi_zoom(
+        data01, (z, z),
+        order=order,
+        prefilter=need_prefilter,
+        mode="reflect",
+        # grid_mode=False is default; leaving it explicit for clarity
+        grid_mode=False
+    )
+    return np.clip(out, 0.0, 1.0)
 
 def _splineops_resize_gray(data01: np.ndarray, z: float, family: str, degree: str) -> np.ndarray:
     # Map to splineops.resize method string
