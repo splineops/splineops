@@ -159,6 +159,14 @@ def _parse_method_key(method_key: str) -> Tuple[str, str]:
     family, degree = method_key.split("-", 1)
     return family, degree  # e.g., ('ls', 'cubic')
 
+def _avg_runtime(fn, runs: int = 10, warmup: bool = True) -> float:
+    """Return average runtime in seconds over `runs` executions (optional warmup)."""
+    if warmup:
+        fn()
+    t0 = time.perf_counter()
+    for _ in range(runs):
+        fn()
+    return (time.perf_counter() - t0) / runs
 
 # -------------------------------
 # Resizing backends (grayscale)
@@ -313,7 +321,7 @@ def _show_gray_image(img01: np.ndarray):
 # Timing + comparison plot
 # ------------------------
 def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
-    """Run the four families at a specific degree; return list of dicts."""
+    """Run the four families at a specific degree; return list of dicts with avg(10) timing."""
     families = [
         ("scipy",   "SciPy"),
         ("standard","Standard"),
@@ -328,17 +336,16 @@ def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
         elapsed = None
         err = None
         try:
-            t0 = time.perf_counter()
+            # Compute once (we display this result), then time an average over 10 runs.
             img = _resize_gray(gray01, key, zoom)
-            elapsed = time.perf_counter() - t0
+            elapsed = _avg_runtime(lambda: _resize_gray(gray01, key, zoom), runs=10, warmup=True)
         except Exception as e:
             err = str(e)
         results.append({"key": key, "label": label, "img": img, "time": elapsed, "error": err})
     return results
 
-
 def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape: Tuple[int, int]):
-    """Single-row mosaic; each panel shows method + time (drawn as titles)."""
+    """Single-row mosaic; each panel shows method + avg(10) time (drawn as titles)."""
     # Compute width ratios based on each image aspect
     heights, widths = [], []
     for r in results:
@@ -355,13 +362,14 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
     fig_w_in = sum(panel_ws_in)
     fig_h_in = panel_h_in + 0.7
 
-    fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=100)
-    gs = gridspec.GridSpec(1, len(results), width_ratios=panel_ws_in, wspace=0.05, hspace=0.0)
+    # Use constrained_layout to avoid the tight_layout warning
+    fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=100, constrained_layout=True)
+    gs = gridspec.GridSpec(1, len(results), width_ratios=panel_ws_in)
 
     for i, r in enumerate(results):
         ax = fig.add_subplot(gs[0, i])
         ax.set_axis_off()
-        title = f"{r['label']}\n{_fmt_time(r['time'])}"
+        title = f"{r['label']}\navg(10): {_fmt_time(r['time'])}"
         if r["img"] is not None:
             ax.imshow(_as_rgb_u8(r["img"]), interpolation="nearest", aspect="equal")
             ax.set_title(title, fontsize=10)
@@ -373,12 +381,11 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
             ax.text(0.5, 0.40, f"{msg}", ha="center", va="center", fontsize=9)
             if detail:
                 ax.text(0.5, 0.28, detail[:48] + ("…" if len(detail) > 48 else ""), ha="center", va="center", fontsize=8)
-            ax.set_title(f"{r['label']}\n{_fmt_time(None)}", fontsize=10)
+            ax.set_title(f"{r['label']}\navg(10): {_fmt_time(None)}", fontsize=10)
 
-    fig.suptitle(f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}", y=0.98, fontsize=12)
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    fig.suptitle(f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}", fontsize=12)
+    # (No tight_layout here; constrained_layout handles it)
     plt.show()
-
 
 # ------------------------
 # Main flow
