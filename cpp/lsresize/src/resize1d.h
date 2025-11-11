@@ -28,7 +28,6 @@ struct Plan1D {
   std::vector<int> row_ptr;
   // For each nonzero (k in support of row l), we store:
   std::vector<int>        ext_index; // index into extended input [0 .. length_total-1]
-  std::vector<signed char> ext_sign; // +1 or -1 (only non-1 for k<0 with antisymmetric)
   std::vector<double>     weights;   // fact * beta(x - k, total_degree)
 };
 

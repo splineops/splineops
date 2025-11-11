@@ -55,7 +55,6 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   }
 
   plan.ext_index.resize(nnz);
-  plan.ext_sign .resize(nnz);
   plan.weights  .resize(nnz);
 
   // Second pass: fill row_ptr / indices / weights
@@ -82,9 +81,10 @@ Plan1D make_plan_1d(int N, const LSParams& p)
 
       idx = std::clamp(idx, 0, plan.length_total - 1);
 
+      double w = fact * beta(x - k, total_degree);
+      if (sign != 1) w = -w;  // fold antisymmetric sign into the weight
       plan.ext_index[static_cast<size_t>(cursor)] = idx;
-      plan.ext_sign [static_cast<size_t>(cursor)] = static_cast<signed char>(sign);
-      plan.weights  [static_cast<size_t>(cursor)] = fact * beta(x - k, total_degree);
+      plan.weights  [static_cast<size_t>(cursor)] = w;
       ++cursor;
     }
   }
@@ -142,10 +142,14 @@ void resize_1d_planned(const std::vector<double>& in,
 
   // 4) Accumulate using the plan (no branches, contiguous weights)
   std::vector<double> y(static_cast<size_t>(plan.out_total), 0.0);
+  {
+  const int* rp = plan.row_ptr.data();
+  const int* ip = plan.ext_index.data();
+  const double* wp = plan.weights.data();
+  const double* ep = ext.data();
   for (int l = 0; l < plan.out_total; ++l) {
-    const int begin = plan.row_ptr[static_cast<size_t>(l)];
-    const int end   = plan.row_ptr[static_cast<size_t>(l)+1];
-
+    const int begin = rp[static_cast<size_t>(l)];
+    const int end   = rp[static_cast<size_t>(l) + 1];
     double acc = 0.0;
 #if defined(_OPENMP) && !defined(_MSC_VER)
     #pragma omp simd reduction(+:acc)
@@ -154,13 +158,11 @@ void resize_1d_planned(const std::vector<double>& in,
     #pragma loop(ivdep)
 #endif
     for (int e = begin; e < end; ++e) {
-      const double w   = plan.weights [static_cast<size_t>(e)];
-      const int    idx = plan.ext_index[static_cast<size_t>(e)];
-      const int    sgn = static_cast<int>(plan.ext_sign[static_cast<size_t>(e)]);
-      acc += w * (sgn * ext[static_cast<size_t>(idx)]);
+      acc += wp[static_cast<size_t>(e)] * ep[static_cast<size_t>(ip[static_cast<size_t>(e)])];
     }
     y[static_cast<size_t>(l)] = acc;
   }
+}
 
   // 5) Projection tail: differentiate, add average, IIR + symmetric FIR sampling
   if (p.analy_degree >= 0) {
