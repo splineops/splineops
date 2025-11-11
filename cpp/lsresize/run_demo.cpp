@@ -347,8 +347,8 @@ static bool resize_and_compare_sinusoid(const double (&java_upscaled)[10][10],
             << "  tol=" << tolerance
             << ( (m1<tolerance && m2<tolerance) ? "  OK\n" : "  FAIL\n" );
 
-  // --- timing: average over 5 runs (1 warmup) ---
-  constexpr int WARMUP = 1, RUNS = 5;
+  // --- timing: average over 10 runs (1 warmup) ---
+  constexpr int WARMUP = 1, RUNS = 10;
 
   // warmup
   for (int w=0; w<WARMUP; ++w) {
@@ -386,7 +386,7 @@ static bool resize_and_compare_sinusoid(const double (&java_upscaled)[10][10],
   auto [mt, sdt] = mean_sd(t_total);
 
   std::cout << std::fixed << std::setprecision(3)
-            << "[Timing avg/5] " << method << " deg=" << degree
+            << "[Timing avg] " << method << " deg=" << degree
             << " sinusoid: up x2.0 " << mu << " +- " << sdu
             << " ms; down x0.5 " << md << " +- " << sdd
             << " ms; total " << mt << " +- " << sdt << " ms\n\n";
