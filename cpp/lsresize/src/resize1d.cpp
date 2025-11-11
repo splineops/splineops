@@ -53,10 +53,10 @@ Plan1D make_plan_1d(int N, const LSParams& p)
 
   // First pass: determine (kmin, kmax) per row, count nnz, track global min/max
   for (int l = 0; l < plan.out_total; ++l) {
-    const double x = l / p.zoom + shift;
-    const int kmin = static_cast<int>(std::ceil (x - half_support));
-    const int kmax = static_cast<int>(std::floor(x + half_support));
-    const int wlen = kmax - kmin + 1;
+    const double x    = l / p.zoom + shift;
+    const int    kmin = static_cast<int>(std::ceil (x - half_support));
+    const int    kmax = static_cast<int>(std::floor(x + half_support));
+    const int    wlen = kmax - kmin + 1;
 
     plan.kmin   [static_cast<size_t>(l)] = kmin;
     plan.win_len[static_cast<size_t>(l)] = wlen;
@@ -78,7 +78,7 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   for (int l = 0; l < plan.out_total; ++l) {
     plan.row_ptr[static_cast<size_t>(l)] = cursor;
 
-    const double x = l / p.zoom + shift;
+    const double x    = l / p.zoom + shift;
     const int    k0   = plan.kmin   [static_cast<size_t>(l)];
     const int    wlen = plan.win_len[static_cast<size_t>(l)];
 
