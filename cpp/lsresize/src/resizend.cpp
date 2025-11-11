@@ -94,17 +94,33 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
         }
 
         // gather 1-D input line
-        line_in.resize(static_cast<size_t>(N_line));
-        for (int64_t i = 0; i < in_shape[static_cast<size_t>(axis)]; ++i) {
-          line_in[static_cast<size_t>(i)] = in[in_off + i * in_strides[static_cast<size_t>(axis)]];
+        const bool contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
+        if (contig_in) {
+          // One-shot block copy when the axis is contiguous
+          line_in.assign(in + in_off, in + in_off + N_line);
+        } else {
+          line_in.resize(static_cast<size_t>(N_line));
+          for (int64_t i = 0; i < in_shape[static_cast<size_t>(axis)]; ++i) {
+            line_in[static_cast<size_t>(i)] =
+                in[in_off + i * in_strides[static_cast<size_t>(axis)]];
+          }
         }
 
         // fast planned path with workspace reuse
         resize_1d_ws(line_in, line_out, p, plan, ws);
 
         // scatter to output
-        for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
-          out[out_off + i * out_strides[static_cast<size_t>(axis)]] = line_out[static_cast<size_t>(i)];
+        const bool contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+        if (contig_out) {
+          // One-shot block write when the axis is contiguous
+          std::memcpy(out + out_off,
+                      line_out.data(),
+                      line_out.size() * sizeof(double));
+        } else {
+          for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
+            out[out_off + i * out_strides[static_cast<size_t>(axis)]] =
+                line_out[static_cast<size_t>(i)];
+          }
         }
       }
     }
@@ -147,8 +163,17 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
       resize_1d_ws(line_in, line_out, p, plan, ws);
 
       // scatter to output
-      for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
-        out[out_off + i * out_strides[static_cast<size_t>(axis)]] = line_out[static_cast<size_t>(i)];
+      const bool contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+      if (contig_out) {
+        // One-shot block write when the axis is contiguous
+        std::memcpy(out + out_off,
+                    line_out.data(),
+                    line_out.size() * sizeof(double));
+      } else {
+        for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
+          out[out_off + i * out_strides[static_cast<size_t>(axis)]] =
+              line_out[static_cast<size_t>(i)];
+        }
       }
     }
   }
