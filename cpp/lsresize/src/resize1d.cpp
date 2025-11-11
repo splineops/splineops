@@ -8,9 +8,35 @@
 #include <cmath>
 #include <vector>
 
+#if defined(__AVX2__)
+  #include <immintrin.h>
+#endif
+
 namespace lsresize {
 
-// Build the reusable 1-D plan (window metadata + contiguous weights)
+// Optional tiny AVX2 FMA dot kernel (falls back to scalar when not available)
+static inline double dot_small(const double* w, const double* v, int M) {
+#if defined(__AVX2__)
+  __m256d acc0 = _mm256_setzero_pd();
+  int t = 0;
+  for (; t + 4 <= M; t += 4) {
+    __m256d ww = _mm256_loadu_pd(w + t);
+    __m256d vv = _mm256_loadu_pd(v + t);
+    acc0 = _mm256_fmadd_pd(ww, vv, acc0);
+  }
+  alignas(32) double tmp[4];
+  _mm256_store_pd(tmp, acc0);
+  double acc = tmp[0] + tmp[1] + tmp[2] + tmp[3];
+  for (; t < M; ++t) acc += w[t] * v[t];
+  return acc;
+#else
+  double acc = 0.0;
+  for (int t = 0; t < M; ++t) acc += w[t] * v[t];
+  return acc;
+#endif
+}
+
+// Build the reusable 1-D plan (window metadata + contiguous weights + pad map)
 Plan1D make_plan_1d(int N, const LSParams& p)
 {
   Plan1D plan{};
@@ -29,7 +55,7 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   const int add_border   = std::max(border(outN, corr_degree), total_degree);
   plan.out_total         = outN + add_border;
 
-  // Center shift (matches Python path)
+  // Center shift (matches Python/native path)
   double shift = p.shift;
   if (p.analy_degree >= 0) {
     const double t = (p.analy_degree + 1.0) / 2.0;
@@ -51,7 +77,7 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   int min_kmin =  0;
   int max_kmax = -1;
 
-  // First pass: determine (kmin, kmax) per row, count nnz, track global min/max
+  // First pass: (kmin, kmax) per row, nnz, global min/max
   for (int l = 0; l < plan.out_total; ++l) {
     const double x    = l / p.zoom + shift;
     const int    kmin = static_cast<int>(std::ceil (x - half_support));
@@ -66,9 +92,25 @@ Plan1D make_plan_1d(int N, const LSParams& p)
     if (kmax > max_kmax) max_kmax = kmax;
   }
 
-  // Global pads for a single extended buffer: [ left_pad | ext | right_pad ]
+  // Global pads to build a single contiguous extended buffer: [LP | ext | RP]
   plan.left_pad  = std::max(0, -min_kmin);
   plan.right_pad = std::max(0,  max_kmax - (plan.length_total - 1));
+
+  // Precompute left pad mapping for negative indices (removes per-line mirror math)
+  plan.pad_src_idx.resize(static_cast<size_t>(plan.left_pad));
+  plan.pad_src_sgn.resize(static_cast<size_t>(plan.left_pad), 1);
+  for (int t = 1; t <= plan.left_pad; ++t) {
+    const int pos = plan.left_pad - t; // 0 .. left_pad-1
+    if (plan.symmetric_ext) {
+      // symmetric: -t -> +coeff[t]
+      plan.pad_src_idx[static_cast<size_t>(pos)] = t;   // clamped later to [0, N-1]
+      plan.pad_src_sgn[static_cast<size_t>(pos)] =  1;
+    } else {
+      // antisymmetric: -t -> -coeff[t-1]
+      plan.pad_src_idx[static_cast<size_t>(pos)] = t - 1;
+      plan.pad_src_sgn[static_cast<size_t>(pos)] = -1;
+    }
+  }
 
   // Allocate contiguous weights; fold antisymmetric sign into weights
   plan.weights.resize(static_cast<size_t>(nnz));
@@ -84,14 +126,10 @@ Plan1D make_plan_1d(int N, const LSParams& p)
 
     for (int t = 0; t < wlen; ++t) {
       const int k = k0 + t;
-
-      // Sign from antisymmetric boundary for negative k only
       int sign = 1;
       if (k < 0 && !plan.symmetric_ext) sign = -1;
-
       double w = fact * beta(x - k, total_degree);
       if (sign != 1) w = -w;
-
       plan.weights[static_cast<size_t>(cursor++)] = w;
     }
   }
@@ -100,11 +138,14 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   return plan;
 }
 
-// Planned version — uses precomputed windows/weights; only data-dependent work remains.
-void resize_1d_planned(const std::vector<double>& in,
-                       std::vector<double>& out,
-                       const LSParams& p,
-                       const Plan1D& plan)
+static inline void resize_1d_core(const std::vector<double>& in,
+                                  std::vector<double>& out,
+                                  const LSParams& p,
+                                  const Plan1D& plan,
+                                  std::vector<double>& coeff,
+                                  std::vector<double>& ext,
+                                  std::vector<double>& ext_full,
+                                  std::vector<double>& y)
 {
   const int N = plan.N;
   if (N == 0) { out.clear(); return; }
@@ -114,7 +155,7 @@ void resize_1d_planned(const std::vector<double>& in,
                         : (p.analy_degree + p.synthe_degree + 1);
 
   // 1) Interpolation coefficients (causal/anti-causal IIR on input)
-  std::vector<double> coeff = in;
+  coeff.assign(in.begin(), in.end());
   get_interpolation_coefficients(coeff, p.interp_degree);
 
   // 2) Optional projection integration
@@ -124,7 +165,7 @@ void resize_1d_planned(const std::vector<double>& in,
   }
 
   // 3) Build the finite extended buffer once (right tail only)
-  std::vector<double> ext(static_cast<size_t>(plan.length_total));
+  ext.resize(static_cast<size_t>(plan.length_total));
   std::copy(coeff.begin(), coeff.end(), ext.begin());
   if (plan.length_total > N) {
     if (plan.symmetric_ext) {
@@ -151,24 +192,17 @@ void resize_1d_planned(const std::vector<double>& in,
   // 3b) Single padded buffer for contiguous window access: [LP | ext | RP]
   const int LP = plan.left_pad;
   const int RP = plan.right_pad;
-  std::vector<double> ext_full(static_cast<size_t>(LP + plan.length_total + RP));
+  ext_full.resize(static_cast<size_t>(LP + plan.length_total + RP));
 
-  // Left pad for negative k: mirror around 0 with correct sign rule
+  // Left pad using the precomputed mapping
   if (LP > 0) {
-    if (plan.symmetric_ext) {
-      // symmetric: k = -t -> +coeff[t]
-      for (int t = 1; t <= LP; ++t) {
-        const int pos = LP - t;                  // target in ext_full
-        const int src = std::min(t, std::max(0, N - 1));
-        ext_full[static_cast<size_t>(pos)] = coeff[static_cast<size_t>(src)];
-      }
-    } else {
-      // antisymmetric: k = -t -> -coeff[t-1]
-      for (int t = 1; t <= LP; ++t) {
-        const int pos = LP - t;
-        const int src = std::min(t - 1, std::max(0, N - 1));
-        ext_full[static_cast<size_t>(pos)] = -coeff[static_cast<size_t>(src)];
-      }
+#if defined(_OPENMP) && !defined(_MSC_VER)
+    #pragma omp simd
+#endif
+    for (int i = 0; i < LP; ++i) {
+      const int src = std::min(std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0), std::max(0, N - 1));
+      const int sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(i)]);
+      ext_full[static_cast<size_t>(i)] = sgn * coeff[static_cast<size_t>(src)];
     }
   }
 
@@ -182,7 +216,7 @@ void resize_1d_planned(const std::vector<double>& in,
   }
 
   // 4) Accumulate using the plan (contiguous weights & samples)
-  std::vector<double> y(static_cast<size_t>(plan.out_total), 0.0);
+  y.assign(static_cast<size_t>(plan.out_total), 0.0);
   {
     const int*    __restrict rp = plan.row_ptr.data();
     const double* __restrict ww = plan.weights.data();
@@ -197,15 +231,7 @@ void resize_1d_planned(const std::vector<double>& in,
       const double* __restrict w = ww + begin;
       const double* __restrict v = vf + (LP + k0);
 
-      double acc = 0.0;
-#if defined(_OPENMP) && !defined(_MSC_VER)
-      #pragma omp simd reduction(+:acc)
-#endif
-#if defined(_MSC_VER)
-      #pragma loop(ivdep)
-#endif
-      for (int t = 0; t < M; ++t) acc += w[t] * v[t];
-
+      const double acc = dot_small(w, v, M);
       y[static_cast<size_t>(l)] = acc;
     }
   }
@@ -222,13 +248,14 @@ void resize_1d_planned(const std::vector<double>& in,
   out.assign(y.begin(), y.begin() + plan.outN);
 }
 
-// Keep legacy symbol; if used directly, it will still work (builds a one-off plan).
-void resize_1d(const std::vector<double>& in,
-               std::vector<double>& out,
-               const LSParams& p)
+// Public, allocation-free wrapper
+void resize_1d_ws(const std::vector<double>& in,
+                  std::vector<double>& out,
+                  const LSParams& p,
+                  const Plan1D& plan,
+                  Work1D& ws)
 {
-  Plan1D plan = make_plan_1d(static_cast<int>(in.size()), p);
-  resize_1d_planned(in, out, p, plan);
+  resize_1d_core(in, out, p, plan, ws.coeff, ws.ext, ws.ext_full, ws.y);
 }
 
 } // namespace lsresize

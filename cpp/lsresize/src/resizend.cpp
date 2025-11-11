@@ -7,6 +7,7 @@
 #include <numeric>
 #include <cstdint>
 #include <algorithm>
+#include <cmath>    // std::abs
 
 namespace lsresize {
 
@@ -18,6 +19,12 @@ static std::vector<int64_t> strides_from_shape(const std::vector<int64_t>& shape
   return s;
 }
 
+static inline int64_t prod_elems(const std::vector<int64_t>& shape) {
+  int64_t p = 1;
+  for (int64_t v : shape) p *= v;
+  return p;
+}
+
 void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
                        const std::vector<int64_t>& in_shape,
                        const std::vector<int64_t>& out_shape,
@@ -27,6 +34,19 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
   const int D = static_cast<int>(in_shape.size());
   const auto in_strides  = strides_from_shape(in_shape);
   const auto out_strides = strides_from_shape(out_shape);
+
+  // Early identity short-circuit on this axis:
+  {
+    const double eps = 1e-12;
+    const bool identity_axis = (out_shape[static_cast<size_t>(axis)] == in_shape[static_cast<size_t>(axis)]) &&
+                               (std::abs(p.zoom - 1.0) <= eps) &&
+                               (p.analy_degree < 0); // Standard interpolation (no projection)
+    if (identity_axis) {
+      const int64_t total = prod_elems(in_shape); // in_shape == out_shape in this pass
+      std::copy(in, in + total, out);
+      return;
+    }
+  }
 
   // total number of independent 1-D lines (all dims except 'axis')
   int64_t nlines = 1;
@@ -41,14 +61,15 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
 
   // Build the per-axis plan ONCE (shared read-only across threads)
   const int N_line = static_cast<int>(in_shape[static_cast<size_t>(axis)]);
-  Plan1D plan = make_plan_1d(N_line, p);
+  const Plan1D plan = make_plan_1d(N_line, p);
 
 #if defined(_OPENMP)
   if (nlines > 64) {
     // Parallel path
     #pragma omp parallel
     {
-      // per-thread reusable buffers
+      // per-thread reusable workspace + helpers
+      Work1D ws;
       std::vector<int64_t> idx(D, 0);
       std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(N_line));
       std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(plan.outN));
@@ -68,7 +89,7 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
         // offsets at the start of this line
         int64_t in_off = 0, out_off = 0;
         for (int d = 0; d < D; ++d) if (d != axis) {
-          in_off  += idx[static_cast<size_t>(d)] * in_strides[static_cast<size_t>(d)];
+          in_off  += idx[static_cast<size_t>(d)] * in_strides [static_cast<size_t>(d)];
           out_off += idx[static_cast<size_t>(d)] * out_strides[static_cast<size_t>(d)];
         }
 
@@ -78,8 +99,8 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
           line_in[static_cast<size_t>(i)] = in[in_off + i * in_strides[static_cast<size_t>(axis)]];
         }
 
-        // planned fast path
-        resize_1d_planned(line_in, line_out, p, plan);
+        // fast planned path with workspace reuse
+        resize_1d_ws(line_in, line_out, p, plan, ws);
 
         // scatter to output
         for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
@@ -93,6 +114,7 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
 
   // Serial path (or parallel disabled / small problem)
   {
+    Work1D ws;
     std::vector<int64_t> idx(D, 0);
     std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(N_line));
     std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(plan.outN));
@@ -111,7 +133,7 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
       // offsets at the start of this line
       int64_t in_off = 0, out_off = 0;
       for (int d = 0; d < D; ++d) if (d != axis) {
-        in_off  += idx[static_cast<size_t>(d)] * in_strides[static_cast<size_t>(d)];
+        in_off  += idx[static_cast<size_t>(d)] * in_strides [static_cast<size_t>(d)];
         out_off += idx[static_cast<size_t>(d)] * out_strides[static_cast<size_t>(d)];
       }
 
@@ -121,8 +143,8 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
         line_in[static_cast<size_t>(i)] = in[in_off + i * in_strides[static_cast<size_t>(axis)]];
       }
 
-      // planned fast path
-      resize_1d_planned(line_in, line_out, p, plan);
+      // fast planned path with workspace reuse
+      resize_1d_ws(line_in, line_out, p, plan, ws);
 
       // scatter to output
       for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {

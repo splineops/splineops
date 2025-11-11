@@ -26,7 +26,7 @@ struct Plan1D {
   // CSR-style layout for variable window sizes per output position l
   // row_ptr.size() == out_total + 1; for each row l, weights[row_ptr[l] ... row_ptr[l+1]-1]
   std::vector<int>    row_ptr;     // offsets into weights (contiguous per row)
-  std::vector<double> weights;     // fact * beta(x - k, total_degree), with antisym sign folded in
+  std::vector<double> weights;     // fact * beta(x - k, total_degree), antisym sign folded in
 
   // Per-row window metadata for contiguous access
   std::vector<int> kmin;           // window start index kmin[l]
@@ -35,20 +35,29 @@ struct Plan1D {
   // Global pads to build a single contiguous extended buffer
   int left_pad  = 0;               // max(0, -min_kmin across rows)
   int right_pad = 0;               // max(0,  max_kmax - (length_total-1))
+
+  // Precomputed left-pad mapping for negative indices: -t -> sign * coeff[src]
+  // (size == left_pad). This removes per-line mirror math.
+  std::vector<int>  pad_src_idx;   // source index in coeff (clamped later to [0, N-1])
+  std::vector<char> pad_src_sgn;   // +1 / -1
 };
 
-// Legacy entry (kept for API compatibility)
-void resize_1d(const std::vector<double>& in,
-               std::vector<double>& out,
-               const LSParams& p);
+// Per-thread reusable workspace to avoid per-line allocations
+struct Work1D {
+  std::vector<double> coeff;     // interpolation coefficients
+  std::vector<double> ext;       // finite extension (right tail only)
+  std::vector<double> ext_full;  // [left_pad | ext | right_pad] single buffer
+  std::vector<double> y;         // accumulator / tail buffer
+};
 
-// Build a reusable plan once per axis
+// Build the reusable plan once per axis.
 Plan1D make_plan_1d(int N, const LSParams& p);
 
-// Fast path using a precomputed plan
-void resize_1d_planned(const std::vector<double>& in,
-                       std::vector<double>& out,
-                       const LSParams& p,
-                       const Plan1D& plan);
+// Allocation-free fast path: reuse the provided workspace.
+void resize_1d_ws(const std::vector<double>& in,
+                  std::vector<double>& out,
+                  const LSParams& p,
+                  const Plan1D& plan,
+                  Work1D& ws);
 
 } // namespace lsresize
