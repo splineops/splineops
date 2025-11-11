@@ -19,7 +19,7 @@
 
 import numpy as np
 import numpy.typing as npt
-from typing import Sequence
+from typing import Sequence, Dict, Any, List
 from splineops.resize.utils import (
     beta, get_interpolation_coefficients, get_samples,
     do_integ, do_diff, calculate_final_size, border
@@ -77,24 +77,98 @@ class LS_Oblique_Resize:
         Initialize the LS_Oblique_Resize object with default parameters.
         """
         # Initialization of parameters
-        self.interp_degree: int = None
-        self.analy_degree: int = None
-        self.synthe_degree: int = None
-        self.zoom_factors: Sequence[float] = None
-        self.shifts: Sequence[float] = None
-        self.inversable: bool = None
-        self.analy_even: int = 0
-        self.corr_degree: int = None
-        self.half_support: float = None
-        self.spline_arrays: list[npt.NDArray] = []
-        self.index_min_list: list[npt.NDArray] = []
-        self.index_max_list: list[npt.NDArray] = []
-        self.add_vector_list: list[npt.NDArray] = []
-        self.add_output_vector_list: list[npt.NDArray] = []
-        self.period_sym_list: list[int] = []
-        self.period_asym_list: list[int] = []
-        self.length_totals: list[int] = []
-        self.length_output_totals: list[int] = []
+        self.interp_degree: int = -1
+        self.analy_degree: int = -1
+        self.synthe_degree: int = -1
+        self.zoom_factors: Sequence[float] = ()
+        self.shifts: Sequence[float] = ()
+        self.inversable: bool = False
+        self.plans: List[Dict[str, Any]] = []   # per-dimension plans
+
+    # ---------------------------
+    # Plan builder (once per axis)
+    # ---------------------------
+    def _build_plan_for_axis(
+        self,
+        ny: int,
+        zoom: float,
+        shift: float,
+        output_size: int,
+        interp_degree: int,
+        analy_degree: int,
+        synthe_degree: int
+    ) -> Dict[str, Any]:
+        # degrees/support
+        total_degree = interp_degree + analy_degree + 1
+        corr_degree  = (interp_degree if analy_degree < 0 else analy_degree + synthe_degree + 1)
+        half_support = 0.5 * (total_degree + 1)
+
+        # shift used by analysis stage (matches C++ & tests)
+        if analy_degree >= 0:
+            t = (analy_degree + 1.0) / 2.0
+            shift = shift + (t - np.floor(t)) * (1.0 / zoom - 1.0)
+
+        # output tail sizing
+        add_border   = max(border(output_size, corr_degree), total_degree)
+        out_total    = output_size + add_border
+        length_total = ny + int(np.ceil(add_border / zoom))
+
+        # window metadata
+        l = np.arange(out_total, dtype=np.float64)
+        x = l / zoom + shift
+        kmin = np.ceil(x - half_support).astype(np.int32)
+        kmax = np.floor(x + half_support).astype(np.int32)
+        wlen = (kmax - kmin + 1).astype(np.int32)
+        win_len_max = int(wlen.max())
+
+        # Build weights 2D (out_total, win_len_max); fill variable-length rows
+        weights = np.zeros((out_total, win_len_max), dtype=np.float64)
+        fact = (zoom ** (analy_degree + 1)) if analy_degree >= 0 else 1.0
+        # compute per-row weights once (this happens once per axis)
+        for i in range(out_total):
+            m = int(wlen[i])
+            if m <= 0:
+                continue
+            ks = kmin[i] + np.arange(m, dtype=np.int32)
+            # beta is scalar; loop once per row is OK (done once/axis)
+            row = np.empty(m, dtype=np.float64)
+            dx = x[i] - ks.astype(np.float64)
+            for t in range(m):
+                row[t] = fact * beta(dx[t], total_degree)
+            weights[i, :m] = row
+
+        # left/right pad sizes for a unified buffer [LP | ext | RP]
+        min_kmin = int(kmin.min())
+        max_kmax = int(kmax.max())
+        LP = max(0, -min_kmin)
+        RP = max(0, max_kmax - (length_total - 1))
+
+        # Precompute 2-D indices into ext_full for gathers: LP + (kmin + t)
+        tgrid = np.arange(win_len_max, dtype=np.int32)[None, :]   # shape (1, win_len_max)
+        idx2d = (LP + (kmin[:, None] + tgrid)).astype(np.int64)   # shape (out_total, win_len_max)
+
+        # Save plan
+        plan = dict(
+            ny=ny,
+            zoom=zoom,
+            analy_degree=analy_degree,
+            synthe_degree=synthe_degree,
+            interp_degree=interp_degree,
+            total_degree=total_degree,
+            corr_degree=corr_degree,
+            out_size=output_size,
+            out_total=out_total,
+            length_total=length_total,
+            LP=LP, RP=RP,
+            kmin=kmin, wlen=wlen,
+            weights=weights,          # (out_total, win_len_max)
+            idx2d=idx2d,              # (out_total, win_len_max)
+            win_len_max=win_len_max,
+            analy_even=int((analy_degree + 1) % 2 == 0),
+            period_sym=2 * ny - 2,
+            period_asym=2 * ny - 3,
+        )
+        return plan
 
     def compute_zoom(
         self,
@@ -107,175 +181,122 @@ class LS_Oblique_Resize:
         shifts: Sequence[float],
         inversable: bool
     ) -> None:
-        """
-        Compute the zoomed (resized) image using spline interpolation.
-
-        Parameters
-        ----------
-        input_img : np.ndarray
-            The input image to be resized.
-        output_img : np.ndarray
-            The output image (preallocated) to store the resized image.
-        analy_degree : int
-            Degree of the analysis spline.
-        synthe_degree : int
-            Degree of the synthesis spline.
-        interp_degree : int
-            Degree of the interpolation spline.
-        zoom_factors : Sequence[float]
-            Zoom factors per dimension.
-        shifts : Sequence[float]
-            Shifts per dimension (usually zero).
-        inversable : bool
-            Indicates if the resizing should adjust sizes to ensure invertibility.
-        """
         self.interp_degree = interp_degree
-        self.analy_degree = analy_degree
+        self.analy_degree  = analy_degree
         self.synthe_degree = synthe_degree
-        self.zoom_factors = zoom_factors
-        self.shifts = shifts
-        self.inversable = inversable
+        self.zoom_factors  = zoom_factors
+        self.shifts        = shifts
+        self.inversable    = inversable
 
         n_dims = input_img.ndim
-        input_shape = input_img.shape
+        in_shape = input_img.shape
 
-        # Determine if the analysis function is even or odd
-        # This affects the boundary conditions (symmetric or antisymmetric)
-        self.analy_even = int((analy_degree + 1) % 2 == 0)
-        # For example:
-        # If analy_degree = 2 (Quadratic), analy_even = int((2 + 1) % 2 == 0) = int(3 % 2 == 0) = 0 (odd)
-        # If analy_degree = 3 (Cubic), analy_even = int((3 + 1) % 2 == 0) = int(4 % 2 == 0) = 1 (even)
+        # final sizes per axis
+        working_sizes, final_sizes = calculate_final_size(inversable, in_shape, zoom_factors)
 
-        total_degree = interp_degree + analy_degree + 1
-        self.corr_degree = analy_degree + synthe_degree + 1
-        self.half_support = (total_degree + 1) / 2.0
+        # Build all plans once per dimension
+        self.plans = []
+        for ax in range(n_dims):
+            plan = self._build_plan_for_axis(
+                ny=working_sizes[ax],
+                zoom=float(zoom_factors[ax]),
+                shift=float(shifts[ax]),
+                output_size=final_sizes[ax],
+                interp_degree=interp_degree,
+                analy_degree=analy_degree,
+                synthe_degree=synthe_degree
+            )
+            self.plans.append(plan)
 
-        # Calculate working and final sizes per dimension
-        self.working_sizes, self.final_sizes = calculate_final_size(
-            inversable, input_shape, zoom_factors)
-
-        # Initialize lists to store per-dimension variables
-        self.index_min_list = []
-        self.index_max_list = []
-        self.spline_arrays = []
-        self.add_vector_list = []
-        self.add_output_vector_list = []
-        self.period_sym_list = []
-        self.period_asym_list = []
-        self.length_totals = []
-        self.length_output_totals = []
-
-        # Precompute spline coefficients and indices for each dimension
-        for dim in range(n_dims):
-            ny = self.working_sizes[dim]
-            zoom = self.zoom_factors[dim]
-            shift = self.shifts[dim]
-            final_size = self.final_sizes[dim]
-
-            # Compute the additional border required based on the correlation degree
-            add_border = max(border(final_size, self.corr_degree), total_degree)
-            final_total_size = final_size + add_border
-            # Calculate the extended length of the input vector
-            length_total = ny + int(np.ceil(add_border / zoom))
-            self.length_totals.append(length_total)
-            self.length_output_totals.append(final_total_size)
-
-            # Shift adjustments to align the sampling grids
-            shift += ((analy_degree + 1.0) / 2.0 - np.floor((analy_degree + 1.0) / 2.0)) * (1.0 / zoom - 1.0)
-            # Scaling factor for the spline coefficients
-            fact = np.power(zoom, analy_degree + 1)
-
-            # Compute the affine indices (positions in the input image corresponding to output positions)
-            l_range = np.arange(final_total_size)
-            affine_indices = l_range / zoom + shift
-            # Determine the range of indices over which the spline function is non-zero
-            index_min = np.ceil(affine_indices - self.half_support).astype(int)
-            index_max = np.floor(affine_indices + self.half_support).astype(int)
-
-            # Initialize spline array to store precomputed spline values
-            length_spline_array = final_total_size * (2 + total_degree)
-            spline_array = np.zeros(length_spline_array)
-
-            # Compute the spline coefficients for each output position
-            i = 0
-            for l in range(final_total_size):
-                for k in range(index_min[l], index_max[l] + 1):
-                    spline_array[i] = fact * beta(affine_indices[l] - k, total_degree)
-                    i += 1
-
-            # Store per-dimension variables
-            self.index_min_list.append(index_min)
-            self.index_max_list.append(index_max)
-            self.spline_arrays.append(spline_array)
-
-            # Periods for boundary conditions (used in signal extension)
-            period_sym = 2 * ny - 2        # For symmetric extension
-            period_asym = 2 * ny - 3       # For antisymmetric extension
-            self.period_sym_list.append(period_sym)
-            self.period_asym_list.append(period_asym)
-
-            # Initialize auxiliary vectors for resampling
-            add_vector = np.zeros(length_total)
-            add_output_vector = np.zeros(final_total_size)
-            self.add_vector_list.append(add_vector)
-            self.add_output_vector_list.append(add_output_vector)
-
-        # Begin resizing process
-        image = input_img.copy()
-
-        # Process each dimension separately
-        for dim in range(n_dims):
-            # Move current dimension to axis 0 for processing
+        # Resample axis by axis
+        image = np.asarray(input_img, dtype=np.float64, order="C")
+        for dim, plan in enumerate(self.plans):
+            # move dim to front -> shape (N, rest)
             image = np.moveaxis(image, dim, 0)
+            N = image.shape[0]
+            cols = int(np.prod(image.shape[1:] or (1,)))
+            X = image.reshape(N, cols)
 
-            # Prepare per-dimension variables
-            index_min = self.index_min_list[dim]
-            index_max = self.index_max_list[dim]
-            spline_array = self.spline_arrays[dim]
-            period_sym = self.period_sym_list[dim]
-            period_asym = self.period_asym_list[dim]
-            add_vector = self.add_vector_list[dim]
-            add_output_vector = self.add_output_vector_list[dim]
-            length_total = self.length_totals[dim]
-            length_output_total = self.length_output_totals[dim]
-            output_size = self.final_sizes[dim]
+            # prepare outputs
+            Y = np.empty((plan["out_size"], cols), dtype=np.float64)
 
-            # Reshape image for processing along current dimension
-            shape = image.shape
-            reshaped_image = image.reshape(shape[0], -1)
-            output_shape = (output_size,) + shape[1:]
-            output_image = np.zeros(output_shape, dtype=image.dtype)
-            reshaped_output = output_image.reshape(output_shape[0], -1)
+            # one set of reusable buffers per column
+            coeff  = np.empty(N, dtype=np.float64)
+            ext    = np.empty(plan["length_total"], dtype=np.float64)
+            ext_full = np.empty(plan["LP"] + plan["length_total"] + plan["RP"], dtype=np.float64)
+            add_out = np.empty(plan["out_total"], dtype=np.float64)  # for tail ops
 
-            # Process each line (1D signal along the current dimension)
-            for idx in range(reshaped_image.shape[1]):
-                input_vector = reshaped_image[:, idx]
-                output_vector = np.zeros(output_size)
+            # process each 1-D line
+            for j in range(cols):
+                coeff[:] = X[:, j]
+                # 1) interpolation coefficients
+                get_interpolation_coefficients(coeff, plan["interp_degree"])
 
-                # Get interpolation coefficients for the input vector
-                get_interpolation_coefficients(input_vector, interp_degree)
+                # 2) optional integration
+                average = 0.0
+                if plan["analy_degree"] >= 0:
+                    average = do_integ(coeff, plan["analy_degree"] + 1)
 
-                # Resampling step: compute the output vector
-                self.resampling(
-                    input_vector=input_vector,
-                    output_vector=output_vector,
-                    add_vector=add_vector,
-                    add_output_vector=add_output_vector,
-                    max_sym_boundary=period_sym,
-                    max_asym_boundary=period_asym,
-                    index_min=index_min,
-                    index_max=index_max,
-                    spline_array=spline_array
-                )
+                # 3) build the finite extension ext[0:len_total]
+                ext[:N] = coeff
+                if plan["length_total"] > N:
+                    l = np.arange(N, plan["length_total"])
+                    if plan["analy_even"] == 1:  # symmetric
+                        if plan["period_sym"] > 0:
+                            lk = np.where(l >= plan["period_sym"], l % plan["period_sym"], l)
+                        else:
+                            lk = l
+                        lk = np.where(lk >= N, plan["period_sym"] - lk, lk)
+                        lk = np.clip(lk, 0, N - 1)
+                        ext[N:] = coeff[lk]
+                    else:  # antisymmetric
+                        if plan["period_asym"] > 0:
+                            lk = np.where(l >= plan["period_asym"], l % plan["period_asym"], l)
+                        else:
+                            lk = l
+                        lk = np.where(lk >= N, plan["period_asym"] - lk, lk)
+                        lk = np.clip(lk, 0, N - 1)
+                        ext[N:] = -coeff[lk]
 
-                # Store the output vector
-                reshaped_output[:, idx] = output_vector
+                # 3b) ext_full = [LP | ext | RP]
+                if plan["LP"] > 0:
+                    # precompute left pad once per line (mirror around zero)
+                    # symmetric: -t -> +coeff[t]; antisym: -t -> -coeff[t-1]
+                    t = np.arange(1, plan["LP"] + 1)
+                    if plan["analy_even"] == 1:
+                        src = np.clip(t, 0, N - 1)
+                        ext_full[plan["LP"] - t] = coeff[src]
+                    else:
+                        src = np.clip(t - 1, 0, N - 1)
+                        ext_full[plan["LP"] - t] = -coeff[src]
+                ext_full[plan["LP"]:plan["LP"] + plan["length_total"]] = ext
+                if plan["RP"] > 0:
+                    ext_full[plan["LP"] + plan["length_total"]:] = ext[-1]
 
-            # Reshape back to original dimensions and move axis back
-            image = output_image.reshape(output_shape)
+                # 4) accumulate with vectorized gather + dot
+                # Gather all needed samples: (out_total, win_len_max)
+                gather = np.take(ext_full, plan["idx2d"], mode="clip")
+                # Zero out padded slots beyond each row length
+                if plan["win_len_max"] > 1:
+                    mask = (np.arange(plan["win_len_max"])[None, :] >= plan["wlen"][:, None])
+                    if mask.any():
+                        gather[mask] = 0.0
+
+                add_out[:] = (plan["weights"] * gather).sum(axis=1)
+
+                # 5) projection tail
+                if plan["analy_degree"] >= 0:
+                    do_diff(add_out, plan["analy_degree"] + 1)
+                    add_out[:plan["out_total"]] += average
+                    get_interpolation_coefficients(add_out, plan["corr_degree"])
+                    get_samples(add_out, plan["synthe_degree"])
+
+                # 6) crop to output size
+                Y[:, j] = add_out[:plan["out_size"]]
+
+            image = Y.reshape((plan["out_size"],) + image.shape[1:])
             image = np.moveaxis(image, 0, dim)
 
-        # Copy the final resized image to output_img
         np.copyto(output_img, image)
 
     def resampling(
