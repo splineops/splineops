@@ -122,20 +122,42 @@ class LS_Oblique_Resize:
         win_len_max = int(wlen.max())
 
         # Build weights 2D (out_total, win_len_max); fill variable-length rows
-        weights = np.zeros((out_total, win_len_max), dtype=np.float64)
-        fact = (zoom ** (analy_degree + 1)) if analy_degree >= 0 else 1.0
-        # compute per-row weights once (this happens once per axis)
-        for i in range(out_total):
-            m = int(wlen[i])
-            if m <= 0:
-                continue
-            ks = kmin[i] + np.arange(m, dtype=np.int32)
-            # beta is scalar; loop once per row is OK (done once/axis)
-            row = np.empty(m, dtype=np.float64)
-            dx = x[i] - ks.astype(np.float64)
-            for t in range(m):
-                row[t] = fact * beta(dx[t], total_degree)
-            weights[i, :m] = row
+        idx_t = np.arange(win_len_max, dtype=np.int32)[None, :]           # (1, T)
+        ks_mat = (kmin[:, None] + idx_t).astype(np.float64)               # (L, T)
+        dx_mat = x[:, None] - ks_mat                                      # (L, T)
+
+        # Vectorized beta for degrees 0..3 covers your use; extend if you ever use >3
+        def _beta_mat(dx, n):
+            ax = np.abs(dx)
+            out = np.zeros_like(dx)
+            if n == 0:
+                out[(ax < 0.5) | (dx == -0.5)] = 1.0
+                return out
+            if n == 1:
+                m = (ax < 1.0)
+                out[m] = 1.0 - ax[m]
+                return out
+            if n == 2:
+                m0 = (ax < 0.5); m1 = (~m0) & (ax < 1.5)
+                out[m0] = 0.75 - ax[m0]*ax[m0]
+                t = ax[m1] - 1.5
+                out[m1] = 0.5 * (t*t)
+                return out
+            if n == 3:
+                m0 = (ax < 1.0); m1 = (~m0) & (ax < 2.0)
+                out[m0] = 0.5*ax[m0]*ax[m0]*(ax[m0] - 2.0) + 2.0/3.0
+                t = ax[m1] - 2.0
+                out[m1] = -(t*t*t) / 6.0
+                return out
+            # fallback (rare in your tests)
+            out[:] = np.vectorize(beta, otypes=[float])(dx, n)
+            return out
+
+        weights = ((zoom ** (analy_degree + 1)) if analy_degree >= 0 else 1.0) * _beta_mat(dx_mat, total_degree)
+
+        # mask out padded taps (those >= wlen per row)
+        mask = (idx_t >= wlen[:, None])
+        weights[mask] = 0.0
 
         # left/right pad sizes for a unified buffer [LP | ext | RP]
         min_kmin = int(kmin.min())
