@@ -20,6 +20,29 @@ static std::vector<int64> shape_to_vec_i64(const py::array &a) {
     return s;
 }
 
+/**
+ * @brief Per-axis policy for magnification: use Standard interpolation.
+ *
+ * For upsampling (zoom > 1) the LS/Oblique projections tend to behave like
+ * a deconvolution (due to the analysis stage and the scale a^(n1+1)), which
+ * can amplify high-frequency content and introduce ringing/overshoot near
+ * sharp edges. For magnification there is no aliasing to suppress; the
+ * recommended behavior is to reconstruct with plain spline interpolation.
+ *
+ * This function enforces that policy by disabling the projection stage
+ * on a per-axis basis: if zoom > 1 and the analysis degree is non-negative
+ * (i.e., LS/Oblique), set analy_degree = -1 to select Standard interpolation.
+ *
+ * Shrinking axes (zoom < 1) are left unchanged so they still benefit from
+ * LS/Oblique anti-aliasing.
+ */
+static inline void normalize_params_for_magnification(lsresize::LSParams& p) {
+    const double eps = 1e-12;
+    if (p.zoom > 1.0 + eps && p.analy_degree >= 0) {
+        p.analy_degree = -1;  // switch to Standard interpolation for this axis
+    }
+}
+
 py::array_t<double> resize_nd(py::array input,
                               std::vector<double> zoom_factors,
                               int interp_degree,
@@ -80,6 +103,8 @@ py::array_t<double> resize_nd(py::array input,
         p.zoom          = zoom_factors[ax];
         p.shift         = 0.0;
         p.inversable    = inversable;
+
+        normalize_params_for_magnification(p);
 
         lsresize::resize_along_axis(cur_ptr, out_ptr_this_axis,
                                     cur_shape, next_shape, ax, p);
