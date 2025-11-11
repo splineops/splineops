@@ -38,8 +38,14 @@ static std::vector<int64> shape_to_vec_i64(const py::array &a) {
  */
 static inline void normalize_params_for_magnification(lsresize::LSParams& p) {
     const double eps = 1e-12;
+    // Identity safety: never run a projection at unity zoom
+    if (std::abs(p.zoom - 1.0) <= eps) {
+        p.analy_degree = -1;
+        return;
+    }
+    // Magnification policy: projection can ring, use Standard
     if (p.zoom > 1.0 + eps && p.analy_degree >= 0) {
-        p.analy_degree = -1;  // switch to Standard interpolation for this axis
+        p.analy_degree = -1;
     }
 }
 
@@ -75,10 +81,12 @@ py::array_t<double> resize_nd(py::array input,
     std::vector<py::ssize_t> out_shape_ssize(out_shape.begin(), out_shape.end());
     py::array_t<double> out(out_shape_ssize);
 
-    // Stream axis-by-axis; avoid full-size copies at start and end
-    const double* cur_ptr = static_cast<const double*>(in_f64.data());
+    // Ping-pong buffers to avoid aliasing the input of a pass with the output allocation
+    std::vector<double> bufA(static_cast<size_t>(in_f64.size()));
+    std::memcpy(bufA.data(), in_f64.data(), bufA.size() * sizeof(double));
+
     std::vector<int64> cur_shape = in_shape;
-    std::vector<double> tmp;  // scratch for intermediate passes
+    std::vector<double> bufB;
 
     for (int ax = 0; ax < D; ++ax) {
         std::vector<int64> next_shape = cur_shape;
@@ -87,18 +95,11 @@ py::array_t<double> resize_nd(py::array input,
         int64 total_next = std::accumulate(
             next_shape.begin(), next_shape.end(), (int64)1, std::multiplies<int64>());
 
-        const bool last_pass = (ax == D - 1);
-        double* out_ptr_this_axis = nullptr;
-        if (last_pass) {
-            out_ptr_this_axis = static_cast<double*>(out.mutable_data());
-        } else {
-            tmp.assign(static_cast<size_t>(total_next), 0.0);
-            out_ptr_this_axis = tmp.data();
-        }
+        bufB.assign(static_cast<size_t>(total_next), 0.0);
 
         lsresize::LSParams p;
         p.interp_degree = interp_degree;
-        p.analy_degree  = analy_degree;   // -1 allowed
+        p.analy_degree  = analy_degree;   // -1 allowed (Standard when -1)
         p.synthe_degree = synthe_degree;
         p.zoom          = zoom_factors[ax];
         p.shift         = 0.0;
@@ -106,14 +107,21 @@ py::array_t<double> resize_nd(py::array input,
 
         normalize_params_for_magnification(p);
 
-        lsresize::resize_along_axis(cur_ptr, out_ptr_this_axis,
-                                    cur_shape, next_shape, ax, p);
+        const double eps = 1e-12;
+        if (std::abs(p.zoom - 1.0) <= eps && next_shape[ax] == cur_shape[ax]) {
+            // Short-circuit true identity along this axis
+            bufB = bufA; // pure copy
+        } else {
+            lsresize::resize_along_axis(bufA.data(), bufB.data(),
+                                        cur_shape, next_shape, ax, p);
+        }
 
-        // Next pass reads what we just wrote
-        cur_ptr = out_ptr_this_axis;
+        bufA.swap(bufB);
         cur_shape.swap(next_shape);
     }
 
+    // Final copy into the Python array
+    std::memcpy(out.mutable_data(), bufA.data(), bufA.size() * sizeof(double));
     return out;
 }
 

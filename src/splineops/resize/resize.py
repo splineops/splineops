@@ -167,7 +167,7 @@ def resize(
     # --------------------------------------------------------------------- #
     # Choose implementation path                                            #
     # --------------------------------------------------------------------- #
-    if algo in {"least-squares", "oblique"} and degree in (1, 2, 3):
+    if algo in {"interpolation", "least-squares", "oblique"} and degree in (1, 2, 3):
         interp_degree, analy_degree, synthe_degree = _resolve_degrees_for(algo, degree)
 
         # C++ availability policy
