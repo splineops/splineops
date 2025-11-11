@@ -362,9 +362,9 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
     fig_w_in = sum(panel_ws_in)
     fig_h_in = panel_h_in + 0.7
 
-    # Use constrained_layout to avoid the tight_layout warning
+    # Use constrained_layout; build GridSpec FROM the figure to avoid the warning
     fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=100, constrained_layout=True)
-    gs = gridspec.GridSpec(1, len(results), width_ratios=panel_ws_in)
+    gs = fig.add_gridspec(1, len(results), width_ratios=panel_ws_in)  # <- key change
 
     for i, r in enumerate(results):
         ax = fig.add_subplot(gs[0, i])
@@ -384,7 +384,6 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
             ax.set_title(f"{r['label']}\navg(10): {_fmt_time(None)}", fontsize=10)
 
     fig.suptitle(f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}", fontsize=12)
-    # (No tight_layout here; constrained_layout handles it)
     plt.show()
 
 # ------------------------
