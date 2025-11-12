@@ -15,20 +15,32 @@ Flow:
   5) Show COMPARISON figure: the four families at the same degree with timing
 
 Notes:
-  - Displays use RGB uint8 (no colormap) to avoid large float RGBA buffers in Matplotlib.
-  - SciPy is optional. If missing and you choose a SciPy option, you'll get an error
-    for the single-resize; in the comparison figure, the SciPy panel shows a friendly
-    message instead of crashing.
-  - Use the Matplotlib "Save" toolbar button to export any figure.
+  - Displays use RGB uint8 (no colormap) to avoid large float RGBA buffers.
+  - SciPy is optional; missing SciPy shows a friendly message in the comparison panel.
+  - On macOS we force Matplotlib to the native "MacOSX" backend so Tk isn't used by figures.
 """
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, TYPE_CHECKING  # <-- add TYPE_CHECKING
+from typing import Optional, Tuple, List, Dict, TYPE_CHECKING
+
+# ---- Matplotlib backend (set BEFORE importing pyplot) ----
+# Use native Cocoa windows on macOS to avoid TkAgg/Tkinter interactions.
+if sys.platform == "darwin":
+    os.environ.setdefault("TK_SILENCE_DEPRECATION", "1")  # quiets some Tk deprecation logs
+    try:
+        import matplotlib as mpl
+        mpl.use("MacOSX")
+    except Exception:
+        pass  # fallback to default; dialog-parenting still helps
+
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 import numpy as np
 from PIL import Image
@@ -40,31 +52,26 @@ try:
 except Exception:
     _HAS_IMAGECMS = False
 
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
 # --- Tkinter UI ---
 try:
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
 except Exception:
-    # Runtime fallback; annotated as None so linters don't complain about unknowns
     tk = None  # type: ignore[assignment]
     filedialog = None  # type: ignore[assignment]
     messagebox = None  # type: ignore[assignment]
     ttk = None  # type: ignore[assignment]
 
-# Typing-only alias so we can write parent: "tkt.Tk" without Pylance warnings
+# Typing-only alias
 if TYPE_CHECKING:
     import tkinter as tkt
 
 # Import splineops (works when run directly or as module)
 try:
-    # Prefer the simpler, stable path now that resize/__init__.py exists
     from splineops.resize import resize as sp_resize
 except Exception:
-    repo_root = Path(__file__).resolve().parents[1]   # <repo>
-    src_dir   = repo_root / "src"                     # add src/, not repo root
+    repo_root = Path(__file__).resolve().parents[1]
+    src_dir   = repo_root / "src"
     if src_dir.exists() and str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
     from splineops.resize import resize as sp_resize
@@ -73,7 +80,6 @@ except Exception:
 # Image I/O → grayscale [0,1]
 # -------------------------------
 def _to_srgb_if_possible(im: Image.Image) -> Image.Image:
-    """Convert any color image to sRGB if an ICC profile exists."""
     if not _HAS_IMAGECMS:
         return im
     icc = im.info.get("icc_profile")
@@ -90,10 +96,6 @@ def _to_srgb_if_possible(im: Image.Image) -> Image.Image:
 
 
 def _open_as_gray01(path: Path) -> np.ndarray:
-    """
-    Open image and return grayscale float64 in [0,1].
-    Uses ITU-R BT.601 luminance for RGB.
-    """
     im = Image.open(str(path))
 
     # Convert to sRGB first if not grayscale (for accurate luminance)
@@ -104,7 +106,6 @@ def _open_as_gray01(path: Path) -> np.ndarray:
     if im.mode in ("RGBA", "LA"):
         im = im.convert("RGB")
 
-    # Grayscale paths
     if im.mode == "L":
         arr = np.asarray(im, dtype=np.float64) / 255.0
     elif im.mode == "I;16":
@@ -114,7 +115,6 @@ def _open_as_gray01(path: Path) -> np.ndarray:
         amin, amax = float(arr.min()), float(arr.max())
         arr = (arr - amin) / (amax - amin + 1e-12)
     else:
-        # Color → luminance
         if im.mode != "RGB":
             im = im.convert("RGB")
         rgb = np.asarray(im, dtype=np.float64) / 255.0
@@ -123,19 +123,16 @@ def _open_as_gray01(path: Path) -> np.ndarray:
     im.close()
     return np.clip(arr, 0.0, 1.0)
 
-
 # -------------------------------
-# Display helpers (memory-friendly)
+# Display helpers
 # -------------------------------
 def _as_rgb_u8(img01: np.ndarray) -> np.ndarray:
-    """[0,1] float grayscale -> H×W×3 uint8 (avoid colormap path)."""
     a = np.clip(img01, 0.0, 1.0)
     u8 = np.rint(a * 255.0).astype(np.uint8)
-    return np.repeat(u8[..., None], 3, axis=2)  # RGB view
-
+    return np.repeat(u8[..., None], 3, axis=2)
 
 # -------------------------------
-# Method mapping (families & degrees)
+# Method mapping
 # -------------------------------
 DEGREES = ("linear", "quadratic", "cubic")
 FAMILIES = (
@@ -144,24 +141,16 @@ FAMILIES = (
     ("ls",      "Least-Squares"),
     ("oblique", "Oblique"),
 )
-
-# Label ↔ key like "SciPy Cubic" ↔ "scipy-cubic"
 METHOD_LABELS = [f"{fam_name} {deg.title()}" for fam_key, fam_name in FAMILIES for deg in DEGREES]
-LABEL_TO_KEY = {
-    f"{fam_name} {deg.title()}": f"{fam_key}-{deg}"
-    for fam_key, fam_name in FAMILIES
-    for deg in DEGREES
-}
+LABEL_TO_KEY = {f"{fam_name} {deg.title()}": f"{fam_key}-{deg}"
+                for fam_key, fam_name in FAMILIES for deg in DEGREES}
 KEY_TO_LABEL = {v: k for k, v in LABEL_TO_KEY.items()}
 
-
 def _parse_method_key(method_key: str) -> Tuple[str, str]:
-    """Return (family, degree) from 'family-degree'."""
     family, degree = method_key.split("-", 1)
-    return family, degree  # e.g., ('ls', 'cubic')
+    return family, degree
 
 def _avg_runtime(fn, runs: int = 10, warmup: bool = True) -> float:
-    """Return average runtime in seconds over `runs` executions (optional warmup)."""
     if warmup:
         fn()
     t0 = time.perf_counter()
@@ -176,34 +165,22 @@ def _scipy_zoom_gray(data01: np.ndarray, z: float, degree: str) -> np.ndarray:
     from scipy.ndimage import zoom as ndi_zoom
     order_map = {"linear": 1, "quadratic": 2, "cubic": 3}
     order = order_map[degree]
-
-    # prefilter only when needed (order >= 3). For linear, it's wasted work.
     need_prefilter = (order >= 3)
-
-    out = ndi_zoom(
-        data01, (z, z),
-        order=order,
-        prefilter=need_prefilter,
-        mode="reflect",
-        # grid_mode=False is default; leaving it explicit for clarity
-        grid_mode=False
-    )
+    out = ndi_zoom(data01, (z, z), order=order, prefilter=need_prefilter,
+                   mode="reflect", grid_mode=False)
     return np.clip(out, 0.0, 1.0)
 
 def _splineops_resize_gray(data01: np.ndarray, z: float, family: str, degree: str) -> np.ndarray:
-    # Map to splineops.resize method string
     if family == "standard":
-        sp_method = degree  # "linear" / "quadratic" / "cubic"
+        sp_method = degree
     elif family == "ls":
         sp_method = f"{degree}-best_antialiasing"
     elif family == "oblique":
         sp_method = f"{degree}-fast_antialiasing"
     else:
         raise ValueError(f"Unsupported family for splineops: {family}")
-
     out = sp_resize(data01, zoom_factors=(z, z), method=sp_method)
     return np.clip(out, 0.0, 1.0)
-
 
 def _resize_gray(gray01: np.ndarray, method_key: str, zoom: float) -> np.ndarray:
     family, degree = _parse_method_key(method_key)
@@ -211,12 +188,10 @@ def _resize_gray(gray01: np.ndarray, method_key: str, zoom: float) -> np.ndarray
         return _scipy_zoom_gray(gray01, zoom, degree)
     return _splineops_resize_gray(gray01, zoom, family, degree)
 
-
 def _fmt_time(sec: Optional[float]) -> str:
     if sec is None:
         return "n/a"
     return f"{sec*1000:.1f} ms" if sec < 1.0 else f"{sec:.3f} s"
-
 
 # ------------------------
 # Tiny settings UI (Tkinter)
@@ -242,10 +217,7 @@ class SettingsDialog:
 
         ttk.Label(frm, text="Method:").grid(row=1, column=0, sticky="w", pady=(10, 0))
         self.method_combo = ttk.Combobox(
-            frm,
-            values=METHOD_LABELS,     # all 12 options
-            state="readonly",
-            width=30,
+            frm, values=METHOD_LABELS, state="readonly", width=30
         )
         default_label = KEY_TO_LABEL.get(default_method_key, "Least-Squares Cubic")
         self.method_combo.set(default_label)
@@ -276,12 +248,13 @@ class SettingsDialog:
             if not np.isfinite(z) or z <= 0:
                 raise ValueError
         except Exception:
-            messagebox.showerror("Invalid zoom", "Please enter a positive number for the zoom factor.")
+            messagebox.showerror("Invalid zoom", "Please enter a positive number for the zoom factor.",
+                                 parent=self.top)
             return
         label = self.method_combo.get()
         key = LABEL_TO_KEY.get(label)
         if key is None:
-            messagebox.showerror("Invalid method", "Please choose a resize method.")
+            messagebox.showerror("Invalid method", "Please choose a resize method.", parent=self.top)
             return
         self.result = (z, key)
         self.top.destroy()
@@ -290,11 +263,10 @@ class SettingsDialog:
         self.result = None
         self.top.destroy()
 
-
 # ------------------------
 # UI helpers
 # ------------------------
-def _select_image_with_dialog() -> Optional[Path]:
+def _select_image_with_dialog(parent=None) -> Optional[Path]:
     filetypes = [
         ("Image files", ("*.png", "*.jpg", "*.jpeg", "*.tif", "*.tiff")),
         ("PNG", "*.png"),
@@ -302,27 +274,25 @@ def _select_image_with_dialog() -> Optional[Path]:
         ("TIFF", ("*.tif", "*.tiff")),
         ("All files", "*"),
     ]
-    path = filedialog.askopenfilename(title="Select an image", filetypes=filetypes)
+    path = filedialog.askopenfilename(title="Select an image",
+                                      filetypes=filetypes,
+                                      parent=parent)
     return Path(path).expanduser() if path else None
 
-
 def _show_gray_image(img01: np.ndarray):
-    """Borderless, pixel-accurate grayscale display (no text), memory-friendly."""
     rgb = _as_rgb_u8(img01)
     h, w = rgb.shape[:2]
     dpi = 100.0
     fig = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
-    ax = fig.add_axes([0, 0, 1, 1])  # full-bleed
-    ax.imshow(rgb, interpolation="nearest", aspect="equal")  # no cmap/vmin/vmax
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.imshow(rgb, interpolation="nearest", aspect="equal")
     ax.set_axis_off()
     plt.show()
-
 
 # ------------------------
 # Timing + comparison plot
 # ------------------------
 def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
-    """Run the four families at a specific degree; return list of dicts with avg(10) timing."""
     families = [
         ("scipy",   "SciPy"),
         ("standard","Standard"),
@@ -337,17 +307,16 @@ def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
         elapsed = None
         err = None
         try:
-            # Compute once (we display this result), then time an average over 10 runs.
             img = _resize_gray(gray01, key, zoom)
-            elapsed = _avg_runtime(lambda: _resize_gray(gray01, key, zoom), runs=10, warmup=True)
+            elapsed = _avg_runtime(lambda: _resize_gray(gray01, key, zoom),
+                                   runs=10, warmup=True)
         except Exception as e:
             err = str(e)
-        results.append({"key": key, "label": label, "img": img, "time": elapsed, "error": err})
+        results.append({"key": key, "label": label,
+                        "img": img, "time": elapsed, "error": err})
     return results
 
 def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape: Tuple[int, int]):
-    """Single-row mosaic; each panel shows method + avg(10) time (drawn as titles)."""
-    # Compute width ratios based on each image aspect
     heights, widths = [], []
     for r in results:
         if r["img"] is not None:
@@ -363,9 +332,8 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
     fig_w_in = sum(panel_ws_in)
     fig_h_in = panel_h_in + 0.7
 
-    # Use constrained_layout; build GridSpec FROM the figure to avoid the warning
     fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=100, constrained_layout=True)
-    gs = fig.add_gridspec(1, len(results), width_ratios=panel_ws_in)  # <- key change
+    gs = fig.add_gridspec(1, len(results), width_ratios=panel_ws_in)
 
     for i, r in enumerate(results):
         ax = fig.add_subplot(gs[0, i])
@@ -378,13 +346,16 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
             ax.set_facecolor("0.92")
             ax.text(0.5, 0.55, r["label"], ha="center", va="center", fontsize=10)
             msg = "Error" if r["error"] else "Unavailable"
-            detail = "SciPy not installed" if (r["key"].startswith("scipy-") and r["error"]) else (r["error"] or "")
+            detail = ("SciPy not installed" if (r["key"].startswith("scipy-") and r["error"])
+                      else (r["error"] or ""))
             ax.text(0.5, 0.40, f"{msg}", ha="center", va="center", fontsize=9)
             if detail:
-                ax.text(0.5, 0.28, detail[:48] + ("…" if len(detail) > 48 else ""), ha="center", va="center", fontsize=8)
+                ax.text(0.5, 0.28, detail[:48] + ("…" if len(detail) > 48 else ""),
+                        ha="center", va="center", fontsize=8)
             ax.set_title(f"{r['label']}\navg(10): {_fmt_time(None)}", fontsize=10)
 
-    fig.suptitle(f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}", fontsize=12)
+    fig.suptitle(f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}",
+                 fontsize=12)
     plt.show()
 
 # ------------------------
@@ -395,45 +366,64 @@ def main(argv=None) -> int:
         print("Error: Tkinter is not available (install python3-tk).", file=sys.stderr)
         return 2
 
-    root = tk.Tk(); root.withdraw(); root.update()
+    # Create a root for dialogs, keep it alive until AFTER we’ve read the image & params.
+    root = tk.Tk()
+    root.withdraw()
+    root.update()
 
     cli_path = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else None
-    img_path = cli_path if (cli_path and cli_path.exists()) else _select_image_with_dialog()
+    img_path = cli_path if (cli_path and cli_path.exists()) else _select_image_with_dialog(parent=root)
     if img_path is None:
-        root.destroy(); return 0  # cancelled
+        try: root.destroy()
+        except Exception: pass
+        return 0  # cancelled
 
     dlg = SettingsDialog(root, default_zoom=0.5, default_method_key="ls-cubic")
     if dlg.result is None:
-        root.destroy(); return 0  # cancelled
+        try: root.destroy()
+        except Exception: pass
+        return 0  # cancelled
     zoom, method_key = dlg.result
 
-    # Load + grayscale
+    # Load + grayscale (report errors with the root as parent)
     try:
         gray01 = _open_as_gray01(img_path)
     except Exception as e:
-        messagebox.showerror("Open failed", f"Could not open image:\n{img_path}\n\n{e}")
-        root.destroy(); return 1
+        messagebox.showerror("Open failed",
+                             f"Could not open image:\n{img_path}\n\n{e}",
+                             parent=root)
+        try: root.destroy()
+        except Exception: pass
+        return 1
 
-    h0, w0 = gray01.shape
-    root.destroy()  # close Tk before showing figures
+    # IMPORTANT on macOS: destroy Tk root BEFORE opening any Matplotlib windows.
+    # We’re using the "MacOSX" backend for figures, so they don’t need Tk at all.
+    try:
+        root.destroy()
+    except Exception:
+        pass
 
-    # 1) Original grayscale (no text)
+    # 1) Original grayscale
     _show_gray_image(gray01)
 
-    # 2) Resized grayscale (no text) — chosen method
+    # 2) Resized grayscale
     try:
         out = _resize_gray(gray01, method_key, zoom)
     except Exception as e:
-        # Show dialog (uses OS alert even after root destroyed)
+        # No root here anymore: report to stderr and abort
         print(f"Resize failed: {e}", file=sys.stderr)
-        messagebox.showerror("Resize failed", f"An error occurred during resizing:\n\n{e}")
         return 1
     _show_gray_image(out)
 
-    # 3) Degree-matched comparison across families
+    # 3) Degree-matched comparison
     _, degree = _parse_method_key(method_key)
     results = _measure_families_at_degree(gray01, zoom, degree)
-    _comparison_figure(results, zoom, degree, base_shape=(h0, w0))
+    _comparison_figure(results, zoom, degree, base_shape=gray01.shape)
+
+    try:
+        plt.close('all')
+    except Exception:
+        pass
 
     return 0
 
