@@ -1,6 +1,7 @@
 # splineops/src/splineops/resize/_pycore/resizend.py
 from __future__ import annotations
 import os
+from functools import lru_cache
 import numpy as np
 from .params import LSParams
 from .plan1d import make_plan_1d
@@ -10,9 +11,40 @@ from .filters import (
 )
 from .diff_integ import do_integ_batch, do_diff_batch
 
-# Tunable batch size (lines processed together)
-_BATCH = int(os.environ.get("SPLINEOPS_BLOCK", "64"))
-_BATCH = 1 if _BATCH < 1 else _BLOCK if (_BLOCK := _BATCH) else 64  # keep simple; ensure >=1
+# ------------------------------ knobs / toggles ------------------------------
+
+# Batch size (lines processed together)
+try:
+    _BATCH = max(1, int(os.environ.get("SPLINEOPS_BLOCK", "64")))
+except Exception:
+    _BATCH = 64
+
+# Accumulator: 'mulsum' (multiply+sum) or 'einsum'
+_ACCUM = os.environ.get("SPLINEOPS_ACCUM", "mulsum").lower()
+if _ACCUM not in ("mulsum", "einsum"):
+    _ACCUM = "mulsum"
+
+# Tile width along the kernel axis (W). 0 disables tiling.
+try:
+    _TILE_W = max(0, int(os.environ.get("SPLINEOPS_TILE_W", "0")))
+except Exception:
+    _TILE_W = 0
+
+# Plan cache (reuse Plan1D across calls with same signature)
+_USE_PLAN_CACHE = os.environ.get("SPLINEOPS_PLAN_CACHE", "1").lower() not in ("0", "false", "no")
+
+@lru_cache(maxsize=8)
+def _cached_plan(N: int, interp: int, analy: int, synthe: int, zoom: float, shift: float, inversable: bool):
+    p = LSParams(interp_degree=interp, analy_degree=analy, synthe_degree=synthe,
+                 zoom=zoom, shift=shift, inversable=inversable)
+    return make_plan_1d(N, p)
+
+def _get_plan(N: int, p: LSParams):
+    if _USE_PLAN_CACHE:
+        return _cached_plan(N, p.interp_degree, p.analy_degree, p.synthe_degree, float(p.zoom), float(p.shift), bool(p.inversable))
+    return make_plan_1d(N, p)
+
+# ---------------------------------- core -------------------------------------
 
 def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
     """
@@ -21,11 +53,11 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
       - process rows in blocks of B lines with vectorized prefilter/integration/diff
       - build extension / padded buffer once per block
       - gather via np.take(..., axis=1) into (B, out_total, win_len_max)
-      - accumulate with multiply+sum into (B, out_total)
+      - accumulate with multiply+sum or einsum into (B, out_total)
     """
     a = np.asarray(arr, dtype=np.float64, order="C")
     N_line = a.shape[axis]
-    plan = make_plan_1d(N_line, p)
+    plan = _get_plan(N_line, p)
 
     # Fast identity short-circuit (no projection, zoom==1)
     if (abs(p.zoom - 1.0) <= 1e-12) and (p.analy_degree < 0) and (plan.outN == N_line):
@@ -40,17 +72,23 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
     # Preallocate block work buffers
     B = min(_BATCH, cols) if cols > 0 else 1
     N = N_line
-    out_total = plan.out_total
-    outN = plan.outN
+    out_total  = plan.out_total
+    outN       = plan.outN
     length_total = plan.length_total
-    full_len = plan.left_pad + plan.length_total + plan.right_pad
-    Wmax = plan.win_len_max
+    full_len   = plan.left_pad + plan.length_total + plan.right_pad
+    Wmax       = plan.win_len_max
 
-    coeffB     = np.empty((B, N), dtype=np.float64)
-    extB       = np.empty((B, length_total), dtype=np.float64)
-    extFullB   = np.empty((B, full_len), dtype=np.float64)
-    yBlock     = np.empty((B, out_total), dtype=np.float64)
-    gather3D   = np.empty((B, out_total, Wmax), dtype=np.float64) if (Wmax > 0 and out_total > 0) else None
+    coeffB   = np.empty((B, N), dtype=np.float64)
+    extB     = np.empty((B, length_total), dtype=np.float64)
+    extFullB = np.empty((B, full_len), dtype=np.float64)
+    yBlock   = np.empty((B, out_total), dtype=np.float64)
+
+    use_tiling = (_TILE_W > 0) and (Wmax > _TILE_W)
+    if use_tiling:
+        gather_tile = np.empty((B, out_total, _TILE_W), dtype=np.float64)
+        tmp2D       = np.empty((B, out_total),          dtype=np.float64)
+    else:
+        gather3D    = np.empty((B, out_total, Wmax),    dtype=np.float64) if (Wmax > 0 and out_total > 0) else None
 
     # Correlation degree for tail
     corr_degree = p.interp_degree if p.analy_degree < 0 else (p.analy_degree + p.synthe_degree + 1)
@@ -83,10 +121,26 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
 
         # 4) gather + accumulate
         if (Wmax > 0) and (out_total > 0):
-            np.take(extFullB[:b, :], plan.idx2d, axis=1, out=gather3D[:b, :, :])   # (b, L, W)
-            # multiply+sum (often faster than einsum on many builds)
-            np.multiply(gather3D[:b, :, :], plan.weights2d[None, :, :], out=gather3D[:b, :, :])
-            np.sum(gather3D[:b, :, :], axis=2, out=yBlock[:b, :])
+            if use_tiling:
+                yBlock[:b, :] = 0.0
+                for t0 in range(0, Wmax, _TILE_W):
+                    t1 = min(Wmax, t0 + _TILE_W)
+                    wtile = plan.weights2d[:, t0:t1]              # (L, w)
+                    # gather tile
+                    np.take(extFullB[:b, :], plan.idx2d[:, t0:t1], axis=1, out=gather_tile[:b, :, :t1-t0])  # (b,L,w)
+                    if _ACCUM == "einsum":
+                        yBlock[:b, :] += np.einsum('lw,blw->bl', wtile, gather_tile[:b, :, :t1-t0], optimize=True)
+                    else:
+                        np.multiply(gather_tile[:b, :, :t1-t0], wtile[None, :, :], out=gather_tile[:b, :, :t1-t0])
+                        np.sum(gather_tile[:b, :, :t1-t0], axis=2, out=tmp2D[:b, :])
+                        yBlock[:b, :] += tmp2D[:b, :]
+            else:
+                np.take(extFullB[:b, :], plan.idx2d, axis=1, out=gather3D[:b, :, :])   # (b, L, W)
+                if _ACCUM == "einsum":
+                    np.einsum('lw,blw->bl', plan.weights2d, gather3D[:b, :, :], out=yBlock[:b, :], optimize=True)
+                else:
+                    np.multiply(gather3D[:b, :, :], plan.weights2d[None, :, :], out=gather3D[:b, :, :])
+                    np.sum(gather3D[:b, :, :], axis=2, out=yBlock[:b, :])
         else:
             yBlock[:b, :] = 0.0
 

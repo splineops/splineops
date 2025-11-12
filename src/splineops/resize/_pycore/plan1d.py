@@ -18,13 +18,13 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
         t = (p.analy_degree + 1.0) / 2.0
         shift += (t - np.floor(t)) * (1.0 / p.zoom - 1.0)
 
-    # Total_degree equals n + n1 + 1 (so when analy=-1 → total_degree == n) ---
+    # total_degree = n + n1 + 1 (so when analy=-1 → total_degree == n)
     total_degree = p.interp_degree + p.analy_degree + 1
     half_support = 0.5 * (total_degree + 1)
 
     # Tail sizing uses total_degree (matches C++)
     add_border = max(border(outN, corr_degree), total_degree)
-    out_total = outN + add_border
+    out_total  = outN + add_border
     length_total = N + int(np.ceil(add_border / p.zoom))
 
     # Output sample positions
@@ -39,8 +39,8 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
 
     # Distance grid for weights
     tgrid = np.arange(win_len_max, dtype=np.int32)[None, :]
-    ks = (kmin[:, None] + tgrid).astype(np.float64)
-    dx = x[:, None] - ks
+    ks    = (kmin[:, None] + tgrid).astype(np.float64)
+    dx    = x[:, None] - ks
 
     # Analysis scaling factor
     fact = (p.zoom ** (p.analy_degree + 1)) if p.analy_degree >= 0 else 1.0
@@ -49,7 +49,7 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
     weights2d = fact * beta(dx, total_degree)
     if win_len_max > 0:
         mask = (tgrid >= wlen[:, None])
-        weights2d = weights2d.copy()
+        # no extra copy needed; beta() returns a fresh, writeable array
         weights2d[mask] = 0.0
 
     # --- Padding sizes: right pad must cover the widest rectangular index grid ---
@@ -63,7 +63,7 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
     RP = max(0, max_idx_needed - (length_total - 1))
     full_len = LP + length_total + RP
 
-    # Drop CSR packing (unused by Python runtime) — keep empty shells for compatibility
+    # CSR packing unused by Python runtime — keep empty shells for compatibility
     row_ptr = np.array([0], dtype=np.int32)
     weights = np.empty(0, dtype=np.float64)
 
