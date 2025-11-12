@@ -2,8 +2,10 @@
 from __future__ import annotations
 import numpy as np
 from typing import Sequence
+from functools import lru_cache
 
 # poles z_k for degrees 2..7 (Unser '93)
+@lru_cache(maxsize=None)
 def spline_poles(deg: int) -> np.ndarray:
     if deg <= 1: return np.array([], dtype=float)
     if   deg == 2: return np.array([np.sqrt(8.0) - 3.0])
@@ -30,6 +32,7 @@ def spline_poles(deg: int) -> np.ndarray:
         raise ValueError("Invalid spline degree [0..7]")
 
 # symmetric FIR taps for sampling (Step 5)
+@lru_cache(maxsize=None)
 def sampling_fir(deg: int) -> np.ndarray:
     if deg <= 1: return np.array([], dtype=float)
     if   deg == 2: return np.array([3.0/4.0, 1.0/8.0])

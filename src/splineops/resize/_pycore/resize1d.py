@@ -21,50 +21,41 @@ def _ensure_ws(ws: Work1D, plan: Plan1D, N: int) -> None:
 def _build_extension_inplace(coeff: np.ndarray, plan: Plan1D, ws: Work1D) -> None:
     N = coeff.size
     ext = ws.ext
-
-    # body
     ext[:N] = coeff
     if plan.rp_src.size:
         ext[N:] = plan.rp_sign * coeff[plan.rp_src]
 
-    # ext_full = [LP | ext | RP]
     ext_full = ws.ext_full
     if plan.left_pad > 0:
         ext_full[plan.lp_dst] = plan.lp_sign * coeff[plan.lp_src]
-
     ext_full[plan.left_pad : plan.left_pad + plan.length_total] = ext
-
     if plan.right_pad > 0:
         ext_full[plan.left_pad + plan.length_total :] = ext[-1]
 
-def resize_1d_ws(in_line: np.ndarray, p: LSParams, plan: Plan1D, ws: Work1D) -> np.ndarray:
+def resize_1d_ws(in_line: np.ndarray, p: LSParams, plan: Plan1D, ws: Work1D, out: np.ndarray | None = None) -> np.ndarray:
     _ensure_ws(ws, plan, in_line.size)
 
-    # coeffs
-    ws.coeff[...] = in_line
+    # 1) coefficients
+    ws.coeff[...] = in_line    # contiguous row from resizend
     get_interpolation_coefficients(ws.coeff, p.interp_degree)
 
-    # optional integration
+    # 2) optional integration
     average = 0.0
     if p.analy_degree >= 0:
         average = do_integ(ws.coeff, p.analy_degree + 1)
 
-    # extension (all with precomputed indices)
+    # 3) extension
     _build_extension_inplace(ws.coeff, plan, ws)
 
-    # gather + accumulate (no temporaries)
+    # 4) accumulate
     if plan.win_len_max > 0 and plan.out_total > 0:
         np.take(ws.ext_full, plan.idx2d, out=ws.gather2d)
-        # pick the faster of these on your NumPy build (both are zero-alloc):
-        # A) multiply+sum
         np.multiply(plan.weights2d, ws.gather2d, out=ws.gather2d)
         np.sum(ws.gather2d, axis=1, out=ws.y)
-        # B) or einsum:
-        # np.einsum("ij,ij->i", plan.weights2d, ws.gather2d, out=ws.y, optimize=True)
     else:
         ws.y[:] = 0.0
 
-    # projection tail
+    # 5) projection tail
     if p.analy_degree >= 0:
         do_diff(ws.y, p.analy_degree + 1)
         ws.y += average
@@ -72,4 +63,9 @@ def resize_1d_ws(in_line: np.ndarray, p: LSParams, plan: Plan1D, ws: Work1D) -> 
         get_interpolation_coefficients(ws.y, corr_degree)
         get_samples(ws.y, p.synthe_degree)
 
-    return ws.y[:plan.outN].copy()
+    # 6) crop (optionally write into provided buffer)
+    view = ws.y[:plan.outN]
+    if out is not None:
+        np.copyto(out, view)
+        return out
+    return view.copy()

@@ -69,8 +69,8 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
 
     # Indices for gather into [LP | ext | RP]
     idx2d = (
-        (LP + (kmin[:, None] + tgrid)).astype(np.int64)
-        if win_len_max > 0 else np.empty((out_total, 0), dtype=np.int64)
+        (LP + (kmin[:, None] + tgrid)).astype(np.intp)
+        if win_len_max > 0 else np.empty((out_total, 0), dtype=np.intp)
     )
     if win_len_max > 0 and idx2d.size:
         np.clip(idx2d, 0, full_len - 1, out=idx2d)
