@@ -8,7 +8,6 @@ from .utils import border, calculate_final_size_1d
 def make_plan_1d(N: int, p: LSParams) -> Plan1D:
     workN, outN = calculate_final_size_1d(p.inversable, N, p.zoom)
     total_degree = p.interp_degree + p.analy_degree + 1 if p.analy_degree >= 0 else p.interp_degree
-    total_degree = p.interp_degree + p.analy_degree + 1 if p.analy_degree >= 0 else p.interp_degree
     corr_degree  = (p.interp_degree if p.analy_degree < 0 else p.analy_degree + p.synthe_degree + 1)
     half_support = 0.5 * ( (p.interp_degree + (p.analy_degree if p.analy_degree>=0 else 0) + 1) + 1 )
     # match native shift policy for analysis stage
@@ -42,10 +41,20 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
         weights2d[mask] = 0.0
 
     # padding sizes
+    # left pad from the most-negative kmin (unchanged),
+    # right pad must cover the widest rectangular idx grid.
     min_kmin = int(kmin.min()) if kmin.size else 0
-    max_kmax = int(kmax.max()) if kmax.size else -1
+    max_kmin = int(kmin.max()) if kmin.size else 0
     LP = max(0, -min_kmin)
-    RP = max(0, max_kmax - (length_total - 1))
+
+    if win_len_max > 0:
+        max_idx_needed = max_kmin + (win_len_max - 1)
+    else:
+        # No window → fall back to kmax (or -1 when out_total==0)
+        max_idx_needed = int(kmax.max()) if kmax.size else -1
+
+    RP = max(0, max_idx_needed - (length_total - 1))
+    full_len = LP + length_total + RP
 
     # CSR style 1-D contiguous weights representation (plus 2-D view kept)
     row_ptr = np.empty(out_total+1, dtype=np.int32)
@@ -62,6 +71,11 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
             idx_write += M
 
     idx2d = (LP + (kmin[:, None] + tgrid)).astype(np.int64) if win_len_max > 0 else np.empty((out_total,0), dtype=np.int64)
+
+    # Safety against any round-off oddities at extreme edges:
+    if win_len_max > 0 and idx2d.size:
+        np.clip(idx2d, 0, full_len - 1, out=idx2d)
+
     symmetric_ext = ((p.analy_degree + 1) % 2 == 0) if p.analy_degree >= 0 else True
 
     return Plan1D(
