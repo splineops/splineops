@@ -36,6 +36,12 @@ class Plan1D:
     idx2d:      np.ndarray       # (out_total, win_len_max) int64 (for gather)
     weights2d:  np.ndarray       # (out_total, win_len_max) float64, zero-padded rows
 
+    lp_dst:   np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.intp))  # positions [0..LP-1]
+    lp_src:   np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.intp))  # coeff indices for left pad
+    lp_sign:  float      = 1.0
+    rp_src:   np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.intp))  # coeff indices for ext[N:]
+    rp_sign:  float      = 1.0
+
 @dataclass
 class Work1D:
     # Reused scratch buffers to avoid per-column allocations

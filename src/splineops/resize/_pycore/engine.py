@@ -30,8 +30,8 @@ def compute_zoom(
         if p.analy_degree >= 0 and p.zoom > 1.0 + 1e-12:
             p.analy_degree = -1
         # Identity safety
-        if abs(p.zoom - 1.0) <= 1e-12:
-            p.analy_degree = -1
+        if abs(p.zoom - 1.0) <= 1e-12 and abs(p.shift) <= 1e-15 and p.analy_degree < 0:
+            continue
         out = resize_along_axis(out, ax, p)
     np.copyto(output_img, out)
 
