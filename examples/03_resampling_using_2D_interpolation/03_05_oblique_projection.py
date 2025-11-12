@@ -343,7 +343,7 @@ impr_pct_mean = max(0.0, (1.0 - mean_ob / max(mean_ls, 1e-12)) * 100.0)
 
 print(f"[Timing averages over {N_TRIALS} runs] Least-Squares: {mean_ls*1000:.1f} ± {sd_ls*1000:.1f} ms")
 print(f"[Timing averages over {N_TRIALS} runs] Oblique      : {mean_ob*1000:.1f} ± {sd_ob*1000:.1f} ms")
-print(f"[Timing] Speedup (LS/OB): {speedup_mean:.2f}×  (~{impr_pct_mean:.1f}% less time)")
+print(f"[Timing] Speedup (LS/OB): {speedup_mean:.2f}×  (~{impr_pct_mean:.1f}% less time)\n")
 
 fig, ax = plt.subplots(figsize=(7.0, 3.8))
 methods   = ["Least-Squares", "Oblique"]
