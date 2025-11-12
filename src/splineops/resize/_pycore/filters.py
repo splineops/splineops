@@ -4,7 +4,8 @@ import numpy as np
 from typing import Sequence
 from functools import lru_cache
 
-# poles z_k for degrees 2..7 (Unser '93)
+# ----------------------------- cached constants -----------------------------
+
 @lru_cache(maxsize=None)
 def spline_poles(deg: int) -> np.ndarray:
     if deg <= 1: return np.array([], dtype=float)
@@ -31,7 +32,6 @@ def spline_poles(deg: int) -> np.ndarray:
     else:
         raise ValueError("Invalid spline degree [0..7]")
 
-# symmetric FIR taps for sampling (Step 5)
 @lru_cache(maxsize=None)
 def sampling_fir(deg: int) -> np.ndarray:
     if deg <= 1: return np.array([], dtype=float)
@@ -43,6 +43,8 @@ def sampling_fir(deg: int) -> np.ndarray:
     elif deg == 7: return np.array([151.0/315.0, 397.0/1680.0, 1.0/42.0, 1.0/5040.0])
     else:
         raise ValueError("Invalid degree for sampling FIR [0..7]")
+
+# ------------------------------- 1-D (single) --------------------------------
 
 def initial_causal(c: np.ndarray, z: float, tol: float = 1e-10) -> float:
     N = c.size
@@ -74,7 +76,6 @@ def get_interpolation_coefficients(c: np.ndarray, deg: int) -> None:
             c[n] = z * (c[n+1] - c[n])
 
 def symmetric_fir(h: Sequence[float], c: np.ndarray, s: np.ndarray) -> None:
-    """Symmetric FIR (exactly as before, self-contained)."""
     if s.size != c.size:
         raise IndexError("Incompatible size")
     H = len(h); N = c.size
@@ -100,7 +101,7 @@ def symmetric_fir(h: Sequence[float], c: np.ndarray, s: np.ndarray) -> None:
         elif N == 2:
             s[0] = (h[0] + 2.0*h[2]) * c[0] + 2.0*h[1]*c[1]
             s[1] = (h[0] + 2.0*h[2]) * c[1] + 2.0*h[1]*c[0]
-        else:  # N == 1
+        else:
             s[0] = (h[0] + 2.0*(h[1]+h[2])) * c[0]
         return
     if H == 4:
@@ -130,7 +131,7 @@ def symmetric_fir(h: Sequence[float], c: np.ndarray, s: np.ndarray) -> None:
         elif N == 2:
             s[0]=(h[0]+2.0*h[2])*c[0]+2.0*(h[1]+h[3])*c[1]
             s[1]=(h[0]+2.0*h[2])*c[1]+2.0*(h[1]+h[3])*c[0]
-        else:  # N == 1
+        else:
             s[0] = (h[0] + 2.0*(h[1]+h[2]+h[3])) * c[0]
         return
     raise ValueError("Invalid filter half-length (should be 2..4)")
@@ -141,3 +142,117 @@ def get_samples(c: np.ndarray, deg: int) -> None:
     s = np.zeros_like(c)
     symmetric_fir(h, c, s)
     np.copyto(c, s)
+
+# ------------------------------- batched path --------------------------------
+
+def initial_causal_batch(C: np.ndarray, z: float, tol: float = 1e-10) -> np.ndarray:
+    """C: (B, N) -> (B,)"""
+    B, N = C.shape
+    if N == 0: return np.zeros(B, dtype=C.dtype)
+    zn = z**(N-1)
+    horizon = min(N, int(2 + np.log(tol)/np.log(abs(z)))) if tol > 0 else N
+    s = C[:, 0] + zn * C[:, -1]
+    if horizon > 2:
+        n = np.arange(1, horizon-1)
+        w = (z**n + zn/(z**n))             # (h-2,)
+        s += C[:, 1:horizon-1] @ w         # (B, h-2) @ (h-2,) -> (B,)
+    return s / (1.0 - (zn * zn))
+
+def initial_anti_causal_batch(C: np.ndarray, z: float) -> np.ndarray:
+    """C: (B, N) -> (B,)"""
+    if C.shape[1] < 2: return np.zeros(C.shape[0], dtype=C.dtype)
+    return (z*C[:, -2] + C[:, -1]) * z / (z*z - 1.0)
+
+def get_interpolation_coefficients_batch(C: np.ndarray, deg: int) -> None:
+    """In-place IIR prefilter across a batch: C is (B, N)."""
+    B, N = C.shape
+    if deg <= 1 or N <= 1: return
+    poles = spline_poles(deg)
+    lam = 1.0
+    for z in poles: lam *= (1.0 - z) * (1.0 - 1.0/z)
+    C *= lam
+    for z in poles:
+        C[:, 0] = initial_causal_batch(C, z)
+        for n in range(1, N):
+            C[:, n] += z * C[:, n-1]
+        C[:, -1] = initial_anti_causal_batch(C, z)
+        for n in range(N-2, -1, -1):
+            C[:, n] = z * (C[:, n+1] - C[:, n])
+
+def symmetric_fir_batch(h: Sequence[float], C: np.ndarray) -> np.ndarray:
+    """Symmetric FIR over a batch: C (B, N) -> S (B, N)."""
+    H = len(h); B, N = C.shape
+    S = np.zeros_like(C)
+    if H == 2:
+        h0, h1 = h
+        if N >= 2:
+            S[:, 0]    = h0*C[:, 0] + 2.0*h1*C[:, 1]
+            if N > 2:
+                S[:, 1:-1] = h0*C[:, 1:-1] + h1*(C[:, :-2] + C[:, 2:])
+            S[:, -1]   = h0*C[:, -1] + 2.0*h1*C[:, -2]
+        elif N == 1:
+            S[:, 0] = (h0 + 2.0*h1) * C[:, 0]
+        return S
+    if H == 3:
+        h0, h1, h2 = h
+        if N >= 4:
+            S[:, 0]    = h0*C[:, 0] + 2.0*h1*C[:, 1] + 2.0*h2*C[:, 2]
+            S[:, 1]    = h0*C[:, 1] + h1*(C[:, 0]+C[:, 2]) + h2*(C[:, 1]+C[:, 3])
+            if N > 4:
+                S[:, 2:-2] = (h0*C[:, 2:-2] +
+                              h1*(C[:, 1:-3]+C[:, 3:-1]) +
+                              h2*(C[:, 0:-4]+C[:, 4:]))
+            S[:, -2]   = h0*C[:, -2] + h1*(C[:, -3]+C[:, -1]) + h2*(C[:, -4]+C[:, -2])
+            S[:, -1]   = h0*C[:, -1] + 2.0*h1*C[:, -2] + 2.0*h2*C[:, -3]
+        elif N == 3:
+            S[:, 0] = h0*C[:, 0] + 2.0*h1*C[:, 1] + 2.0*h2*C[:, 2]
+            S[:, 1] = h0*C[:, 1] + h1*(C[:, 0]+C[:, 2]) + 2.0*h2*C[:, 1]
+            S[:, 2] = h0*C[:, 2] + 2.0*h1*C[:, 1] + 2.0*h2*C[:, 0]
+        elif N == 2:
+            S[:, 0] = (h0 + 2.0*h2)*C[:, 0] + 2.0*h1*C[:, 1]
+            S[:, 1] = (h0 + 2.0*h2)*C[:, 1] + 2.0*h1*C[:, 0]
+        else:  # N == 1
+            S[:, 0] = (h0 + 2.0*(h1+h2)) * C[:, 0]
+        return S
+    if H == 4:
+        h0, h1, h2, h3 = h
+        if N >= 6:
+            S[:, 0]    = h0*C[:, 0] + 2.0*h1*C[:, 1] + 2.0*h2*C[:, 2] + 2.0*h3*C[:, 3]
+            S[:, 1]    = h0*C[:, 1] + h1*(C[:, 0]+C[:, 2]) + h2*(C[:, 1]+C[:, 3]) + h3*(C[:, 2]+C[:, 4])
+            S[:, 2]    = h0*C[:, 2] + h1*(C[:, 1]+C[:, 3]) + h2*(C[:, 0]+C[:, 4]) + h3*(C[:, 1]+C[:, 5])
+            if N > 6:
+                S[:, 3:-3] = (h0*C[:, 3:-3] +
+                              h1*(C[:, 2:-4]+C[:, 4:-2]) +
+                              h2*(C[:, 1:-5]+C[:, 5:-1]) +
+                              h3*(C[:, 0:-6]+C[:, 6:]))
+            S[:, -3]   = h0*C[:, -3] + h1*(C[:, -4]+C[:, -2]) + h2*(C[:, -5]+C[:, -1]) + h3*(C[:, -6]+C[:, -2])
+            S[:, -2]   = h0*C[:, -2] + h1*(C[:, -3]+C[:, -1]) + h2*(C[:, -4]+C[:, -2]) + h3*(C[:, -5]+C[:, -3])
+            S[:, -1]   = h0*C[:, -1] + 2.0*h1*C[:, -2] + 2.0*h2*C[:, -3] + 2.0*h3*C[:, -4]
+        elif N == 5:
+            S[:, 0]=h0*C[:,0]+2.0*h1*C[:,1]+2.0*h2*C[:,2]+2.0*h3*C[:,3]
+            S[:, 1]=h0*C[:,1]+h1*(C[:,0]+C[:,2])+h2*(C[:,1]+C[:,3])+h3*(C[:,2]+C[:,4])
+            S[:, 2]=h0*C[:,2]+(h1+h3)*(C[:,1]+C[:,3])+h2*(C[:,0]+C[:,4])
+            S[:, 3]=h0*C[:,3]+h1*(C[:,2]+C[:,4])+h2*(C[:,1]+C[:,3])+h3*(C[:,0]+C[:,2])
+            S[:, 4]=h0*C[:,4]+2.0*h1*C[:,3]+2.0*h2*C[:,2]+2.0*h3*C[:,1]
+        elif N == 4:
+            S[:,0]=h0*C[:,0]+2.0*h1*C[:,1]+2.0*h2*C[:,2]+2.0*h3*C[:,3]
+            S[:,1]=h0*C[:,1]+h1*(C[:,0]+C[:,2])+h2*(C[:,1]+C[:,3])+2.0*h3*C[:,2]
+            S[:,2]=h0*C[:,2]+h1*(C[:,1]+C[:,3])+h2*(C[:,0]+C[:,2])+2.0*h3*C[:,1]
+            S[:,3]=h0*C[:,3]+2.0*h1*C[:,2]+2.0*h2*C[:,1]+2.0*h3*C[:,0]
+        elif N == 3:
+            S[:,0]=h0*C[:,0]+2.0*(h1+h3)*C[:,1]+2.0*h2*C[:,2]
+            S[:,1]=h0*C[:,1]+(h1+h3)*(C[:,0]+C[:,2])+2.0*h2*C[:,1]
+            S[:,2]=h0*C[:,2]+2.0*(h1+h3)*C[:,1]+2.0*h2*C[:,0]
+        elif N == 2:
+            S[:,0]=(h0+2.0*h2)*C[:,0]+2.0*(h1+h3)*C[:,1]
+            S[:,1]=(h0+2.0*h2)*C[:,1]+2.0*(h1+h3)*C[:,0]
+        else:
+            S[:,0] = (h0 + 2.0*(h1+h2+h3)) * C[:,0]
+        return S
+    raise ValueError("Invalid filter half-length (should be 2..4)")
+
+def get_samples_batch(C: np.ndarray, deg: int) -> None:
+    if deg <= 1: return
+    h = sampling_fir(deg)
+    S = symmetric_fir_batch(h, C)
+    np.copyto(C, S)

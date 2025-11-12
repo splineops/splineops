@@ -12,8 +12,6 @@
 # The concrete back-end and spline degree are chosen with a single *method* string
 # (see the *method* parameter in :pyfunc:`resize`).
 
-# splineops/src/splineops/resize/resize.py
-
 from __future__ import annotations
 
 from typing import Optional, Sequence, Tuple, Union, Dict, Literal
