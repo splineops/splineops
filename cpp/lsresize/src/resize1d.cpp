@@ -7,33 +7,62 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <cstdlib>   // getenv
 
-#if defined(__AVX2__)
+#if defined(__AVX2__) || defined(__AVX512F__)
   #include <immintrin.h>
 #endif
 
 namespace lsresize {
 
-// Optional tiny AVX2 FMA dot kernel (falls back to scalar when not available)
+// -----------------------------------------------------------------------------
+// AVX/FMA dot kernel with selective AVX-512 usage.
+// - AVX-512 is used only when M is reasonably large (default: M >= 64) to
+//   avoid frequency throttling penalties on some CPUs.
+// - Force AVX2 via env: LSRESIZE_FORCE_AVX2=1
+// -----------------------------------------------------------------------------
+static inline bool force_avx2() {
+  const char* e = std::getenv("LSRESIZE_FORCE_AVX2");
+  return (e && e[0] == '1');
+}
+
 static inline double dot_small(const double* w, const double* v, int M) {
-#if defined(__AVX2__)
-  __m256d acc0 = _mm256_setzero_pd();
-  int t = 0;
-  for (; t + 4 <= M; t += 4) {
-    __m256d ww = _mm256_loadu_pd(w + t);
-    __m256d vv = _mm256_loadu_pd(v + t);
-    acc0 = _mm256_fmadd_pd(ww, vv, acc0);
+#if defined(__AVX512F__)
+  if (!force_avx2() && M >= 64) {
+    __m512d acc0 = _mm512_setzero_pd();
+    int t = 0;
+    for (; t + 8 <= M; t += 8) {
+      __m512d ww = _mm512_loadu_pd(w + t);
+      __m512d vv = _mm512_loadu_pd(v + t);
+      acc0 = _mm512_fmadd_pd(ww, vv, acc0);
+    }
+    alignas(64) double tmp[8];
+    _mm512_storeu_pd(tmp, acc0);
+    double acc = tmp[0] + tmp[1] + tmp[2] + tmp[3] + tmp[4] + tmp[5] + tmp[6] + tmp[7];
+    for (; t < M; ++t) acc += w[t] * v[t];
+    return acc;
   }
-  alignas(32) double tmp[4];
-  _mm256_store_pd(tmp, acc0);
-  double acc = tmp[0] + tmp[1] + tmp[2] + tmp[3];
-  for (; t < M; ++t) acc += w[t] * v[t];
-  return acc;
-#else
+#endif
+#if defined(__AVX2__)
+  {
+    __m256d acc0 = _mm256_setzero_pd();
+    int t = 0;
+    for (; t + 4 <= M; t += 4) {
+      __m256d ww = _mm256_loadu_pd(w + t);
+      __m256d vv = _mm256_loadu_pd(v + t);
+      acc0 = _mm256_fmadd_pd(ww, vv, acc0);
+    }
+    alignas(32) double tmp[4];
+    _mm256_storeu_pd(tmp, acc0);
+    double acc = tmp[0] + tmp[1] + tmp[2] + tmp[3];
+    for (; t < M; ++t) acc += w[t] * v[t];
+    return acc;
+  }
+#endif
+  // Scalar fallback
   double acc = 0.0;
   for (int t = 0; t < M; ++t) acc += w[t] * v[t];
   return acc;
-#endif
 }
 
 // Build the reusable 1-D plan (window metadata + contiguous weights + pad map)
@@ -112,7 +141,7 @@ Plan1D make_plan_1d(int N, const LSParams& p)
     }
   }
 
-  // Allocate contiguous weights; fold antisymmetric sign into weights
+  // Allocate contiguous weights (sign handled via extension, not weights)
   plan.weights.resize(static_cast<size_t>(nnz));
 
   // Second pass: fill row_ptr and weights
@@ -213,7 +242,7 @@ static inline void resize_1d_core(const std::vector<double>& in,
   }
 
   // 4) Accumulate using the plan (contiguous weights & samples)
-  y.assign(static_cast<size_t>(plan.out_total), 0.0);
+  y.resize(static_cast<size_t>(plan.out_total));  // overwrite; no need to zero
   {
     const int*    __restrict rp = plan.row_ptr.data();
     const double* __restrict ww = plan.weights.data();

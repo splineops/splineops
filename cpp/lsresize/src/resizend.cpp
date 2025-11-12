@@ -7,7 +7,9 @@
 #include <numeric>
 #include <cstdint>
 #include <algorithm>
-#include <cmath>    // std::abs
+#include <cmath>     // std::abs
+#include <cstdlib>   // std::getenv, std::atof, std::atoi
+#include <cstring>   // std::memcpy
 
 namespace lsresize {
 
@@ -23,6 +25,21 @@ static inline int64_t prod_elems(const std::vector<int64_t>& shape) {
   int64_t p = 1;
   for (int64_t v : shape) p *= v;
   return p;
+}
+
+// Simple heuristic to decide when to use OpenMP
+static inline bool use_parallel(std::int64_t nlines, const lsresize::Plan1D& plan) {
+  const double L    = static_cast<double>(plan.out_total);
+  const double nnz  = plan.row_ptr.empty() ? 0.0 : static_cast<double>(plan.row_ptr.back());
+  const double wavg = (L > 0.0) ? (nnz / L) : 0.0;
+  const double flops = 2.0 * static_cast<double>(nlines) * L * wavg;
+
+  double thr = 1e6; // ~1M FLOPs by default
+  if (const char* env = std::getenv("LSRESIZE_OMP_THRESHOLD")) {
+    if (double t = std::atof(env); t > 0.0) thr = t;
+  }
+  // Use either the classic guard or the FLOPs-based one
+  return (nlines > 64) || (flops > thr);
 }
 
 void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
@@ -64,7 +81,7 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
   const Plan1D plan = make_plan_1d(N_line, p);
 
 #if defined(_OPENMP)
-  if (nlines > 64) {
+  if (use_parallel(nlines, plan)) {
     // Parallel path
     #pragma omp parallel
     {
@@ -74,7 +91,13 @@ void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
       std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(N_line));
       std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(plan.outN));
 
-      #pragma omp for schedule(static, 32)
+      // ---- configurable chunk size (env: LSRESIZE_OMP_CHUNK) ----
+      int chunk = 32;
+      if (const char* e = std::getenv("LSRESIZE_OMP_CHUNK")) {
+        if (int c = std::atoi(e); c > 0) chunk = c;
+      }
+
+      #pragma omp for schedule(static, chunk)
       for (int64_t line = 0; line < nlines; ++line) {
         std::fill(idx.begin(), idx.end(), 0);
 
