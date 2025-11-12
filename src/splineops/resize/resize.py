@@ -84,7 +84,6 @@ def resize(
     output: Optional[Union[npt.NDArray, np.dtype]] = None,
     output_size: Optional[Tuple[int, ...]] = None,
     method: str = "cubic",
-    modes: Union[str, Sequence[str]] = "lightly ignored",
 ) -> npt.NDArray:
     """
     Resize an *N*-dimensional array using splines.
@@ -131,9 +130,6 @@ def resize(
           - **quadratic-best_antialiasing**: least-squares, degree 2
           - **cubic-best_antialiasing**:    least-squares, degree 3
         Anti-aliasing variants are preferred for down-sampling.
-    modes : str or sequence of str, optional
-        Present for backward compatibility. Ignored by the native and fallback
-        projection/interpolation paths, which use symmetric (mirror) boundaries.
 
     Returns
     -------

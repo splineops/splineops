@@ -126,10 +126,7 @@ Plan1D make_plan_1d(int N, const LSParams& p)
 
     for (int t = 0; t < wlen; ++t) {
       const int k = k0 + t;
-      int sign = 1;
-      if (k < 0 && !plan.symmetric_ext) sign = -1;
       double w = fact * beta(x - k, total_degree);
-      if (sign != 1) w = -w;
       plan.weights[static_cast<size_t>(cursor++)] = w;
     }
   }
