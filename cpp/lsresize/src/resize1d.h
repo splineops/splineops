@@ -26,7 +26,7 @@ struct Plan1D {
   // CSR-style layout for variable window sizes per output position l
   // row_ptr.size() == out_total + 1; for each row l, weights[row_ptr[l] ... row_ptr[l+1]-1]
   std::vector<int>    row_ptr;     // offsets into weights (contiguous per row)
-  std::vector<double> weights;     // fact * beta(x - k, total_degree), antisym sign folded in
+  std::vector<double> weights;     // fact * beta(x - k, total_degree)
 
   // Per-row window metadata for contiguous access
   std::vector<int> kmin;           // window start index kmin[l]
@@ -40,6 +40,10 @@ struct Plan1D {
   // (size == left_pad). This removes per-line mirror math.
   std::vector<int>  pad_src_idx;   // source index in coeff (clamped later to [0, N-1])
   std::vector<char> pad_src_sgn;   // +1 / -1
+
+  // Precomputed right-tail mapping: ext[N + i] = rp_sign * coeff[rp_src[i]]
+  std::vector<int>  rp_src;        // size == max(0, length_total - N)
+  char              rp_sign = 1;
 };
 
 // Per-thread reusable workspace to avoid per-line allocations

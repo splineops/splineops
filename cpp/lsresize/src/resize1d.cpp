@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
-#include <cstdlib>   // getenv
+#include <cstdlib>   // std::getenv
 
 #if defined(__AVX2__) || defined(__AVX512F__)
   #include <immintrin.h>
@@ -26,6 +26,24 @@ static inline bool force_avx2() {
   return (e && e[0] == '1');
 }
 
+#if defined(__AVX2__)
+static inline double hsum256(__m256d v) {
+  __m128d vlow  = _mm256_castpd256_pd128(v);
+  __m128d vhigh = _mm256_extractf128_pd(v, 1);
+  vlow  = _mm_add_pd(vlow, vhigh);
+  __m128d high64 = _mm_unpackhi_pd(vlow, vlow);
+  vlow  = _mm_add_sd(vlow, high64);
+  return _mm_cvtsd_f64(vlow);
+}
+#endif
+
+#if defined(__AVX512F__)
+static inline double hsum512(__m512d v) {
+  // MSVC/Clang/GCC support this reduce add for AVX-512F.
+  return _mm512_reduce_add_pd(v);
+}
+#endif
+
 static inline double dot_small(const double* w, const double* v, int M) {
 #if defined(__AVX512F__)
   if (!force_avx2() && M >= 64) {
@@ -36,9 +54,7 @@ static inline double dot_small(const double* w, const double* v, int M) {
       __m512d vv = _mm512_loadu_pd(v + t);
       acc0 = _mm512_fmadd_pd(ww, vv, acc0);
     }
-    alignas(64) double tmp[8];
-    _mm512_storeu_pd(tmp, acc0);
-    double acc = tmp[0] + tmp[1] + tmp[2] + tmp[3] + tmp[4] + tmp[5] + tmp[6] + tmp[7];
+    double acc = hsum512(acc0);
     for (; t < M; ++t) acc += w[t] * v[t];
     return acc;
   }
@@ -52,9 +68,7 @@ static inline double dot_small(const double* w, const double* v, int M) {
       __m256d vv = _mm256_loadu_pd(v + t);
       acc0 = _mm256_fmadd_pd(ww, vv, acc0);
     }
-    alignas(32) double tmp[4];
-    _mm256_storeu_pd(tmp, acc0);
-    double acc = tmp[0] + tmp[1] + tmp[2] + tmp[3];
+    double acc = hsum256(acc0);
     for (; t < M; ++t) acc += w[t] * v[t];
     return acc;
   }
@@ -161,6 +175,36 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   }
   plan.row_ptr.back() = cursor;
 
+  // --- Precompute right extension mapping (mirrored indices) ---
+  {
+    const int rem = plan.length_total - N;
+    plan.rp_src.clear();
+    plan.rp_sign = plan.symmetric_ext ?  1 : -1;
+
+    if (rem > 0) {
+      plan.rp_src.resize(static_cast<size_t>(rem));
+      if (plan.symmetric_ext) {
+        const int period = 2 * N - 2;
+        for (int l = N; l < plan.length_total; ++l) {
+          int t = l;
+          if (period > 0 && t >= period) t %= period;
+          if (t >= N) t = period - t;
+          if (t < 0) t = 0; else if (t >= N) t = N - 1;
+          plan.rp_src[static_cast<size_t>(l - N)] = t;
+        }
+      } else { // antisymmetric
+        const int period = 2 * N - 3;
+        for (int l = N; l < plan.length_total; ++l) {
+          int t = l;
+          if (period > 0 && t >= period) t %= period;
+          if (t >= N) t = period - t;
+          if (t < 0) t = 0; else if (t >= N) t = N - 1;
+          plan.rp_src[static_cast<size_t>(l - N)] = t;
+        }
+      }
+    }
+  }
+
   return plan;
 }
 
@@ -193,24 +237,13 @@ static inline void resize_1d_core(const std::vector<double>& in,
   // 3) Build the finite extended buffer once (right tail only)
   ext.resize(static_cast<size_t>(plan.length_total));
   std::copy(coeff.begin(), coeff.end(), ext.begin());
-  if (plan.length_total > N) {
-    if (plan.symmetric_ext) {
-      const int period = 2 * N - 2;
-      for (int l = N; l < plan.length_total; ++l) {
-        int t = l;
-        if (period > 0 && t >= period) t %= period;
-        if (t >= N) t = period - t;
-        t = std::clamp(t, 0, N - 1);
-        ext[static_cast<size_t>(l)] = coeff[static_cast<size_t>(t)];
-      }
-    } else {
-      const int period = 2 * N - 3;
-      for (int l = N; l < plan.length_total; ++l) {
-        int t = l;
-        if (period > 0 && t >= period) t %= period;
-        if (t >= N) t = period - t;
-        t = std::clamp(t, 0, N - 1);
-        ext[static_cast<size_t>(l)] = -coeff[static_cast<size_t>(t)];
+  {
+    const int rem = plan.length_total - N;
+    if (rem > 0 && !plan.rp_src.empty()) {
+      const double sgn = static_cast<int>(plan.rp_sign);
+      for (int i = 0; i < rem; ++i) {
+        ext[static_cast<size_t>(N + i)] =
+            sgn * coeff[static_cast<size_t>(plan.rp_src[static_cast<size_t>(i)])];
       }
     }
   }
