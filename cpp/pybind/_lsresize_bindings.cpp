@@ -2,9 +2,11 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
+
 #include <vector>
 #include <numeric>
 #include <cstdint>
+#include <algorithm>   // std::accumulate
 
 #include "../lsresize/src/resizend.h"
 #include "../lsresize/src/utils.h"
@@ -23,18 +25,9 @@ static std::vector<int64> shape_to_vec_i64(const py::array &a) {
 /**
  * @brief Per-axis policy for magnification: use Standard interpolation.
  *
- * For upsampling (zoom > 1) the LS/Oblique projections tend to behave like
- * a deconvolution (due to the analysis stage and the scale a^(n1+1)), which
- * can amplify high-frequency content and introduce ringing/overshoot near
- * sharp edges. For magnification there is no aliasing to suppress; the
- * recommended behavior is to reconstruct with plain spline interpolation.
- *
- * This function enforces that policy by disabling the projection stage
- * on a per-axis basis: if zoom > 1 and the analysis degree is non-negative
- * (i.e., LS/Oblique), set analy_degree = -1 to select Standard interpolation.
- *
- * Shrinking axes (zoom < 1) are left unchanged so they still benefit from
- * LS/Oblique anti-aliasing.
+ * For upsampling (zoom > 1) LS/Oblique can ring (deconvolution-like effect).
+ * Disable projection per-axis in that case (use Standard interpolation).
+ * Also disable projection at exact unity zoom (identity safety).
  */
 static inline void normalize_params_for_magnification(lsresize::LSParams& p) {
     const double eps = 1e-12;
@@ -69,59 +62,77 @@ py::array_t<double> resize_nd(py::array input,
     std::vector<int64> in_shape  = shape_to_vec_i64(in_f64);
     std::vector<int64> out_shape = in_shape;
 
-    // Compute per-axis output size (same as Python)
+    // Compute final per-axis output size (same policy as Python)
     for (int ax = 0; ax < D; ++ax) {
         int workN = 0, outN = 0;
         lsresize::calculate_final_size_1d(
-            inversable, static_cast<int>(in_shape[ax]), zoom_factors[ax], workN, outN);
-        out_shape[ax] = outN;
+            inversable, static_cast<int>(in_shape[static_cast<size_t>(ax)]),
+            zoom_factors[static_cast<size_t>(ax)], workN, outN);
+        out_shape[static_cast<size_t>(ax)] = outN;
     }
 
-    // Allocate final output (written on the last axis pass)
+    // Allocate final output (will be written on the LAST axis pass)
     std::vector<py::ssize_t> out_shape_ssize(out_shape.begin(), out_shape.end());
     py::array_t<double> out(out_shape_ssize);
 
-    // Ping-pong buffers to avoid aliasing the input of a pass with the output allocation
-    std::vector<double> bufA(static_cast<size_t>(in_f64.size()));
-    std::memcpy(bufA.data(), in_f64.data(), bufA.size() * sizeof(double));
-
-    std::vector<int64> cur_shape = in_shape;
-    std::vector<double> bufB;
+    // Ping-pong plan:
+    //  - First pass reads directly from in_f64.data()  (no initial memcpy)
+    //  - Middle passes use a single transient vector `prev` (reused)
+    //  - Last pass writes directly into `out.mutable_data()` (no final memcpy)
+    std::vector<double> prev;  // holds intermediate result between passes
+    std::vector<int64>  cur_shape = in_shape;
 
     for (int ax = 0; ax < D; ++ax) {
         std::vector<int64> next_shape = cur_shape;
-        next_shape[ax] = out_shape[ax];
+        next_shape[static_cast<size_t>(ax)] = out_shape[static_cast<size_t>(ax)];
 
-        int64 total_next = std::accumulate(
-            next_shape.begin(), next_shape.end(), (int64)1, std::multiplies<int64>());
+        // Total elements for the next buffer on this axis
+        int64 total_next = std::accumulate(next_shape.begin(), next_shape.end(),
+                                           static_cast<int64>(1), std::multiplies<int64>());
 
-        bufB.assign(static_cast<size_t>(total_next), 0.0);
-
+        // Set up parameters for this axis
         lsresize::LSParams p;
         p.interp_degree = interp_degree;
-        p.analy_degree  = analy_degree;   // -1 allowed (Standard when -1)
+        p.analy_degree  = analy_degree;   // -1 allowed (Standard)
         p.synthe_degree = synthe_degree;
-        p.zoom          = zoom_factors[ax];
+        p.zoom          = zoom_factors[static_cast<size_t>(ax)];
         p.shift         = 0.0;
         p.inversable    = inversable;
 
         normalize_params_for_magnification(p);
 
-        const double eps = 1e-12;
-        if (std::abs(p.zoom - 1.0) <= eps && next_shape[ax] == cur_shape[ax]) {
-            // Short-circuit true identity along this axis
-            bufB = bufA; // pure copy
+        // Decide input & output pointers for this pass
+        const double* in_ptr  = nullptr;
+        double*       out_ptr = nullptr;
+
+        const bool first_pass = (ax == 0);
+        const bool last_pass  = (ax == D - 1);
+
+        if (first_pass) {
+            // Read directly from the NumPy input (contiguous float64, C-order)
+            in_ptr = static_cast<const double*>(in_f64.data());
         } else {
-            lsresize::resize_along_axis(bufA.data(), bufB.data(),
-                                        cur_shape, next_shape, ax, p);
+            // Read from the previous intermediate
+            in_ptr = prev.data();
         }
 
-        bufA.swap(bufB);
+        if (last_pass) {
+            // Write directly to the final NumPy output
+            out_ptr = static_cast<double*>(out.mutable_data());
+        } else {
+            // Resize (allocate) prev to hold this pass's output
+            prev.resize(static_cast<size_t>(total_next));
+            out_ptr = prev.data();
+        }
+
+        // Run one axis
+        lsresize::resize_along_axis(in_ptr, out_ptr, cur_shape, next_shape, ax, p);
+
+        // Prepare for next axis
         cur_shape.swap(next_shape);
     }
 
-    // Final copy into the Python array
-    std::memcpy(out.mutable_data(), bufA.data(), bufA.size() * sizeof(double));
+    // No final memcpy required — last pass wrote into `out` directly.
     return out;
 }
 
