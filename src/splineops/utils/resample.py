@@ -51,6 +51,16 @@ def resize_with_scipy_zoom(
     )
     return out, recovered, snr, mse, elapsed
 
+
+# -----------------------------------------------------------------------------#
+# Lazy-import helper
+# -----------------------------------------------------------------------------#
+def _resize(*args, **kwargs):
+    """Import `resize` only when actually called (breaks circular imports)."""
+    from ..resize.resize import resize  # local import!
+    return resize(*args, **kwargs)
+
+
 # -----------------------------------------------------------------------------#
 # Generic wrapper for any splineops preset
 # -----------------------------------------------------------------------------#

@@ -127,10 +127,16 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Resize Stages
-# -------------
+# Aliasing
+# --------
 #
 # We go through the stages of shrinking the image and then expanding it.
+# Note the wave-like artefacts in the expanded image: classic **aliasing**.
+# When we shrink below the Nyquist limit, high-frequency detail folds back
+# into lower frequencies.  Upsampling cannot recover the lost detail, so
+# those aliased components become Moiré-style patterns.  A proper workflow
+# would low-pass filter before down-sampling, but here we purposely show the
+# artefacts to illustrate the point.
 
 fig, axes = plt.subplots(3, 1, figsize=(8, 18))
 
@@ -150,12 +156,40 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Aliasing discussion
-# -------------------
+# Least-Squares shrink/expand (anti-aliased)
+# ------------------------------------------
 #
-# Note the wave-like artefacts in the expanded image: classic **aliasing**.
-# When we shrink below the Nyquist limit, high-frequency detail folds back
-# into lower frequencies.  Upsampling cannot recover the lost detail, so
-# those aliased components become Moiré-style patterns.  A proper workflow
-# would low-pass filter before down-sampling, but here we purposely show the
-# artefacts to illustrate the point.
+# Now we repeat the same shrink/expand pipeline, but this time we use the
+# **Least-Squares** projection variant when shrinking:
+#
+#   * "cubic-best_antialiasing" applies a proper low-pass filter before
+#     down-sampling, which strongly reduces aliasing.
+#   * For the expansion step, plain cubic interpolation is enough; the
+#     important part is that the shrink was anti-aliased.
+
+ls_shrunken_f = resize_rgb(
+    adjusted,
+    shrink_factor,
+    method="cubic-best_antialiasing",  # LS projection, degree 3
+)
+ls_shrunken = (np.clip(ls_shrunken_f, 0.0, 1.0) * 255).astype(np.uint8)
+
+ls_expanded = resize_rgb(
+    ls_shrunken.astype(np.float64) / 255.0,
+    1.0 / shrink_factor,
+    method="cubic",  # standard cubic interpolation for upsampling
+)
+ls_expanded = np.clip(ls_expanded, 0.0, 1.0)
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 7))
+
+axes[0].imshow(expanded)
+axes[0].set_title("Expanded after plain cubic interpolation")
+axes[0].axis("off")
+
+axes[1].imshow(ls_expanded)
+axes[1].set_title("Expanded after LS anti-aliased shrink")
+axes[1].axis("off")
+
+plt.tight_layout()
+plt.show()
