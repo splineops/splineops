@@ -1,7 +1,6 @@
 # splineops/scripts/script_resize_plot.py
-# script_resize_plot.py
 """
-Sweep zoom factors in [0.01, 2.0) (2.0 excluded), keep only those that
+Sweep zoom factors in [0.01, 2.0) (2.0 excluded) while *excluding 1.0*, keep only those that
 round-trip image size exactly, and compare four methods:
 
 - SciPy cubic
@@ -181,16 +180,17 @@ def main():
     H, W = int(img.shape[0]), int(img.shape[1])
     print(f"Loaded image: {path_or_url} | shape={img.shape}, dtype={img.dtype}")
 
-    # Zooms in [0.01, 2.0) (2.0 excluded), force-include 1.0
+    # Zooms in [0.01, 2.0) (2.0 excluded), EXCLUDING 1.0
     z_candidates = np.linspace(0.01, 2.0, args.samples, endpoint=False, dtype=np.float64)
-    z_candidates = np.unique(np.append(z_candidates, 1.0))
+    # Guard against any accidental inclusion of 1.0
+    z_candidates = z_candidates[np.abs(z_candidates - 1.0) > 1e-12]
 
     # Keep only round-trip-preserving zooms
     z_list = [float(z) for z in z_candidates if roundtrip_size_ok(img.shape, float(z))]
     if not z_list:
         print("No valid zoom factors after round-trip size check. Try increasing --samples.")
         sys.exit(1)
-    print(f"Accepted {len(z_list)} / {len(z_candidates)} zooms.")
+    print(f"Accepted {len(z_list)} / {len(z_candidates)} zooms (1.0 excluded).")
 
     METHODS = {
         "SciPy cubic": ("scipy", None),
@@ -213,9 +213,6 @@ def main():
 
             # Average timing over N runs; use last rec for SNR (deterministic).
             rec, t_mean, t_sd = average_time(fn, repeats=args.repeats)
-
-            # If you *really* want SNR averaged too, you could accumulate
-            # it inside average_time; here we compute once (deterministic).
             s = snr_db(img, rec)
 
             results[name]["z"].append(z)
@@ -230,10 +227,9 @@ def main():
         z = np.array(data["z"], dtype=float)
         t = np.array(data["time"], dtype=float)
         plt.plot(z, t, marker="o", markersize=3, linewidth=1.5, label=name)
-        # To show error bars:
         # t_sd = np.array(data["time_sd"], dtype=float)
         # plt.errorbar(z, t, yerr=t_sd, fmt='none', ecolor='gray', alpha=0.2)
-    plt.xlabel("Zoom factor")
+    plt.xlabel("Zoom factor (1.0 excluded)")
     plt.ylabel(f"Time (s)  [avg of {args.repeats} runs, forward + backward]")
     plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W})")
     plt.grid(True, alpha=0.35)
@@ -250,7 +246,7 @@ def main():
         s = np.array(data["snr"], dtype=float)
         s_plot = np.where(np.isfinite(s), s, np.nan)  # hide +inf for plotting
         plt.plot(z, s_plot, marker="o", markersize=3, linewidth=1.5, label=name)
-    plt.xlabel("Zoom factor")
+    plt.xlabel("Zoom factor (1.0 excluded)")
     plt.ylabel("SNR (dB)  [original vs recovered]")
     plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W})")
     plt.grid(True, alpha=0.35)
