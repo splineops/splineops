@@ -19,9 +19,12 @@ import matplotlib.pyplot as plt
 import requests
 from io import BytesIO
 from PIL import Image
+from time import perf_counter
 
+from scipy.ndimage import zoom as _scipy_zoom
+from splineops.resize import resize
 from splineops.utils import (
-    resize_and_compute_metrics,      # resampling + metrics
+    compute_snr_and_mse_region,
     show_roi_zoom,
     print_runtime_context,
 )
@@ -68,28 +71,95 @@ roi_kwargs = dict(
     roi_xy=(row_top, col_left),
 )
 
-# --- timing helper -----------------------------------------------------------
+# --- timing + metrics helper -------------------------------------------------
 N_TRIALS = 10
 
-def run_with_repeats(img, *, trials=N_TRIALS, warmup=1, **kwargs):
-    """Run resize_and_compute_metrics multiple times; average the timings.
-    Returns: resized, recovered, snr, mse, time_mean, time_sd
+def _run_once(
+    img: np.ndarray,
+    *,
+    method: str,
+    zoom_factors,
+    border_fraction: float,
+    roi,
+    scipy_order: int = 3,
+):
+    """
+    Single run of a resize pipeline:
+      - forwards (downsample)
+      - backwards to original shape
+      - SNR/MSE on ROI (or central region via border_fraction)
+      - forward timing only
+    """
+    if np.isscalar(zoom_factors):
+        zoom_factors = (float(zoom_factors), float(zoom_factors))
+    zoom_factors = tuple(float(z) for z in zoom_factors)
+
+    if method == "scipy":
+        # SciPy baseline using ndimage.zoom
+        t0 = perf_counter()
+        resized = _scipy_zoom(img, zoom_factors, order=scipy_order)
+        elapsed = perf_counter() - t0
+
+        recovered = _scipy_zoom(
+            resized,
+            1.0 / np.asarray(zoom_factors),
+            order=scipy_order,
+        )
+    else:
+        # splineops.resize path
+        t0 = perf_counter()
+        resized = resize(
+            img,
+            zoom_factors=zoom_factors,
+            method=method,
+        )
+        elapsed = perf_counter() - t0
+
+        recovered = resize(
+            resized,
+            output_size=img.shape,
+            method=method,
+        )
+
+    snr, mse = compute_snr_and_mse_region(
+        img,
+        recovered,
+        roi=roi,
+        border_fraction=border_fraction,
+    )
+    return resized, recovered, snr, mse, elapsed
+
+
+def run_with_repeats(
+    img: np.ndarray,
+    *,
+    trials: int = N_TRIALS,
+    warmup: int = 1,
+    **kwargs,
+):
+    """
+    Run one pipeline multiple times and average timings.
+
+    Returns
+    -------
+    resized, recovered, snr, mse, time_mean, time_sd
     """
     # warm-up (not counted)
     for _ in range(warmup):
-        resize_and_compute_metrics(img, **kwargs)
+        _run_once(img, **kwargs)
 
     # first measured run (keep outputs & metrics)
-    resized, recovered, snr, mse, t = resize_and_compute_metrics(img, **kwargs)
+    resized, recovered, snr, mse, t = _run_once(img, **kwargs)
     times = [t]
 
     # additional measured runs (timing only)
     for _ in range(trials - 1):
-        _, _, _, _, t = resize_and_compute_metrics(img, **kwargs)
+        _, _, _, _, t = _run_once(img, **kwargs)
         times.append(t)
 
-    time_mean = float(np.mean(times))
-    time_sd   = float(np.std(times, ddof=1)) if len(times) > 1 else 0.0
+    times = np.asarray(times, dtype=np.float64)
+    time_mean = float(times.mean())
+    time_sd   = float(times.std(ddof=1)) if len(times) > 1 else 0.0
     return resized, recovered, snr, mse, time_mean, time_sd
 
 # %%
@@ -189,8 +259,8 @@ recovered_stack = [
 
 fig, axes = plt.subplots(3, 1, figsize=(8, 12))
 
-for ax, (label, img, snr_val, mse_val) in zip(axes, recovered_stack):
-    ax.imshow(img, cmap="gray", aspect="equal")
+for ax, (label, img_rec, snr_val, mse_val) in zip(axes, recovered_stack):
+    ax.imshow(img_rec, cmap="gray", aspect="equal")
     ax.set_title(f"{label}\nSNR: {snr_val:.2f} dB  ·  MSE: {mse_val:.2e}")
     ax.axis("off")
 
