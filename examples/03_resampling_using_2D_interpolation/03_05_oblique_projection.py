@@ -117,8 +117,8 @@ roi_h_res = max(1, int(round(ROI_SIZE_PX * zoom_r)))
 roi_w_res = max(1, int(round(ROI_SIZE_PX * zoom_c)))
 
 # %%
-# Run both pipelines once (Least-Squares vs Oblique)
-# --------------------------------------------------
+# Least-Squares vs Oblique
+# ------------------------
 
 # Least-squares projection: cubic-best_antialiasing
 resized_2d_ls, recovered_2d_ls, snr_2d_ls, mse_2d_ls, time_2d_ls = _run_pipeline(

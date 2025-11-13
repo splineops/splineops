@@ -96,8 +96,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard Interpolation (using resize directly)
-# ---------------------------------------------
+# Standard Interpolation
+# ----------------------
 #
 # We use our standard interpolation method (cubic). SNR/MSE are computed on
 # the face ROI.
@@ -132,7 +132,7 @@ snr_2d_interp, mse_2d_interp = compute_snr_and_mse_region(
 #
 # Show the resized image pasted on a white canvas (for zoom-out), plus the ROI zoom.
 
-# Zoomed face detail for the resized (cubic) image — pasted onto original-size canvas ===
+# Zoomed face detail for the resized (cubic) image pasted onto original-size canvas
 h_res, w_res = resized_2d_interp.shape
 zoom_r, zoom_c = zoom_factors_2d
 
@@ -177,8 +177,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# SciPy Interpolation (using ndimage.zoom directly)
-# -------------------------------------------------
+# SciPy Interpolation
+# -------------------
 #
 # For comparison, we also use SciPy's zoom method. Metrics are computed on the ROI.
 

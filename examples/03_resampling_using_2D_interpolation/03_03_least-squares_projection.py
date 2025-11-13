@@ -111,8 +111,8 @@ snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
 )
 
 # %%
-# Least-Squares Projection (cubic-best_antialiasing)
-# --------------------------------------------------
+# Least-Squares Projection
+# ------------------------
 
 t0 = time.perf_counter()
 resized_2d_ls = resize(
