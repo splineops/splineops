@@ -16,14 +16,16 @@ and avoid boundary artifacts.
 # -------
 
 import numpy as np
+import time
 
 # sphinx_gallery_thumbnail_number = 4 # show fourth figure as thumbnail
 import requests
 from io import BytesIO
 from PIL import Image
 
+from splineops.resize import resize
 from splineops.utils import (
-    resize_and_compute_metrics,      # resampling + metrics (returns SNR/MSE)
+    resize_with_scipy_zoom,          # SciPy baseline + metrics
     compute_snr_and_mse_region,      # ROI / mask aware metrics for pairwise diffs
     plot_difference_image,
     show_roi_zoom,
@@ -97,23 +99,34 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard Interpolation
-# ----------------------
+# Standard Interpolation (using resize directly)
+# ---------------------------------------------
 #
-# We use our standard interpolation method (cubic). SNR/MSE are computed on the ROI.
+# We use our standard interpolation method (cubic). SNR/MSE are computed on
+# the face ROI.
 
-(
-    resized_2d_interp, 
-    recovered_2d_interp, 
-    snr_2d_interp, 
-    mse_2d_interp, 
-    time_2d_interp
-) = resize_and_compute_metrics(
+# Forward resize with splineops.resize.resize
+t0 = time.perf_counter()
+resized_2d_interp = resize(
     input_image_normalized,
-    method="cubic",
     zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction,  # kept for API parity; ROI takes precedence in metrics
-    roi=roi_rect                      # <-- metrics measured on the face ROI
+    method="cubic",
+)
+time_2d_interp = time.perf_counter() - t0
+
+# Resize back to original shape
+recovered_2d_interp = resize(
+    resized_2d_interp,
+    output_size=input_image_normalized.shape,
+    method="cubic",
+)
+
+# Metrics (ROI-aware)
+snr_2d_interp, mse_2d_interp = compute_snr_and_mse_region(
+    input_image_normalized,
+    recovered_2d_interp,
+    roi=roi_rect,
+    border_fraction=border_fraction,
 )
 
 # %%
@@ -167,8 +180,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# SciPy Interpolation
-# -------------------
+# SciPy Interpolation (using resize_with_scipy_zoom)
+# --------------------------------------------------
 #
 # For comparison, we also use SciPy's zoom method. Metrics are computed on the ROI.
 
@@ -177,14 +190,13 @@ _ = show_roi_zoom(
     recovered_2d_scipy,
     snr_2d_scipy,
     mse_2d_scipy,
-    time_2d_scipy
-) = resize_and_compute_metrics(
+    time_2d_scipy,
+) = resize_with_scipy_zoom(
     input_image_normalized,
-    method="scipy",
+    zoom_factors_2d,
     scipy_order=3,
-    zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction,  # kept for parity
-    roi=roi_rect                      # <-- metrics measured on the face ROI
+    border_fraction=border_fraction,
+    roi=roi_rect,
 )
 
 # %%
