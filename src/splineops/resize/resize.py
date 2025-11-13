@@ -5,7 +5,7 @@
 
 # One-stop helper that wraps three back-ends
 
-# * **interpolation**   – classic B-spline evaluation (degrees 0-9) via :class:`splineops.interpolate.TensorSpline`
+# * **interpolation**   – classic B-spline evaluation (degrees 1-3)
 # * **oblique**         – fast anti-aliasing down-sampling using the Muñoz *oblique projection* variant
 # * **least-squares**   – highest-quality anti-aliasing down-sampling using Muñoz *LS projection*
 
@@ -73,7 +73,7 @@ def _resolve_degrees_for(algo: str, degree: int) -> Tuple[int, int, int]:
     elif algo == "least-squares":
         analy_degree = degree
     else:  # "oblique"
-        # Python version uses analy 0 for linear, 1 for quadratic/cubic
+        # Oblique uses analy 0 for linear, 1 for quadratic/cubic
         analy_degree = 0 if degree == 1 else 1
     return interp_degree, analy_degree, synthe_degree
 
@@ -118,17 +118,30 @@ def resize(
     output_size : tuple of int, optional
         Desired shape (overrides *zoom_factors*).
     method : str
-        Preset selecting **both** the algorithm *and* the spline degree:
-          - **fast**: interpolation, degree 0
-          - **linear**:   interpolation, degree 1
-          - **tquadratic**: interpolation, degree 2
-          - **cubic**:     interpolation, degree 3
-          - **linear-fast_antialiasing**: oblique, degree 1
-          - **quadratic-fast_antialiasing**: oblique, degree 2
-          - **cubic-fast_antialiasing**: oblique, degree 3
-          - **linear-best_antialiasing**:  least-squares, degree 1
-          - **quadratic-best_antialiasing**: least-squares, degree 2
-          - **cubic-best_antialiasing**:    least-squares, degree 3
+        Preset selecting **both** the algorithm *and* the spline degree.
+
+        The following values are supported:
+
+        - ``"fast"``: interpolation, degree 0
+
+        - ``"linear"``: interpolation, degree 1
+
+        - ``"quadratic"``: interpolation, degree 2
+
+        - ``"cubic"``: interpolation, degree 3
+
+        - ``"linear-fast_antialiasing"``: oblique, degree 1
+
+        - ``"quadratic-fast_antialiasing"``: oblique, degree 2
+
+        - ``"cubic-fast_antialiasing"``: oblique, degree 3
+
+        - ``"linear-best_antialiasing"``: least-squares, degree 1
+
+        - ``"quadratic-best_antialiasing"``: least-squares, degree 2
+
+        - ``"cubic-best_antialiasing"``: least-squares, degree 3
+
         Anti-aliasing variants are preferred for down-sampling.
 
     Returns
