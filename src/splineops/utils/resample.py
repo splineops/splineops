@@ -18,7 +18,6 @@ from .metrics import compute_snr_and_mse_region
 __all__ = [
     "resize_with_scipy_zoom",
     "resize_and_compute_metrics",
-    "resize_multichannel",
 ]
 
 _ZoomT = Union[Sequence[float], Tuple[float, float], float]
@@ -51,16 +50,6 @@ def resize_with_scipy_zoom(
         img, recovered, roi=roi, mask=mask, border_fraction=border_fraction
     )
     return out, recovered, snr, mse, elapsed
-
-
-# -----------------------------------------------------------------------------#
-# Lazy-import helper
-# -----------------------------------------------------------------------------#
-def _resize(*args, **kwargs):
-    """Import `resize` only when actually called (breaks circular imports)."""
-    from ..resize.resize import resize  # local import!
-    return resize(*args, **kwargs)
-
 
 # -----------------------------------------------------------------------------#
 # Generic wrapper for any splineops preset
@@ -103,30 +92,3 @@ def resize_and_compute_metrics(
         img, recovered, roi=roi, mask=mask, border_fraction=border_fraction
     )
     return resized, recovered, snr, mse, elapsed
-
-
-# -----------------------------------------------------------------------------#
-# Channel-wise helper for RGB / N-channel data
-# -----------------------------------------------------------------------------#
-def resize_multichannel(
-    img: np.ndarray,
-    zoom: _ZoomT,
-    *,
-    method: str = "cubic",
-    modes: str | Tuple[str, ...] = "mirror",
-) -> np.ndarray:
-    """
-    Channel-wise wrapper for H×W×C arrays. Returns uint8 in [0, 255].
-    """
-    if img.ndim != 3:
-        raise ValueError("Expected an H×W×C array")
-
-    if np.isscalar(zoom):
-        zoom = (float(zoom), float(zoom))
-
-    channels = [
-        _resize(img[..., c], zoom_factors=zoom, method=method, modes=modes)
-        for c in range(img.shape[2])
-    ]
-    out = np.stack(channels, axis=-1)
-    return (np.clip(out, 0.0, 1.0) * 255).astype(np.uint8)
