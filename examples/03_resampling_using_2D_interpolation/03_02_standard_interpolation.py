@@ -22,10 +22,10 @@ import time
 import requests
 from io import BytesIO
 from PIL import Image
+from scipy.ndimage import zoom as _scipy_zoom
 
 from splineops.resize import resize
 from splineops.utils import (
-    resize_with_scipy_zoom,          # SciPy baseline + metrics
     compute_snr_and_mse_region,      # ROI / mask aware metrics for pairwise diffs
     plot_difference_image,
     show_roi_zoom,
@@ -180,23 +180,30 @@ _ = show_roi_zoom(
 )
 
 # %%
-# SciPy Interpolation (using resize_with_scipy_zoom)
-# --------------------------------------------------
+# SciPy Interpolation (using ndimage.zoom directly)
+# -------------------------------------------------
 #
 # For comparison, we also use SciPy's zoom method. Metrics are computed on the ROI.
 
-(
-    resized_2d_scipy,
-    recovered_2d_scipy,
-    snr_2d_scipy,
-    mse_2d_scipy,
-    time_2d_scipy,
-) = resize_with_scipy_zoom(
+t0 = time.perf_counter()
+resized_2d_scipy = _scipy_zoom(
     input_image_normalized,
     zoom_factors_2d,
-    scipy_order=3,
-    border_fraction=border_fraction,
+    order=3,
+)
+time_2d_scipy = time.perf_counter() - t0
+
+recovered_2d_scipy = _scipy_zoom(
+    resized_2d_scipy,
+    1.0 / np.asarray(zoom_factors_2d),
+    order=3,
+)
+
+snr_2d_scipy, mse_2d_scipy = compute_snr_and_mse_region(
+    input_image_normalized,
+    recovered_2d_scipy,
     roi=roi_rect,
+    border_fraction=border_fraction,
 )
 
 # %%
