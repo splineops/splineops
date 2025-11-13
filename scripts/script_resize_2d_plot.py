@@ -9,9 +9,9 @@ round-trip image size exactly, and compare four methods:
 - Oblique cubic (fast AA)
 
 If --image is not provided, a file dialog pops up; canceling it prompts for a URL.
-Saves two plots: timing vs zoom and SNR vs zoom.
 
-This version averages timing over N runs per zoom (default: 10).
+This version averages timing over N runs per zoom (default: 10) and displays
+two plots: timing vs zoom and SNR vs zoom (no files are written to disk).
 """
 
 from __future__ import annotations
@@ -56,9 +56,13 @@ def choose_image_dialog() -> str | None:
     path = filedialog.askopenfilename(
         title="Select an image",
         filetypes=[
-            ("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff"),
+            ("Images", ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.tif", "*.tiff")),
+            ("PNG", "*.png"),
+            ("JPEG", ("*.jpg", "*.jpeg")),
+            ("TIFF", ("*.tif", "*.tiff")),
             ("All files", "*.*"),
         ],
+        parent=root,
     )
     root.update()
 
@@ -165,7 +169,6 @@ def main():
     ap.add_argument("--samples", type=int, default=80, help="Number of zoom samples in [0.01, 2.0) (2.0 excluded).")
     ap.add_argument("--grayscale", type=int, default=1, help="1=convert to grayscale, 0=keep RGB.")
     ap.add_argument("--repeats", type=int, default=10, help="Average this many runs per (method, z).")
-    ap.add_argument("--save_prefix", type=str, default="resize", help="Prefix for saved plot files.")
     args = ap.parse_args()
 
     # Pick image (dialog if not provided)
@@ -235,9 +238,6 @@ def main():
     plt.grid(True, alpha=0.35)
     plt.legend()
     plt.tight_layout()
-    timing_path = f"{args.save_prefix}_timing_vs_zoom.png"
-    plt.savefig(timing_path, dpi=140)
-    print(f"Saved: {timing_path}")
 
     # SNR vs zoom
     plt.figure(figsize=(9.5, 5.5))
@@ -252,9 +252,6 @@ def main():
     plt.grid(True, alpha=0.35)
     plt.legend()
     plt.tight_layout()
-    snr_path = f"{args.save_prefix}_snr_vs_zoom.png"
-    plt.savefig(snr_path, dpi=140)
-    print(f"Saved: {snr_path}")
 
     plt.show()
 
