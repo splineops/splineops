@@ -235,6 +235,8 @@ def draw_standard_vs_scipy_pipeline(
     # Junctions and split to lower rails
     dot(ax, 12, 13.25)
     seg(ax, 12, 13.25, 12, y_scipy)
+    # dot at the beginning of the arrow into SciPy
+    dot(ax, 12, y_scipy)
     # into SciPy box (stop before the edge)
     arrow(ax, 12, y_scipy, box_left - box_gap, y_scipy)
 
@@ -245,6 +247,8 @@ def draw_standard_vs_scipy_pipeline(
 
     # TensorSpline branch (rail spacing matched to Standard↔SciPy)
     seg(ax, 12, y_scipy, 12, y_ts)
+    # dot at the beginning of the arrow into TensorSpline
+    dot(ax, 12, y_ts)
     # into TensorSpline box (stop before the edge)
     arrow(ax, 12, y_ts, box_left - box_gap, y_ts)
     box(ax, box_left, y_ts + 0.875, box_right, y_ts - 0.875,
