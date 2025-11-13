@@ -1,82 +1,109 @@
 # splineops/scripts/script_resize_plot.py
+# script_resize_plot.py
 """
-Sweep zoom factors in [0.01, 2.0], keep only those that round-trip sizes exactly,
-and compare four methods:
+Sweep zoom factors in [0.01, 2.0) (2.0 excluded), keep only those that
+round-trip image size exactly, and compare four methods:
 
-- SciPy cubic                  (scipy.ndimage.zoom order=3)
-- Standard cubic               (splineops.resize(..., method="cubic"))
-- Least-Squares cubic (AA)     (method="cubic-best_antialiasing")
-- Oblique cubic (fast AA)      (method="cubic-fast_antialiasing")
+- SciPy cubic
+- Standard cubic
+- Least-Squares cubic (best AA)
+- Oblique cubic (fast AA)
 
-For each accepted zoom z:
-  1) forward resize with z
-  2) backward "revert" with 1/z
-  3) record total time (forward+backward) and SNR(original, recovered)
+If --image is not provided, a file dialog pops up; canceling it prompts for a URL.
+Saves two plots: timing vs zoom and SNR vs zoom.
 
-Outputs two plots: timing vs zoom and SNR vs zoom.
-
-Usage (defaults to a Kodak image URL and 80 zoom samples):
-    python script_resize_plot.py
-    python script_resize_plot.py --image PATH/OR/URL --samples 120 --grayscale 1
-
-Tip: for maximum native speed in splineops, set env before running:
-    set SPLINEOPS_ACCEL=always   (Windows cmd)
-    export SPLINEOPS_ACCEL=always (bash/zsh)
+This version averages timing over N runs per zoom (default: 10).
 """
 
 from __future__ import annotations
 
 import argparse
+import io
 import math
+import os
+import sys
 import time
 from typing import Dict, List, Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
 
-# SciPy cubic
+# SciPy cubic baseline
 from scipy.ndimage import zoom as ndi_zoom
 
-# Image I/O
-from PIL import Image
-import io
-import os
-import sys
-
+# Optional for URL
 try:
     import requests
 except Exception:
-    requests = None  # allow using only local files
+    requests = None
 
-# Our resizer
+# TK dialogs for interactive selection
+import tkinter as tk
+from tkinter import filedialog, simpledialog, messagebox
+
+# splineops
 from splineops.resize.resize import resize as spl_resize
 
 
+# -------------------------- UI / I/O helpers --------------------------
+
+def choose_image_dialog() -> str | None:
+    """Open a file dialog; if canceled, prompt for URL; return a path/URL or None."""
+    root = tk.Tk()
+    root.withdraw()
+    root.update()
+
+    path = filedialog.askopenfilename(
+        title="Select an image",
+        filetypes=[
+            ("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff"),
+            ("All files", "*.*"),
+        ],
+    )
+    root.update()
+
+    if path:
+        try:
+            Image.open(path).close()
+            root.destroy()
+            return path
+        except Exception as e:
+            messagebox.showerror("Open failed", f"Could not open file:\n{e}")
+            root.destroy()
+            return None
+
+    # No file selected: ask for URL
+    url = simpledialog.askstring("Image URL", "Paste an image URL (or Cancel):", parent=root)
+    root.destroy()
+    if url and url.strip():
+        return url.strip()
+    return None
+
+
 def load_image_any(path_or_url: str, grayscale: bool = True) -> np.ndarray:
-    """Load image from local path or URL -> float64 in [0,1]."""
-    data: np.ndarray
+    """Load local path or URL into float64 [0,1]. If RGB and grayscale=True, convert."""
     if "://" in path_or_url:
         if requests is None:
-            raise RuntimeError("requests not available; use a local file or install requests.")
-        resp = requests.get(path_or_url, timeout=10)
-        resp.raise_for_status()
-        img = Image.open(io.BytesIO(resp.content))
+            raise RuntimeError("requests is not installed; cannot load from URL.")
+        r = requests.get(path_or_url, timeout=15)
+        r.raise_for_status()
+        img = Image.open(io.BytesIO(r.content))
     else:
         img = Image.open(path_or_url)
 
     arr = np.asarray(img, dtype=np.float64)
-    if arr.ndim == 2:
+    if arr.ndim == 2:  # already gray
         out = arr / 255.0
     else:
         out = arr / 255.0
         if grayscale:
-            # luminance-ish weights
             out = 0.2989 * out[..., 0] + 0.5870 * out[..., 1] + 0.1140 * out[..., 2]
-    return out
+    return np.ascontiguousarray(out, dtype=np.float64)
 
 
 def roundtrip_size_ok(shape: Tuple[int, ...], z: float) -> bool:
-    """Accept z only if rounding H,W -> round(H*z) and back with 1/z returns original."""
+    """Accept z only if H,W -> round(H*z) then back with 1/z returns original."""
     if len(shape) < 2:
         return False
     H, W = int(shape[0]), int(shape[1])
@@ -88,9 +115,9 @@ def roundtrip_size_ok(shape: Tuple[int, ...], z: float) -> bool:
 
 
 def snr_db(x: np.ndarray, y: np.ndarray) -> float:
-    """10*log10( sum(x^2)/sum((x-y)^2) ). If identical, returns +inf."""
-    num = np.sum(x * x, dtype=np.float64)
-    den = np.sum((x - y) ** 2, dtype=np.float64)
+    """10*log10(sum(x^2)/sum((x-y)^2)). Returns +inf for perfect match."""
+    num = float(np.sum(x * x, dtype=np.float64))
+    den = float(np.sum((x - y) ** 2, dtype=np.float64))
     if den == 0.0:
         return float("inf")
     if num == 0.0:
@@ -98,8 +125,9 @@ def snr_db(x: np.ndarray, y: np.ndarray) -> float:
     return 10.0 * math.log10(num / den)
 
 
+# ----------------------------- runners ------------------------------
+
 def scipy_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
-    """Forward then backward with SciPy cubic. Return (recovered, total_time_s)."""
     zoom_fwd = (z, z) if img.ndim == 2 else (z, z, 1.0)
     zoom_bwd = (1.0 / z, 1.0 / z) if img.ndim == 2 else (1.0 / z, 1.0 / z, 1.0)
     t0 = time.perf_counter()
@@ -110,7 +138,6 @@ def scipy_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]
 
 
 def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, float]:
-    """Forward then backward with splineops.resize() for a given method."""
     zoom_fwd = (z, z) if img.ndim == 2 else (z, z, 1.0)
     zoom_bwd = (1.0 / z, 1.0 / z) if img.ndim == 2 else (1.0 / z, 1.0 / z, 1.0)
     t0 = time.perf_counter()
@@ -120,52 +147,51 @@ def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, f
     return rec, dt
 
 
-def best_of(func, repeats: int = 2):
-    """Run function several times, return best (recovered, min_time)."""
-    best_t = float("inf")
-    best_rec = None
+def average_time(run, repeats: int = 10):
+    """Return (last_rec, mean_time, std_time) over 'repeats' runs."""
+    times = []
+    rec = None
     for _ in range(max(1, repeats)):
-        rec, dt = func()
-        if dt < best_t:
-            best_t = dt
-            best_rec = rec
-    return best_rec, best_t
+        rec, dt = run()
+        times.append(dt)
+    times = np.asarray(times, dtype=np.float64)
+    return rec, float(times.mean()), float(times.std(ddof=1 if len(times) > 1 else 0))
 
+
+# ------------------------------ main -------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Compare resizers across zoom range.")
-    parser.add_argument(
-        "--image",
-        type=str,
-        default="https://r0k.us/graphics/kodak/kodak/kodim14.png",
-        help="Local path or URL to an image (default: Kodak kodim14.png).",
-    )
-    parser.add_argument("--samples", type=int, default=80, help="Number of zoom samples in [0.01, 2.0].")
-    parser.add_argument("--grayscale", type=int, default=1, help="1 to convert to grayscale, 0 to keep RGB.")
-    parser.add_argument("--repeats", type=int, default=2, help="Best-of repeats per (method,zoom).")
-    parser.add_argument("--save_prefix", type=str, default="resize", help="Prefix for saved plot files.")
-    args = parser.parse_args()
+    ap = argparse.ArgumentParser(description="Timing & SNR sweep with interactive image selection (averaged runs).")
+    ap.add_argument("--image", type=str, default=None, help="Optional path/URL; if omitted, a dialog opens.")
+    ap.add_argument("--samples", type=int, default=80, help="Number of zoom samples in [0.01, 2.0) (2.0 excluded).")
+    ap.add_argument("--grayscale", type=int, default=1, help="1=convert to grayscale, 0=keep RGB.")
+    ap.add_argument("--repeats", type=int, default=10, help="Average this many runs per (method, z).")
+    ap.add_argument("--save_prefix", type=str, default="resize", help="Prefix for saved plot files.")
+    args = ap.parse_args()
 
-    # Load input
-    img = load_image_any(args.image, grayscale=bool(args.grayscale))
-    img = np.ascontiguousarray(img, dtype=np.float64)  # make sure C-contig
+    # Pick image (dialog if not provided)
+    path_or_url = args.image
+    if path_or_url is None:
+        path_or_url = choose_image_dialog()
+        if not path_or_url:
+            print("No image selected. Aborting.")
+            sys.exit(1)
 
+    img = load_image_any(path_or_url, grayscale=bool(args.grayscale))
     H, W = int(img.shape[0]), int(img.shape[1])
-    print(f"Loaded image: shape={img.shape}, dtype={img.dtype}")
+    print(f"Loaded image: {path_or_url} | shape={img.shape}, dtype={img.dtype}")
 
-    # Zoom candidates
-    z_candidates = np.linspace(0.01, 2.0, args.samples, dtype=np.float64)
-    # Ensure we include exactly 1.0
+    # Zooms in [0.01, 2.0) (2.0 excluded), force-include 1.0
+    z_candidates = np.linspace(0.01, 2.0, args.samples, endpoint=False, dtype=np.float64)
     z_candidates = np.unique(np.append(z_candidates, 1.0))
-    # Filter by round-trip shape condition
+
+    # Keep only round-trip-preserving zooms
     z_list = [float(z) for z in z_candidates if roundtrip_size_ok(img.shape, float(z))]
     if not z_list:
-        print("No valid zoom factors after round-trip size filtering; try --samples larger.", file=sys.stderr)
+        print("No valid zoom factors after round-trip size check. Try increasing --samples.")
         sys.exit(1)
+    print(f"Accepted {len(z_list)} / {len(z_candidates)} zooms.")
 
-    print(f"Accepted {len(z_list)} / {len(z_candidates)} zooms after round-trip size check.")
-
-    # Methods to test
     METHODS = {
         "SciPy cubic": ("scipy", None),
         "Standard cubic": ("splineops", "cubic"),
@@ -174,61 +200,66 @@ def main():
     }
 
     results: Dict[str, Dict[str, List[float]]] = {
-        name: {"z": [], "time": [], "snr": []} for name in METHODS
+        name: {"z": [], "time": [], "time_sd": [], "snr": []} for name in METHODS
     }
 
-    # Sweep
-    for zi, z in enumerate(z_list, 1):
-        print(f"[{zi:>3}/{len(z_list)}] z = {z:.4f}", end="\r")
+    for idx, z in enumerate(z_list, 1):
+        print(f"[{idx:>3}/{len(z_list)}] z={z:.5f}", end="\r")
         for name, (kind, method) in METHODS.items():
             if kind == "scipy":
                 fn = lambda z=z: scipy_cubic_roundtrip(img, z)
             else:
-                fn = lambda z=z, method=method: spl_roundtrip(img, z, method)
+                fn = lambda z=z, m=method: spl_roundtrip(img, z, m)
 
-            rec, tsec = best_of(fn, repeats=args.repeats)
+            # Average timing over N runs; use last rec for SNR (deterministic).
+            rec, t_mean, t_sd = average_time(fn, repeats=args.repeats)
+
+            # If you *really* want SNR averaged too, you could accumulate
+            # it inside average_time; here we compute once (deterministic).
             s = snr_db(img, rec)
-            results[name]["z"].append(z)
-            results[name]["time"].append(tsec)
-            results[name]["snr"].append(s)
 
+            results[name]["z"].append(z)
+            results[name]["time"].append(t_mean)
+            results[name]["time_sd"].append(t_sd)
+            results[name]["snr"].append(s)
     print("\nDone. Plotting...")
 
-    # ---- Plot: timing vs zoom ----
+    # Timing vs zoom (mean only; uncomment errorbar section for SD bars)
     plt.figure(figsize=(9.5, 5.5))
     for name, data in results.items():
         z = np.array(data["z"], dtype=float)
         t = np.array(data["time"], dtype=float)
         plt.plot(z, t, marker="o", markersize=3, linewidth=1.5, label=name)
+        # To show error bars:
+        # t_sd = np.array(data["time_sd"], dtype=float)
+        # plt.errorbar(z, t, yerr=t_sd, fmt='none', ecolor='gray', alpha=0.2)
     plt.xlabel("Zoom factor")
-    plt.ylabel("Time (s)  [forward + backward]")
-    plt.title(f"Resize Round-Trip Timing vs Zoom  (H×W = {H}×{W}, repeats={args.repeats})")
-    plt.grid(True, alpha=0.3)
+    plt.ylabel(f"Time (s)  [avg of {args.repeats} runs, forward + backward]")
+    plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W})")
+    plt.grid(True, alpha=0.35)
     plt.legend()
     plt.tight_layout()
     timing_path = f"{args.save_prefix}_timing_vs_zoom.png"
     plt.savefig(timing_path, dpi=140)
     print(f"Saved: {timing_path}")
 
-    # ---- Plot: SNR vs zoom ----
+    # SNR vs zoom
     plt.figure(figsize=(9.5, 5.5))
     for name, data in results.items():
         z = np.array(data["z"], dtype=float)
         s = np.array(data["snr"], dtype=float)
-        # Clip inf for plotting
-        s_plot = np.where(np.isfinite(s), s, np.nan)
+        s_plot = np.where(np.isfinite(s), s, np.nan)  # hide +inf for plotting
         plt.plot(z, s_plot, marker="o", markersize=3, linewidth=1.5, label=name)
     plt.xlabel("Zoom factor")
     plt.ylabel("SNR (dB)  [original vs recovered]")
-    plt.title(f"Resize Round-Trip SNR vs Zoom  (H×W = {H}×{W})")
-    plt.grid(True, alpha=0.3)
+    plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W})")
+    plt.grid(True, alpha=0.35)
     plt.legend()
     plt.tight_layout()
     snr_path = f"{args.save_prefix}_snr_vs_zoom.png"
     plt.savefig(snr_path, dpi=140)
     print(f"Saved: {snr_path}")
 
-    # Show interactive
     plt.show()
 
 
