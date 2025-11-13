@@ -26,13 +26,10 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 from splineops.resize import resize
-from splineops.utils import (
-    compute_snr_and_mse_region,
-    plot_difference_image,
-    show_roi_zoom,
-    draw_leastsq_vs_oblique_pipeline,    # reused diagram helper (for layout consistency)
-    print_runtime_context,
-)
+from splineops.utils.metrics import compute_snr_and_mse_region
+from splineops.utils.plotting import plot_difference_image, show_roi_zoom
+from splineops.utils.diagram import draw_leastsq_vs_oblique_pipeline
+from splineops.utils.specs import print_runtime_context
 
 # Small helper: run one resize pipeline for a given method
 def _run_pipeline(

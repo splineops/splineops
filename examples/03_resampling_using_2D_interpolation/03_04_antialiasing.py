@@ -24,7 +24,7 @@ from io import BytesIO
 from PIL import Image
 
 from splineops.resize.resize import resize
-from splineops.utils import show_roi_zoom
+from splineops.utils.plotting import show_roi_zoom
 
 # sphinx_gallery_thumbnail_number = 5  # show the fifth figure (std canvas) as thumbnail
 

@@ -20,7 +20,7 @@ from io import BytesIO
 from PIL import Image
 
 from scipy.ndimage import zoom as ndi_zoom          # only for the *first* quick shrink
-from splineops.utils import adjust_size_for_zoom    # makes dimensions compatible with the zoom factor
+from splineops.utils.image import adjust_size_for_zoom    # makes dimensions compatible with the zoom factor
 from splineops.resize import resize                 # core N-D spline resizer
 
 plt.rcParams.update({

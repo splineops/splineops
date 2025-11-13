@@ -23,11 +23,9 @@ from time import perf_counter
 
 from scipy.ndimage import zoom as _scipy_zoom
 from splineops.resize import resize
-from splineops.utils import (
-    compute_snr_and_mse_region,
-    show_roi_zoom,
-    print_runtime_context,
-)
+from splineops.utils.metrics import compute_snr_and_mse_region
+from splineops.utils.plotting import show_roi_zoom
+from splineops.utils.specs import print_runtime_context
 
 # %%
 # Load and Normalize an Image

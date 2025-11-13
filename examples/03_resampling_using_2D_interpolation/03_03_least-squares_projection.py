@@ -26,12 +26,9 @@ import matplotlib.pyplot as plt
 
 from scipy.ndimage import zoom as _scipy_zoom  # only if you want extra comparisons
 from splineops.resize import resize
-from splineops.utils import (
-    compute_snr_and_mse_region,
-    plot_difference_image,
-    show_roi_zoom,
-    draw_standard_vs_leastsq_pipeline,  # reused diagram helper (for layout consistency)
-)
+from splineops.utils.metrics import compute_snr_and_mse_region
+from splineops.utils.plotting import plot_difference_image, show_roi_zoom
+from splineops.utils.diagram import draw_standard_vs_leastsq_pipeline
 
 # %%
 # Pipeline Diagram
