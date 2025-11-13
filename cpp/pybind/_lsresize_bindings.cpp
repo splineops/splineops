@@ -79,60 +79,57 @@ py::array_t<double> resize_nd(py::array input,
     //  - First pass reads directly from in_f64.data()  (no initial memcpy)
     //  - Middle passes use a single transient vector `prev` (reused)
     //  - Last pass writes directly into `out.mutable_data()` (no final memcpy)
-    std::vector<double> prev;  // holds intermediate result between passes
+    std::vector<double> prev;     // holds current intermediate result
+    std::vector<double> scratch;  // temporary buffer for next pass
     std::vector<int64>  cur_shape = in_shape;
 
     for (int ax = 0; ax < D; ++ax) {
         std::vector<int64> next_shape = cur_shape;
         next_shape[static_cast<size_t>(ax)] = out_shape[static_cast<size_t>(ax)];
 
-        // Total elements for the next buffer on this axis
-        int64 total_next = std::accumulate(next_shape.begin(), next_shape.end(),
-                                           static_cast<int64>(1), std::multiplies<int64>());
+        int64 total_next = std::accumulate(
+            next_shape.begin(), next_shape.end(),
+            static_cast<int64>(1), std::multiplies<int64>()
+        );
 
-        // Set up parameters for this axis
         lsresize::LSParams p;
         p.interp_degree = interp_degree;
-        p.analy_degree  = analy_degree;   // -1 allowed (Standard)
+        p.analy_degree  = analy_degree;
         p.synthe_degree = synthe_degree;
         p.zoom          = zoom_factors[static_cast<size_t>(ax)];
         p.shift         = 0.0;
         p.inversable    = inversable;
-
         normalize_params_for_magnification(p);
-
-        // Decide input & output pointers for this pass
-        const double* in_ptr  = nullptr;
-        double*       out_ptr = nullptr;
 
         const bool first_pass = (ax == 0);
         const bool last_pass  = (ax == D - 1);
 
+        const double* in_ptr  = nullptr;
+        double*       out_ptr = nullptr;
+
         if (first_pass) {
-            // Read directly from the NumPy input (contiguous float64, C-order)
             in_ptr = static_cast<const double*>(in_f64.data());
         } else {
-            // Read from the previous intermediate
             in_ptr = prev.data();
         }
 
         if (last_pass) {
-            // Write directly to the final NumPy output
             out_ptr = static_cast<double*>(out.mutable_data());
         } else {
-            // Resize (allocate) prev to hold this pass's output
-            prev.resize(static_cast<size_t>(total_next));
-            out_ptr = prev.data();
+            scratch.resize(static_cast<size_t>(total_next));
+            out_ptr = scratch.data();
         }
 
-        // Run one axis
         lsresize::resize_along_axis(in_ptr, out_ptr, cur_shape, next_shape, ax, p);
 
-        // Prepare for next axis
+        if (!last_pass) {
+            // Now 'scratch' holds the latest result; keep it in 'prev'
+            prev.swap(scratch);
+        }
+
         cur_shape.swap(next_shape);
     }
 
-    // No final memcpy required — last pass wrote into `out` directly.
     return out;
 }
 

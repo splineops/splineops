@@ -1,4 +1,4 @@
-# splineops/scripts/script_resize.py
+# splineops/scripts/script_resize_2d.py
 # -*- coding: utf-8 -*-
 """
 Interactive image resize demo — grayscale-only, degree-aware comparison

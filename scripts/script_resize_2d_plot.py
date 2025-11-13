@@ -1,4 +1,4 @@
-# splineops/scripts/script_resize_plot.py
+# splineops/scripts/script_resize_2d_plot.py
 """
 Sweep zoom factors in [0.01, 2.0) (2.0 excluded) while *excluding 1.0*, keep only those that
 round-trip image size exactly, and compare four methods:

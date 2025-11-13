@@ -1,5 +1,5 @@
 # sphinx_gallery_start_ignore
-# splineops/scripts/compare_resize_python_cpp.py
+# splineops/scripts/script_compare_resize_python_cpp.py
 # sphinx_gallery_end_ignore
 
 """
