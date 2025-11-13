@@ -182,6 +182,7 @@ _ = show_roi_zoom(
 # Resized Images
 # --------------
 
+# %%
 # Least-Squares (resized)
 # ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -205,6 +206,7 @@ _ = show_roi_zoom(
     **roi_kwargs_on_canvas_ls
 )
 
+# %%
 # Standard (resized)
 # ~~~~~~~~~~~~~~~~~~
 
@@ -232,6 +234,7 @@ _ = show_roi_zoom(
 # Recovered Images
 # ----------------
 
+# %%
 # Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -241,6 +244,7 @@ _ = show_roi_zoom(
     **roi_kwargs
 )
 
+# %%
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -254,6 +258,7 @@ _ = show_roi_zoom(
 # Difference Images
 # -----------------
 
+# %%
 # Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 #
@@ -269,6 +274,7 @@ plot_difference_image(
     title_prefix="Difference (least-squares)",
 )
 
+# %%
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
 #
