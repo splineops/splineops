@@ -19,8 +19,7 @@ Then we downsample by 0.5 using:
 # -------
 
 import numpy as np
-import requests
-from io import BytesIO
+from urllib.request import urlopen
 from PIL import Image
 
 from splineops.resize.resize import resize
@@ -45,8 +44,10 @@ def to_gray01(img_rgb_uint8: np.ndarray) -> np.ndarray:
     g = img_rgb_uint8.astype(np.float64) / 255.0
     return 0.2989 * g[..., 0] + 0.5870 * g[..., 1] + 0.1140 * g[..., 2]
 
-A = to_gray01(np.array(Image.open(BytesIO(requests.get(URL_A, timeout=10).content))))
-B = to_gray01(np.array(Image.open(BytesIO(requests.get(URL_B, timeout=10).content))))
+with urlopen(URL_A, timeout=10) as resp:
+    A = to_gray01(np.array(Image.open(resp)))
+with urlopen(URL_B, timeout=10) as resp:
+    B = to_gray01(np.array(Image.open(resp)))
 assert A.shape == B.shape, "Images A and B must have identical shape."
 
 h_img, w_img = A.shape  # ORIGINAL canvas size (e.g., 512×768)

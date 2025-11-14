@@ -27,7 +27,6 @@ dependencies = [
     "numpy >=1.26",
     "scipy >=1.15",
     "matplotlib >=3.8",
-    "requests >=2.32.3",
 ]
 classifiers = [
     "Topic :: Scientific/Engineering",

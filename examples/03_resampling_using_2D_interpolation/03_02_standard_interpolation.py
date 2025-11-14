@@ -19,8 +19,7 @@ import numpy as np
 import time
 
 # sphinx_gallery_thumbnail_number = 4 # show fourth figure as thumbnail
-import requests
-from io import BytesIO
+from urllib.request import urlopen
 from PIL import Image
 from scipy.ndimage import zoom as _scipy_zoom
 
@@ -57,8 +56,8 @@ _ = draw_standard_vs_scipy_pipeline(
 # grayscale in [0, 1].
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim14.png'
-response = requests.get(url)
-img = Image.open(BytesIO(response.content))
+with urlopen(url, timeout=10) as resp:
+    img = Image.open(resp)
 data = np.array(img, dtype=np.float64)
 
 # Convert to [0..1]

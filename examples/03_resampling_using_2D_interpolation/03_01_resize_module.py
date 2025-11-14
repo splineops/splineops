@@ -15,8 +15,7 @@ Shrink and re-expand a 2-D RGB image with splineops, then discuss aliasing.
 
 import numpy as np
 import matplotlib.pyplot as plt
-import requests
-from io import BytesIO
+from urllib.request import urlopen
 from PIL import Image
 
 from scipy.ndimage import zoom as ndi_zoom          # only for the *first* quick shrink
@@ -76,7 +75,8 @@ def resize_rgb(
 # ---------------------------
 
 url = "https://r0k.us/graphics/kodak/kodak/kodim19.png"
-img = Image.open(BytesIO(requests.get(url).content))
+with urlopen(url, timeout=10) as resp:
+    img = Image.open(resp)
 data = np.asarray(img, dtype=np.float64) / 255.0      # H × W × 3, range [0, 1]
 
 # 1) Quick down-size so the notebook images aren't huge

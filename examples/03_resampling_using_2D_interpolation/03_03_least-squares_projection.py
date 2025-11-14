@@ -19,8 +19,7 @@ import numpy as np
 import time
 
 # sphinx_gallery_thumbnail_number = 2  # show second figure as thumbnail
-import requests
-from io import BytesIO
+from urllib.request import urlopen
 from PIL import Image
 import matplotlib.pyplot as plt
 
@@ -48,8 +47,8 @@ _ = draw_standard_vs_leastsq_pipeline(
 # ---------------------------
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim14.png'
-response = requests.get(url, timeout=10)
-img = Image.open(BytesIO(response.content))
+with urlopen(url, timeout=10) as resp:
+    img = Image.open(resp)
 data = np.array(img, dtype=np.float64)
 
 # Convert to [0..1] + grayscale

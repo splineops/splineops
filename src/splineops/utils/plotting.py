@@ -1,5 +1,4 @@
 # splineops/src/splineops/utils/plotting.py
-
 """
 splineops.utils.plotting
 ========================
@@ -18,7 +17,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from typing import Sequence, Tuple, Union, Optional
 from io import BytesIO
 from pathlib import Path
-import requests
+from urllib.request import urlopen
 from PIL import Image
 
 __all__ = [
@@ -89,6 +88,7 @@ def plot_recovered_image(recovered: np.ndarray) -> None:
     plt.axis("off")
     plt.show()
 
+
 def plot_difference_image(
     original: np.ndarray,
     recovered: np.ndarray,
@@ -125,13 +125,13 @@ def plot_difference_image(
         region_label = " (masked)"
     elif roi is not None:
         r, c, h, w = roi
-        diff = diff_full[r:r+h, c:c+w]
+        diff = diff_full[r:r + h, c:c + w]
         region_label = " (ROI)"
     else:
         diff = diff_full
         region_label = ""
 
-        h, w = diff.shape
+    h, w = diff.shape
     aspect = h / float(w)
 
     fig_w = 6.0
@@ -141,11 +141,12 @@ def plot_difference_image(
     from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 
     if cmap_mode == "bw":
+        # Black → mid-gray (0) → white, to keep sign in monochrome
         cmap_obj = LinearSegmentedColormap.from_list(
             "bw_div",
             [
                 (0.0, "black"),
-                (0.5, "0.5"),   # mid-gray at zero
+                (0.5, "0.5"),
                 (1.0, "white"),
             ],
         )
@@ -170,6 +171,7 @@ def plot_difference_image(
 
     plt.tight_layout()
     plt.show()
+
 
 def show_roi_zoom(
     img_source: Union[str, Path, np.ndarray],
@@ -210,12 +212,14 @@ def show_roi_zoom(
     if isinstance(img_source, np.ndarray):
         img = img_source.astype(np.float64)
     else:
-        # URL or local path
-        if str(img_source).startswith(("http://", "https://")):
-            data = requests.get(img_source, timeout=10).content
+        src = str(img_source)
+        if src.startswith(("http://", "https://")):
+            # Use stdlib urllib instead of requests
+            with urlopen(src, timeout=10) as resp:
+                data = resp.read()
             img = np.asarray(Image.open(BytesIO(data)), dtype=np.float64)
         else:
-            img = np.asarray(Image.open(Path(img_source)), dtype=np.float64)
+            img = np.asarray(Image.open(Path(src)), dtype=np.float64)
 
     if img.max() > 1.0:
         img /= 255.0
@@ -229,7 +233,7 @@ def show_roi_zoom(
             0.5870 * img[..., 1] +
             0.1140 * img[..., 2]
         )
-        img = img[..., None]                # keep channel dim for consistency
+        img = img[..., None]  # keep channel dim for consistency
 
     # Drop trailing channel dim for plotting if grayscale
     plot_img = img.squeeze() if img.shape[-1] == 1 else img
@@ -278,16 +282,28 @@ def show_roi_zoom(
 
     # left panel
     ax[0].imshow(plot_img, cmap="gray" if grayscale else None)
-    ax[0].add_patch(patches.Rectangle((col0, row0), roi_size, roi_size,
-                                      linewidth=2, edgecolor="red",
-                                      facecolor="none"))
-    ax[0].set_aspect("equal"); ax[0].axis("off")
+    ax[0].add_patch(
+        patches.Rectangle(
+            (col0, row0),
+            roi_size,
+            roi_size,
+            linewidth=2,
+            edgecolor="red",
+            facecolor="none",
+        )
+    )
+    ax[0].set_aspect("equal")
+    ax[0].axis("off")
     ax[0].set_title(ax_titles[0] if ax_titles else "Image with ROI")
 
     # right panel
-    ax[1].imshow(roi_big, cmap="gray" if grayscale else None,
-                 interpolation="nearest")
-    ax[1].set_aspect("equal"); ax[1].axis("off")
+    ax[1].imshow(
+        roi_big,
+        cmap="gray" if grayscale else None,
+        interpolation="nearest",
+    )
+    ax[1].set_aspect("equal")
+    ax[1].axis("off")
     ax[1].set_title(ax_titles[1] if ax_titles else f"ROI x{mag} (nearest)")
 
     plt.tight_layout()
