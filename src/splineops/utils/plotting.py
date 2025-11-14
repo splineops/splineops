@@ -243,10 +243,10 @@ def show_roi_zoom(
     # ------------------------------------------------------------------ #
     # 3. Choose square ROI                                               #
     # ------------------------------------------------------------------ #
-    roi_size = max(1, int(h_img * roi_height_frac))
-    # Guarantee integer magnification factor (image height / roi_size)
-    while h_img % roi_size:
-        roi_size -= 1
+    # Start from the requested fractional size; keep it as-is (up to
+    # integer rounding), rather than shrinking it to divide h_img.
+    roi_size = max(1, int(round(h_img * roi_height_frac)))
+    roi_size = min(roi_size, h_img)  # clamp in case of tiny images / big frac
 
     if roi_xy is None:
         row0 = h_img // 2 - roi_size // 2
@@ -263,7 +263,7 @@ def show_roi_zoom(
     # ------------------------------------------------------------------ #
     # 4. Magnify ROI with nearest-neighbour                              #
     # ------------------------------------------------------------------ #
-    mag = h_img // roi_size
+    mag = max(1, h_img // roi_size)
     roi_big = np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
 
     # ------------------------------------------------------------------ #

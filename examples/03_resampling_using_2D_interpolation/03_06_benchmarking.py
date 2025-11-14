@@ -88,7 +88,7 @@ IMAGE_CONFIG: Dict[str, Dict[str, object]] = {
         roi_center_frac=(0.75, 0.75),
     ),
     "kodim15": dict(
-        zoom=0.2,
+        zoom=0.3,
         roi_size_px=256,
         roi_center_frac=(0.30, 0.55),
     ),
@@ -332,18 +332,13 @@ def _build_canvas_and_roi(
     zoom_r, zoom_c = zoom_factors
     h_res, w_res = down.shape
 
-    # Initial ROI size in the downsampled image (before adjustment)
+    # ROI size in the downsampled image: direct scaled footprint of the
+    # original ROI. We keep it as-is (up to integer rounding).
     roi_h_res = max(1, int(round(roi_size_px * zoom_r)))
     roi_w_res = max(1, int(round(roi_size_px * zoom_c)))
 
-    # Make the ROI square and match show_roi_zoom's behaviour:
-    # shrink the side length until it divides the full image height so that
-    # the magnified ROI has an integer zoom factor and matches what
-    # show_roi_zoom will display for roi_height_frac = roi_side / h_img.
+    # Make the ROI square by taking the smaller side
     roi_side = int(max(1, min(roi_h_res, roi_w_res)))
-    while h_img % roi_side != 0 and roi_side > 1:
-        roi_side -= 1
-
     roi_h_res = roi_side
     roi_w_res = roi_side
 
@@ -359,8 +354,8 @@ def _build_canvas_and_roi(
     canvas = np.ones((h_img, w_img), dtype=down.dtype)
     canvas[:h_res, :w_res] = down
 
-    # This fraction, combined with roi_xy, will make show_roi_zoom pick
-    # exactly roi_side×roi_side pixels starting at (row_top_res, col_left_res)
+    # Tell show_roi_zoom to use exactly roi_h_res×roi_h_res on the canvas,
+    # starting at (row_top_res, col_left_res).
     roi_kwargs_on_canvas = dict(
         roi_height_frac=roi_h_res / h_img,
         grayscale=True,
@@ -374,6 +369,7 @@ def _build_canvas_and_roi(
     ]
 
     return canvas, roi_kwargs_on_canvas, roi_patch
+
 
 #################################################################################################
 # %%
