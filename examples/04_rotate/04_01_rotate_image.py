@@ -22,15 +22,14 @@ from urllib.request import urlopen
 from PIL import Image
 
 # %%
-# Load and Preprocess the Image
-# -----------------------------
+# Load and Rotate the Image
+# -------------------------
 #
 # Load a Kodak image, convert it to grayscale, normalize it,
 # and then resize it by a factor of (0.5, 0.5). After that,
 # scale its intensity back to [0, 255] before rotation.
 
 # Load the 'kodim17.png' image
-url = 'https://r0k.us/graphics/kodak/kodak/kodim22.png'
 url = 'https://r0k.us/graphics/kodak/kodak/kodim22.png'
 with urlopen(url, timeout=10) as resp:
     img = Image.open(resp)

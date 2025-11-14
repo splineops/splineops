@@ -152,8 +152,8 @@ BENCH_METHODS: List[Tuple[str, str, str | None]] = [
 
 
 # %%
-# Core timing helper
-# ------------------
+# Timing Helper
+# -------------
 #
 # For each method we only time the **forward** (downsampling) pass. We still
 # keep the downsampled image so we can display it later.
@@ -290,7 +290,7 @@ print_runtime_context()
 
 
 # %%
-# ROI helpers
+# ROI Helpers
 # -----------
 #
 # We will focus on image-specific square ROIs to inspect aliasing in detail.
@@ -418,8 +418,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic
-# ~~~~~~~~~~~
+# SciPy Interpolation
+# ~~~~~~~~~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -449,8 +449,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic
-# ~~~~~~~~~~~~~~
+# Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -480,7 +480,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic)
+# Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
@@ -511,8 +511,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic)
-# ~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -542,7 +542,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
@@ -607,8 +607,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic
-# ~~~~~~~~~~~
+# SciPy Interpolation
+# ~~~~~~~~~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -638,8 +638,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic
-# ~~~~~~~~~~~~~~
+# Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -669,7 +669,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic)
+# Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
@@ -700,8 +700,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic)
-# ~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -731,7 +731,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
@@ -796,8 +796,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic
-# ~~~~~~~~~~~
+# SciPy Interpolation
+# ~~~~~~~~~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -827,8 +827,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic
-# ~~~~~~~~~~~~~~
+# Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -858,7 +858,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic)
+# Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
@@ -889,8 +889,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic)
-# ~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -920,7 +920,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
@@ -985,8 +985,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic
-# ~~~~~~~~~~~
+# SciPy Interpolation
+# ~~~~~~~~~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -1016,8 +1016,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic
-# ~~~~~~~~~~~~~~
+# Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -1047,7 +1047,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic)
+# Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
@@ -1078,8 +1078,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic)
-# ~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -1109,7 +1109,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
@@ -1174,8 +1174,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic
-# ~~~~~~~~~~~
+# SciPy Interpolation
+# ~~~~~~~~~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -1205,8 +1205,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic
-# ~~~~~~~~~~~~~~
+# Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -1236,8 +1236,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic)
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
 t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
@@ -1267,8 +1267,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic)
-# ~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -1298,7 +1298,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 DISPLAY_H = 256
@@ -1364,8 +1364,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic
-# ~~~~~~~~~~~
+# SciPy Interpolation
+# ~~~~~~~~~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -1395,8 +1395,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic
-# ~~~~~~~~~~~~~~
+# Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -1426,7 +1426,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic)
+# Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
@@ -1457,8 +1457,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic)
-# ~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -1488,7 +1488,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]

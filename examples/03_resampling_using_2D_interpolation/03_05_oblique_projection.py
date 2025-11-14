@@ -166,8 +166,9 @@ roi_w_res = max(1, int(round(ROI_SIZE_PX * zoom_c)))
 )
 
 # %%
-# Highlights: ROI comparison
-# --------------------------
+# ROI Comparison
+# --------------
+#
 # Build a 1×3 ROI triptych (nearest-neighbour magnification).
 
 def _nearest_big(roi: np.ndarray, target_h: int) -> np.ndarray:
@@ -222,8 +223,8 @@ _ = show_roi_zoom(
 # --------------
 
 # %%
-# Least-Squares Projection (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares Projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 h_res_ls, w_res_ls = resized_2d_ls.shape
 
@@ -246,8 +247,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique Projection (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique Projection
+# ~~~~~~~~~~~~~~~~~~
 
 h_res_ob, w_res_ob = resized_2d_ob.shape
 

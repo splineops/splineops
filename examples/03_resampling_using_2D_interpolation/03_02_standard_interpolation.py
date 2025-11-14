@@ -173,7 +173,7 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Recovered Image (standard)
+# Recovered Image (Standard)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # We plot the recovered image (after reversing the zoom) with the same ROI.

@@ -88,8 +88,9 @@ center_c_res = int(round(FACE_COL * zoom_c))
 roi_h_res = max(1, int(round(ROI_SIZE_PX * zoom_r)))
 roi_w_res = max(1, int(round(ROI_SIZE_PX * zoom_c)))
 
-# Standard Interpolation (cubic)
-# ------------------------------
+# %%
+# Standard Interpolation
+# ----------------------
 
 t0 = time.perf_counter()
 resized_2d_std = resize(
@@ -116,6 +117,7 @@ snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
     border_fraction=border_fraction,
 )
 
+# %%
 # Least-Squares Projection
 # ------------------------
 
@@ -144,8 +146,8 @@ snr_2d_ls, mse_2d_ls = compute_snr_and_mse_region(
 )
 
 # %%
-# Highlights: ROI comparison
-# --------------------------
+# ROI Comparison
+# --------------
 #
 # Build a quick ROI triptych (nearest-neighbour magnification) from the
 # recovered images for visual comparison.
@@ -200,8 +202,8 @@ _ = show_roi_zoom(
 # --------------
 
 # %%
-# Least-Squares (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares Projection
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 h_res_ls, w_res_ls = resized_2d_ls.shape
 
@@ -227,8 +229,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard (resized)
-# ~~~~~~~~~~~~~~~~~~
+# Standard Interpolation
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 h_res_std, w_res_std = resized_2d_std.shape
 
