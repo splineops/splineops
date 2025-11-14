@@ -288,3 +288,32 @@ plot_difference_image(
     roi=roi_rect,
     title_prefix="Difference (standard)",
 )
+
+# %%
+# Performance: SNR / Time Comparison
+# ----------------------------------
+#
+# As a compact summary, we print a table with:
+#
+# - SNR / MSE on the central region (via border_fraction),
+# - forward-pass timing for the downsampling step.
+#
+# This lets you see the cost/benefit trade-off between
+# standard interpolation and least-squares projection.
+
+methods = [
+    ("Standard Interpolation (cubic)", snr_2d_std, mse_2d_std, time_2d_std),
+    ("Least-Squares Projection",       snr_2d_ls,  mse_2d_ls,  time_2d_ls),
+]
+
+header_line = f"{'Method':<32} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
+print(header_line)
+print("-" * len(header_line))
+
+for name, snr_val, mse_val, t in methods:
+    print(
+        f"{name:<32} "
+        f"{snr_val:>10.2f} "
+        f"{mse_val:>16.2e} "
+        f"{t:>12.4f}"
+    )

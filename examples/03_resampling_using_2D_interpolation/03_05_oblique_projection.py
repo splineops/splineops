@@ -120,6 +120,15 @@ roi_w_res = max(1, int(round(ROI_SIZE_PX * zoom_c)))
 # Least-Squares vs Oblique
 # ------------------------
 
+# Standard interpolation: cubic (baseline)
+resized_2d_std, recovered_2d_std, snr_2d_std, mse_2d_std, time_2d_std = _run_pipeline(
+    input_image_normalized,
+    method="cubic",
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction,
+    roi=None,  # metrics on central region
+)
+
 # Least-squares projection: cubic-best_antialiasing
 resized_2d_ls, recovered_2d_ls, snr_2d_ls, mse_2d_ls, time_2d_ls = _run_pipeline(
     input_image_normalized,
@@ -338,7 +347,14 @@ def _avg_time_over_runs(
     sd_s   = float(times.std(ddof=1)) if times.size > 1 else 0.0
     return mean_s, sd_s
 
-# Measure LS and Oblique averages
+# Measure averages for Standard, LS, and Oblique
+mean_std, sd_std = _avg_time_over_runs(
+    input_image_normalized,
+    method="cubic",
+    zoom_factors=zoom_factors_2d,
+    border_fraction=border_fraction,
+    roi=None,
+)
 mean_ls, sd_ls = _avg_time_over_runs(
     input_image_normalized,
     method="cubic-best_antialiasing",
@@ -357,20 +373,22 @@ mean_ob, sd_ob = _avg_time_over_runs(
 speedup_mean = (mean_ls / mean_ob) if mean_ob > 0 else np.inf
 impr_pct_mean = max(0.0, (1.0 - mean_ob / max(mean_ls, 1e-12)) * 100.0)
 
+print(f"[Timing averages over {N_TRIALS} runs] Standard     : {mean_std*1000:.1f} ± {sd_std*1000:.1f} ms")
 print(f"[Timing averages over {N_TRIALS} runs] Least-Squares: {mean_ls*1000:.1f} ± {sd_ls*1000:.1f} ms")
 print(f"[Timing averages over {N_TRIALS} runs] Oblique      : {mean_ob*1000:.1f} ± {sd_ob*1000:.1f} ms")
 print(f"[Timing] Speedup (LS/OB): {speedup_mean:.2f}×  (~{impr_pct_mean:.1f}% less time)\n")
 
 fig, ax = plt.subplots(figsize=(7.0, 3.8))
-methods   = ["Least-Squares", "Oblique"]
-means_s   = [mean_ls, mean_ob]
-errs_s    = [sd_ls, sd_ob]
+methods   = ["Standard", "Least-Squares", "Oblique"]
+means_s   = [mean_std,  mean_ls,         mean_ob]
+errs_s    = [sd_std,    sd_ls,          sd_ob]
 
 bars = ax.bar(methods, means_s, yerr=errs_s, capsize=6)
 ax.set_ylabel("Time (s)")
 ax.set_title(
-    f"Oblique is ≈ {speedup_mean:.2f}× faster on average "
-    f"({impr_pct_mean:.1f}% less time over {N_TRIALS} runs)"
+    f"Oblique vs LS vs standard "
+    f"(Oblique is ≈ {speedup_mean:.2f}× faster than LS "
+    f"({impr_pct_mean:.1f}% less time over {N_TRIALS} runs))"
 )
 
 for rect, m, sd in zip(bars, means_s, errs_s):
@@ -386,5 +404,31 @@ for rect, m, sd in zip(bars, means_s, errs_s):
 
 fig.tight_layout()
 plt.show()
+
+# %%
+# Summary: SNR / Time Table
+# -------------------------
+#
+# Central-region SNR/MSE (via border_fraction) plus averaged forward
+# timings for all three methods in this example.
+
+methods_summary = [
+    ("Standard (cubic)",          snr_2d_std, mse_2d_std, mean_std, sd_std),
+    ("Least-Squares (best AA)",   snr_2d_ls,  mse_2d_ls,  mean_ls,  sd_ls),
+    ("Oblique (fast AA)",         snr_2d_ob,  mse_2d_ob,  mean_ob,  sd_ob),
+]
+
+header_line = f"{'Method':<28} {'SNR (dB)':>10} {'MSE':>16} {'Time (s, avg±sd)':>22}"
+print(header_line)
+print("-" * len(header_line))
+
+for name, snr_val, mse_val, t_mean, t_sd in methods_summary:
+    time_str = f"{t_mean:.4f} ± {t_sd:.4f}"
+    print(
+        f"{name:<28} "
+        f"{snr_val:>10.2f} "
+        f"{mse_val:>16.2e} "
+        f"{time_str:>22}"
+    )
 
 print_runtime_context()
