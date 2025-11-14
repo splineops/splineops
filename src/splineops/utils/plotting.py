@@ -270,14 +270,15 @@ def show_roi_zoom(
     # 5. Plot – widths proportional to pixel widths                      #
     # ------------------------------------------------------------------ #
     if fig_size is None:
-        fig_w = 10
-        fig_h = fig_w * h_img / (w_img + roi_big.shape[1])
-        fig_size = (fig_w, fig_h)
+        # Slightly taller figure so titles & images never get clipped,
+        # even for images that are relatively tall.
+        fig_size = (10.0, 5.5)
 
     fig, ax = plt.subplots(
         1, 2,
         figsize=fig_size,
         gridspec_kw={"width_ratios": [w_img, roi_big.shape[1]]},
+        constrained_layout=True,
     )
 
     # left panel
@@ -306,6 +307,5 @@ def show_roi_zoom(
     ax[1].axis("off")
     ax[1].set_title(ax_titles[1] if ax_titles else f"ROI x{mag} (nearest)")
 
-    plt.tight_layout()
     plt.show()
     return fig, ax

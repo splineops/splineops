@@ -144,10 +144,10 @@ N_TRIALS = 10
 # - kind: "scipy" or "splineops"
 # - splineops `method` string when kind == "splineops"
 BENCH_METHODS: List[Tuple[str, str, str | None]] = [
-    ("SciPy cubic",              "scipy",     None),
-    ("Standard cubic",           "splineops", "cubic"),
-    ("Least-Squares (AA cubic)", "splineops", "cubic-best_antialiasing"),
-    ("Oblique (fast AA cubic)",  "splineops", "cubic-fast_antialiasing"),
+    ("SciPy",              "scipy",     None),
+    ("Standard",           "splineops", "cubic"),
+    ("Least-Squares", "splineops", "cubic-best_antialiasing"),
+    ("Oblique",  "splineops", "cubic-fast_antialiasing"),
 ]
 
 
@@ -421,8 +421,8 @@ roi_titles  = []
 # SciPy Interpolation
 # ~~~~~~~~~~~~~~~~~~~
 
-down_scipy = down_by_label["SciPy cubic"]
-t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
+down_scipy = down_by_label["SciPy"]
+t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
 
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
@@ -435,13 +435,13 @@ canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_scipy)
 roi_titles.append(
-    f"SciPy cubic\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
+    f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
 
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"SciPy (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -452,8 +452,8 @@ _ = show_roi_zoom(
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
 
-down_std = down_by_label["Standard cubic"]
-t_mean_std, t_sd_std = time_by_label["Standard cubic"]
+down_std = down_by_label["Standard"]
+t_mean_std, t_sd_std = time_by_label["Standard"]
 
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
@@ -466,13 +466,13 @@ canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_std)
 roi_titles.append(
-    f"Standard cubic\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
+    f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
 
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Standard (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -483,8 +483,8 @@ _ = show_roi_zoom(
 # Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
-down_ls = down_by_label["Least-Squares (AA cubic)"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
+down_ls = down_by_label["Least-Squares"]
+t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
 
 canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     down_ls,
@@ -497,13 +497,13 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ls)
 roi_titles.append(
-    f"Least-Squares (AA)\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
 )
 
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -514,8 +514,8 @@ _ = show_roi_zoom(
 # Oblique Projection
 # ~~~~~~~~~~~~~~~~~~
 
-down_ob = down_by_label["Oblique (fast AA cubic)"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
+down_ob = down_by_label["Oblique"]
+t_mean_ob, t_sd_ob = time_by_label["Oblique"]
 
 canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
     down_ob,
@@ -528,13 +528,13 @@ canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ob)
 roi_titles.append(
-    f"Oblique (fast AA)\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
+    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
 )
 
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
@@ -547,14 +547,19 @@ _ = show_roi_zoom(
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
 
-fig, axes = plt.subplots(1, 4, figsize=(12.5, 3.8))
+# Make the figure a bit taller so multi-line titles and the suptitle
+# have enough vertical room, even when the ROIs are square.
+fig_width = 12.5
+fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
+
+fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
 
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.92])
+fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
 plt.show()
 
 # %%
@@ -610,8 +615,8 @@ roi_titles  = []
 # SciPy Interpolation
 # ~~~~~~~~~~~~~~~~~~~
 
-down_scipy = down_by_label["SciPy cubic"]
-t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
+down_scipy = down_by_label["SciPy"]
+t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
 
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
@@ -624,13 +629,13 @@ canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_scipy)
 roi_titles.append(
-    f"SciPy cubic\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
+    f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
 
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"SciPy (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -641,8 +646,8 @@ _ = show_roi_zoom(
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
 
-down_std = down_by_label["Standard cubic"]
-t_mean_std, t_sd_std = time_by_label["Standard cubic"]
+down_std = down_by_label["Standard"]
+t_mean_std, t_sd_std = time_by_label["Standard"]
 
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
@@ -655,13 +660,13 @@ canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_std)
 roi_titles.append(
-    f"Standard cubic\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
+    f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
 
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Standard (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -672,8 +677,8 @@ _ = show_roi_zoom(
 # Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
-down_ls = down_by_label["Least-Squares (AA cubic)"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
+down_ls = down_by_label["Least-Squares"]
+t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
 
 canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     down_ls,
@@ -686,13 +691,13 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ls)
 roi_titles.append(
-    f"Least-Squares (AA)\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
 )
 
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -703,8 +708,8 @@ _ = show_roi_zoom(
 # Oblique Projection
 # ~~~~~~~~~~~~~~~~~~
 
-down_ob = down_by_label["Oblique (fast AA cubic)"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
+down_ob = down_by_label["Oblique"]
+t_mean_ob, t_sd_ob = time_by_label["Oblique"]
 
 canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
     down_ob,
@@ -717,13 +722,13 @@ canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ob)
 roi_titles.append(
-    f"Oblique (fast AA)\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
+    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
 )
 
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
@@ -736,14 +741,19 @@ _ = show_roi_zoom(
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
 
-fig, axes = plt.subplots(1, 4, figsize=(12.5, 3.8))
+# Make the figure a bit taller so multi-line titles and the suptitle
+# have enough vertical room, even when the ROIs are square.
+fig_width = 12.5
+fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
+
+fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
 
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.92])
+fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
 plt.show()
 
 # %%
@@ -799,8 +809,8 @@ roi_titles  = []
 # SciPy Interpolation
 # ~~~~~~~~~~~~~~~~~~~
 
-down_scipy = down_by_label["SciPy cubic"]
-t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
+down_scipy = down_by_label["SciPy"]
+t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
 
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
@@ -813,13 +823,13 @@ canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_scipy)
 roi_titles.append(
-    f"SciPy cubic\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
+    f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
 
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"SciPy (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -830,8 +840,8 @@ _ = show_roi_zoom(
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
 
-down_std = down_by_label["Standard cubic"]
-t_mean_std, t_sd_std = time_by_label["Standard cubic"]
+down_std = down_by_label["Standard"]
+t_mean_std, t_sd_std = time_by_label["Standard"]
 
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
@@ -844,13 +854,13 @@ canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_std)
 roi_titles.append(
-    f"Standard cubic\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
+    f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
 
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Standard (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -861,8 +871,8 @@ _ = show_roi_zoom(
 # Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
-down_ls = down_by_label["Least-Squares (AA cubic)"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
+down_ls = down_by_label["Least-Squares"]
+t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
 
 canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     down_ls,
@@ -875,13 +885,13 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ls)
 roi_titles.append(
-    f"Least-Squares (AA)\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
 )
 
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -892,8 +902,8 @@ _ = show_roi_zoom(
 # Oblique Projection
 # ~~~~~~~~~~~~~~~~~~
 
-down_ob = down_by_label["Oblique (fast AA cubic)"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
+down_ob = down_by_label["Oblique"]
+t_mean_ob, t_sd_ob = time_by_label["Oblique"]
 
 canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
     down_ob,
@@ -906,13 +916,13 @@ canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ob)
 roi_titles.append(
-    f"Oblique (fast AA)\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
+    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
 )
 
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
@@ -925,14 +935,19 @@ _ = show_roi_zoom(
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
 
-fig, axes = plt.subplots(1, 4, figsize=(12.5, 3.8))
+# Make the figure a bit taller so multi-line titles and the suptitle
+# have enough vertical room, even when the ROIs are square.
+fig_width = 12.5
+fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
+
+fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
 
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.92])
+fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
 plt.show()
 
 # %%
@@ -988,8 +1003,8 @@ roi_titles  = []
 # SciPy Interpolation
 # ~~~~~~~~~~~~~~~~~~~
 
-down_scipy = down_by_label["SciPy cubic"]
-t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
+down_scipy = down_by_label["SciPy"]
+t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
 
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
@@ -1002,13 +1017,13 @@ canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_scipy)
 roi_titles.append(
-    f"SciPy cubic\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
+    f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
 
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"SciPy (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -1019,8 +1034,8 @@ _ = show_roi_zoom(
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
 
-down_std = down_by_label["Standard cubic"]
-t_mean_std, t_sd_std = time_by_label["Standard cubic"]
+down_std = down_by_label["Standard"]
+t_mean_std, t_sd_std = time_by_label["Standard"]
 
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
@@ -1033,13 +1048,13 @@ canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_std)
 roi_titles.append(
-    f"Standard cubic\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
+    f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
 
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Standard (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -1050,8 +1065,8 @@ _ = show_roi_zoom(
 # Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
-down_ls = down_by_label["Least-Squares (AA cubic)"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
+down_ls = down_by_label["Least-Squares"]
+t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
 
 canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     down_ls,
@@ -1064,13 +1079,13 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ls)
 roi_titles.append(
-    f"Least-Squares (AA)\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
 )
 
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -1081,8 +1096,8 @@ _ = show_roi_zoom(
 # Oblique Projection
 # ~~~~~~~~~~~~~~~~~~
 
-down_ob = down_by_label["Oblique (fast AA cubic)"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
+down_ob = down_by_label["Oblique"]
+t_mean_ob, t_sd_ob = time_by_label["Oblique"]
 
 canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
     down_ob,
@@ -1095,13 +1110,13 @@ canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ob)
 roi_titles.append(
-    f"Oblique (fast AA)\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
+    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
 )
 
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
@@ -1114,14 +1129,19 @@ _ = show_roi_zoom(
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
 
-fig, axes = plt.subplots(1, 4, figsize=(12.5, 3.8))
+# Make the figure a bit taller so multi-line titles and the suptitle
+# have enough vertical room, even when the ROIs are square.
+fig_width = 12.5
+fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
+
+fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
 
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.92])
+fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
 plt.show()
 
 # %%
@@ -1177,8 +1197,8 @@ roi_titles  = []
 # SciPy Interpolation
 # ~~~~~~~~~~~~~~~~~~~
 
-down_scipy = down_by_label["SciPy cubic"]
-t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
+down_scipy = down_by_label["SciPy"]
+t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
 
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
@@ -1191,13 +1211,13 @@ canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_scipy)
 roi_titles.append(
-    f"SciPy cubic\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
+    f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
 
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"SciPy (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -1208,8 +1228,8 @@ _ = show_roi_zoom(
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
 
-down_std = down_by_label["Standard cubic"]
-t_mean_std, t_sd_std = time_by_label["Standard cubic"]
+down_std = down_by_label["Standard"]
+t_mean_std, t_sd_std = time_by_label["Standard"]
 
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
@@ -1222,13 +1242,13 @@ canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_std)
 roi_titles.append(
-    f"Standard cubic\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
+    f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
 
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Standard (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -1239,8 +1259,8 @@ _ = show_roi_zoom(
 # Least-Squares Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-down_ls = down_by_label["Least-Squares (AA cubic)"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
+down_ls = down_by_label["Least-Squares"]
+t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
 
 canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     down_ls,
@@ -1253,13 +1273,13 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ls)
 roi_titles.append(
-    f"Least-Squares (AA)\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
 )
 
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -1270,8 +1290,8 @@ _ = show_roi_zoom(
 # Oblique Projection
 # ~~~~~~~~~~~~~~~~~~
 
-down_ob = down_by_label["Oblique (fast AA cubic)"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
+down_ob = down_by_label["Oblique"]
+t_mean_ob, t_sd_ob = time_by_label["Oblique"]
 
 canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
     down_ob,
@@ -1284,13 +1304,13 @@ canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ob)
 roi_titles.append(
-    f"Oblique (fast AA)\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
+    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
 )
 
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
@@ -1301,17 +1321,21 @@ _ = show_roi_zoom(
 # ROI Comparison
 # ~~~~~~~~~~~~~~
 
-DISPLAY_H = 256
-roi_big_list = [_nearest_big(r, DISPLAY_H) for r in roi_patches]
+roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
 
-fig, axes = plt.subplots(1, 4, figsize=(12.5, 3.8))
+# Make the figure a bit taller so multi-line titles and the suptitle
+# have enough vertical room, even when the ROIs are square.
+fig_width = 12.5
+fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
+
+fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
 
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.92])
+fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
 plt.show()
 
 # %%
@@ -1367,8 +1391,8 @@ roi_titles  = []
 # SciPy Interpolation
 # ~~~~~~~~~~~~~~~~~~~
 
-down_scipy = down_by_label["SciPy cubic"]
-t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
+down_scipy = down_by_label["SciPy"]
+t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
 
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
@@ -1381,13 +1405,13 @@ canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_scipy)
 roi_titles.append(
-    f"SciPy cubic\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
+    f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
 
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"SciPy (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -1398,8 +1422,8 @@ _ = show_roi_zoom(
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
 
-down_std = down_by_label["Standard cubic"]
-t_mean_std, t_sd_std = time_by_label["Standard cubic"]
+down_std = down_by_label["Standard"]
+t_mean_std, t_sd_std = time_by_label["Standard"]
 
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
@@ -1412,13 +1436,13 @@ canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_std)
 roi_titles.append(
-    f"Standard cubic\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
+    f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
 
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Standard (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -1429,8 +1453,8 @@ _ = show_roi_zoom(
 # Least-Squares Projection
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
-down_ls = down_by_label["Least-Squares (AA cubic)"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
+down_ls = down_by_label["Least-Squares"]
+t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
 
 canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     down_ls,
@@ -1443,13 +1467,13 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ls)
 roi_titles.append(
-    f"Least-Squares (AA)\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
 )
 
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -1460,8 +1484,8 @@ _ = show_roi_zoom(
 # Oblique Projection
 # ~~~~~~~~~~~~~~~~~~
 
-down_ob = down_by_label["Oblique (fast AA cubic)"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
+down_ob = down_by_label["Oblique"]
+t_mean_ob, t_sd_ob = time_by_label["Oblique"]
 
 canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
     down_ob,
@@ -1474,13 +1498,13 @@ canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
 )
 roi_patches.append(roi_patch_ob)
 roi_titles.append(
-    f"Oblique (fast AA)\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
+    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
 )
 
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
@@ -1493,12 +1517,17 @@ _ = show_roi_zoom(
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
 
-fig, axes = plt.subplots(1, 4, figsize=(12.5, 3.8))
+# Make the figure a bit taller so multi-line titles and the suptitle
+# have enough vertical room, even when the ROIs are square.
+fig_width = 12.5
+fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
+
+fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
 
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.92])
+fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
 plt.show()
