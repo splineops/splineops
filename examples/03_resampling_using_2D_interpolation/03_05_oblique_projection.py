@@ -305,15 +305,13 @@ _ = show_roi_zoom(
 # Difference with original image on the face ROI (SNR/MSE shown come from the
 # central-region metrics, not strictly ROI-only).
 
-title_ls = f"Difference (least-squares, {fmt_ms(time_2d_ls)})"
-
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ls,
     snr=snr_2d_ls,
     mse=mse_2d_ls,
     roi=roi_rect,
-    title_prefix=title_ls,
+    title_prefix="Difference (least-squares)",
 )
 
 # %%
@@ -322,15 +320,13 @@ plot_difference_image(
 #
 # Difference with original image on the face ROI.
 
-title_ob = f"Difference (oblique, {fmt_ms(time_2d_ob)})"
-
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ob,
     snr=snr_2d_ob,
     mse=mse_2d_ob,
     roi=roi_rect,
-    title_prefix=title_ob,
+    title_prefix="Difference (oblique)",
 )
 
 # %%

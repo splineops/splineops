@@ -295,15 +295,13 @@ _ = show_roi_zoom(
 # Difference with original image on ROI (SNR/MSE numbers are from the
 # central-region metrics computed earlier).
 
-title_ls = f"Difference (least-squares, {fmt_ms(time_2d_ls)})"
-
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ls,
     snr=snr_2d_ls,
     mse=mse_2d_ls,
     roi=roi_rect,
-    title_prefix=title_ls,
+    title_prefix="Difference (least-squares)",
 )
 
 # %%
@@ -312,15 +310,13 @@ plot_difference_image(
 #
 # Difference with original image on ROI.
 
-title_std = f"Difference (standard, {fmt_ms(time_2d_std)})"
-
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_std,
     snr=snr_2d_std,
     mse=mse_2d_std,
     roi=roi_rect,
-    title_prefix=title_std,
+    title_prefix="Difference (standard)",
 )
 
 # %%
