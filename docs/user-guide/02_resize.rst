@@ -76,13 +76,13 @@ This leads to a projection of the form:
 
 .. math::
 
-    s(x) = \sum_k \langle f, \varphi_k \rangle \tilde{\varphi}_k(x),
+    s(x) = \sum_k \langle f, \tilde{\varphi}_k \rangle \varphi_k(x),
 
 where:
 
 - :math:`\varphi_k(x)` are the integer-shifted synthesis splines (e.g., cubic B-splines),
 - :math:`\tilde{\varphi}_k(x)` are the corresponding analysis functions (their duals),
-- :math:`\langle f, \varphi_k \rangle` represents inner products with these duals.
+- :math:`\langle f, \tilde{\varphi}_k \rangle` are the analysis coefficients (inner products of :math:`f` with the dual functions).
 
 The biorthonormality condition
 
@@ -109,15 +109,15 @@ Oblique Projection
 
 Oblique projection is a generalization of least-squares projection where the synthesis and analysis spline spaces are allowed to differ. 
 Instead of computing an orthogonal projection (where the same basis is used for both approximation and analysis), the method employs an auxiliary 
-analysis function :math:`\psi(x)` distinct from the synthesis function :math:`\tilde{\varphi}(x)`. The resulting approximation is given by:
+analysis function :math:`\psi(x)` distinct from the synthesis function :math:`\varphi(x)`. The resulting approximation is given by:
 
 .. math::
 
-    s(x) = \sum_k \langle f, \psi_k \rangle \tilde{\varphi}_k(x),
+    s(x) = \sum_k \langle f, \psi_k \rangle \varphi_k(x),
 
 where:
 
-- :math:`\tilde{\varphi}_k(x)` are the synthesis basis functions (typically B-splines of degree :math:`n`);
+- :math:`\varphi_k(x)` are the synthesis basis functions (typically B-splines of degree :math:`n`);
 - :math:`\psi_k(x)` are the translated analysis functions, often chosen to be simpler or more localized.
 
 This formulation leads to an *oblique* rather than orthogonal projection. It trades off a small loss in optimality for improved speed and numerical stability. 
