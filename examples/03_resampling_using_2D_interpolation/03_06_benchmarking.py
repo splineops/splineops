@@ -15,13 +15,10 @@ images. For each image we:
 
 We compare:
 
-- SciPy cubic interpolation (:func:`scipy.ndimage.zoom`)
-- Standard cubic interpolation (:func:`splineops.resize`, ``method="cubic"``)
-- Least-Squares cubic anti-aliasing (``"cubic-best_antialiasing"``)
-- Oblique cubic fast anti-aliasing (``"cubic-fast_antialiasing"``)
-
-The goal is to inspect both the speed and the visual appearance of the
-downsampled results, especially on a small detail region (ROI).
+- SciPy cubic interpolation.
+- Standard cubic interpolation.
+- Least-Squares cubic anti-aliasing.
+- Oblique cubic fast anti-aliasing.
 """
 
 # %%

@@ -3,8 +3,8 @@
 # sphinx_gallery_end_ignore
 
 """
-Benchmarking: Zoom Sweep
-========================
+Benchmarking Plot
+=================
 
 This example performs a 1D sweep of zoom factors and evaluates how different
 2D downsampling methods behave in terms of
@@ -17,13 +17,10 @@ are compared on the same task.
 
 We compare four methods:
 
-- SciPy cubic interpolation (:func:`scipy.ndimage.zoom`, order=3)
-- Standard cubic interpolation (:func:`splineops.resize`, ``method="cubic"``)
-- Least-Squares cubic anti-aliasing (``"cubic-best_antialiasing"``)
-- Oblique cubic fast anti-aliasing (``"cubic-fast_antialiasing"``)
-
-The experiment is based on a single fixed test image (Kodak ``kodim19.png``),
-converted to grayscale in [0, 1].
+- SciPy cubic interpolation.
+- Standard cubic interpolation.
+- Least-Squares cubic anti-aliasing.
+- Oblique cubic fast anti-aliasing.
 """
 
 # %%
@@ -57,9 +54,8 @@ def fmt_ms(seconds: float) -> str:
 # Load and Normalize an Image
 # ---------------------------
 #
-# We use a fixed test image (Kodak ``kodim19.png``), convert it to grayscale
-# and normalise it to [0, 1]. This keeps the benchmark fully reproducible
-# when Sphinx-Gallery runs the example.
+# We use a fixed test image, convert it to grayscale
+# and normalize it to [0, 1].
 
 KODAK_URL = "https://r0k.us/graphics/kodak/kodak/kodim19.png"
 
@@ -132,8 +128,7 @@ def snr_db(x: np.ndarray, y: np.ndarray) -> float:
 # ------------------
 #
 # Each method is evaluated by a round-trip (downsample then upsample back
-# to the original shape) so that differences in anti-aliasing and interpolation
-# behaviour become visible in both timing and SNR.
+# to the original shape).
 
 def scipy_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
     """Forward + backward with SciPy cubic interpolation."""
@@ -185,7 +180,7 @@ def average_time(run, repeats: int = 10):
 # Zoom Sweep and Methods
 # ----------------------
 #
-# We sweep zoom factors and keep only those zooms that
+# We sweep zoom factors and keep only those that
 # preserve the original image size after a forward/backward round-trip.
 
 SAMPLES = 80          # number of zoom samples in [0.01, 2.0)
@@ -217,7 +212,7 @@ results: Dict[str, Dict[str, List[float]]] = {
 # Run the Sweep
 # -------------
 #
-# For each zoom and each method:
+# For each zoom and each method we:
 #
 # - perform a forward + backward resize,
 # - average the runtime over a number of runs,
@@ -289,8 +284,6 @@ plt.show()
 # Runtime Context
 # ---------------
 #
-# Finally, we print a short summary of the runtime environment, which is
-# useful when interpreting the timing results (CPU model, number of threads,
-# BLAS backend, optional native acceleration, etc.).
+# Finally, we print a short summary of the runtime environment.
 
 print_runtime_context()
