@@ -1,27 +1,27 @@
 # splineops/src/splineops/spline_interpolation/bases/utils.py
 
 from typing import Union, Mapping, Type
-from splineops.spline_interpolation.bases.splinebasis import SplineBasis
-from splineops.spline_interpolation.bases.bspline0basis import BSpline0Basis, BSpline0SymBasis
-from splineops.spline_interpolation.bases.bspline1basis import BSpline1Basis
-from splineops.spline_interpolation.bases.bspline2basis import BSpline2Basis
-from splineops.spline_interpolation.bases.bspline3basis import BSpline3Basis
-from splineops.spline_interpolation.bases.bspline4basis import BSpline4Basis
-from splineops.spline_interpolation.bases.bspline5basis import BSpline5Basis
-from splineops.spline_interpolation.bases.bspline6basis import BSpline6Basis
-from splineops.spline_interpolation.bases.bspline7basis import BSpline7Basis
-from splineops.spline_interpolation.bases.bspline8basis import BSpline8Basis
-from splineops.spline_interpolation.bases.bspline9basis import BSpline9Basis
-from splineops.spline_interpolation.bases.omoms0basis import OMOMS0Basis, OMOMS0SymBasis
-from splineops.spline_interpolation.bases.omoms1basis import OMOMS1Basis
-from splineops.spline_interpolation.bases.omoms2basis import OMOMS2Basis, OMOMS2SymBasis
-from splineops.spline_interpolation.bases.omoms3basis import OMOMS3Basis
-from splineops.spline_interpolation.bases.omoms4basis import OMOMS4Basis, OMOMS4SymBasis
-from splineops.spline_interpolation.bases.omoms5basis import OMOMS5Basis
-from splineops.spline_interpolation.bases.nearestneighborbasis import NearestNeighborBasis
-from splineops.spline_interpolation.bases.nearestneighborbasis import NearestNeighborSymBasis
-from splineops.spline_interpolation.bases.linearbasis import LinearBasis
-from splineops.spline_interpolation.bases.keysbasis import KeysBasis
+
+from .splinebasis import SplineBasis
+from .bspline0basis import BSpline0Basis, BSpline0SymBasis
+from .bspline1basis import BSpline1Basis
+from .bspline2basis import BSpline2Basis
+from .bspline3basis import BSpline3Basis
+from .bspline4basis import BSpline4Basis
+from .bspline5basis import BSpline5Basis
+from .bspline6basis import BSpline6Basis
+from .bspline7basis import BSpline7Basis
+from .bspline8basis import BSpline8Basis
+from .bspline9basis import BSpline9Basis
+from .omoms0basis import OMOMS0Basis, OMOMS0SymBasis
+from .omoms1basis import OMOMS1Basis
+from .omoms2basis import OMOMS2Basis, OMOMS2SymBasis
+from .omoms3basis import OMOMS3Basis
+from .omoms4basis import OMOMS4Basis, OMOMS4SymBasis
+from .omoms5basis import OMOMS5Basis
+from .nearestneighborbasis import NearestNeighborBasis, NearestNeighborSymBasis
+from .linearbasis import LinearBasis
+from .keysbasis import KeysBasis
 
 basis_map: Mapping[str, Type[SplineBasis]] = {
     "bspline0": BSpline0Basis,

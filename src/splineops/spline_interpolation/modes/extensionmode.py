@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Tuple
 import numpy.typing as npt
 
-from splineops.spline_interpolation.bases.splinebasis import SplineBasis
+from ..bases.splinebasis import SplineBasis
 
 class ExtensionMode(metaclass=ABCMeta):
     # Abstract methods

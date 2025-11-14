@@ -4,9 +4,9 @@ import numpy as np
 from typing import Tuple
 import numpy.typing as npt
 
-from splineops.spline_interpolation.bases.splinebasis import SplineBasis
-from splineops.spline_interpolation.modes.extensionmode import ExtensionMode
-from splineops.spline_interpolation.utils import _data_to_coeffs
+from ..bases.splinebasis import SplineBasis
+from ..modes.extensionmode import ExtensionMode
+from ..utils import _data_to_coeffs
 
 class NarrowMirroring(ExtensionMode):
 

@@ -1,10 +1,10 @@
 # splineops/src/splineops/spline_interpolation/modes/utils.py
 
 from typing import Union, Mapping, Type
-from splineops.spline_interpolation.modes.extensionmode import ExtensionMode
-from splineops.spline_interpolation.modes.narrowmirroring import NarrowMirroring
-from splineops.spline_interpolation.modes.finitesupportcoefficients import FiniteSupportCoefficients
-from splineops.spline_interpolation.modes.periodicpadding import PeriodicPadding
+from ..modes.extensionmode import ExtensionMode
+from ..modes.narrowmirroring import NarrowMirroring
+from ..modes.finitesupportcoefficients import FiniteSupportCoefficients
+from ..modes.periodicpadding import PeriodicPadding
 
 mode_map: Mapping[str, Type[ExtensionMode]] = {
     "zero": FiniteSupportCoefficients,

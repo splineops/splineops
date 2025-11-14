@@ -6,9 +6,9 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 
-from splineops.spline_interpolation.bases.splinebasis import SplineBasis
-from splineops.spline_interpolation.modes.extensionmode import ExtensionMode
-from splineops.utils.interop import is_cupy_type
+from ..bases.splinebasis import SplineBasis
+from ..modes.extensionmode import ExtensionMode
+from ..utils import is_cupy_type
 
 class PeriodicPadding(ExtensionMode):
 

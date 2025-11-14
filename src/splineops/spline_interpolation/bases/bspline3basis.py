@@ -3,7 +3,7 @@
 import numpy as np
 import numpy.typing as npt
 
-from splineops.spline_interpolation.bases.splinebasis import SplineBasis
+from .splinebasis import SplineBasis
 
 class BSpline3Basis(SplineBasis):
     def __init__(self) -> None:
