@@ -30,6 +30,10 @@ from splineops.utils.metrics import compute_snr_and_mse_region
 from splineops.utils.plotting import plot_difference_image, show_roi_zoom
 from splineops.utils.diagram import draw_standard_vs_leastsq_pipeline
 
+def fmt_ms(seconds: float) -> str:
+    """Format seconds as a short 'X.X ms' string."""
+    return f"{seconds * 1000.0:.1f} ms"
+
 # %%
 # Pipeline Diagram
 # ----------------
@@ -85,7 +89,6 @@ center_c_res = int(round(FACE_COL * zoom_c))
 roi_h_res = max(1, int(round(ROI_SIZE_PX * zoom_r)))
 roi_w_res = max(1, int(round(ROI_SIZE_PX * zoom_c)))
 
-# %%
 # Standard Interpolation (cubic)
 # ------------------------------
 
@@ -95,13 +98,17 @@ resized_2d_std = resize(
     zoom_factors=zoom_factors_2d,
     method="cubic",
 )
-time_2d_std = time.perf_counter() - t0
-
+t1 = time.perf_counter()
 recovered_2d_std = resize(
     resized_2d_std,
     output_size=input_image_normalized.shape,
     method="cubic",
 )
+t2 = time.perf_counter()
+
+time_2d_std_fwd   = t1 - t0         # forward resize (down/up)
+time_2d_std_back  = t2 - t1         # backward resize (return to original size)
+time_2d_std       = t2 - t0         # total pipeline time
 
 # SNR/MSE on central region (no ROI cropping here)
 snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
@@ -110,7 +117,6 @@ snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
     border_fraction=border_fraction,
 )
 
-# %%
 # Least-Squares Projection
 # ------------------------
 
@@ -120,13 +126,17 @@ resized_2d_ls = resize(
     zoom_factors=zoom_factors_2d,
     method="cubic-best_antialiasing",
 )
-time_2d_ls = time.perf_counter() - t0
-
+t1 = time.perf_counter()
 recovered_2d_ls = resize(
     resized_2d_ls,
     output_size=input_image_normalized.shape,
     method="cubic-best_antialiasing",
 )
+t2 = time.perf_counter()
+
+time_2d_ls_fwd   = t1 - t0
+time_2d_ls_back  = t2 - t1
+time_2d_ls       = t2 - t0
 
 snr_2d_ls, mse_2d_ls = compute_snr_and_mse_region(
     input_image_normalized,
@@ -156,15 +166,23 @@ roi_big_std  = _nearest_big(roi_std,  DISPLAY_H)
 roi_big_ls   = _nearest_big(roi_ls,   DISPLAY_H)
 
 fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.6))
+
+titles = [
+    "Original ROI",
+    f"Recovered (Standard, {fmt_ms(time_2d_std_back)})",
+    f"Recovered (Least-Squares, {fmt_ms(time_2d_ls_back)})",
+]
+
 for ax, im, title in zip(
     axes,
     [roi_big_orig, roi_big_std, roi_big_ls],
-    ["Original ROI", "Recovered (Standard)", "Recovered (Least-Squares)"]
+    titles,
 ):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title)
     ax.axis("off")
     ax.set_aspect("equal")
+
 fig.tight_layout()
 plt.show()
 
@@ -202,7 +220,10 @@ roi_kwargs_on_canvas_ls = dict(
 
 _ = show_roi_zoom(
     canvas_ls,
-    ax_titles=("Resized Image (least-squares)", None),
+    ax_titles=(
+        f"Resized Image (least-squares, {fmt_ms(time_2d_ls_fwd)})",
+        None,
+    ),
     **roi_kwargs_on_canvas_ls
 )
 
@@ -226,7 +247,10 @@ roi_kwargs_on_canvas_std = dict(
 
 _ = show_roi_zoom(
     canvas_std,
-    ax_titles=("Resized Image (standard)", None),
+    ax_titles=(
+        f"Resized Image (standard, {fmt_ms(time_2d_std_fwd)})",
+        None,
+    ),
     **roi_kwargs_on_canvas_std
 )
 
@@ -240,7 +264,10 @@ _ = show_roi_zoom(
 
 _ = show_roi_zoom(
     recovered_2d_ls,
-    ax_titles=("Recovered Image (least-squares projection)", None),
+    ax_titles=(
+        f"Recovered Image (least-squares projection, {fmt_ms(time_2d_ls_back)})",
+        None,
+    ),
     **roi_kwargs
 )
 
@@ -250,7 +277,10 @@ _ = show_roi_zoom(
 
 _ = show_roi_zoom(
     recovered_2d_std,
-    ax_titles=("Recovered Image (standard interpolation)", None),
+    ax_titles=(
+        f"Recovered Image (standard interpolation, {fmt_ms(time_2d_std_back)})",
+        None,
+    ),
     **roi_kwargs
 )
 
@@ -265,13 +295,15 @@ _ = show_roi_zoom(
 # Difference with original image on ROI (SNR/MSE numbers are from the
 # central-region metrics computed earlier).
 
+title_ls = f"Difference (least-squares, {fmt_ms(time_2d_ls)})"
+
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ls,
     snr=snr_2d_ls,
     mse=mse_2d_ls,
     roi=roi_rect,
-    title_prefix="Difference (least-squares)",
+    title_prefix=title_ls,
 )
 
 # %%
@@ -280,13 +312,15 @@ plot_difference_image(
 #
 # Difference with original image on ROI.
 
+title_std = f"Difference (standard, {fmt_ms(time_2d_std)})"
+
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_std,
     snr=snr_2d_std,
     mse=mse_2d_std,
     roi=roi_rect,
-    title_prefix="Difference (standard)",
+    title_prefix=title_std,
 )
 
 # %%
@@ -296,7 +330,7 @@ plot_difference_image(
 # As a compact summary, we print a table with:
 #
 # - SNR / MSE on the central region (via border_fraction),
-# - forward-pass timing for the downsampling step.
+# - total (forward + backward) timing of the interpolation pipeline.
 #
 # This lets you see the cost/benefit trade-off between
 # standard interpolation and least-squares projection.
