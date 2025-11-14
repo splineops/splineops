@@ -80,7 +80,7 @@ This leads to a projection of the form:
 
 where:
 
-- :math:`\varphi_k(x)` are the shifted synthesis splines (e.g., cubic B-splines),
+- :math:`\varphi_k(x)` are the integer-shifted synthesis splines (e.g., cubic B-splines),
 - :math:`\tilde{\varphi}_k(x)` are the corresponding analysis functions (their duals),
 - :math:`\langle f, \varphi_k \rangle` represents inner products with these duals.
 
