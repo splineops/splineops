@@ -97,9 +97,10 @@ def plot_difference_image(
     *,
     vmin: float = -0.8,
     vmax: float = 0.8,
-    roi: Optional[Tuple[int, int, int, int]] = None,  # NEW
-    mask: Optional[np.ndarray] = None,                # NEW
-    title_prefix: str = "Difference",                 # NEW (helps label ROI vs full)
+    roi: Optional[Tuple[int, int, int, int]] = None,
+    mask: Optional[np.ndarray] = None,
+    title_prefix: str = "Difference",
+    cmap_mode: str = "bw",  # "bw" (default) or "bwr"
 ) -> None:
     """
     Visualise *original – recovered* with a diverging colour map and colourbar.
@@ -130,18 +131,38 @@ def plot_difference_image(
         diff = diff_full
         region_label = ""
 
-    h, w = diff.shape
+        h, w = diff.shape
     aspect = h / float(w)
 
     fig_w = 6.0
     fig_h = fig_w * aspect
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-    im = ax.imshow(diff, cmap="bwr", aspect="equal", vmin=vmin, vmax=vmax)
+    from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+
+    if cmap_mode == "bw":
+        cmap_obj = LinearSegmentedColormap.from_list(
+            "bw_div",
+            [
+                (0.0, "black"),
+                (0.5, "0.5"),   # mid-gray at zero
+                (1.0, "white"),
+            ],
+        )
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
+        im = ax.imshow(diff, cmap=cmap_obj, aspect="equal", norm=norm)
+    else:
+        im = ax.imshow(
+            diff,
+            cmap="bwr",
+            aspect="equal",
+            vmin=vmin,
+            vmax=vmax,
+        )
+
     ax.set_title(f"{title_prefix}{region_label}\nSNR: {snr:.2f} dB, MSE: {mse:.2e}")
     ax.axis("off")
 
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cb = fig.colorbar(im, cax=cax)
