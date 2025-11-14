@@ -3,8 +3,8 @@
 # sphinx_gallery_end_ignore
 
 """
-Batch Benchmark of 2D Downsampling Methods
-==========================================
+Benchmarking
+============
 
 This example benchmarks several 2D downsampling methods over a *set* of test
 images. For each image we:
@@ -16,7 +16,7 @@ images. For each image we:
 We compare:
 
 - SciPy cubic interpolation (:func:`scipy.ndimage.zoom`)
-- Standard cubic interpolation (:func:`splineops.resize.resize`, ``method="cubic"``)
+- Standard cubic interpolation (:func:`splineops.resize`, ``method="cubic"``)
 - Least-Squares cubic anti-aliasing (``"cubic-best_antialiasing"``)
 - Oblique cubic fast anti-aliasing (``"cubic-fast_antialiasing"``)
 
@@ -51,8 +51,8 @@ def fmt_ms(seconds: float) -> str:
 
 
 # %%
-# Test Images & Per-Image Configuration
-# -------------------------------------
+# Test Image Configuration
+# ------------------------
 #
 # All images are downloaded as RGB, converted to grayscale, and normalized
 # to [0, 1]. For each image we also define:
@@ -368,8 +368,6 @@ def _build_canvas_and_roi(
 
     return canvas, roi_kwargs_on_canvas, roi_patch
 
-
-#################################################################################################
 # %%
 # Image
 # -----
@@ -420,8 +418,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~
+# SciPy cubic
+# ~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -451,8 +449,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Standard cubic
+# ~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -482,8 +480,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares (AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
 t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
@@ -513,8 +511,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique (fast AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -559,7 +557,6 @@ fig.suptitle("Downsampled ROI comparison", fontsize=12)
 fig.tight_layout(rect=[0, 0, 1, 0.92])
 plt.show()
 
-#################################################################################################
 # %%
 # Image
 # -----
@@ -610,8 +607,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~
+# SciPy cubic
+# ~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -641,8 +638,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Standard cubic
+# ~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -672,8 +669,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares (AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
 t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
@@ -703,8 +700,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique (fast AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -749,7 +746,6 @@ fig.suptitle("Downsampled ROI comparison", fontsize=12)
 fig.tight_layout(rect=[0, 0, 1, 0.92])
 plt.show()
 
-#################################################################################################
 # %%
 # Image
 # -----
@@ -800,8 +796,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~
+# SciPy cubic
+# ~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -831,8 +827,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Standard cubic
+# ~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -862,8 +858,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares (AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
 t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
@@ -893,8 +889,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique (fast AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -939,7 +935,6 @@ fig.suptitle("Downsampled ROI comparison", fontsize=12)
 fig.tight_layout(rect=[0, 0, 1, 0.92])
 plt.show()
 
-#################################################################################################
 # %%
 # Image
 # -----
@@ -990,8 +985,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~
+# SciPy cubic
+# ~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -1021,8 +1016,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Standard cubic
+# ~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -1052,8 +1047,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares (AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
 t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
@@ -1083,8 +1078,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique (fast AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -1128,8 +1123,6 @@ for ax, im, title in zip(axes, roi_big_list, roi_titles):
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
 fig.tight_layout(rect=[0, 0, 1, 0.92])
 plt.show()
-
-#################################################################################################
 
 # %%
 # Image
@@ -1181,8 +1174,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~
+# SciPy cubic
+# ~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -1212,8 +1205,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Standard cubic
+# ~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -1243,8 +1236,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares (AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
 t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
@@ -1274,8 +1267,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique (fast AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
@@ -1320,8 +1313,6 @@ for ax, im, title in zip(axes, roi_big_list, roi_titles):
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
 fig.tight_layout(rect=[0, 0, 1, 0.92])
 plt.show()
-
-#################################################################################################
 
 # %%
 # Image
@@ -1373,8 +1364,8 @@ roi_patches = []
 roi_titles  = []
 
 # %%
-# SciPy cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~
+# SciPy cubic
+# ~~~~~~~~~~~
 
 down_scipy = down_by_label["SciPy cubic"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy cubic"]
@@ -1404,8 +1395,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Standard cubic (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Standard cubic
+# ~~~~~~~~~~~~~~
 
 down_std = down_by_label["Standard cubic"]
 t_mean_std, t_sd_std = time_by_label["Standard cubic"]
@@ -1435,8 +1426,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Least-Squares (AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Least-Squares (AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ls = down_by_label["Least-Squares (AA cubic)"]
 t_mean_ls, t_sd_ls = time_by_label["Least-Squares (AA cubic)"]
@@ -1466,8 +1457,8 @@ _ = show_roi_zoom(
 )
 
 # %%
-# Oblique (fast AA cubic) (resized)
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Oblique (fast AA cubic)
+# ~~~~~~~~~~~~~~~~~~~~~~~
 
 down_ob = down_by_label["Oblique (fast AA cubic)"]
 t_mean_ob, t_sd_ob = time_by_label["Oblique (fast AA cubic)"]
