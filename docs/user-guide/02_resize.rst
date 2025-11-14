@@ -125,7 +125,7 @@ Oblique projection replaces these exact duals by a simpler analysis family :math
 biorthonormal but is much cheaper to implement. This yields a near-least-squares projection at a fraction of the cost.
 
 This formulation leads to an *oblique* rather than orthogonal projection. It trades off a small loss in optimality for improved speed and numerical stability. 
-Empirical results show that the signal-to-noise ratio (SNR) degrades only slightly (e.g., 0.1–0.4 dB) compared to the exact least-squares projection [2]_.
+Empirical results show that the signal-to-noise ratio (SNR) degrades only slightly (e.g., 0.1-0.4 dB) compared to the exact least-squares projection [2]_.
 
 Spline Degrees
 ~~~~~~~~~~~~~~
