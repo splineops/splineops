@@ -29,6 +29,12 @@ from splineops.utils.metrics import compute_snr_and_mse_region
 from splineops.utils.plotting import plot_difference_image, show_roi_zoom
 from splineops.utils.diagram import draw_standard_vs_scipy_pipeline
 
+
+def fmt_ms(seconds: float) -> str:
+    """Format seconds as a short 'X.X ms' string."""
+    return f"{seconds * 1000.0:.1f} ms"
+
+
 # %%
 # Pipeline Diagram
 # ----------------
@@ -102,21 +108,24 @@ _ = show_roi_zoom(
 # We use our standard interpolation method (cubic). SNR/MSE are computed on
 # the face ROI.
 
-# Forward resize with splineops.resize.resize
+# Forward + backward resize with splineops.resize.resize
 t0 = time.perf_counter()
 resized_2d_interp = resize(
     input_image_normalized,
     zoom_factors=zoom_factors_2d,
     method="cubic",
 )
-time_2d_interp = time.perf_counter() - t0
-
-# Resize back to original shape
+t1 = time.perf_counter()
 recovered_2d_interp = resize(
     resized_2d_interp,
     output_size=input_image_normalized.shape,
     method="cubic",
 )
+t2 = time.perf_counter()
+
+time_2d_interp_fwd = t1 - t0
+time_2d_interp_back = t2 - t1
+time_2d_interp = t2 - t0  # total pipeline time
 
 # Metrics (ROI-aware)
 snr_2d_interp, mse_2d_interp = compute_snr_and_mse_region(
@@ -160,7 +169,7 @@ roi_kwargs_on_canvas = dict(
 
 _ = show_roi_zoom(
     canvas,
-    ax_titles=("Resized Image (standard)", None),
+    ax_titles=(f"Resized Image (standard, {fmt_ms(time_2d_interp_fwd)})", None),
     **roi_kwargs_on_canvas
 )
 
@@ -172,7 +181,7 @@ _ = show_roi_zoom(
 
 _ = show_roi_zoom(
     recovered_2d_interp,
-    ax_titles=("Recovered Image (standard)", None),
+    ax_titles=(f"Recovered Image (standard, {fmt_ms(time_2d_interp_back)})", None),
     **roi_kwargs
 )
 
@@ -188,13 +197,17 @@ resized_2d_scipy = _scipy_zoom(
     zoom_factors_2d,
     order=3,
 )
-time_2d_scipy = time.perf_counter() - t0
-
+t1 = time.perf_counter()
 recovered_2d_scipy = _scipy_zoom(
     resized_2d_scipy,
     1.0 / np.asarray(zoom_factors_2d),
     order=3,
 )
+t2 = time.perf_counter()
+
+time_2d_scipy_fwd = t1 - t0
+time_2d_scipy_back = t2 - t1
+time_2d_scipy = t2 - t0  # total pipeline time
 
 snr_2d_scipy, mse_2d_scipy = compute_snr_and_mse_region(
     input_image_normalized,
@@ -206,9 +219,10 @@ snr_2d_scipy, mse_2d_scipy = compute_snr_and_mse_region(
 # %%
 # Recovered Image (SciPy)
 # ~~~~~~~~~~~~~~~~~~~~~~~
+
 _ = show_roi_zoom(
     recovered_2d_scipy,
-    ax_titles=("Recovered Image (SciPy)", None),
+    ax_titles=(f"Recovered Image (SciPy, {fmt_ms(time_2d_scipy_back)})", None),
     **roi_kwargs
 )
 
@@ -232,7 +246,7 @@ plot_difference_image(
     snr=snr_scipy_vs_interp,
     mse=mse_scipy_vs_interp,
     roi=roi_rect,
-    title_prefix="Recovered diff (standard vs SciPy)"
+    title_prefix="Recovered diff (standard vs SciPy)",
 )
 
 # %%
@@ -248,7 +262,7 @@ plot_difference_image(
     snr=snr_2d_interp,
     mse=mse_2d_interp,
     roi=roi_rect,
-    title_prefix="Difference (original vs standard)"
+    title_prefix="Difference (original vs standard)",
 )
 
 # %%
