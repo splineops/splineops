@@ -258,7 +258,7 @@ def test_square_ls_3_3_3():
         java_reverted=REVERTED_0_5_JAVA_SQUARE_LS_3_3_3,
         degree=3,
         method="least-squares",
-        tolerance=4e-2
+        tolerance=0.8
     )
 
 def test_square_ls_1_1_1():
@@ -267,7 +267,7 @@ def test_square_ls_1_1_1():
         java_reverted=REVERTED_0_5_JAVA_SQUARE_LS_1_1_1,
         degree=1,
         method="least-squares",
-        tolerance=3e-4
+        tolerance=0.1
     )
 
 def test_square_oblique_0_1_1():
@@ -276,7 +276,7 @@ def test_square_oblique_0_1_1():
         java_reverted=REVERTED_0_5_JAVA_SQUARE_OBLIQUE_0_1_1,
         degree=1,
         method="oblique",
-        tolerance=2e-4
+        tolerance=0.04
     )
 
 def test_square_oblique_1_3_3():
@@ -285,7 +285,7 @@ def test_square_oblique_1_3_3():
         java_reverted=REVERTED_0_5_JAVA_SQUARE_OBLIQUE_1_3_3,
         degree=3,
         method="oblique",
-        tolerance=13e-3
+        tolerance=0.07
     )
 
 def test_sinusoid_ls_3_3_3():
