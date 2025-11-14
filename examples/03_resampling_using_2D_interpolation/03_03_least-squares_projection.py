@@ -321,8 +321,8 @@ plot_difference_image(
 )
 
 # %%
-# Performance: SNR / Time Comparison
-# ----------------------------------
+# Performance Comparison
+# ----------------------
 #
 # As a compact summary, we print a table with:
 #

@@ -330,8 +330,8 @@ plot_difference_image(
 )
 
 # %%
-# Performance: Time Comparison
-# ----------------------------
+# Performance Comparison
+# ----------------------
 
 N_TRIALS = 10
 WARMUP   = 1
@@ -431,8 +431,8 @@ fig.tight_layout()
 plt.show()
 
 # %%
-# Summary: SNR / Time Table
-# -------------------------
+# Summary Table
+# -------------
 #
 # Central-region SNR/MSE (via border_fraction) plus averaged total
 # (forward + backward) timings for all three methods in this example.
