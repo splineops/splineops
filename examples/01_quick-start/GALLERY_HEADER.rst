@@ -3,4 +3,4 @@
 Quick-start
 ===========
 
-Examples showing the basic functionality of Spline Interpolation.
+Examples showing the basic functionality of the Spline interpolation module.

@@ -235,6 +235,8 @@ def draw_standard_vs_scipy_pipeline(
     # Junctions and split to lower rails
     dot(ax, 12, 13.25)
     seg(ax, 12, 13.25, 12, y_scipy)
+    # dot at the beginning of the arrow into SciPy
+    dot(ax, 12, y_scipy)
     # into SciPy box (stop before the edge)
     arrow(ax, 12, y_scipy, box_left - box_gap, y_scipy)
 
@@ -245,6 +247,8 @@ def draw_standard_vs_scipy_pipeline(
 
     # TensorSpline branch (rail spacing matched to Standard↔SciPy)
     seg(ax, 12, y_scipy, 12, y_ts)
+    # dot at the beginning of the arrow into TensorSpline
+    dot(ax, 12, y_ts)
     # into TensorSpline box (stop before the edge)
     arrow(ax, 12, y_ts, box_left - box_gap, y_ts)
     box(ax, box_left, y_ts + 0.875, box_right, y_ts - 0.875,
@@ -273,6 +277,7 @@ def draw_standard_vs_scipy_pipeline(
     arrow(ax, 30.0, y_std,   mid_cx, mid_cy + mid_r)  # from Standard ↓
     arrow(ax, 30.0, y_scipy, mid_cx, mid_cy - mid_r)  # from SciPy ↑
     seg(ax, mid_cx + mid_r, mid_cy, 33.5, mid_cy)
+    dot(ax, 33.5, mid_cy)
     label(ax, mid_cx - 0.7, mid_cy + mid_r + 0.6, r"$+$", fontsize=18)
     label(ax, mid_cx - 0.7, mid_cy - mid_r - 0.6, r"$-$", fontsize=18)
 
@@ -285,6 +290,7 @@ def draw_standard_vs_scipy_pipeline(
     label(ax, st_ts_cx - 0.7, st_ts_cy - st_ts_r - 0.2, r"$-$", fontsize=18)
     exit_x = 34.0
     seg(ax, st_ts_cx + st_ts_r, st_ts_cy, exit_x, st_ts_cy)
+    dot(ax, exit_x, st_ts_cy)
 
     # Bottom sum (Standard vs Original) — lower for more space
     sum_cx, sum_cy, sum_r = 27.25, 1.25, 1.0
@@ -294,6 +300,7 @@ def draw_standard_vs_scipy_pipeline(
     # Original lowest rail aligned to bottom sum y
     seg(ax, 5.5, 13.25, 5.5, sum_cy)
     dot(ax, 5.5, 13.25)
+    dot(ax, 5.5, sum_cy)  
     arrow(ax, 5.5, sum_cy, 26.25, sum_cy)
     # tap from Standard to bottom sum
     arrow(ax, 27.25, y_std, sum_cx, sum_cy + sum_r)

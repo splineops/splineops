@@ -1,33 +1,73 @@
 // splineops/cpp/lsresize/src/resizend.cpp
 #include "resizend.h"
 #include "utils.h"
+#include "resize1d.h"
 
 #include <vector>
 #include <numeric>
 #include <cstdint>
 #include <algorithm>
+#include <cmath>     // std::abs
+#include <cstdlib>   // std::getenv, std::atof, std::atoi
+#include <cstring>   // std::memcpy
 
 namespace lsresize {
 
 static std::vector<int64_t> strides_from_shape(const std::vector<int64_t>& shape) {
   std::vector<int64_t> s(shape.size(), 1);
-  for (int i = (int)shape.size() - 2; i >= 0; --i) s[i] = s[i+1] * shape[i+1];
+  for (int i = static_cast<int>(shape.size()) - 2; i >= 0; --i) {
+    s[static_cast<size_t>(i)] = s[static_cast<size_t>(i+1)] * shape[static_cast<size_t>(i+1)];
+  }
   return s;
 }
 
-void resize_along_axis(const double* in, double* out,
+static inline int64_t prod_elems(const std::vector<int64_t>& shape) {
+  int64_t p = 1;
+  for (int64_t v : shape) p *= v;
+  return p;
+}
+
+// Simple heuristic to decide when to use OpenMP
+static inline bool use_parallel(std::int64_t nlines, const lsresize::Plan1D& plan) {
+  const double L    = static_cast<double>(plan.out_total);
+  const double nnz  = plan.row_ptr.empty() ? 0.0 : static_cast<double>(plan.row_ptr.back());
+  const double wavg = (L > 0.0) ? (nnz / L) : 0.0;
+  const double flops = 2.0 * static_cast<double>(nlines) * L * wavg;
+
+  double thr = 1e6; // ~1M FLOPs by default
+  if (const char* env = std::getenv("LSRESIZE_OMP_THRESHOLD")) {
+    if (double t = std::atof(env); t > 0.0) thr = t;
+  }
+  // Use either the classic guard or the FLOPs-based one
+  return (nlines > 64) || (flops > thr);
+}
+
+void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
                        const std::vector<int64_t>& in_shape,
                        const std::vector<int64_t>& out_shape,
                        int axis,
                        const LSParams& p)
 {
-  const int D = (int)in_shape.size();
+  const int D = static_cast<int>(in_shape.size());
   const auto in_strides  = strides_from_shape(in_shape);
   const auto out_strides = strides_from_shape(out_shape);
 
+  // Early identity short-circuit on this axis:
+  {
+    const double eps = 1e-12;
+    const bool identity_axis = (out_shape[static_cast<size_t>(axis)] == in_shape[static_cast<size_t>(axis)]) &&
+                               (std::abs(p.zoom - 1.0) <= eps) &&
+                               (p.analy_degree < 0); // Standard interpolation (no projection)
+    if (identity_axis) {
+      const int64_t total = prod_elems(in_shape); // in_shape == out_shape in this pass
+      std::copy(in, in + total, out);
+      return;
+    }
+  }
+
   // total number of independent 1-D lines (all dims except 'axis')
   int64_t nlines = 1;
-  for (int d = 0; d < D; ++d) if (d != axis) nlines *= in_shape[d];
+  for (int d = 0; d < D; ++d) if (d != axis) nlines *= in_shape[static_cast<size_t>(d)];
 
   // list non-axis dimensions (rightmost fastest)
   std::vector<int> bases;
@@ -36,43 +76,135 @@ void resize_along_axis(const double* in, double* out,
     if (d != axis) bases.push_back(d);
   }
 
-  // Parallelize over lines if problem is big enough
-  // (Pragmas are guarded so this compiles fine without OpenMP too.)
-  #if defined(_OPENMP)
-  #pragma omp parallel for if(nlines > 64) schedule(static)
-  #endif
-  for (int64_t line = 0; line < nlines; ++line) {
-    // thread-local index buffer (prevents races)
+  // Build the per-axis plan ONCE (shared read-only across threads)
+  const int N_line = static_cast<int>(in_shape[static_cast<size_t>(axis)]);
+  const Plan1D plan = make_plan_1d(N_line, p);
+
+#if defined(_OPENMP)
+  if (use_parallel(nlines, plan)) {
+    // Parallel path
+    #pragma omp parallel
+    {
+      // per-thread reusable workspace + helpers
+      Work1D ws;
+      std::vector<int64_t> idx(D, 0);
+      std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(N_line));
+      std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(plan.outN));
+
+      // ---- configurable chunk size (env: LSRESIZE_OMP_CHUNK) ----
+      int chunk = 32;
+      if (const char* e = std::getenv("LSRESIZE_OMP_CHUNK")) {
+        if (int c = std::atoi(e); c > 0) chunk = c;
+      }
+
+      #pragma omp for schedule(static, chunk)
+      for (int64_t line = 0; line < nlines; ++line) {
+        std::fill(idx.begin(), idx.end(), 0);
+
+        // unravel 'line' into coordinates for all dims except 'axis'
+        int64_t t = line;
+        for (int bi = 0; bi < static_cast<int>(bases.size()); ++bi) {
+          const int d = bases[static_cast<size_t>(bi)];
+          idx[static_cast<size_t>(d)] = t % in_shape[static_cast<size_t>(d)];
+          t                           /= in_shape[static_cast<size_t>(d)];
+        }
+
+        // offsets at the start of this line
+        int64_t in_off = 0, out_off = 0;
+        for (int d = 0; d < D; ++d) if (d != axis) {
+          in_off  += idx[static_cast<size_t>(d)] * in_strides [static_cast<size_t>(d)];
+          out_off += idx[static_cast<size_t>(d)] * out_strides[static_cast<size_t>(d)];
+        }
+
+        // gather 1-D input line
+        const bool contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
+        if (contig_in) {
+          // One-shot block copy when the axis is contiguous
+          line_in.assign(in + in_off, in + in_off + N_line);
+        } else {
+          line_in.resize(static_cast<size_t>(N_line));
+          for (int64_t i = 0; i < in_shape[static_cast<size_t>(axis)]; ++i) {
+            line_in[static_cast<size_t>(i)] =
+                in[in_off + i * in_strides[static_cast<size_t>(axis)]];
+          }
+        }
+
+        // fast planned path with workspace reuse
+        resize_1d_ws(line_in, line_out, p, plan, ws);
+
+        // scatter to output
+        const bool contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+        if (contig_out) {
+          // One-shot block write when the axis is contiguous
+          std::memcpy(out + out_off,
+                      line_out.data(),
+                      line_out.size() * sizeof(double));
+        } else {
+          for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
+            out[out_off + i * out_strides[static_cast<size_t>(axis)]] =
+                line_out[static_cast<size_t>(i)];
+          }
+        }
+      }
+    }
+    return;
+  }
+#endif
+
+  // Serial path (or parallel disabled / small problem)
+  {
+    Work1D ws;
     std::vector<int64_t> idx(D, 0);
+    std::vector<double>  line_in;  line_in.reserve(static_cast<size_t>(N_line));
+    std::vector<double>  line_out; line_out.reserve(static_cast<size_t>(plan.outN));
 
-    // unravel 'line' into coordinates for all dims except 'axis'
-    int64_t t = line;
-    for (int bi = 0; bi < (int)bases.size(); ++bi) {
-      const int d = bases[bi];
-      idx[d] = t % in_shape[d];
-      t     /= in_shape[d];
-    }
+    for (int64_t line = 0; line < nlines; ++line) {
+      std::fill(idx.begin(), idx.end(), 0);
 
-    // offsets at the start of this line
-    int64_t in_off = 0, out_off = 0;
-    for (int d = 0; d < D; ++d) if (d != axis) {
-      in_off  += idx[d] * in_strides[d];
-      out_off += idx[d] * out_strides[d];
-    }
+      // unravel 'line' into coordinates for all dims except 'axis'
+      int64_t t = line;
+      for (int bi = 0; bi < static_cast<int>(bases.size()); ++bi) {
+        const int d = bases[static_cast<size_t>(bi)];
+        idx[static_cast<size_t>(d)] = t % in_shape[static_cast<size_t>(d)];
+        t                           /= in_shape[static_cast<size_t>(d)];
+      }
 
-    // gather 1-D input line
-    std::vector<double> line_in((size_t)in_shape[axis]);
-    for (int64_t i = 0; i < in_shape[axis]; ++i) {
-      line_in[i] = in[in_off + i * in_strides[axis]];
-    }
+      // offsets at the start of this line
+      int64_t in_off = 0, out_off = 0;
+      for (int d = 0; d < D; ++d) if (d != axis) {
+        in_off  += idx[static_cast<size_t>(d)] * in_strides [static_cast<size_t>(d)];
+        out_off += idx[static_cast<size_t>(d)] * out_strides[static_cast<size_t>(d)];
+      }
 
-    // resize the 1-D line
-    std::vector<double> line_out;
-    resize_1d(line_in, line_out, p);
+      // gather 1-D input line
+      const bool contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
+      if (contig_in) {
+        // One-shot block copy when the axis is contiguous
+        line_in.assign(in + in_off, in + in_off + N_line);
+      } else {
+        line_in.resize(static_cast<size_t>(N_line));
+        for (int64_t i = 0; i < in_shape[static_cast<size_t>(axis)]; ++i) {
+          line_in[static_cast<size_t>(i)] =
+              in[in_off + i * in_strides[static_cast<size_t>(axis)]];
+        }
+      }
 
-    // scatter to output
-    for (int64_t i = 0; i < (int64_t)line_out.size(); ++i) {
-      out[out_off + i * out_strides[axis]] = line_out[i];
+      // fast planned path with workspace reuse
+      resize_1d_ws(line_in, line_out, p, plan, ws);
+
+      // scatter to output
+      const bool contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+      if (contig_out) {
+        // One-shot block write when the axis is contiguous
+        std::memcpy(out + out_off,
+                    line_out.data(),
+                    line_out.size() * sizeof(double));
+      } else {
+        for (int64_t i = 0; i < static_cast<int64_t>(line_out.size()); ++i) {
+          out[out_off + i * out_strides[static_cast<size_t>(axis)]] =
+              line_out[static_cast<size_t>(i)];
+        }
+      }
     }
   }
 }

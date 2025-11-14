@@ -76,13 +76,13 @@ This leads to a projection of the form:
 
 .. math::
 
-    s(x) = \sum_k \langle f, \varphi_k \rangle \tilde{\varphi}_k(x),
+    s(x) = \sum_k \langle f, \tilde{\varphi}_k \rangle \varphi_k(x),
 
 where:
 
-- :math:`\varphi_k(x)` are the shifted synthesis splines (e.g., cubic B-splines),
+- :math:`\varphi_k(x)` are the integer-shifted synthesis splines (e.g., cubic B-splines),
 - :math:`\tilde{\varphi}_k(x)` are the corresponding analysis functions (their duals),
-- :math:`\langle f, \varphi_k \rangle` represents inner products with these duals.
+- :math:`\langle f, \tilde{\varphi}_k \rangle` are the analysis coefficients (inner products of :math:`f` with the dual functions).
 
 The biorthonormality condition
 
@@ -109,19 +109,23 @@ Oblique Projection
 
 Oblique projection is a generalization of least-squares projection where the synthesis and analysis spline spaces are allowed to differ. 
 Instead of computing an orthogonal projection (where the same basis is used for both approximation and analysis), the method employs an auxiliary 
-analysis function :math:`\psi(x)` distinct from the synthesis function :math:`\tilde{\varphi}(x)`. The resulting approximation is given by:
+analysis function :math:`\psi(x)` distinct from the synthesis function :math:`\varphi(x)`. The resulting approximation is given by:
 
 .. math::
 
-    s(x) = \sum_k \langle f, \psi_k \rangle \tilde{\varphi}_k(x),
+    s(x) = \sum_k \langle f, \psi_k \rangle \varphi_k(x),
 
 where:
 
-- :math:`\tilde{\varphi}_k(x)` are the synthesis basis functions (typically B-splines of degree :math:`n`);
+- :math:`\varphi_k(x)` are the synthesis basis functions (typically B-splines of degree :math:`n`);
 - :math:`\psi_k(x)` are the translated analysis functions, often chosen to be simpler or more localized.
 
+In the exact least-squares setting, the analysis functions are the biorthonormal duals :math:`\tilde{\varphi}_k` of the synthesis basis :math:`\varphi_k`.
+Oblique projection replaces these exact duals by a simpler analysis family :math:`\psi_k` (typically lower-degree splines), which is no longer strictly 
+biorthonormal but is much cheaper to implement. This yields a near-least-squares projection at a fraction of the cost.
+
 This formulation leads to an *oblique* rather than orthogonal projection. It trades off a small loss in optimality for improved speed and numerical stability. 
-Empirical results show that the signal-to-noise ratio (SNR) degrades only slightly (e.g., 0.1–0.4 dB) compared to the exact least-squares projection [2]_.
+Empirical results show that the signal-to-noise ratio (SNR) degrades only slightly (e.g., 0.1-0.4 dB) compared to the exact least-squares projection [2]_.
 
 Spline Degrees
 ~~~~~~~~~~~~~~
@@ -172,23 +176,23 @@ Resize Examples
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_01_resize_module.py`
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_02_standard_interpolation.py`
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_03_least-squares_projection.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_04_antialiasing.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_04_how_bad_aliasing_can_be.py`
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_05_oblique_projection.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_06_compare_different_methods.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_06_benchmarking.py`
 
 References
 ----------
 
 .. [1] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
    IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
-   vol. 16, no. 6, pp. 22–38, November 1999.
+   vol. 16, no. 6, pp. 22-38, November 1999.
 
 .. [2] A. Muñoz Barrutia, T. Blu, M. Unser, 
    `Least-Squares Image Resizing Using Finite Differences <https://doi.org/10.1109/83.941860>`_,
-   IEEE Transactions on Image Processing, vol. 10, no. 9, pp. 1365–1378,
+   IEEE Transactions on Image Processing, vol. 10, no. 9, pp. 1365-1378,
    September 2001.
 
 .. [3] P. Thévenaz, T. Blu, M. Unser,
    `Interpolation Revisited <https://doi.org/10.1109/42.875199>`_,
-   IEEE Transactions on Medical Imaging, vol. 19, no. 7, pp. 739–758,
+   IEEE Transactions on Medical Imaging, vol. 19, no. 7, pp. 739-758,
    July 2000.

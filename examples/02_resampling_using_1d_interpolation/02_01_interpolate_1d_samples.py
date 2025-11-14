@@ -19,7 +19,7 @@ Interpolate 1D samples with standard interpolation.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.interpolate.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensorspline import TensorSpline
 
 plt.rcParams.update({
     "font.size": 14,     # Base font size
@@ -114,7 +114,7 @@ f_data = f(coordinates=(f_coords,), grid=False)
 #
 # The resize method with standard interpolation yields the same result.
 
-from splineops.resize.resize import resize
+from splineops.resize import resize
 
 # We'll produce the same number of output samples as in f_coords
 desired_length = plot_points_per_unit * f_support_length

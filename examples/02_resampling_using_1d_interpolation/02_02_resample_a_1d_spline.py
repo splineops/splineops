@@ -24,7 +24,7 @@ Resample a 1D spline with different sampling rate.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from splineops.interpolate.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensorspline import TensorSpline
 
 plt.rcParams.update({
     "font.size": 14,     # Base font size
@@ -37,17 +37,11 @@ plt.rcParams.update({
 # %%
 # Initial 1D Samples
 # ------------------
-#
-# We generate 1D samples and treat them as discrete signal points.
-# 
-# Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data.
-#
-# These are the input samples that we are going to interpolate.
 
 number_of_samples = 27
 
 f_support = np.arange(number_of_samples, dtype=np.float64)
-f_support_length = len(f_support) # It's equal to number_of_samples
+f_support_length = len(f_support)  # == number_of_samples
 
 f_samples = np.array([
     -0.657391, -0.641319, -0.613081, -0.518523, -0.453829, -0.385138,
@@ -65,129 +59,89 @@ mode = "mirror"
 
 f = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
 
-f_coords = np.array([q / plot_points_per_unit 
-                        for q in range(plot_points_per_unit * f_support_length)])
-
-# Syntax hint: pass (plot_coords,) not plot_coords
+f_coords = np.array([q / plot_points_per_unit
+                     for q in range(plot_points_per_unit * f_support_length)])
 f_data = f(coordinates=(f_coords,), grid=False)
 
 # %%
 # Coarsening of f
 # ---------------
-# We define :math:`T` with :math:`|T| > 1` and sample :math:`f(x)` 
-# at :math:`x = T k` as
-#
-# .. math::
-#    g[k] = f(T k).
-#
-# These points :math:`g[k]` form a new discrete set, which we then treat 
-# as a separate signal to build another spline :math:`g`.
 
 val_T = np.pi
 
+# Number of g samples (e.g., 8 for 27 // pi)
 g_support_length = round(f_support_length // val_T)
-g_support = np.arange(g_support_length, dtype=np.float64)
-f_resampled_coords = np.linspace(0, (g_support_length - 1) * val_T, g_support_length, dtype=np.float64)
-g_samples = f(coordinates=(f_resampled_coords,), grid=False)
-g = TensorSpline(data=g_samples, coordinates=g_support, bases=base, modes=mode)
+k = np.arange(g_support_length, dtype=np.float64)
 
-g_coords = np.linspace(0, g_support_length - 1, plot_points_per_unit * g_support_length, dtype=np.float64)
+# Physical positions where g is sampled from f: x = T * k
+x_g = k * val_T
+g_samples = f(coordinates=(x_g,), grid=False)
 
-g_data = g(coordinates=(g_coords,), grid=False)
+# Build g as a spline over PHYSICAL x (so markers align across plots)
+g = TensorSpline(data=g_samples, coordinates=x_g, bases=base, modes=mode)
+
+# Evaluate g across the full width of f (mirror padding extends toward the right)
+g_coords_full = f_coords
+g_data_full = g(coordinates=(g_coords_full,), grid=False)
+
+# %%
+# Plotting
+# --------
 
 fig = plt.figure(figsize=(12, 8))
+gs = GridSpec(nrows=2, ncols=1, height_ratios=[1, 1])
 
-gs = GridSpec(
-    nrows=2, 
-    ncols=2,
-    # Match widths: first column = g_support_length, second column = leftover
-    width_ratios=[g_support_length, f_support_length - g_support_length],
-    height_ratios=[1, 1]
-)
+# Top: full width with x in 0..26
+ax_top = fig.add_subplot(gs[0, 0])
 
-# Top row: entire row (two columns combined)
-ax_top = fig.add_subplot(gs[0, :])
+# Bottom: full width with x in 0..26 (own ticks so we can label at multiples of T)
+ax_bottom = fig.add_subplot(gs[1, 0])
 
-# Bottom row: left side for g, right side blank
-ax_bottom_left = fig.add_subplot(gs[1, 0])
-ax_bottom_right = fig.add_subplot(gs[1, 1])
-ax_bottom_right.axis("off")  # leave right side blank
-
-# 1) TOP ROW: f[k] + f spline + discrete g[k]
+# --- TOP: f[k] + f(x) + g[k] markers at x = T*k ---
 ax_top.set_title("Interpolated f spline")
-
-# Plot discrete f[k] as stems
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
-
-# Plot spline f(x)
 ax_top.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 
-# Overplot discrete g[k] as unfilled red squares at x = k * val_T
-x_g = np.arange(g_support_length) * val_T
+# NEW: thin red lines from 0 to g[k] at x = T*k
+ax_top.vlines(x=x_g, ymin=0, ymax=g_samples, color='red', linewidth=1)
+
+# g[k] markers at x = T*k
 ax_top.plot(
-    x_g, 
-    g_samples,
-    "rs",              # red squares
-    mfc='none',        # unfilled
-    markersize=12,
-    markeredgewidth=2, 
-    label="g[k] samples"
+    x_g, g_samples, "rs",
+    mfc='none', markersize=12, markeredgewidth=2, label="g[k] samples"
 )
 
-# Horizontal line at 0 for reference
 ax_top.axhline(0, color='black', linewidth=1, zorder=0)
-
-# Make sure the top axis goes from 0..(f_support_length-1)
 ax_top.set_xlim(0, f_support_length - 1)
-ax_top.set_xticks(np.arange(0, f_support_length, 1))
+ax_top.set_xticks(np.arange(0, f_support_length, 1))  # show 0..26 on the top axis
 ax_top.set_xlabel("x")
 ax_top.set_ylabel("f")
 ax_top.grid(True)
 ax_top.legend()
 
-# 2) BOTTOM LEFT: discrete g[k] + g spline
-ax_bottom_left.set_title("Interpolated g spline")
-
-# Plot discrete g[k] with red vertical lines and unfilled red squares
-ax_bottom_left.vlines(
-    x=g_support,
-    ymin=0,
-    ymax=g_samples,
-    color='red',
-    linestyle='-',
-    linewidth=1
+# --- BOTTOM: g[k] + g(x) across full width; x-axis is uniform in k at multiples of T ---
+ax_bottom.set_title("Interpolated g spline")
+ax_bottom.vlines(x=x_g, ymin=0, ymax=g_samples, color='red', linewidth=1)
+ax_bottom.plot(
+    x_g, g_samples, "rs",
+    mfc='none', markersize=12, markeredgewidth=2, label="g[k] samples"
 )
-ax_bottom_left.plot(
-    g_support,
-    g_samples,
-    "rs",              # red squares
-    mfc='none',        # unfilled
-    markersize=12,
-    markeredgewidth=2,
-    label="g[k] samples"
-)
+ax_bottom.plot(g_coords_full, g_data_full, color="purple", linewidth=2, label="g spline")
 
-# Plot g spline in purple over the same domain
-ax_bottom_left.plot(
-    g_coords, 
-    g_data,
-    color="purple", 
-    linewidth=2,
-    label="g spline"
-)
+ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
+ax_bottom.set_xlim(0, f_support_length - 1)
+ax_bottom.set_ylabel("g")
+ax_bottom.grid(True)
+ax_bottom.legend()
+ax_bottom.set_ylim(ax_top.get_ylim())  # optional: match vertical scale
 
-# Horizontal line at 0
-ax_bottom_left.axhline(0, color='black', linewidth=1, zorder=0)
-
-ax_bottom_left.set_xlim(0, g_support_length - 1)
-ax_bottom_left.set_xticks(np.arange(0, g_support_length, 1))
-ax_bottom_left.set_xlabel("x")
-ax_bottom_left.set_ylabel("g")
-ax_bottom_left.grid(True)
-ax_bottom_left.legend()
-
-# Match vertical scale with the top axis
-ax_bottom_left.set_ylim(ax_top.get_ylim())
+# Bottom ticks at every multiple of T that fits (0..8 for T=pi with width 0..26)
+max_k_tick = int(np.floor((f_support_length - 1) / val_T))
+tick_ks = np.arange(max_k_tick + 1)  # e.g., 0..8
+tick_positions = tick_ks * val_T
+ax_bottom.set_xticks(tick_positions)
+ax_bottom.set_xticklabels([str(k) for k in tick_ks])
+ax_bottom.set_xlabel("x")
 
 fig.tight_layout()
 plt.show()

@@ -8,7 +8,7 @@ Resize
 Functions for resizing N-dimensional data using standard spline interpolation, 
 or specialized least-squares / oblique projection methods.
 
-.. automodule:: splineops.resize.resize
+.. automodule:: splineops.resize
    :members:
    :undoc-members:
    :show-inheritance:

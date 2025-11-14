@@ -13,7 +13,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "splineops"
-version = "0.5.5"
+version = "1.0.0"
 description = "Spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -27,7 +27,6 @@ dependencies = [
     "numpy >=1.26",
     "scipy >=1.15",
     "matplotlib >=3.8",
-    "requests >=2.32.3",
 ]
 classifiers = [
     "Topic :: Scientific/Engineering",

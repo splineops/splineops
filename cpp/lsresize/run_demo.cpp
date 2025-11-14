@@ -5,6 +5,8 @@
 #include <cmath>
 #include <string>
 #include <algorithm>
+#include <chrono>
+#include <iomanip>
 
 #include "resize1d.h"
 #include "resizend.h"
@@ -36,6 +38,17 @@ static std::vector<double> resize_nd(const std::vector<double>& data,
     else if (algo == "oblique") analy_degree = (degree==1 ? 0 : 1);
 
     LSParams p{interp_degree, analy_degree, synthe_degree, zoom[ax], 0.0, inversable};
+
+    // Match Python/native binding policy:
+    const double eps = 1e-12;
+    if (std::abs(p.zoom - 1.0) <= eps) {
+      // identity safety: never project at unity zoom
+      p.analy_degree = -1;
+    } else if (p.zoom > 1.0 + eps && p.analy_degree >= 0) {
+      // magnification -> Standard interpolation
+      p.analy_degree = -1;
+    }
+
     resize_along_axis(tmp_in.data(), tmp_out.data(), cur_shape, next_shape, ax, p);
     tmp_in.swap(tmp_out);
     cur_shape.swap(next_shape);
@@ -225,6 +238,8 @@ static bool resize_and_compare_square(const double (&java_down)[5][5],
                                       const std::string& method,
                                       double tolerance)
 {
+  using clock = std::chrono::steady_clock;
+
   // Input: 10x10 with a 4x4 ones block at [3:7,3:7] (already normalized to 1.0)
   const int H=10, W=10;
   std::vector<double> img(H*W, 0.0);
@@ -232,22 +247,65 @@ static bool resize_and_compare_square(const double (&java_down)[5][5],
 
   std::vector<int64_t> in_shape = {H, W};
 
-  // Downscale by 0.5
-  auto down = resize_nd(img, in_shape, {0.5, 0.5}, method, degree);
-  // Upscale back by 2.0
-  auto up   = resize_nd(down, {5,5},   {2.0, 2.0}, method, degree);
+  // Compute once for correctness (MSE)
+  auto down0 = resize_nd(img, in_shape, {0.5, 0.5}, method, degree);
+  auto up0   = resize_nd(down0, {5,5},   {2.0, 2.0}, method, degree);
 
   const auto ref_down = flat(java_down);
   const auto ref_up   = flat(java_reverted);
 
-  double m1 = mse(down, ref_down);
-  double m2 = mse(up,   ref_up);
+  double m1 = mse(down0, ref_down);
+  double m2 = mse(up0,   ref_up);
 
   std::cout << method << " deg=" << degree
             << "  square:  MSE down=" << m1
             << "  MSE revert=" << m2
             << "  tol=" << tolerance
             << ( (m1<tolerance && m2<tolerance) ? "  OK\n" : "  FAIL\n" );
+
+  // --- timing: average over 5 runs (1 warmup) ---
+  constexpr int WARMUP = 1, RUNS = 5;
+
+  // warmup
+  for (int w=0; w<WARMUP; ++w) {
+    auto tmp_down = resize_nd(img, in_shape, {0.5, 0.5}, method, degree);
+    auto tmp_up   = resize_nd(tmp_down, {5,5}, {2.0, 2.0}, method, degree);
+    volatile double sink = tmp_up[0]; (void)sink;
+  }
+
+  std::vector<double> t_down, t_up, t_total;
+  t_down.reserve(RUNS); t_up.reserve(RUNS); t_total.reserve(RUNS);
+
+  for (int r=0; r<RUNS; ++r) {
+    auto t0 = clock::now();
+    auto tmp_down = resize_nd(img, in_shape, {0.5, 0.5}, method, degree);
+    auto t1 = clock::now();
+    auto tmp_up   = resize_nd(tmp_down, {5,5}, {2.0, 2.0}, method, degree);
+    auto t2 = clock::now();
+
+    t_down .push_back(std::chrono::duration<double,std::milli>(t1-t0).count());
+    t_up   .push_back(std::chrono::duration<double,std::milli>(t2-t1).count());
+    t_total.push_back(std::chrono::duration<double,std::milli>(t2-t0).count());
+
+    volatile double sink = tmp_up[0]; (void)sink;
+  }
+
+  auto mean_sd = [](const std::vector<double>& v){
+    double sum = 0.0; for (double x : v) sum += x;
+    const double m = sum / (v.empty() ? 1.0 : (double)v.size());
+    double s2 = 0.0; for (double x : v) { double d = x - m; s2 += d*d; }
+    double sd = std::sqrt(s2 / (v.size() > 1 ? (v.size()-1) : 1));
+    return std::pair<double,double>(m, sd);
+  };
+  auto [md, sdd] = mean_sd(t_down);
+  auto [mu, sdu] = mean_sd(t_up);
+  auto [mt, sdt] = mean_sd(t_total);
+
+  std::cout << std::fixed << std::setprecision(3)
+            << "[Timing avg/5] " << method << " deg=" << degree
+            << " square: down x0.5 " << md << " +- " << sdd
+            << " ms; up x2.0 " << mu << " +- " << sdu
+            << " ms; total " << mt << " +- " << sdt << " ms\n\n";
 
   return (m1 < tolerance && m2 < tolerance);
 }
@@ -258,6 +316,8 @@ static bool resize_and_compare_sinusoid(const double (&java_upscaled)[10][10],
                                         const std::string& method,
                                         double tolerance)
 {
+  using clock = std::chrono::steady_clock;
+
   // Build 5x5 sinusoid like Python
   const int N=5;
   std::vector<double> img(N*N, 0.0);
@@ -282,22 +342,65 @@ static bool resize_and_compare_sinusoid(const double (&java_upscaled)[10][10],
 
   std::vector<int64_t> in_shape = {N, N};
 
-  // Upscale by 2.0
-  auto up = resize_nd(img, in_shape, {2.0, 2.0}, method, degree);
-  // Revert by downscaling back to 5x5
-  auto back = resize_nd(up, {10,10}, {0.5, 0.5}, method, degree);
+  // Compute once for correctness (MSE)
+  auto up0   = resize_nd(img, in_shape, {2.0, 2.0}, method, degree);
+  auto back0 = resize_nd(up0, {10,10}, {0.5, 0.5}, method, degree);
 
   const auto ref_up   = flat(java_upscaled);
   const auto ref_back = flat(java_reverted);
 
-  double m1 = mse(up,   ref_up);
-  double m2 = mse(back, ref_back);
+  double m1 = mse(up0,   ref_up);
+  double m2 = mse(back0, ref_back);
 
   std::cout << method << " deg=" << degree
             << "  sinusoid: MSE up=" << m1
             << "  MSE revert=" << m2
             << "  tol=" << tolerance
             << ( (m1<tolerance && m2<tolerance) ? "  OK\n" : "  FAIL\n" );
+
+  // --- timing: average over 10 runs (1 warmup) ---
+  constexpr int WARMUP = 1, RUNS = 10;
+
+  // warmup
+  for (int w=0; w<WARMUP; ++w) {
+    auto tmp_up   = resize_nd(img, in_shape, {2.0, 2.0}, method, degree);
+    auto tmp_down = resize_nd(tmp_up, {10,10}, {0.5, 0.5}, method, degree);
+    volatile double sink = tmp_down[0]; (void)sink;
+  }
+
+  std::vector<double> t_up, t_down, t_total;
+  t_up.reserve(RUNS); t_down.reserve(RUNS); t_total.reserve(RUNS);
+
+  for (int r=0; r<RUNS; ++r) {
+    auto t0 = clock::now();
+    auto tmp_up   = resize_nd(img, in_shape, {2.0, 2.0}, method, degree);
+    auto t1 = clock::now();
+    auto tmp_down = resize_nd(tmp_up, {10,10}, {0.5, 0.5}, method, degree);
+    auto t2 = clock::now();
+
+    t_up   .push_back(std::chrono::duration<double,std::milli>(t1-t0).count());
+    t_down .push_back(std::chrono::duration<double,std::milli>(t2-t1).count());
+    t_total.push_back(std::chrono::duration<double,std::milli>(t2-t0).count());
+
+    volatile double sink = tmp_down[0]; (void)sink;
+  }
+
+  auto mean_sd = [](const std::vector<double>& v){
+    double sum = 0.0; for (double x : v) sum += x;
+    const double m = sum / (v.empty() ? 1.0 : (double)v.size());
+    double s2 = 0.0; for (double x : v) { double d = x - m; s2 += d*d; }
+    double sd = std::sqrt(s2 / (v.size() > 1 ? (v.size()-1) : 1));
+    return std::pair<double,double>(m, sd);
+  };
+  auto [mu, sdu] = mean_sd(t_up);
+  auto [md, sdd] = mean_sd(t_down);
+  auto [mt, sdt] = mean_sd(t_total);
+
+  std::cout << std::fixed << std::setprecision(3)
+            << "[Timing avg] " << method << " deg=" << degree
+            << " sinusoid: up x2.0 " << mu << " +- " << sdu
+            << " ms; down x0.5 " << md << " +- " << sdd
+            << " ms; total " << mt << " +- " << sdt << " ms\n\n";
 
   return (m1 < tolerance && m2 < tolerance);
 }

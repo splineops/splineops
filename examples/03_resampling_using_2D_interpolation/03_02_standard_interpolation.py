@@ -16,19 +16,23 @@ and avoid boundary artifacts.
 # -------
 
 import numpy as np
+import time
 
 # sphinx_gallery_thumbnail_number = 4 # show fourth figure as thumbnail
-import requests
-from io import BytesIO
+from urllib.request import urlopen
 from PIL import Image
+from scipy.ndimage import zoom as _scipy_zoom
 
-from splineops.utils import (
-    resize_and_compute_metrics,      # resampling + metrics (returns SNR/MSE)
-    compute_snr_and_mse_region,      # ROI / mask aware metrics for pairwise diffs
-    plot_difference_image,
-    show_roi_zoom,
-    draw_standard_vs_scipy_pipeline,
-)
+from splineops.resize import resize
+from splineops.utils.metrics import compute_snr_and_mse_region
+from splineops.utils.plotting import plot_difference_image, show_roi_zoom
+from splineops.utils.diagram import draw_standard_vs_scipy_pipeline
+
+
+def fmt_ms(seconds: float) -> str:
+    """Format seconds as a short 'X.X ms' string."""
+    return f"{seconds * 1000.0:.1f} ms"
+
 
 # %%
 # Pipeline Diagram
@@ -52,8 +56,8 @@ _ = draw_standard_vs_scipy_pipeline(
 # grayscale in [0, 1].
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim14.png'
-response = requests.get(url)
-img = Image.open(BytesIO(response.content))
+with urlopen(url, timeout=10) as resp:
+    img = Image.open(resp)
 data = np.array(img, dtype=np.float64)
 
 # Convert to [0..1]
@@ -66,7 +70,8 @@ input_image_normalized = (
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
 
-zoom_factors_2d = (0.25, 0.25)
+zoom = np.pi / 6            # ≈ 0.5235987756
+zoom_factors_2d = (zoom, zoom)
 border_fraction = 0.3  # still available as a fallback (unused when roi=... is set)
 
 # Face-centered 64×64 ROI (focus region for metrics & diffs)
@@ -99,20 +104,34 @@ _ = show_roi_zoom(
 # Standard Interpolation
 # ----------------------
 #
-# We use our standard interpolation method (cubic). SNR/MSE are computed on the ROI.
+# We use our standard interpolation method (cubic). SNR/MSE are computed on
+# the face ROI.
 
-(
-    resized_2d_interp, 
-    recovered_2d_interp, 
-    snr_2d_interp, 
-    mse_2d_interp, 
-    time_2d_interp
-) = resize_and_compute_metrics(
+# Forward + backward resize with splineops.resize.resize
+t0 = time.perf_counter()
+resized_2d_interp = resize(
     input_image_normalized,
-    method="cubic",
     zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction,  # kept for API parity; ROI takes precedence in metrics
-    roi=roi_rect                      # <-- metrics measured on the face ROI
+    method="cubic",
+)
+t1 = time.perf_counter()
+recovered_2d_interp = resize(
+    resized_2d_interp,
+    output_size=input_image_normalized.shape,
+    method="cubic",
+)
+t2 = time.perf_counter()
+
+time_2d_interp_fwd = t1 - t0
+time_2d_interp_back = t2 - t1
+time_2d_interp = t2 - t0  # total pipeline time
+
+# Metrics (ROI-aware)
+snr_2d_interp, mse_2d_interp = compute_snr_and_mse_region(
+    input_image_normalized,
+    recovered_2d_interp,
+    roi=roi_rect,
+    border_fraction=border_fraction,
 )
 
 # %%
@@ -121,7 +140,7 @@ _ = show_roi_zoom(
 #
 # Show the resized image pasted on a white canvas (for zoom-out), plus the ROI zoom.
 
-# Zoomed face detail for the resized (cubic) image — pasted onto original-size canvas ===
+# Zoomed face detail for the resized (cubic) image pasted onto original-size canvas
 h_res, w_res = resized_2d_interp.shape
 zoom_r, zoom_c = zoom_factors_2d
 
@@ -149,19 +168,19 @@ roi_kwargs_on_canvas = dict(
 
 _ = show_roi_zoom(
     canvas,
-    ax_titles=("Resized Image (standard)", None),
+    ax_titles=(f"Resized Image (standard, {fmt_ms(time_2d_interp_fwd)})", None),
     **roi_kwargs_on_canvas
 )
 
 # %%
-# Recovered Image (standard)
+# Recovered Image (Standard)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # We plot the recovered image (after reversing the zoom) with the same ROI.
 
 _ = show_roi_zoom(
     recovered_2d_interp,
-    ax_titles=("Recovered Image (standard)", None),
+    ax_titles=(f"Recovered Image (standard, {fmt_ms(time_2d_interp_back)})", None),
     **roi_kwargs
 )
 
@@ -171,27 +190,38 @@ _ = show_roi_zoom(
 #
 # For comparison, we also use SciPy's zoom method. Metrics are computed on the ROI.
 
-(
-    resized_2d_scipy,
-    recovered_2d_scipy,
-    snr_2d_scipy,
-    mse_2d_scipy,
-    time_2d_scipy
-) = resize_and_compute_metrics(
+t0 = time.perf_counter()
+resized_2d_scipy = _scipy_zoom(
     input_image_normalized,
-    method="scipy",
-    scipy_order=3,
-    zoom_factors=zoom_factors_2d,
-    border_fraction=border_fraction,  # kept for parity
-    roi=roi_rect                      # <-- metrics measured on the face ROI
+    zoom_factors_2d,
+    order=3,
+)
+t1 = time.perf_counter()
+recovered_2d_scipy = _scipy_zoom(
+    resized_2d_scipy,
+    1.0 / np.asarray(zoom_factors_2d),
+    order=3,
+)
+t2 = time.perf_counter()
+
+time_2d_scipy_fwd = t1 - t0
+time_2d_scipy_back = t2 - t1
+time_2d_scipy = t2 - t0  # total pipeline time
+
+snr_2d_scipy, mse_2d_scipy = compute_snr_and_mse_region(
+    input_image_normalized,
+    recovered_2d_scipy,
+    roi=roi_rect,
+    border_fraction=border_fraction,
 )
 
 # %%
 # Recovered Image (SciPy)
 # ~~~~~~~~~~~~~~~~~~~~~~~
+
 _ = show_roi_zoom(
     recovered_2d_scipy,
-    ax_titles=("Recovered Image (SciPy)", None),
+    ax_titles=(f"Recovered Image (SciPy, {fmt_ms(time_2d_scipy_back)})", None),
     **roi_kwargs
 )
 
@@ -215,7 +245,7 @@ plot_difference_image(
     snr=snr_scipy_vs_interp,
     mse=mse_scipy_vs_interp,
     roi=roi_rect,
-    title_prefix="Recovered diff (standard vs SciPy)"
+    title_prefix="Recovered diff (standard vs SciPy)",
 )
 
 # %%
@@ -231,7 +261,7 @@ plot_difference_image(
     snr=snr_2d_interp,
     mse=mse_2d_interp,
     roi=roi_rect,
-    title_prefix="Difference (original vs standard)"
+    title_prefix="Difference (original vs standard)",
 )
 
 # %%
@@ -241,7 +271,7 @@ plot_difference_image(
 # As an alternative, we can replicate the same interpolation manually using the 
 # ``TensorSpline`` class, which underpins the `resize()` function behind the scenes.
 
-from splineops.interpolate.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensorspline import TensorSpline
 
 # 1) Build uniform coordinate arrays that match the shape of 'input_image_normalized'
 height, width = input_image_normalized.shape

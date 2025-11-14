@@ -1,5 +1,4 @@
 # splineops/src/splineops/utils/plotting.py
-
 """
 splineops.utils.plotting
 ========================
@@ -18,7 +17,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from typing import Sequence, Tuple, Union, Optional
 from io import BytesIO
 from pathlib import Path
-import requests
+from urllib.request import urlopen
 from PIL import Image
 
 __all__ = [
@@ -89,6 +88,7 @@ def plot_recovered_image(recovered: np.ndarray) -> None:
     plt.axis("off")
     plt.show()
 
+
 def plot_difference_image(
     original: np.ndarray,
     recovered: np.ndarray,
@@ -97,9 +97,10 @@ def plot_difference_image(
     *,
     vmin: float = -0.8,
     vmax: float = 0.8,
-    roi: Optional[Tuple[int, int, int, int]] = None,  # NEW
-    mask: Optional[np.ndarray] = None,                # NEW
-    title_prefix: str = "Difference",                 # NEW (helps label ROI vs full)
+    roi: Optional[Tuple[int, int, int, int]] = None,
+    mask: Optional[np.ndarray] = None,
+    title_prefix: str = "Difference",
+    cmap_mode: str = "bw",  # "bw" (default) or "bwr"
 ) -> None:
     """
     Visualise *original – recovered* with a diverging colour map and colourbar.
@@ -124,7 +125,7 @@ def plot_difference_image(
         region_label = " (masked)"
     elif roi is not None:
         r, c, h, w = roi
-        diff = diff_full[r:r+h, c:c+w]
+        diff = diff_full[r:r + h, c:c + w]
         region_label = " (ROI)"
     else:
         diff = diff_full
@@ -137,11 +138,32 @@ def plot_difference_image(
     fig_h = fig_w * aspect
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-    im = ax.imshow(diff, cmap="bwr", aspect="equal", vmin=vmin, vmax=vmax)
+    from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+
+    if cmap_mode == "bw":
+        # Black → mid-gray (0) → white, to keep sign in monochrome
+        cmap_obj = LinearSegmentedColormap.from_list(
+            "bw_div",
+            [
+                (0.0, "black"),
+                (0.5, "0.5"),
+                (1.0, "white"),
+            ],
+        )
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
+        im = ax.imshow(diff, cmap=cmap_obj, aspect="equal", norm=norm)
+    else:
+        im = ax.imshow(
+            diff,
+            cmap="bwr",
+            aspect="equal",
+            vmin=vmin,
+            vmax=vmax,
+        )
+
     ax.set_title(f"{title_prefix}{region_label}\nSNR: {snr:.2f} dB, MSE: {mse:.2e}")
     ax.axis("off")
 
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cb = fig.colorbar(im, cax=cax)
@@ -149,6 +171,7 @@ def plot_difference_image(
 
     plt.tight_layout()
     plt.show()
+
 
 def show_roi_zoom(
     img_source: Union[str, Path, np.ndarray],
@@ -189,12 +212,14 @@ def show_roi_zoom(
     if isinstance(img_source, np.ndarray):
         img = img_source.astype(np.float64)
     else:
-        # URL or local path
-        if str(img_source).startswith(("http://", "https://")):
-            data = requests.get(img_source, timeout=10).content
+        src = str(img_source)
+        if src.startswith(("http://", "https://")):
+            # Use stdlib urllib instead of requests
+            with urlopen(src, timeout=10) as resp:
+                data = resp.read()
             img = np.asarray(Image.open(BytesIO(data)), dtype=np.float64)
         else:
-            img = np.asarray(Image.open(Path(img_source)), dtype=np.float64)
+            img = np.asarray(Image.open(Path(src)), dtype=np.float64)
 
     if img.max() > 1.0:
         img /= 255.0
@@ -208,7 +233,7 @@ def show_roi_zoom(
             0.5870 * img[..., 1] +
             0.1140 * img[..., 2]
         )
-        img = img[..., None]                # keep channel dim for consistency
+        img = img[..., None]  # keep channel dim for consistency
 
     # Drop trailing channel dim for plotting if grayscale
     plot_img = img.squeeze() if img.shape[-1] == 1 else img
@@ -218,10 +243,10 @@ def show_roi_zoom(
     # ------------------------------------------------------------------ #
     # 3. Choose square ROI                                               #
     # ------------------------------------------------------------------ #
-    roi_size = max(1, int(h_img * roi_height_frac))
-    # Guarantee integer magnification factor (image height / roi_size)
-    while h_img % roi_size:
-        roi_size -= 1
+    # Start from the requested fractional size; keep it as-is (up to
+    # integer rounding), rather than shrinking it to divide h_img.
+    roi_size = max(1, int(round(h_img * roi_height_frac)))
+    roi_size = min(roi_size, h_img)  # clamp in case of tiny images / big frac
 
     if roi_xy is None:
         row0 = h_img // 2 - roi_size // 2
@@ -238,37 +263,49 @@ def show_roi_zoom(
     # ------------------------------------------------------------------ #
     # 4. Magnify ROI with nearest-neighbour                              #
     # ------------------------------------------------------------------ #
-    mag = h_img // roi_size
+    mag = max(1, h_img // roi_size)
     roi_big = np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
 
     # ------------------------------------------------------------------ #
     # 5. Plot – widths proportional to pixel widths                      #
     # ------------------------------------------------------------------ #
     if fig_size is None:
-        fig_w = 10
-        fig_h = fig_w * h_img / (w_img + roi_big.shape[1])
-        fig_size = (fig_w, fig_h)
+        # Slightly taller figure so titles & images never get clipped,
+        # even for images that are relatively tall.
+        fig_size = (10.0, 5.5)
 
     fig, ax = plt.subplots(
         1, 2,
         figsize=fig_size,
         gridspec_kw={"width_ratios": [w_img, roi_big.shape[1]]},
+        constrained_layout=True,
     )
 
     # left panel
     ax[0].imshow(plot_img, cmap="gray" if grayscale else None)
-    ax[0].add_patch(patches.Rectangle((col0, row0), roi_size, roi_size,
-                                      linewidth=2, edgecolor="red",
-                                      facecolor="none"))
-    ax[0].set_aspect("equal"); ax[0].axis("off")
+    ax[0].add_patch(
+        patches.Rectangle(
+            (col0, row0),
+            roi_size,
+            roi_size,
+            linewidth=2,
+            edgecolor="red",
+            facecolor="none",
+        )
+    )
+    ax[0].set_aspect("equal")
+    ax[0].axis("off")
     ax[0].set_title(ax_titles[0] if ax_titles else "Image with ROI")
 
     # right panel
-    ax[1].imshow(roi_big, cmap="gray" if grayscale else None,
-                 interpolation="nearest")
-    ax[1].set_aspect("equal"); ax[1].axis("off")
+    ax[1].imshow(
+        roi_big,
+        cmap="gray" if grayscale else None,
+        interpolation="nearest",
+    )
+    ax[1].set_aspect("equal")
+    ax[1].axis("off")
     ax[1].set_title(ax_titles[1] if ax_titles else f"ROI x{mag} (nearest)")
 
-    plt.tight_layout()
     plt.show()
     return fig, ax

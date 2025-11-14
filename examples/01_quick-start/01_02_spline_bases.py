@@ -17,7 +17,7 @@ Plotting the spline bases of the library.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.bases.utils import create_basis
+from splineops.spline_interpolation.bases.utils import create_basis
 
 x_values = np.linspace(-3, 3, 1000)
 

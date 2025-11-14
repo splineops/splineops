@@ -28,7 +28,7 @@ Obtain a spline through different methods and compare the results.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from splineops.interpolate.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensorspline import TensorSpline
 
 plt.rcParams.update({
     "font.size": 14,     # Base font size
@@ -77,7 +77,7 @@ g_coords = np.linspace(0, g_support_length - 1, plot_points_per_unit * g_support
 g_data = g(coordinates=(g_coords,), grid=False)
 
 # %%
-# Expand g to Obtain h
+# Expand g to obtain h
 # --------------------
 #
 # To compare :math:`g` on the same domain as :math:`f`, we expand :math:`g` by defining 
@@ -128,46 +128,36 @@ ax_top.set_ylabel("f")
 ax_top.legend()
 ax_top.grid(True)
 
-# MIDDLE ROW: discrete g + g spline
-ax_mid_left = fig2.add_subplot(gs2[1, 0])  # left cell
-ax_mid_right = fig2.add_subplot(gs2[1, 1]) # right cell
-ax_mid_right.axis("off")                  # keep it blank
+# MIDDLE ROW: g spline expanded to full width (build g over physical x = T*k)
+g_phys = TensorSpline(data=g_samples, coordinates=x_g, bases=base, modes=mode)
 
-ax_mid_left.set_title("Interpolated g spline")
+# Evaluate across the full width of f
+g_mid_coords = f_coords
+g_mid_data   = g_phys(coordinates=(g_mid_coords,), grid=False)
 
-# Plot discrete g[k] with red stems, unfilled squares
-ax_mid_left.vlines(
-    x=g_support,
-    ymin=0,
-    ymax=g_samples,
-    color='red',
-    linestyle='-',
-    linewidth=1
-)
-ax_mid_left.plot(
-    g_support,
-    g_samples,
-    "rs", mfc='none', markersize=12, markeredgewidth=2,
-    label="g[k] samples"
-)
+ax_mid = fig2.add_subplot(gs2[1, :])  # span both columns now
+ax_mid.set_title("Interpolated g spline")
 
-# Plot g spline
-ax_mid_left.plot(
-    g_coords, g_data,
-    color="purple", linewidth=2,
-    label="g spline"
-)
+# Discrete g[k] with red stems & markers at the true positions x = k·T
+ax_mid.vlines(x=x_g, ymin=0, ymax=g_samples, color='red', linewidth=1)
+ax_mid.plot(x_g, g_samples, "rs", mfc='none', markersize=12, markeredgewidth=2, label="g[k] samples")
 
-ax_mid_left.axhline(0, color='black', linewidth=1, zorder=0)
-ax_mid_left.set_xlim(0, g_support_length - 1)
-ax_mid_left.set_xticks(np.arange(0, g_support_length, 1))
-ax_mid_left.set_xlabel("x")
-ax_mid_left.set_ylabel("g")
-ax_mid_left.legend()
-ax_mid_left.grid(True)
+# Continuous g(x) across 0..26
+ax_mid.plot(g_mid_coords, g_mid_data, color="purple", linewidth=2, label="g spline")
 
-# Match y-limits with top row:
-ax_mid_left.set_ylim(ax_top.get_ylim())
+ax_mid.axhline(0, color='black', linewidth=1, zorder=0)
+ax_mid.set_xlim(0, f_support_length - 1)
+ax_mid.set_ylabel("g")
+ax_mid.grid(True)
+ax_mid.legend()
+ax_mid.set_ylim(ax_top.get_ylim())  # match vertical scale with the top row
+
+# Ticks at every multiple of T that fits (e.g., 0..8 for T=pi)
+max_k_tick = int(np.floor((f_support_length - 1) / val_T))
+tick_ks = np.arange(max_k_tick + 1)
+ax_mid.set_xticks(tick_ks * val_T)
+ax_mid.set_xticklabels([str(k) for k in tick_ks])
+ax_mid.set_xlabel("x")
 
 # BOTTOM ROW: expanded h(x) = g(x / λ)
 ax_bottom = fig2.add_subplot(gs2[2, :])  # spans both columns
@@ -304,43 +294,35 @@ ax_top.set_ylabel("f")
 ax_top.grid(True)
 ax_top.legend()
 
-# MIDDLE ROW: left subplot shows g domain, right subplot is blank
-ax_mid_left = fig3.add_subplot(gs3[1, 0])
-ax_mid_right = fig3.add_subplot(gs3[1, 1])
-ax_mid_right.axis("off")  # keep right side blank
+# MIDDLE ROW: linear g spline expanded to full width (build over physical x = T*k)
+g_lin_phys = TensorSpline(data=g_lin_samps, coordinates=x_g, bases=base, modes=mode)
 
-ax_mid_left.set_title("Linear g spline")
+g_lin_mid_coords = f_coords
+g_lin_mid_data   = g_lin_phys(coordinates=(g_lin_mid_coords,), grid=False)
 
-# Discrete g[k] with stems
-ax_mid_left.vlines(
-    x=g_support,
-    ymin=0,
-    ymax=g_lin_samps,
-    color='red',
-    linewidth=1
-)
-ax_mid_left.plot(
-    g_support,
-    g_lin_samps,
-    "rs", mfc='none', markersize=8, markeredgewidth=2, 
-    label="g[k]"
-)
-# g spline
-ax_mid_left.plot(
-    g_coords,
-    g_lin_g,
-    color="purple", linewidth=2,
-    label="g"
-)
-ax_mid_left.axhline(0, color='black', linewidth=1, zorder=0)
-ax_mid_left.set_xlim(0, g_support_length - 1)
-ax_mid_left.set_xticks(np.arange(0, g_support_length, 1))
-ax_mid_left.set_xlabel("x")
-ax_mid_left.set_ylabel("g")
-ax_mid_left.grid(True)
-ax_mid_left.legend()
-# Match y-range with top
-ax_mid_left.set_ylim(ax_top.get_ylim())
+ax_mid = fig3.add_subplot(gs3[1, :])  # span both columns now
+ax_mid.set_title("Linear g spline")
+
+# Discrete g[k] with red stems & markers at x = k·T
+ax_mid.vlines(x=x_g, ymin=0, ymax=g_lin_samps, color='red', linewidth=1)
+ax_mid.plot(x_g, g_lin_samps, "rs", mfc='none', markersize=8, markeredgewidth=2, label="g[k]")
+
+# Continuous linear g(x) across 0..26
+ax_mid.plot(g_lin_mid_coords, g_lin_mid_data, color="purple", linewidth=2, label="g")
+
+ax_mid.axhline(0, color='black', linewidth=1, zorder=0)
+ax_mid.set_xlim(0, f_support_length - 1)
+ax_mid.set_ylabel("g")
+ax_mid.grid(True)
+ax_mid.legend()
+ax_mid.set_ylim(ax_top.get_ylim())
+
+# Ticks at multiples of T (0..8 for T=pi in 0..26)
+max_k_tick = int(np.floor((f_support_length - 1) / val_T))
+tick_ks = np.arange(max_k_tick + 1)
+ax_mid.set_xticks(tick_ks * val_T)
+ax_mid.set_xticklabels([str(k) for k in tick_ks])
+ax_mid.set_xlabel("x")
 
 # BOTTOM ROW: entire row for h
 ax_bottom = fig3.add_subplot(gs3[2, :])

@@ -10,11 +10,11 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
    :caption: Modules
    :titlesonly:
 
-   01_interpolate
+   01_spline_interpolation
    02_resize
    03_rotate
-   04_regress
-   05_denoise
-   06_differentiate
-   07_decompose
+   04_adaptive_regression_splines
+   05_smoothing_splines
+   06_differentials
+   07_multiscale
 

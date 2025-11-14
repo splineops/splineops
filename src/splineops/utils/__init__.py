@@ -1,36 +1,25 @@
 # splineops/src/splineops/utils/__init__.py
 
-from .image import crop_to_central_region, adjust_size_for_zoom
-from .metrics import compute_snr_and_mse_region
-from .resample import (
-    resize_with_scipy_zoom,
-    resize_and_compute_metrics,
-    resize_multichannel,
-)
-from .plotting import (
-    plot_resized_image,
-    plot_recovered_image,
-    plot_difference_image,
-    show_roi_zoom,
-)
-from .diagram import (
-    draw_standard_vs_scipy_pipeline,
-    draw_standard_vs_leastsq_pipeline,
-    draw_leastsq_vs_oblique_pipeline
-)
+"""
+splineops.utils
+===============
 
-__all__ = [
-    "crop_to_central_region",
-    "adjust_size_for_zoom",
-    "compute_snr_and_mse_region",
-    "resize_with_scipy_zoom",
-    "resize_and_compute_metrics",
-    "resize_multichannel",
-    "plot_resized_image",
-    "plot_recovered_image",
-    "plot_difference_image",
-    "show_roi_zoom",
-    "draw_standard_vs_scipy_pipeline",
-    "draw_standard_vs_leastsq_pipeline",
-    "draw_leastsq_vs_oblique_pipeline",
-]
+Utility subpackages used primarily by the example gallery and tutorials.
+
+To keep the API clear and avoid a giant flat namespace, prefer importing
+from the concrete submodules directly, for example:
+
+    from splineops.utils.image import adjust_size_for_zoom
+    from splineops.utils.metrics import compute_snr_and_mse_region
+    from splineops.utils.plotting import show_roi_zoom
+    from splineops.utils.diagram import draw_standard_vs_scipy_pipeline
+    from splineops.utils.specs import print_runtime_context
+
+Only the submodules themselves are exported from ``splineops.utils``.
+"""
+
+from __future__ import annotations
+
+from . import image, metrics, plotting, diagram, specs
+
+__all__ = ["image", "metrics", "plotting", "diagram", "specs"]
