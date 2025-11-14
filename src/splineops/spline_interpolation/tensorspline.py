@@ -4,10 +4,10 @@ import numpy as np
 import numpy.typing as npt
 from typing import Sequence, Union, Tuple, cast
 
-from splineops.bases.splinebasis import SplineBasis
-from splineops.bases.utils import asbasis
-from splineops.modes.extensionmode import ExtensionMode
-from splineops.modes.utils import asmode
+from splineops.spline_interpolation.bases.splinebasis import SplineBasis
+from splineops.spline_interpolation.bases.utils import asbasis
+from splineops.spline_interpolation.modes.extensionmode import ExtensionMode
+from splineops.spline_interpolation.modes.utils import asmode
 from splineops.utils.interop import is_ndarray
 
 TSplineBasis = Union[SplineBasis, str]

@@ -1,4 +1,4 @@
-# splineops/src/splineops/bases/splinebasis.py
+# splineops/src/splineops/spline_interpolation/bases/splinebasis.py
 
 from abc import ABCMeta, abstractmethod
 from typing import Sequence, Optional
