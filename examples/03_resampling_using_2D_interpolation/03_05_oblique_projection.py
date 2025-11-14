@@ -31,6 +31,12 @@ from splineops.utils.plotting import plot_difference_image, show_roi_zoom
 from splineops.utils.diagram import draw_leastsq_vs_oblique_pipeline
 from splineops.utils.specs import print_runtime_context
 
+
+def fmt_ms(seconds: float) -> str:
+    """Format seconds as a short 'X.X ms' string."""
+    return f"{seconds * 1000.0:.1f} ms"
+
+
 # Small helper: run one resize pipeline for a given method
 def _run_pipeline(
     img: np.ndarray,
@@ -45,13 +51,19 @@ def _run_pipeline(
 
     Returns
     -------
-    resized, recovered, snr, mse, elapsed_s
+    resized, recovered, snr, mse,
+    elapsed_forward_s, elapsed_backward_s, elapsed_total_s
     """
     t0 = time.perf_counter()
     resized = resize(img, zoom_factors=zoom_factors, method=method)
-    elapsed = time.perf_counter() - t0
+    t1 = time.perf_counter()
 
     recovered = resize(resized, output_size=img.shape, method=method)
+    t2 = time.perf_counter()
+
+    elapsed_forward = t1 - t0
+    elapsed_backward = t2 - t1
+    elapsed_total = t2 - t0
 
     snr, mse = compute_snr_and_mse_region(
         img,
@@ -59,7 +71,8 @@ def _run_pipeline(
         roi=roi,
         border_fraction=border_fraction,
     )
-    return resized, recovered, snr, mse, elapsed
+    return resized, recovered, snr, mse, elapsed_forward, elapsed_backward, elapsed_total
+
 
 # %%
 # Pipeline Diagram
@@ -121,7 +134,9 @@ roi_w_res = max(1, int(round(ROI_SIZE_PX * zoom_c)))
 # ------------------------
 
 # Standard interpolation: cubic (baseline)
-resized_2d_std, recovered_2d_std, snr_2d_std, mse_2d_std, time_2d_std = _run_pipeline(
+(resized_2d_std, recovered_2d_std,
+ snr_2d_std, mse_2d_std,
+ time_2d_std_fwd, time_2d_std_back, time_2d_std) = _run_pipeline(
     input_image_normalized,
     method="cubic",
     zoom_factors=zoom_factors_2d,
@@ -130,7 +145,9 @@ resized_2d_std, recovered_2d_std, snr_2d_std, mse_2d_std, time_2d_std = _run_pip
 )
 
 # Least-squares projection: cubic-best_antialiasing
-resized_2d_ls, recovered_2d_ls, snr_2d_ls, mse_2d_ls, time_2d_ls = _run_pipeline(
+(resized_2d_ls, recovered_2d_ls,
+ snr_2d_ls, mse_2d_ls,
+ time_2d_ls_fwd, time_2d_ls_back, time_2d_ls) = _run_pipeline(
     input_image_normalized,
     method="cubic-best_antialiasing",
     zoom_factors=zoom_factors_2d,
@@ -139,7 +156,9 @@ resized_2d_ls, recovered_2d_ls, snr_2d_ls, mse_2d_ls, time_2d_ls = _run_pipeline
 )
 
 # Oblique projection: cubic-fast_antialiasing
-resized_2d_ob, recovered_2d_ob, snr_2d_ob, mse_2d_ob, time_2d_ob = _run_pipeline(
+(resized_2d_ob, recovered_2d_ob,
+ snr_2d_ob, mse_2d_ob,
+ time_2d_ob_fwd, time_2d_ob_back, time_2d_ob) = _run_pipeline(
     input_image_normalized,
     method="cubic-fast_antialiasing",
     zoom_factors=zoom_factors_2d,
@@ -170,10 +189,17 @@ roi_big_ls   = _nearest_big(roi_ls,   DISPLAY_H)
 roi_big_ob   = _nearest_big(roi_ob,   DISPLAY_H)
 
 fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.6))
+
+titles = [
+    "Original ROI",
+    f"Recovered (Least-Squares, {fmt_ms(time_2d_ls_back)})",
+    f"Recovered (Oblique, {fmt_ms(time_2d_ob_back)})",
+]
+
 for ax, im, title in zip(
     axes,
     [roi_big_orig, roi_big_ls, roi_big_ob],
-    ["Original ROI", "Recovered (Least-Squares)", "Recovered (Oblique)"]
+    titles,
 ):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title)
@@ -216,7 +242,7 @@ roi_kwargs_on_canvas_ls = dict(
 
 _ = show_roi_zoom(
     canvas_ls,
-    ax_titles=(f"Resized Image (least-squares; t={time_2d_ls*1000:.1f} ms)", None),
+    ax_titles=(f"Resized Image (least-squares, {fmt_ms(time_2d_ls_fwd)})", None),
     **roi_kwargs_on_canvas_ls
 )
 
@@ -240,7 +266,7 @@ roi_kwargs_on_canvas_ob = dict(
 
 _ = show_roi_zoom(
     canvas_ob,
-    ax_titles=(f"Resized Image (oblique; t={time_2d_ob*1000:.1f} ms)", None),
+    ax_titles=(f"Resized Image (oblique, {fmt_ms(time_2d_ob_fwd)})", None),
     **roi_kwargs_on_canvas_ob
 )
 
@@ -254,7 +280,7 @@ _ = show_roi_zoom(
 
 _ = show_roi_zoom(
     recovered_2d_ls,
-    ax_titles=("Recovered Image (least-squares projection)", None),
+    ax_titles=(f"Recovered Image (least-squares projection, {fmt_ms(time_2d_ls_back)})", None),
     **roi_kwargs
 )
 
@@ -264,7 +290,7 @@ _ = show_roi_zoom(
 
 _ = show_roi_zoom(
     recovered_2d_ob,
-    ax_titles=("Recovered Image (oblique projection)", None),
+    ax_titles=(f"Recovered Image (oblique projection, {fmt_ms(time_2d_ob_back)})", None),
     **roi_kwargs
 )
 
@@ -279,13 +305,15 @@ _ = show_roi_zoom(
 # Difference with original image on the face ROI (SNR/MSE shown come from the
 # central-region metrics, not strictly ROI-only).
 
+title_ls = f"Difference (least-squares, {fmt_ms(time_2d_ls)})"
+
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ls,
     snr=snr_2d_ls,
     mse=mse_2d_ls,
     roi=roi_rect,
-    title_prefix="Difference (least-squares)",
+    title_prefix=title_ls,
 )
 
 # %%
@@ -294,13 +322,15 @@ plot_difference_image(
 #
 # Difference with original image on the face ROI.
 
+title_ob = f"Difference (oblique, {fmt_ms(time_2d_ob)})"
+
 plot_difference_image(
     original=input_image_normalized,
     recovered=recovered_2d_ob,
     snr=snr_2d_ob,
     mse=mse_2d_ob,
     roi=roi_rect,
-    title_prefix="Difference (oblique)",
+    title_prefix=title_ob,
 )
 
 # %%
@@ -320,7 +350,7 @@ def _avg_time_over_runs(
     trials: int = N_TRIALS,
     warmup: int = WARMUP,
 ):
-    """Return (mean_s, sd_s) timing over multiple runs; warm-up not counted."""
+    """Return (mean_s, sd_s) total pipeline timing over multiple runs; warm-up not counted."""
     # Warm-up (not timed)
     for _ in range(warmup):
         _run_pipeline(
@@ -333,21 +363,21 @@ def _avg_time_over_runs(
 
     times = []
     for _ in range(trials):
-        _, _, _, _, t = _run_pipeline(
+        _, _, _, _, _, _, t_total = _run_pipeline(
             img,
             method=method,
             zoom_factors=zoom_factors,
             border_fraction=border_fraction,
             roi=roi,
         )
-        times.append(t)
+        times.append(t_total)
 
     times = np.asarray(times, dtype=np.float64)
     mean_s = float(times.mean())
     sd_s   = float(times.std(ddof=1)) if times.size > 1 else 0.0
     return mean_s, sd_s
 
-# Measure averages for Standard, LS, and Oblique
+# Measure averages for Standard, LS, and Oblique (total pipeline time)
 mean_std, sd_std = _avg_time_over_runs(
     input_image_normalized,
     method="cubic",
@@ -386,9 +416,8 @@ errs_s    = [sd_std,    sd_ls,          sd_ob]
 bars = ax.bar(methods, means_s, yerr=errs_s, capsize=6)
 ax.set_ylabel("Time (s)")
 ax.set_title(
-    f"Oblique vs LS vs standard "
-    f"(Oblique is ≈ {speedup_mean:.2f}× faster than LS "
-    f"({impr_pct_mean:.1f}% less time over {N_TRIALS} runs))"
+    f"Standard vs LS vs Oblique "
+    f"(Oblique is ≈ {speedup_mean:.2f}× faster than LS)"
 )
 
 for rect, m, sd in zip(bars, means_s, errs_s):
@@ -409,8 +438,8 @@ plt.show()
 # Summary: SNR / Time Table
 # -------------------------
 #
-# Central-region SNR/MSE (via border_fraction) plus averaged forward
-# timings for all three methods in this example.
+# Central-region SNR/MSE (via border_fraction) plus averaged total
+# (forward + backward) timings for all three methods in this example.
 
 methods_summary = [
     ("Standard (cubic)",          snr_2d_std, mse_2d_std, mean_std, sd_std),
