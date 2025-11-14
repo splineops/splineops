@@ -85,47 +85,87 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   Plan1D plan{};
   plan.N = N;
 
-  // Output and tail sizing
+  // Output size (same as before)
   int workN = 0, outN = 0;
   calculate_final_size_1d(p.inversable, N, p.zoom, workN, outN);
   plan.outN = outN;
 
+  const bool pure_interp = (p.analy_degree < 0);
+
+  // total_degree controls the spline support used in the windows
   const int total_degree = p.interp_degree + p.analy_degree + 1;
-  const int corr_degree  = (p.analy_degree < 0)
-                         ?  p.interp_degree
-                         : (p.analy_degree + p.synthe_degree + 1);
 
-  const int add_border   = std::max(border(outN, corr_degree), total_degree);
-  plan.out_total         = outN + add_border;
+  // Correction degree for LS / oblique projection
+  const int corr_degree = pure_interp
+                        ? p.interp_degree
+                        : (p.analy_degree + p.synthe_degree + 1);
 
-  // Center shift (matches Python/native path)
+  // Tail length / out_total
+  //  - Pure interpolation: no projection tail, only outN samples
+  //  - LS / oblique: keep original border-based tail
+  int add_border = 0;
+  if (!pure_interp) {
+    add_border = std::max(border(outN, corr_degree), total_degree);
+  }
+  plan.out_total = outN + add_border;
+
+  // Shift:
+  //  - Interpolation uses p.shift as-is
+  //  - Projection adds the Muñoz correction
   double shift = p.shift;
-  if (p.analy_degree >= 0) {
+  if (!pure_interp) {
     const double t = (p.analy_degree + 1.0) / 2.0;
     shift += (t - std::floor(t)) * (1.0 / p.zoom - 1.0);
   }
 
+  // Symmetric (even) vs antisymmetric (odd) boundary
   plan.symmetric_ext = ((p.analy_degree + 1) % 2 == 0);
-  plan.length_total  = N + static_cast<int>(std::ceil(add_border / p.zoom));
 
-  // Precompute window metadata and contiguous weights (CSR-like)
   const double half_support = 0.5 * (total_degree + 1);
-  const double fact         = std::pow(p.zoom, (p.analy_degree >= 0) ? (p.analy_degree + 1) : 0);
 
+  // Zoom exponent for LS / oblique (Unser–Muñoz step 3 factor)
+  const double fact = std::pow(
+      p.zoom,
+      (p.analy_degree >= 0) ? (p.analy_degree + 1) : 0
+  );
+
+  // Extended input length:
+  //  - Interpolation: only need a small mirror tail up to the spline support.
+  //  - LS / oblique: original LS sizing using add_border/zoom.
+  if (pure_interp) {
+    const int right_ext = static_cast<int>(std::ceil(half_support));
+    plan.length_total   = N + right_ext;
+  } else {
+    plan.length_total   = N + static_cast<int>(std::ceil(add_border / p.zoom));
+  }
+
+  // CSR-style window metadata
   plan.row_ptr.resize(static_cast<size_t>(plan.out_total) + 1);
   plan.kmin   .resize(static_cast<size_t>(plan.out_total));
   plan.win_len.resize(static_cast<size_t>(plan.out_total));
 
-  int nnz = 0;
+  int nnz      = 0;
   int min_kmin =  0;
   int max_kmax = -1;
 
-  // First pass: (kmin, kmax) per row, nnz, global min/max
+  // Unified TensorSpline-style geometry for ALL methods:
+  //
+  //   - Input samples at k = 0 .. N-1
+  //   - Visible outputs (0 .. outN-1) span [0, N-1]
+  //     => step = (N-1)/(outN-1) when outN > 1
+  //   - Tail samples (l >= outN) simply continue with the same step.
+  const double step = (plan.outN > 1)
+                    ? (static_cast<double>(N - 1) /
+                       static_cast<double>(plan.outN - 1))
+                    : 0.0;
+
+  // First pass: compute (kmin, kmax) per row, nnz, global min/max
   for (int l = 0; l < plan.out_total; ++l) {
-    const double x    = l / p.zoom + shift;
-    const int    kmin = static_cast<int>(std::ceil (x - half_support));
-    const int    kmax = static_cast<int>(std::floor(x + half_support));
-    const int    wlen = kmax - kmin + 1;
+    const double x = step * static_cast<double>(l) + shift;
+
+    const int kmin = static_cast<int>(std::ceil (x - half_support));
+    const int kmax = static_cast<int>(std::floor(x + half_support));
+    const int wlen = kmax - kmin + 1;
 
     plan.kmin   [static_cast<size_t>(l)] = kmin;
     plan.win_len[static_cast<size_t>(l)] = wlen;
@@ -139,7 +179,7 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   plan.left_pad  = std::max(0, -min_kmin);
   plan.right_pad = std::max(0,  max_kmax - (plan.length_total - 1));
 
-  // Precompute left pad mapping for negative indices (removes per-line mirror math)
+  // Precompute left-pad mapping for negative indices: -t -> sign * coeff[src]
   plan.pad_src_idx.resize(static_cast<size_t>(plan.left_pad));
   plan.pad_src_sgn.resize(static_cast<size_t>(plan.left_pad), 1);
   for (int t = 1; t <= plan.left_pad; ++t) {
@@ -163,13 +203,13 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   for (int l = 0; l < plan.out_total; ++l) {
     plan.row_ptr[static_cast<size_t>(l)] = cursor;
 
-    const double x    = l / p.zoom + shift;
+    const double x = step * static_cast<double>(l) + shift;
     const int    k0   = plan.kmin   [static_cast<size_t>(l)];
     const int    wlen = plan.win_len[static_cast<size_t>(l)];
 
     for (int t = 0; t < wlen; ++t) {
       const int k = k0 + t;
-      double w = fact * beta(x - k, total_degree);
+      const double w = fact * beta(x - k, total_degree);
       plan.weights[static_cast<size_t>(cursor++)] = w;
     }
   }

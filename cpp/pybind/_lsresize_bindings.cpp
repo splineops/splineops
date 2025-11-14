@@ -22,23 +22,15 @@ static std::vector<int64> shape_to_vec_i64(const py::array &a) {
     return s;
 }
 
-/**
- * @brief Per-axis policy for magnification: use Standard interpolation.
- *
- * For upsampling (zoom > 1) LS/Oblique can ring (deconvolution-like effect).
- * Disable projection per-axis in that case (use Standard interpolation).
- * Also disable projection at exact unity zoom (identity safety).
- */
+// If the per-axis zoom is effectively 1.0, disable projection and fall back
+// to standard interpolation (analy_degree = -1). For all other zoom values
+// the parameters are left unchanged.
 static inline void normalize_params_for_magnification(lsresize::LSParams& p) {
     const double eps = 1e-12;
     // Identity safety: never run a projection at unity zoom
     if (std::abs(p.zoom - 1.0) <= eps) {
         p.analy_degree = -1;
         return;
-    }
-    // Magnification policy: projection can ring, use Standard
-    if (p.zoom > 1.0 + eps && p.analy_degree >= 0) {
-        p.analy_degree = -1;
     }
 }
 
