@@ -417,7 +417,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic\n"
+        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -448,7 +448,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic\n"
+        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -479,7 +479,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA)\n"
+        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -510,7 +510,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA)\n"
+        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
@@ -608,7 +608,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic\n"
+        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -639,7 +639,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic\n"
+        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -670,7 +670,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA)\n"
+        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -701,7 +701,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA)\n"
+        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
@@ -800,7 +800,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
-        f"SciPy cubic\n"
+        f"SciPy cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}",
         None,
     ),
@@ -831,7 +831,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
-        f"Standard cubic\n"
+        f"Standard cubic (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}",
         None,
     ),
@@ -862,7 +862,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_ls,
     ax_titles=(
-        f"Least-Squares (AA)\n"
+        f"Least-Squares (AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
         None,
     ),
@@ -893,7 +893,7 @@ roi_titles.append(
 _ = show_roi_zoom(
     canvas_ob,
     ax_titles=(
-        f"Oblique (fast AA)\n"
+        f"Oblique (fast AA) (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
         f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
         None,
     ),
