@@ -26,15 +26,14 @@ def compute_zoom(
             shift=float(b),
             inversable=inversable,
         )
-        # Magnification policy: disable projection for zoom > 1
-        if p.analy_degree >= 0 and p.zoom > 1.0 + 1e-12:
-            p.analy_degree = -1
-        # Disable projection on exact identity
+        # Disable projection on exact identity (unity-zoom safety)
         if abs(p.zoom - 1.0) <= 1e-12:
             p.analy_degree = -1
+
         # Identity short-circuit: if no projection and no shift, skip axis entirely
         if abs(p.zoom - 1.0) <= 1e-12 and abs(p.shift) <= 1e-15 and p.analy_degree < 0:
             continue
+
         out = resize_along_axis(out, ax, p)
 
     np.copyto(output_img, out)

@@ -89,8 +89,8 @@ def resize(
     Resize an *N*-dimensional array using splines.
 
     This function will use the native C++ implementation (:mod:`splineops._lsresize`)
-    for all supported presets—**interpolation** (degrees 0–3), **oblique** (deg 1–3),
-    and **least-squares** (deg 1–3)—when the extension is available. Otherwise, it
+    for all supported presets—**interpolation** (degrees 0-3), **oblique** (deg 1-3),
+    and **least-squares** (deg 1-3)—when the extension is available. Otherwise, it
     falls back to the pure-Python reference implementation
     :func:`splineops.resize.ls_oblique_resize.ls_oblique_resize`. You can control
     native vs. Python behavior with the env var ``SPLINEOPS_EXTENSION``:
@@ -99,11 +99,10 @@ def resize(
       - ``SPLINEOPS_ACCEL=never``: force the Python fallback only
 
     **Magnification policy (native path):**
-      For projection methods (``*-fast_antialiasing`` and ``*-best_antialiasing``),
-      the C++ backend automatically disables the analysis stage on axes where
-      ``zoom_factors[i] > 1`` (i.e., magnification), effectively using Standard
-      interpolation along those axes to avoid ringing—this matches the behavior
-      validated by the test suite.
+        For projection methods (``*-fast_antialiasing`` and ``*-best_antialiasing``),
+        the C++ backend applies the same analysis/synthesis model for all zoom
+        factors, and only disables projection on axes where ``zoom_factors[i]`` is
+        effectively 1 (identity safety).
 
     Parameters
     ----------
@@ -147,7 +146,7 @@ def resize(
     Returns
     -------
     ndarray
-        Resized data – either a new array or the one supplied via *output*.
+        Resized data: either a new array or the one supplied via *output*.
 
     """
     # ----------------------------
