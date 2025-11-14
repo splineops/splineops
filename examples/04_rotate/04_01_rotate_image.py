@@ -17,9 +17,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from splineops.rotate.rotate import rotate
-from splineops.resize.resize import resize
-import requests
-from io import BytesIO
+from splineops.resize import resize
+from urllib.request import urlopen
 from PIL import Image
 
 # %%
@@ -32,8 +31,9 @@ from PIL import Image
 
 # Load the 'kodim17.png' image
 url = 'https://r0k.us/graphics/kodak/kodak/kodim22.png'
-response = requests.get(url)
-img = Image.open(BytesIO(response.content))
+url = 'https://r0k.us/graphics/kodak/kodak/kodim22.png'
+with urlopen(url, timeout=10) as resp:
+    img = Image.open(resp)
 data = np.array(img, dtype=np.float64)
 
 # Convert to grayscale using a standard formula

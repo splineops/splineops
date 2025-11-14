@@ -17,8 +17,7 @@ differential operations on an image.
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import requests
-from io import BytesIO
+from urllib.request import urlopen
 from PIL import Image
 
 # Import the Differentials class from your module (adjust import path as needed)
@@ -32,8 +31,8 @@ from splineops.differentials.differentials import differentials
 # and normalize its intensities to the [0,1] range.
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim15.png'
-response = requests.get(url)
-img = Image.open(BytesIO(response.content))
+with urlopen(url, timeout=10) as resp:
+    img = Image.open(resp)
 image = np.array(img, dtype=np.float64)
 
 # Convert to [0,1]

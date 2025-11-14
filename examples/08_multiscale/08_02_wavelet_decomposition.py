@@ -18,8 +18,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # For downloading and handling the image
-import requests
-from io import BytesIO
+from urllib.request import urlopen
 from PIL import Image
 
 # Wavelet classes for 2D
@@ -38,8 +37,8 @@ from splineops.multiscale.wavelets.splinewavelets import (
 # We convert it to grayscale in [0,1].
 
 url = 'https://r0k.us/graphics/kodak/kodak/kodim07.png'
-response = requests.get(url)
-img = Image.open(BytesIO(response.content))
+with urlopen(url, timeout=10) as resp:
+    img = Image.open(resp)
 
 # Convert to numpy float64
 image_color = np.array(img, dtype=np.float64)

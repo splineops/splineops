@@ -21,8 +21,7 @@ from splineops.smoothing_splines.smoothingspline import smoothing_spline_nd
 # 2D Image Smoothing
 # ------------------
 
-import requests
-from io import BytesIO
+from urllib.request import urlopen
 from PIL import Image
 
 def create_image():
@@ -30,8 +29,8 @@ def create_image():
     Loads a real grayscale image.
     """
     url = 'https://r0k.us/graphics/kodak/kodak/kodim06.png'
-    response = requests.get(url)
-    img = Image.open(BytesIO(response.content))
+    with urlopen(url, timeout=10) as resp:
+        img = Image.open(resp)
     data = np.array(img, dtype=np.float64)
     data /= 255.0  # Normalize to [0, 1]
 
