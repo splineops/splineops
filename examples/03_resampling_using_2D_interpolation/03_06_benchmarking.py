@@ -9,9 +9,9 @@ Benchmarking
 This example benchmarks several 2D downsampling methods over a *set* of test
 images. For each image we:
 
-1. Downsample by an image-specific zoom factor
-2. Measure the runtime of the **forward pass** only
-3. Visualise the results with ROI-aware zooms, one method per figure
+1. Downsample by an image-specific zoom factor.
+2. Measure the runtime of the forward pass only.
+3. Visualise the results with ROI-aware zooms, one method per figure.
 
 We compare:
 
