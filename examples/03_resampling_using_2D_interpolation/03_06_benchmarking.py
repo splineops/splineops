@@ -332,9 +332,20 @@ def _build_canvas_and_roi(
     zoom_r, zoom_c = zoom_factors
     h_res, w_res = down.shape
 
-    # ROI size in the downsampled image
+    # Initial ROI size in the downsampled image (before adjustment)
     roi_h_res = max(1, int(round(roi_size_px * zoom_r)))
     roi_w_res = max(1, int(round(roi_size_px * zoom_c)))
+
+    # Make the ROI square and match show_roi_zoom's behaviour:
+    # shrink the side length until it divides the full image height so that
+    # the magnified ROI has an integer zoom factor and matches what
+    # show_roi_zoom will display for roi_height_frac = roi_side / h_img.
+    roi_side = int(max(1, min(roi_h_res, roi_w_res)))
+    while h_img % roi_side != 0 and roi_side > 1:
+        roi_side -= 1
+
+    roi_h_res = roi_side
+    roi_w_res = roi_side
 
     # Same *relative* center as in original
     center_r_res = int(round(center_r * zoom_r))
@@ -348,12 +359,15 @@ def _build_canvas_and_roi(
     canvas = np.ones((h_img, w_img), dtype=down.dtype)
     canvas[:h_res, :w_res] = down
 
+    # This fraction, combined with roi_xy, will make show_roi_zoom pick
+    # exactly roi_side×roi_side pixels starting at (row_top_res, col_left_res)
     roi_kwargs_on_canvas = dict(
         roi_height_frac=roi_h_res / h_img,
         grayscale=True,
         roi_xy=(row_top_res, col_left_res),
     )
 
+    # Crop the same region for the 4-way ROI comparison
     roi_patch = down[
         row_top_res : row_top_res + roi_h_res,
         col_left_res : col_left_res + roi_w_res,
