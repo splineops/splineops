@@ -91,10 +91,14 @@ def _time_resize(mode: str, img: np.ndarray, zoom: tuple[float, float], preset: 
 # Synthetic images                                                   #
 # ------------------------------------------------------------------ #
 rng = np.random.default_rng(0)
-images: list[tuple[str, np.ndarray]] = [
-    ("synthetic_1024x1024", rng.random((1024, 1024), dtype=np.float64)),
-    ("synthetic_640x480",   rng.random((480, 640),  dtype=np.float64)),
-]
+
+DTYPES = (np.float32, np.float64)
+
+images: list[tuple[str, np.ndarray]] = []
+for dtype in DTYPES:
+    suffix = "f32" if dtype == np.float32 else "f64"
+    images.append((f"synthetic_1024x1024_{suffix}", rng.random((1024, 1024), dtype=dtype)))
+    images.append((f"synthetic_640x480_{suffix}",   rng.random((480, 640),  dtype=dtype)))
 
 # Presets & zoom scenarios
 methods = [
@@ -112,7 +116,7 @@ zooms = [
 all_rows = []  # (img_name, method_label, zoom_label, t_cpp, t_py, speedup, max_abs_diff)
 
 for img_name, img in images:
-    print(f"\n=== {img_name}  shape={img.shape} ===")
+    print(f"\n=== {img_name}  shape={img.shape}, dtype={img.dtype} ===")
     for meth_label, preset in methods:
         for zoom_label, zoom in zooms:
             # C++

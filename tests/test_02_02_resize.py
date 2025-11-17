@@ -1,4 +1,4 @@
-# splineops/tests/test_02_02_resize_ls_oblique.py
+# splineops/tests/test_02_02_resize.py
 import numpy as np
 import pytest
 from splineops.resize import resize
@@ -181,18 +181,28 @@ def generate_pattern(pattern_name, shape, zoom_factors, freqs=None, square_sizes
 
 # --- test driver ---
 def resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, method,
-                                     freqs=None, square_sizes=None):
+                                     freqs=None, square_sizes=None, dtype=np.float64):
     preset = to_preset(method, degree)
+    # Generate pattern in float64, then cast once to the desired storage dtype
     pattern = generate_pattern(pattern_name, shape, zoom_factors,
-                               freqs=freqs, square_sizes=square_sizes).astype(np.float64)
+                               freqs=freqs, square_sizes=square_sizes).astype(dtype)
     resized_image = resize(pattern, zoom_factors=zoom_factors, method=preset)
-    mse = calculate_mse_with_expected(pattern_name, shape, zoom_factors, resized_image,
-                                      freqs=freqs, square_sizes=square_sizes,
-                                      degree=degree, method=method)
+    # Compute error in float64
+    mse = calculate_mse_with_expected(
+        pattern_name,
+        shape,
+        zoom_factors,
+        resized_image.astype(np.float64),
+        freqs=freqs,
+        square_sizes=square_sizes,
+        degree=degree,
+        method=method,
+    )
     psnr = 10 * np.log10(1 / mse) if mse != 0 else float('inf')
     return mse, psnr
 
 # --- parametrized tests (patterns) ---
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
 @pytest.mark.parametrize("pattern_name, shape, zoom_factors, degree, method, mse_threshold, psnr_threshold, freqs, square_sizes", [
     ("Gradient", (100,), (0.5,), 3, "least-squares", 1e-3, 40, None, None),
     ("Gradient", (100, 100), (0.75, 1.5), 1, "oblique", 1e-3, 60, None, None),
@@ -207,10 +217,17 @@ def resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, 
     ("Checkerboard", (50, 50, 50), (0.8, 1.2, 0.6), 1, "oblique", 0.1, 10, None, [10, 10, 10]),
 ])
 def test_resize_n_dimensional_pattern(pattern_name, shape, zoom_factors, degree,
-                                      method, mse_threshold, psnr_threshold, freqs, square_sizes):
-    mse, psnr = resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors,
-                                                 degree, method, freqs=freqs,
-                                                 square_sizes=square_sizes)
+                                      method, mse_threshold, psnr_threshold, freqs, square_sizes, dtype):
+    mse, psnr = resize_pattern_and_calculate_mse(
+        pattern_name,
+        shape,
+        zoom_factors,
+        degree,
+        method,
+        freqs=freqs,
+        square_sizes=square_sizes,
+        dtype=dtype,
+    )
     assert mse < mse_threshold, f"{pattern_name} pattern MSE {mse} exceeds threshold {mse_threshold}"
     assert psnr > psnr_threshold, f"{pattern_name} pattern PSNR {psnr} dB below threshold {psnr_threshold}"
 
