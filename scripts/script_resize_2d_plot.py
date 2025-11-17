@@ -263,14 +263,15 @@ def main():
     ap = argparse.ArgumentParser(
         description="Timing & SNR sweep with interactive image selection (averaged runs)."
     )
-    ap.add_argument("--image", type=str, default=None,
-                    help="Optional path/URL; if omitted, a dialog opens.")
-    ap.add_argument("--samples", type=int, default=90,
-                    help="Number of zoom samples in [0.01, 2.0) (2.0 excluded).")
-    ap.add_argument("--grayscale", type=int, default=1,
-                    help="1=convert to grayscale, 0=keep RGB.")
-    ap.add_argument("--repeats", type=int, default=10,
-                    help="Average this many runs per (method, z).")
+    ap.add_argument("--image", type=str, default=None, help="Optional path/URL; if omitted, a dialog opens.")
+    ap.add_argument("--samples", type=int, default=40,
+                    help="Base number of zoom samples per side if --samples-down/--samples-up are not given.")
+    ap.add_argument("--samples-down", type=int, default=None,
+                    help="Number of zoom samples in the interval (0, 1). Overrides --samples if set.")
+    ap.add_argument("--samples-up", type=int, default=None,
+                    help="Number of zoom samples in the interval (1, 2). Overrides --samples if set.")
+    ap.add_argument("--grayscale", type=int, default=1, help="1=convert to grayscale, 0=keep RGB.")
+    ap.add_argument("--repeats", type=int, default=10, help="Average this many runs per (method, z).")
     args = brush_args(ap.parse_args())
 
     # Pick image (dialog if not provided)
@@ -285,12 +286,38 @@ def main():
     H, W = int(img.shape[0]), int(img.shape[1])
     print(f"Loaded image: {path_or_url} | shape={img.shape}, dtype={img.dtype}")
 
-    # Zooms in [0.001, 2.0) (2.0 excluded), EXCLUDING 1.0
-    z_candidates = np.linspace(0.001, 2.0, args.samples, endpoint=False, dtype=np.float64)
+       # Build separate zoom grids for downsampling (0 < z < 1) and upsampling (1 < z < 2)
+    n_down = args.samples_down if args.samples_down is not None else args.samples
+    n_up   = args.samples_up   if args.samples_up   is not None else args.samples
+
+    eps = 1e-6  # small margin to avoid hitting exactly 0, 1, or 2 due to floating-point
+    if n_down > 0:
+        z_down = np.linspace(0.01, 1.0 - eps, n_down, endpoint=True, dtype=np.float64)
+    else:
+        z_down = np.array([], dtype=np.float64)
+
+    if n_up > 0:
+        z_up = np.linspace(1.0 + eps, 2.0 - eps, n_up, endpoint=True, dtype=np.float64)
+    else:
+        z_up = np.array([], dtype=np.float64)
+
+    z_candidates = np.concatenate([z_down, z_up])
+
+    # Guard against any accidental inclusion of 1.0 or 2.0 (paranoia)
+    z_candidates = z_candidates[(z_candidates > 0.0) & (z_candidates < 2.0)]
     z_candidates = z_candidates[np.abs(z_candidates - 1.0) > 1e-12]
 
     # Keep only round-trip-preserving zooms
     z_list = [float(z) for z in z_candidates if roundtrip_size_ok(img.shape, float(z))]
+    if not z_list:
+        print("No valid zoom factors after round-trip size check. Try increasing --samples-down/--samples-up.")
+        sys.exit(1)
+
+    print(
+        f"Accepted {len(z_list)} / {len(z_candidates)} zooms "
+        f"(down: {n_down}, up: {n_up}, 1.0 and 2.0 excluded)."
+    )
+
     if not z_list:
         print("No valid zoom factors after round-trip size check. Try increasing --samples.")
         sys.exit(1)
