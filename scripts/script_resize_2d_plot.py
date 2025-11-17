@@ -44,6 +44,8 @@ from tkinter import filedialog, simpledialog, messagebox
 # splineops
 from splineops.resize.resize import resize as spl_resize
 
+# Default storage dtype for the sweep (change to np.float64 if desired)
+DTYPE = np.float32
 
 # -------------------------- UI / I/O helpers --------------------------
 
@@ -102,8 +104,8 @@ def load_image_any(path_or_url: str, grayscale: bool = True) -> np.ndarray:
         out = arr / 255.0
         if grayscale:
             out = 0.2989 * out[..., 0] + 0.5870 * out[..., 1] + 0.1140 * out[..., 2]
-    return np.ascontiguousarray(out, dtype=np.float64)
-
+    out = np.clip(out, 0.0, 1.0)
+    return np.ascontiguousarray(out, dtype=DTYPE)
 
 def roundtrip_size_ok(shape: Tuple[int, ...], z: float) -> bool:
     """Accept z only if H,W -> round(H*z) then back with 1/z returns original."""

@@ -52,6 +52,9 @@ try:
 except Exception:
     _HAS_IMAGECMS = False
 
+# Default storage dtype for the demo (change to np.float64 if desired)
+DTYPE = np.float32
+
 # --- Tkinter UI ---
 try:
     import tkinter as tk
@@ -121,7 +124,7 @@ def _open_as_gray01(path: Path) -> np.ndarray:
         arr = 0.2989 * rgb[..., 0] + 0.5870 * rgb[..., 1] + 0.1140 * rgb[..., 2]
 
     im.close()
-    return np.clip(arr, 0.0, 1.0)
+    return np.clip(arr, 0.0, 1.0).astype(DTYPE, copy=False)
 
 # -------------------------------
 # Display helpers

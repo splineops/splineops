@@ -1,4 +1,4 @@
-# splineops/tests/test_02_01_resize_ls_oblique_java.py
+# splineops/tests/test_02_01_resize_java.py
 
 import pytest
 import numpy as np
@@ -187,15 +187,17 @@ REVERTED_2_0_JAVA_SINUSOID_OBLIQUE_1_3_3 = np.array([
 
 # Mean Squared Error computation
 def mse(matrix1, matrix2):
-    return np.mean((matrix1 - matrix2) ** 2)
+    m1 = np.asarray(matrix1, dtype=np.float64)
+    m2 = np.asarray(matrix2, dtype=np.float64)
+    return np.mean((m1 - m2) ** 2)
 
 # Helper functions for resizing and comparing square and sinusoid images
-def resize_and_compare_square(java_downscaled, java_reverted, degree, method, tolerance):
+def resize_and_compare_square(java_downscaled, java_reverted, degree, method, tolerance, dtype=np.float64):
     preset = to_preset(method, degree)
 
-    input_img = np.zeros((10, 10))
-    input_img[3:7, 3:7] = 255.0
-    input_img_normalized = input_img / 255.0
+    input_img = np.zeros((10, 10), dtype=dtype)
+    input_img[3:7, 3:7] = dtype(255.0)
+    input_img_normalized = input_img / dtype(255.0)
 
     # Step 1: Downscale
     downscaled_img = resize(
@@ -218,16 +220,17 @@ def resize_and_compare_square(java_downscaled, java_reverted, degree, method, to
     assert downscaled_mse < tolerance, f"Downscaled MSE {downscaled_mse} exceeds tolerance {tolerance}"
     assert reverted_mse < tolerance, f"Reverted MSE {reverted_mse} exceeds tolerance {tolerance}"
 
-def resize_and_compare_sinusoid(java_downscaled, java_reverted, degree, method, tolerance):
+def resize_and_compare_sinusoid(java_downscaled, java_reverted, degree, method, tolerance, dtype=np.float64):
     preset = to_preset(method, degree)
 
-    input_img = np.zeros((5, 5))
+    # Do math in float64, then cast once to dtype
+    input_img = np.zeros((5, 5), dtype=np.float64)
     freq_x, freq_y = 2.0 * np.pi / 5.0, 3.0 * np.pi / 5.0
     for x in range(5):
         for y in range(5):
             sinusoid = 0.5 * (np.sin(freq_x * x) + np.cos(freq_y * y))
             input_img[x, y] = 1.0 + sinusoid if 1 <= x < 4 and 1 <= y < 4 else sinusoid
-    input_img_normalized = input_img / (1.0 + np.max(input_img))
+    input_img_normalized = (input_img / (1.0 + np.max(input_img))).astype(dtype)
 
     # Step 1: Upscale
     upscaled_img = resize(
@@ -252,74 +255,90 @@ def resize_and_compare_sinusoid(java_downscaled, java_reverted, degree, method, 
 
 # Define each test individually as a pytest function
 
-def test_square_ls_3_3_3():
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_square_ls_3_3_3(dtype):
     resize_and_compare_square(
         java_downscaled=DOWNSCALED_0_5_JAVA_SQUARE_LS_3_3_3,
         java_reverted=REVERTED_0_5_JAVA_SQUARE_LS_3_3_3,
         degree=3,
         method="least-squares",
-        tolerance=0.8
+        tolerance=0.8,
+        dtype=dtype,
     )
 
-def test_square_ls_1_1_1():
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_square_ls_1_1_1(dtype):
     resize_and_compare_square(
         java_downscaled=DOWNSCALED_0_5_JAVA_SQUARE_LS_1_1_1,
         java_reverted=REVERTED_0_5_JAVA_SQUARE_LS_1_1_1,
         degree=1,
         method="least-squares",
-        tolerance=0.1
+        tolerance=0.1,
+        dtype=dtype,
     )
 
-def test_square_oblique_0_1_1():
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_square_oblique_0_1_1(dtype):
     resize_and_compare_square(
         java_downscaled=DOWNSCALED_0_5_JAVA_SQUARE_OBLIQUE_0_1_1,
         java_reverted=REVERTED_0_5_JAVA_SQUARE_OBLIQUE_0_1_1,
         degree=1,
         method="oblique",
-        tolerance=0.04
+        tolerance=0.04,
+        dtype=dtype,
     )
 
-def test_square_oblique_1_3_3():
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_square_oblique_1_3_3(dtype):
     resize_and_compare_square(
         java_downscaled=DOWNSCALED_0_5_JAVA_SQUARE_OBLIQUE_1_3_3,
         java_reverted=REVERTED_0_5_JAVA_SQUARE_OBLIQUE_1_3_3,
         degree=3,
         method="oblique",
-        tolerance=0.07
+        tolerance=0.07,
+        dtype=dtype,
     )
 
-def test_sinusoid_ls_3_3_3():
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_sinusoid_ls_3_3_3(dtype):
     resize_and_compare_sinusoid(
         java_downscaled=UPSCALED_2_0_JAVA_SINUSOID_LS_3_3_3,
         java_reverted=REVERTED_2_0_JAVA_SINUSOID_LS_3_3_3,
         degree=3,
         method="least-squares",
-        tolerance=2.2
+        tolerance=2.2,
+        dtype=dtype,
     )
 
-def test_sinusoid_ls_1_1_1():
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_sinusoid_ls_1_1_1(dtype):
     resize_and_compare_sinusoid(
         java_downscaled=UPSCALED_2_0_JAVA_SINUSOID_LS_1_1_1,
         java_reverted=REVERTED_2_0_JAVA_SINUSOID_LS_1_1_1,
         degree=1,
         method="least-squares",
-        tolerance=0.6
+        tolerance=0.6,
+        dtype=dtype,
     )
 
-def test_sinusoid_oblique_0_1_1():
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_sinusoid_oblique_0_1_1(dtype):
     resize_and_compare_sinusoid(
         java_downscaled=UPSCALED_2_0_JAVA_SINUSOID_OBLIQUE_0_1_1,
         java_reverted=REVERTED_2_0_JAVA_SINUSOID_OBLIQUE_0_1_1,
         degree=1,
         method="oblique",
-        tolerance=0.6
+        tolerance=0.6,
+        dtype=dtype,
     )
 
-def test_sinusoid_oblique_1_3_3():
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_sinusoid_oblique_1_3_3(dtype):
     resize_and_compare_sinusoid(
         java_downscaled=UPSCALED_2_0_JAVA_SINUSOID_OBLIQUE_1_3_3,
         java_reverted=REVERTED_2_0_JAVA_SINUSOID_OBLIQUE_1_3_3,
         degree=3,
         method="oblique",
-        tolerance=0.6
+        tolerance=0.6,
+        dtype=dtype,
     )

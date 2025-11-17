@@ -30,6 +30,9 @@ import matplotlib.pyplot as plt
 # Use C++ acceleration if available
 os.environ.setdefault("SPLINEOPS_ACCEL", "auto")
 
+# Default storage dtype for synthetic volumes (change to np.float64 if desired)
+DTYPE = np.float32
+
 # Import splineops (works when run directly or as module)
 try:
     from splineops.resize import resize as sp_resize
@@ -87,7 +90,7 @@ def _make_3d_volume(shape=(48, 64, 40), seed: int = 0) -> np.ndarray:
     wave = 0.2 * (np.sin(4 * np.pi * xx) + np.cos(3 * np.pi * yy))
 
     vol = 0.5 * base + 0.3 * bump + 0.2 * wave
-    return np.asarray(vol, dtype=np.float64)
+    return np.asarray(vol, dtype=DTYPE)
 
 
 def _make_4d_volume(shape=(8, 48, 64, 40), seed: int = 1) -> np.ndarray:
@@ -101,14 +104,14 @@ def _make_4d_volume(shape=(8, 48, 64, 40), seed: int = 1) -> np.ndarray:
 
     for ti in range(t):
         # Gradually change seed / phase per time slice
-        vol[ti] = _make_3d_volume((z, y, x), seed=seed + ti * 13)
+        vol[ti] = _make_3d_volume((z, y, x), seed=seed + ti * 13).astype(np.float64)
 
     # Normalize to [0, 1]
     vmin = float(vol.min())
     vmax = float(vol.max())
     if vmax > vmin:
         vol = (vol - vmin) / (vmax - vmin)
-    return vol
+    return vol.astype(DTYPE, copy=False)
 
 
 def _show_slice(ax, img2d: np.ndarray, title: str) -> None:

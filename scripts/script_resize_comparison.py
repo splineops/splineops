@@ -42,6 +42,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
+# Default storage dtype for comparison (change to np.float64 if desired)
+DTYPE = np.float32
+
 # Optional deps (gracefully skipped when missing)
 try:
     import cv2
@@ -243,8 +246,8 @@ def _to_gray01(im: Image.Image) -> np.ndarray:
             im = im.convert("RGB")
         rgb = np.asarray(im, dtype=np.float64) / 255.0
         arr = 0.2989 * rgb[..., 0] + 0.5870 * rgb[..., 1] + 0.1140 * rgb[..., 2]
-    return np.clip(np.ascontiguousarray(arr, dtype=np.float64), 0.0, 1.0)
-
+    arr = np.clip(arr, 0.0, 1.0)
+    return np.ascontiguousarray(arr, dtype=DTYPE)
 
 # ---------------------------
 # Backends (round-trip z → 1/z)

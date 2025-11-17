@@ -53,6 +53,7 @@ def _time_and_run(
     not _has_cpp(),
     reason="Native extension not available: skipping C++ vs Python compare",
 )
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
 @pytest.mark.parametrize(
     "method_label,preset,shape,zoom,atol",
     [
@@ -70,7 +71,7 @@ def _time_and_run(
             "cubic-fast_antialiasing",
             (512, 512),
             (0.5, 0.5),
-            2e-8,
+            2e-7,
         ),
         # Upsample: LS can accumulate more rounding differences; allow a looser tol
         (
@@ -85,7 +86,7 @@ def _time_and_run(
             "cubic-fast_antialiasing",
             (512, 512),
             (2.5, 2.5),
-            5e-8,
+            5e-7,
         ),
         # --- Interpolation presets (no projection) -----------------------------
         (
@@ -93,14 +94,14 @@ def _time_and_run(
             "cubic",
             (512, 512),
             (0.5, 0.5),
-            1e-12,
+            2e-7,
         ),
         (
             "Interpolation (linear)",
             "linear",
             (300, 500),
             (2.3, 2.3),
-            5e-12,
+            5e-7,
         ),
         # --- Non-uniform zoom (per-axis policy: shrink vs magnify) -------------
         (
@@ -115,7 +116,7 @@ def _time_and_run(
             "cubic-fast_antialiasing",
             (300, 200),
             (2.0, 0.6),
-            1e-7,
+            2e-7,
         ),
         # --- Quadratic degree variants (now parity holds) ----------------------
         (
@@ -123,7 +124,7 @@ def _time_and_run(
             "quadratic-best_antialiasing",
             (400, 400),
             (0.5, 0.5),
-            1e-7,
+            3e-7,
         ),
         (
             "Least-Squares (best AA) quadratic ↑",
@@ -173,7 +174,7 @@ def _time_and_run(
     ],
 )
 def test_cpp_vs_python_equality(
-    method_label, preset, shape, zoom, atol, monkeypatch
+    method_label, preset, shape, zoom, atol, dtype, monkeypatch
 ):
     # Stabilize timings: single threads for OpenMP/BLAS stacks
     monkeypatch.setenv("OMP_NUM_THREADS", "1")
@@ -185,12 +186,16 @@ def test_cpp_vs_python_equality(
     monkeypatch.setenv("SPLINEOPS_AUTOTUNE", "0")
 
     rng = np.random.default_rng(0)
-    arr = rng.random(shape, dtype=np.float64)
+    arr = rng.random(shape, dtype=dtype)
 
     # C++ path
     t_cpp, y_cpp = _time_and_run("always", arr, zoom, preset, repeats=2)
     # Python fallback
     t_py, y_py = _time_and_run("never", arr, zoom, preset, repeats=2)
+
+    # Dtype sanity: both implementations should preserve the input dtype
+    assert y_cpp.dtype == dtype, f"C++ output dtype {y_cpp.dtype} != input dtype {dtype}"
+    assert y_py.dtype == dtype,  f"Python output dtype {y_py.dtype} != input dtype {dtype}"
 
     # Numerical sanity: same result within tolerance
     max_abs = float(np.max(np.abs(y_cpp - y_py)))
@@ -204,6 +209,7 @@ def test_cpp_vs_python_equality(
     if not is_identity:
         speedup = (t_py / t_cpp) if t_cpp > 0.0 else np.inf
         print(
-            f"[perf] {method_label} {shape} zoom={zoom}: "
+            f"[perf] {method_label} {shape} zoom={zoom}, dtype={dtype}: "
             f"speedup={speedup:.2f}× (C++ {t_cpp:.4f}s vs Py {t_py:.4f}s)"
         )
+
