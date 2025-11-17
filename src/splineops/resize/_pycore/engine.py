@@ -1,9 +1,12 @@
 # splineops/src/splineops/resize/_pycore/engine.py
 from __future__ import annotations
 import numpy as np
-from typing import Sequence, Tuple
+from typing import Sequence
 from .params import LSParams
 from .resizend import resize_along_axis
+
+# Numerical epsilon for zoom comparisons
+_EPS = 1e-12
 
 def compute_zoom(
     input_img: np.ndarray,
@@ -15,6 +18,13 @@ def compute_zoom(
     shifts: Sequence[float],
     inversable: bool
 ) -> None:
+    """
+    Apply per-axis resize with the same magnification policy as the C++ path:
+      • If zoom > 1 (magnification) or |zoom - 1| <= eps (identity),
+        disable LS/Oblique projection (analy_degree = -1) to avoid ringing
+        and to skip useless projection near identity.
+      • For downsampling (zoom < 1), keep the requested LS/Oblique projection.
+    """
     img = np.asarray(input_img, dtype=np.float64, order="C")
     out = img
     for ax, (z, b) in enumerate(zip(zoom_factors, shifts)):
@@ -26,17 +36,20 @@ def compute_zoom(
             shift=float(b),
             inversable=inversable,
         )
-        # Disable projection on exact identity (unity-zoom safety)
-        if abs(p.zoom - 1.0) <= 1e-12:
+
+        # Magnification/identity policy (matches C++ binding):
+        # - If zoom > 1 (magnify) OR zoom ≈ 1, disable projection along this axis.
+        if p.analy_degree >= 0 and (abs(p.zoom - 1.0) <= _EPS or p.zoom > 1.0 + _EPS):
             p.analy_degree = -1
 
-        # Identity short-circuit: if no projection and no shift, skip axis entirely
-        if abs(p.zoom - 1.0) <= 1e-12 and abs(p.shift) <= 1e-15 and p.analy_degree < 0:
+        # Fast identity short-circuit: if no projection and no shift, skip the axis
+        if p.analy_degree < 0 and abs(p.zoom - 1.0) <= _EPS and abs(p.shift) <= 1e-15:
             continue
 
         out = resize_along_axis(out, ax, p)
 
     np.copyto(output_img, out)
+
 
 def python_resize(
     data: np.ndarray,
@@ -45,7 +58,7 @@ def python_resize(
     degree: int,
     inversable: bool = False
 ) -> np.ndarray:
-    # degree mapping (matches your _resolve_degrees_for)
+    # degree mapping (matches _resolve_degrees_for in the public wrapper)
     interp_degree = degree
     synthe_degree = degree
     if   algo == "interpolation": analy_degree = -1
