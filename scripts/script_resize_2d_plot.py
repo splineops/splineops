@@ -286,11 +286,11 @@ def main():
     H, W = int(img.shape[0]), int(img.shape[1])
     print(f"Loaded image: {path_or_url} | shape={img.shape}, dtype={img.dtype}")
 
-       # Build separate zoom grids for downsampling (0 < z < 1) and upsampling (1 < z < 2)
+    # Build separate zoom grids for downsampling (0 < z < 1) and upsampling (1 < z < 2)
     n_down = args.samples_down if args.samples_down is not None else args.samples
     n_up   = args.samples_up   if args.samples_up   is not None else args.samples
 
-    eps = 1e-6  # small margin to avoid hitting exactly 0, 1, or 2 due to floating-point
+    eps = 1e-6  # margin to avoid hitting exactly 0, 1, or 2
     if n_down > 0:
         z_down = np.linspace(0.01, 1.0 - eps, n_down, endpoint=True, dtype=np.float64)
     else:
@@ -303,19 +303,23 @@ def main():
 
     z_candidates = np.concatenate([z_down, z_up])
 
-    # Guard against any accidental inclusion of 1.0 or 2.0 (paranoia)
+    # Guard against any accidental inclusion of 1.0 or 2.0
     z_candidates = z_candidates[(z_candidates > 0.0) & (z_candidates < 2.0)]
-    z_candidates = z_candidates[np.abs(z_candidates - 1.0) > 1e-12]
+
+    # DROP zoom factors "too close" to 1.0 to avoid near-identity spikes
+    NEAR_ONE_EPS = 1e-2  # e.g. exclude (0.99, 1.01); tune if you like
+    z_candidates = z_candidates[np.abs(z_candidates - 1.0) > NEAR_ONE_EPS]
 
     # Keep only round-trip-preserving zooms
     z_list = [float(z) for z in z_candidates if roundtrip_size_ok(img.shape, float(z))]
     if not z_list:
-        print("No valid zoom factors after round-trip size check. Try increasing --samples-down/--samples-up.")
+        print("No valid zoom factors after round-trip size check. "
+              "Try increasing --samples-down/--samples-up or reducing NEAR_ONE_EPS.")
         sys.exit(1)
 
     print(
         f"Accepted {len(z_list)} / {len(z_candidates)} zooms "
-        f"(down: {n_down}, up: {n_up}, 1.0 and 2.0 excluded)."
+        f"(down: {n_down}, up: {n_up}, |z-1|>{NEAR_ONE_EPS}, 2.0 excluded)."
     )
 
     if not z_list:
