@@ -50,7 +50,6 @@ def compute_zoom(
 
     np.copyto(output_img, out)
 
-
 def python_resize(
     data: np.ndarray,
     zoom_factors: Sequence[float],
@@ -58,24 +57,51 @@ def python_resize(
     degree: int,
     inversable: bool = False
 ) -> np.ndarray:
+    """
+    Pure-Python fallback for resize(), with dtype-preserving behavior for floats.
+
+    - Input float32  -> internal float64 -> output float32
+    - Input float64  -> internal float64 -> output float64
+    - Other dtypes   -> internal float64 -> output float64
+    """
+    # Normalize input and remember original dtype
+    arr = np.asarray(data, order="C")
+    input_dtype = arr.dtype
+
     # degree mapping (matches _resolve_degrees_for in the public wrapper)
     interp_degree = degree
     synthe_degree = degree
-    if   algo == "interpolation": analy_degree = -1
-    elif algo == "least-squares": analy_degree = degree
-    else:                         analy_degree = 0 if degree == 1 else 1  # oblique
+    if   algo == "interpolation":
+        analy_degree = -1
+    elif algo == "least-squares":
+        analy_degree = degree
+    else:  # "oblique"
+        analy_degree = 0 if degree == 1 else 1
 
     shifts = [0.0] * len(zoom_factors)
-    output_shape = tuple(int(round(n * z)) for n, z in zip(data.shape, zoom_factors))
-    out = np.empty(output_shape, dtype=np.float64)
+
+    # Work with the actual array shape (not necessarily data.shape if it was array-like)
+    output_shape = tuple(int(round(n * z)) for n, z in zip(arr.shape, zoom_factors))
+
+    # Internal buffers are always float64
+    img64 = np.asarray(arr, dtype=np.float64, order="C")
+    out64 = np.empty(output_shape, dtype=np.float64)
+
     compute_zoom(
-        np.asarray(data, dtype=np.float64, order="C"),
-        out,
+        img64,
+        out64,
         analy_degree=analy_degree,
         synthe_degree=synthe_degree,
         interp_degree=interp_degree,
         zoom_factors=list(map(float, zoom_factors)),
         shifts=shifts,
-        inversable=inversable
+        inversable=inversable,
     )
-    return out
+
+    # Preserve float32/float64 at the Python API level.
+    if np.issubdtype(input_dtype, np.floating):
+        # float32 -> float32, float64 -> float64
+        return out64.astype(input_dtype, copy=False)
+
+    # For non-float inputs, keep the previous behavior (return float64).
+    return out64
