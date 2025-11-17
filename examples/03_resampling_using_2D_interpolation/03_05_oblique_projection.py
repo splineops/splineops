@@ -30,11 +30,12 @@ from splineops.utils.plotting import plot_difference_image, show_roi_zoom
 from splineops.utils.diagram import draw_leastsq_vs_oblique_pipeline
 from splineops.utils.specs import print_runtime_context
 
-
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
 
+# Use float32 for storage / IO (resize still computes internally in float64).
+DTYPE = np.float32
 
 # Small helper: run one resize pipeline for a given method
 def _run_pipeline(
@@ -98,6 +99,8 @@ input_image_normalized = (
     input_image_normalized[:, :, 1] * 0.5870 +  # Green
     input_image_normalized[:, :, 2] * 0.1140    # Blue
 )
+
+input_image_normalized = input_image_normalized.astype(DTYPE, copy=False)
 
 h_img, w_img = input_image_normalized.shape
 

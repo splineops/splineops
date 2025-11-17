@@ -34,6 +34,9 @@ def fmt_ms(seconds: float) -> str:
     return f"{seconds * 1000.0:.1f} ms"
 
 
+# You can switch this to np.float64 if you want full double precision.
+DTYPE = np.float32
+
 # %%
 # Pipeline Diagram
 # ----------------
@@ -58,6 +61,8 @@ _ = draw_standard_vs_scipy_pipeline(
 url = 'https://r0k.us/graphics/kodak/kodak/kodim14.png'
 with urlopen(url, timeout=10) as resp:
     img = Image.open(resp)
+
+# Start in float64 for robust normalization, then cast once to DTYPE.
 data = np.array(img, dtype=np.float64)
 
 # Convert to [0..1]
@@ -69,6 +74,9 @@ input_image_normalized = (
     input_image_normalized[:, :, 1] * 0.5870 +  # Green channel
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
+
+# Run the interpolation backends in DTYPE (e.g. float32 for speed).
+input_image_normalized = input_image_normalized.astype(DTYPE, copy=False)
 
 zoom = np.pi / 6            # ≈ 0.5235987756
 zoom_factors_2d = (zoom, zoom)
@@ -189,6 +197,7 @@ _ = show_roi_zoom(
 # -------------------
 #
 # For comparison, we also use SciPy's zoom method. Metrics are computed on the ROI.
+# SciPy preserves the input dtype, so it will also run in DTYPE here.
 
 t0 = time.perf_counter()
 resized_2d_scipy = _scipy_zoom(
@@ -275,8 +284,10 @@ from splineops.spline_interpolation.tensorspline import TensorSpline
 
 # 1) Build uniform coordinate arrays that match the shape of 'input_image_normalized'
 height, width = input_image_normalized.shape
-x_coords = np.linspace(0, height - 1, height)
-y_coords = np.linspace(0, width - 1, width)
+
+# Use the same dtype as the image for coordinates, so everything lives in DTYPE.
+x_coords = np.linspace(0, height - 1, height, dtype=input_image_normalized.dtype)
+y_coords = np.linspace(0, width - 1, width, dtype=input_image_normalized.dtype)
 coordinates_2d = (x_coords, y_coords)
 
 # 2) For "cubic interpolation", pick "bspline3".
@@ -292,16 +303,24 @@ ts = TensorSpline(
 zoomed_height = int(height * zoom_factors_2d[0])
 zoomed_width  = int(width  * zoom_factors_2d[1])
 
-x_coords_zoomed = np.linspace(0, height - 1, zoomed_height)
-y_coords_zoomed = np.linspace(0, width  - 1, zoomed_width)
+x_coords_zoomed = np.linspace(
+    0, height - 1, zoomed_height, dtype=input_image_normalized.dtype
+)
+y_coords_zoomed = np.linspace(
+    0, width  - 1, zoomed_width,  dtype=input_image_normalized.dtype
+)
 coords_zoomed_2d = (x_coords_zoomed, y_coords_zoomed)
 
 # Evaluate (forward pass): zoom in or out
 resized_direct_ts = ts(coordinates=coords_zoomed_2d)
 
 # 4) Define coordinate grids for returning to the original shape
-x_coords_orig = np.linspace(0, height - 1, height)
-y_coords_orig = np.linspace(0, width  - 1, width)
+x_coords_orig = np.linspace(
+    0, height - 1, height, dtype=input_image_normalized.dtype
+)
+y_coords_orig = np.linspace(
+    0, width  - 1, width,  dtype=input_image_normalized.dtype
+)
 coords_orig_2d = (x_coords_orig, y_coords_orig)
 
 # Evaluate (backward pass): from zoomed shape back to original

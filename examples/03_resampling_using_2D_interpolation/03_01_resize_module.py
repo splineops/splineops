@@ -28,6 +28,9 @@ plt.rcParams.update({
     "axes.labelsize": 16,
 })
 
+# Use float32 for storage / IO (resize still computes internally in float64).
+DTYPE = np.float32
+
 # Helper to resize RGB image
 def resize_rgb(
     img: np.ndarray,
@@ -49,7 +52,8 @@ def resize_rgb(
 
     Returns
     -------
-    out : ndarray, shape (H', W', 3), float64 in [0, 1]
+    out : ndarray, shape (H', W', 3)
+        Same float dtype as ``img`` (float32 in this example), values in [0, 1].
     """
     if img.ndim != 3 or img.shape[2] != 3:
         raise ValueError("resize_rgb expects an H×W×3 RGB array")
@@ -77,7 +81,7 @@ def resize_rgb(
 url = "https://r0k.us/graphics/kodak/kodak/kodim19.png"
 with urlopen(url, timeout=10) as resp:
     img = Image.open(resp)
-data = np.asarray(img, dtype=np.float64) / 255.0      # H × W × 3, range [0, 1]
+data = np.asarray(img, dtype=DTYPE) / DTYPE(255.0)          # H × W × 3, range [0, 1]
 
 # 1) Quick down-size so the notebook images aren't huge
 initial_shrink = 0.8
@@ -85,7 +89,7 @@ data_small = ndi_zoom(data, (initial_shrink, initial_shrink, 1), order=1)
 
 # 2) Choose the demo shrink factor and make dimensions "zoom-friendly"
 shrink_factor = 0.3
-adjusted = adjust_size_for_zoom(data_small, shrink_factor)      # still float64 [0, 1]
+adjusted = adjust_size_for_zoom(data_small, shrink_factor).astype(DTYPE, copy=False)
 adjusted_uint8 = (np.clip(adjusted, 0.0, 1.0) * 255).astype(np.uint8)
 
 # 3) Shrink with splineops (channel-wise)
@@ -105,7 +109,7 @@ canvas[: shrunken.shape[0], : shrunken.shape[1]] = shrunken
 
 # 4) Re-expand to the original adjusted size (back to float [0, 1])
 expanded = resize_rgb(
-    shrunken.astype(np.float64) / 255.0,
+    shrunken.astype(DTYPE) / DTYPE(255.0),
     1.0 / shrink_factor,
     method="cubic",
 )
@@ -175,7 +179,7 @@ ls_shrunken_f = resize_rgb(
 ls_shrunken = (np.clip(ls_shrunken_f, 0.0, 1.0) * 255).astype(np.uint8)
 
 ls_expanded = resize_rgb(
-    ls_shrunken.astype(np.float64) / 255.0,
+    ls_shrunken.astype(DTYPE) / DTYPE(255.0),
     1.0 / shrink_factor,
     method="cubic",  # standard cubic interpolation for upsampling
 )
