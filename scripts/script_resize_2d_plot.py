@@ -1,17 +1,21 @@
 # splineops/scripts/script_resize_2d_plot.py
 """
 Sweep zoom factors in [0.01, 2.0) (2.0 excluded) while *excluding 1.0*, keep only those that
-round-trip image size exactly, and compare four methods:
+round-trip image size exactly, and compare five methods:
 
 - SciPy cubic
-- Standard cubic
-- Least-Squares cubic (best AA)
-- Oblique cubic (fast AA)
+- Standard cubic (splineops)
+- Least-Squares cubic (best AA, splineops)
+- Oblique cubic (fast AA, splineops)
+- PyTorch bicubic (antialiased)
 
 If --image is not provided, a file dialog pops up; canceling it prompts for a URL.
 
 This version averages timing over N runs per zoom (default: 10) and displays
 two plots: timing vs zoom and SNR vs zoom (no files are written to disk).
+
+By default the sweep runs in float32 for performance. You can change the
+global DTYPE constant to np.float64 if you want full double precision.
 """
 
 from __future__ import annotations
@@ -37,6 +41,16 @@ try:
 except Exception:
     requests = None
 
+# Optional PyTorch (for comparison)
+try:
+    import torch
+    import torch.nn.functional as F
+    _HAS_TORCH = True
+except Exception:
+    _HAS_TORCH = False
+    torch = None
+    F = None
+
 # TK dialogs for interactive selection
 import tkinter as tk
 from tkinter import filedialog, simpledialog, messagebox
@@ -46,6 +60,7 @@ from splineops.resize.resize import resize as spl_resize
 
 # Default storage dtype for the sweep (change to np.float64 if desired)
 DTYPE = np.float32
+
 
 # -------------------------- UI / I/O helpers --------------------------
 
@@ -87,7 +102,7 @@ def choose_image_dialog() -> str | None:
 
 
 def load_image_any(path_or_url: str, grayscale: bool = True) -> np.ndarray:
-    """Load local path or URL into float64 [0,1]. If RGB and grayscale=True, convert."""
+    """Load local path or URL into [0,1] as DTYPE. If RGB and grayscale=True, convert."""
     if "://" in path_or_url:
         if requests is None:
             raise RuntimeError("requests is not installed; cannot load from URL.")
@@ -103,9 +118,14 @@ def load_image_any(path_or_url: str, grayscale: bool = True) -> np.ndarray:
     else:
         out = arr / 255.0
         if grayscale:
-            out = 0.2989 * out[..., 0] + 0.5870 * out[..., 1] + 0.1140 * out[..., 2]
+            out = (
+                0.2989 * out[..., 0] +
+                0.5870 * out[..., 1] +
+                0.1140 * out[..., 2]
+            )
     out = np.clip(out, 0.0, 1.0)
     return np.ascontiguousarray(out, dtype=DTYPE)
+
 
 def roundtrip_size_ok(shape: Tuple[int, ...], z: float) -> bool:
     """Accept z only if H,W -> round(H*z) then back with 1/z returns original."""
@@ -139,7 +159,7 @@ def scipy_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]
     out = ndi_zoom(img, zoom=zoom_fwd, order=3, mode="reflect", prefilter=True)
     rec = ndi_zoom(out, zoom=zoom_bwd, order=3, mode="reflect", prefilter=True)
     dt = time.perf_counter() - t0
-    return rec, dt
+    return rec.astype(img.dtype, copy=False), dt
 
 
 def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, float]:
@@ -149,29 +169,109 @@ def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, f
     out = spl_resize(img, zoom_factors=zoom_fwd, method=method)
     rec = spl_resize(out, zoom_factors=zoom_bwd, method=method)
     dt = time.perf_counter() - t0
-    return rec, dt
+    return rec.astype(img.dtype, copy=False), dt
+
+
+def torch_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
+    """
+    Round-trip using torch.nn.functional.interpolate with bicubic + antialias=True.
+    Runs on CPU. Works for 2D (H,W) and 3D (H,W,C) images.
+    """
+    if not _HAS_TORCH:
+        raise RuntimeError("PyTorch not available")
+
+    arr = img
+    # Map numpy dtype to torch dtype
+    if arr.dtype == np.float32:
+        t_dtype = torch.float32
+    elif arr.dtype == np.float64:
+        t_dtype = torch.float64
+    else:
+        # upcast other types to float32
+        t_dtype = torch.float32
+        arr = arr.astype(np.float32, copy=False)
+
+    if arr.ndim == 2:
+        H, W = arr.shape
+        x = torch.from_numpy(arr).to(t_dtype).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
+        H1 = int(round(H * z))
+        W1 = int(round(W * z))
+        t0 = time.perf_counter()
+        y = F.interpolate(
+            x,
+            size=(H1, W1),
+            mode="bicubic",
+            align_corners=False,
+            antialias=True,
+        )
+        y2 = F.interpolate(
+            y,
+            size=(H, W),
+            mode="bicubic",
+            align_corners=False,
+            antialias=True,
+        )
+        dt = time.perf_counter() - t0
+        rec = y2[0, 0].cpu().numpy().astype(arr.dtype, copy=False)
+        return rec, dt
+
+    elif arr.ndim == 3:
+        H, W, C = arr.shape
+        # Convert H×W×C -> 1×C×H×W
+        x = torch.from_numpy(arr).to(t_dtype).permute(2, 0, 1).unsqueeze(0)
+        H1 = int(round(H * z))
+        W1 = int(round(W * z))
+        t0 = time.perf_counter()
+        y = F.interpolate(
+            x,
+            size=(H1, W1),
+            mode="bicubic",
+            align_corners=False,
+            antialias=True,
+        )
+        y2 = F.interpolate(
+            y,
+            size=(H, W),
+            mode="bicubic",
+            align_corners=False,
+            antialias=True,
+        )
+        dt = time.perf_counter() - t0
+        rec = y2[0].permute(1, 2, 0).cpu().numpy().astype(arr.dtype, copy=False)
+        return rec, dt
+
+    else:
+        raise ValueError("Expected 2D (H×W) or 3D (H×W×C) image for PyTorch path.")
 
 
 def average_time(run, repeats: int = 10):
     """Return (last_rec, mean_time, std_time) over 'repeats' runs."""
-    times = []
+    times: List[float] = []
     rec = None
     for _ in range(max(1, repeats)):
         rec, dt = run()
         times.append(dt)
-    times = np.asarray(times, dtype=np.float64)
-    return rec, float(times.mean()), float(times.std(ddof=1 if len(times) > 1 else 0))
+    times_arr = np.asarray(times, dtype=np.float64)
+    mean_t = float(times_arr.mean())
+    sd_t = float(times_arr.std(ddof=1 if times_arr.size > 1 else 0))
+    return rec, mean_t, sd_t
 
 
 # ------------------------------ main -------------------------------
 
 def main():
-    ap = argparse.ArgumentParser(description="Timing & SNR sweep with interactive image selection (averaged runs).")
-    ap.add_argument("--image", type=str, default=None, help="Optional path/URL; if omitted, a dialog opens.")
-    ap.add_argument("--samples", type=int, default=80, help="Number of zoom samples in [0.01, 2.0) (2.0 excluded).")
-    ap.add_argument("--grayscale", type=int, default=1, help="1=convert to grayscale, 0=keep RGB.")
-    ap.add_argument("--repeats", type=int, default=10, help="Average this many runs per (method, z).")
-    args = ap.parse_args()
+    ap = argparse.ArgumentParser(
+        description="Timing & SNR sweep with interactive image selection (averaged runs)."
+    )
+    ap.add_argument("--image", type=str, default=None,
+                    help="Optional path/URL; if omitted, a dialog opens.")
+    ap.add_argument("--samples", type=int, default=80,
+                    help="Number of zoom samples in [0.01, 2.0) (2.0 excluded).")
+    ap.add_argument("--grayscale", type=int, default=1,
+                    help="1=convert to grayscale, 0=keep RGB.")
+    ap.add_argument("--repeats", type=int, default=10,
+                    help="Average this many runs per (method, z).")
+    args = brush_args(ap.parse_args())
 
     # Pick image (dialog if not provided)
     path_or_url = args.image
@@ -187,7 +287,6 @@ def main():
 
     # Zooms in [0.01, 2.0) (2.0 excluded), EXCLUDING 1.0
     z_candidates = np.linspace(0.01, 2.0, args.samples, endpoint=False, dtype=np.float64)
-    # Guard against any accidental inclusion of 1.0
     z_candidates = z_candidates[np.abs(z_candidates - 1.0) > 1e-12]
 
     # Keep only round-trip-preserving zooms
@@ -197,12 +296,16 @@ def main():
         sys.exit(1)
     print(f"Accepted {len(z_list)} / {len(z_candidates)} zooms (1.0 excluded).")
 
-    METHODS = {
-        "SciPy cubic": ("scipy", None),
-        "Standard cubic": ("splineops", "cubic"),
-        "Least-Squares (AA cubic)": ("splineops", "cubic-best_antialiasing"),
-        "Oblique (fast AA cubic)": ("splineops", "cubic-fast_antialiasing"),
+    METHODS: Dict[str, Tuple[str, str | None]] = {
+        "SciPy cubic":               ("scipy",     None),
+        "Standard cubic":            ("splineops", "cubic"),
+        "Least-Squares (AA cubic)":  ("splineops", "cubic-best_antialiasing"),
+        "Oblique (fast AA cubic)":   ("splineops", "cubic-fast_antialiasing"),
     }
+    if _HAS_TORCH:
+        METHODS["PyTorch bicubic (AA)"] = ("torch", None)
+    else:
+        print("[info] PyTorch not found; 'PyTorch bicubic (AA)' curve will be omitted.")
 
     results: Dict[str, Dict[str, List[float]]] = {
         name: {"z": [], "time": [], "time_sd": [], "snr": []} for name in METHODS
@@ -212,12 +315,21 @@ def main():
         print(f"[{idx:>3}/{len(z_list)}] z={z:.5f}", end="\r")
         for name, (kind, method) in METHODS.items():
             if kind == "scipy":
-                fn = lambda z=z: scipy_cubic_roundtrip(img, z)
+                runner = lambda z=z: scipy_cubic_roundtrip(img, z)
+            elif kind == "splineops":
+                runner = lambda z=z, m=method: spl_roundtrip(img, z, m)
+            elif kind == "torch":
+                runner = lambda z=z: torch_cubic_roundtrip(img, z)
             else:
-                fn = lambda z=z, m=method: spl_roundtrip(img, z, m)
+                continue
 
-            # Average timing over N runs; use last rec for SNR (deterministic).
-            rec, t_mean, t_sd = average_time(fn, repeats=args.repeats)
+            try:
+                rec, t_mean, t_sd = average_time(runner, repeats=args.repeats)
+            except Exception as e:
+                # If PyTorch (or any method) fails at a particular zoom, skip it
+                print(f"\n[warn] {name} failed at z={z:.5f}: {e}")
+                continue
+
             s = snr_db(img, rec)
 
             results[name]["z"].append(z)
@@ -226,17 +338,17 @@ def main():
             results[name]["snr"].append(s)
     print("\nDone. Plotting...")
 
-    # Timing vs zoom (mean only; uncomment errorbar section for SD bars)
+    # Timing vs zoom
     plt.figure(figsize=(9.5, 5.5))
     for name, data in results.items():
+        if not data["z"]:
+            continue  # skipped (e.g. no PyTorch)
         z = np.array(data["z"], dtype=float)
         t = np.array(data["time"], dtype=float)
         plt.plot(z, t, marker="o", markersize=3, linewidth=1.5, label=name)
-        # t_sd = np.array(data["time_sd"], dtype=float)
-        # plt.errorbar(z, t, yerr=t_sd, fmt='none', ecolor='gray', alpha=0.2)
     plt.xlabel("Zoom factor (1.0 excluded)")
     plt.ylabel(f"Time (s)  [avg of {args.repeats} runs, forward + backward]")
-    plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W})")
+    plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W}, dtype={DTYPE})")
     plt.grid(True, alpha=0.35)
     plt.legend()
     plt.tight_layout()
@@ -244,18 +356,28 @@ def main():
     # SNR vs zoom
     plt.figure(figsize=(9.5, 5.5))
     for name, data in results.items():
+        if not data["z"]:
+            continue
         z = np.array(data["z"], dtype=float)
         s = np.array(data["snr"], dtype=float)
         s_plot = np.where(np.isfinite(s), s, np.nan)  # hide +inf for plotting
-        plt.plot(z, s_plot, marker="o", markersize=3, linewidth=1.5, label=name)
+        plt.plot(z, s_plot, marker="o", markersize=3, linewidth=1.5, label= name)
     plt.xlabel("Zoom factor (1.0 excluded)")
     plt.ylabel("SNR (dB)  [original vs recovered]")
-    plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W})")
+    plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype={DTYPE})")
     plt.grid(True, alpha=0.35)
     plt.legend()
     plt.tight_layout()
 
     plt.show()
+
+
+def brush_args(args: argparse.Namespace) -> argparse.Namespace:
+    """
+    Small helper to clamp/validate arguments if you ever want to add a --dtype flag, etc.
+    For now it just returns args unchanged.
+    """
+    return args
 
 
 if __name__ == "__main__":
