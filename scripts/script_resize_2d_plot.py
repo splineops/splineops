@@ -265,7 +265,7 @@ def main():
     )
     ap.add_argument("--image", type=str, default=None,
                     help="Optional path/URL; if omitted, a dialog opens.")
-    ap.add_argument("--samples", type=int, default=80,
+    ap.add_argument("--samples", type=int, default=90,
                     help="Number of zoom samples in [0.01, 2.0) (2.0 excluded).")
     ap.add_argument("--grayscale", type=int, default=1,
                     help="1=convert to grayscale, 0=keep RGB.")
@@ -285,8 +285,8 @@ def main():
     H, W = int(img.shape[0]), int(img.shape[1])
     print(f"Loaded image: {path_or_url} | shape={img.shape}, dtype={img.dtype}")
 
-    # Zooms in [0.01, 2.0) (2.0 excluded), EXCLUDING 1.0
-    z_candidates = np.linspace(0.01, 2.0, args.samples, endpoint=False, dtype=np.float64)
+    # Zooms in [0.001, 2.0) (2.0 excluded), EXCLUDING 1.0
+    z_candidates = np.linspace(0.001, 2.0, args.samples, endpoint=False, dtype=np.float64)
     z_candidates = z_candidates[np.abs(z_candidates - 1.0) > 1e-12]
 
     # Keep only round-trip-preserving zooms
