@@ -21,6 +21,9 @@ We compare four methods:
 - Standard cubic interpolation.
 - Least-Squares cubic anti-aliasing.
 - Oblique cubic fast anti-aliasing.
+
+By default, the benchmark runs in float32 for performance. You can switch
+to float64 by changing the DTYPE constant below.
 """
 
 # %%
@@ -50,6 +53,10 @@ def fmt_ms(seconds: float) -> str:
     return f"{seconds * 1000.0:.1f} ms"
 
 
+# You can switch this to np.float64 if you want full double precision.
+DTYPE = np.float32
+
+
 # %%
 # Load and Normalize an Image
 # ---------------------------
@@ -61,6 +68,8 @@ KODAK_URL = "https://r0k.us/graphics/kodak/kodak/kodim19.png"
 
 with urlopen(KODAK_URL, timeout=10) as resp:
     img = Image.open(resp)
+
+# Do the basic math in float64, then cast once to DTYPE.
 data = np.asarray(img, dtype=np.float64)  # H×W×3, 0–255
 
 # Convert to [0,1] + grayscale
@@ -70,10 +79,13 @@ img_gray = (
     0.5870 * data01[..., 1] +  # G
     0.1140 * data01[..., 2]    # B
 )
-img_gray = np.ascontiguousarray(img_gray, dtype=np.float64)
+
+# Use DTYPE (e.g. float32) for the interpolation backends.
+img_gray = np.ascontiguousarray(img_gray, dtype=DTYPE)
 
 H, W = img_gray.shape
 print(f"Loaded test image: shape = {H}×{W}, dtype = {img_gray.dtype}")
+
 
 # %%
 # Original Image
@@ -114,6 +126,7 @@ def snr_db(x: np.ndarray, y: np.ndarray) -> float:
 
     Returns +inf for a perfect match.
     """
+    # Use float64 for the accumulations, regardless of storage dtype.
     num = float(np.sum(x * x, dtype=np.float64))
     den = float(np.sum((x - y) ** 2, dtype=np.float64))
     if den == 0.0:
@@ -250,7 +263,7 @@ for name, data in results.items():
 
 plt.xlabel("Zoom factor (1.0 excluded)")
 plt.ylabel(f"Time (s)  [avg of {REPEATS} runs, forward + backward]")
-plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W})")
+plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W}, dtype = {img_gray.dtype})")
 plt.grid(True, alpha=0.35)
 plt.legend()
 plt.tight_layout()
@@ -274,7 +287,7 @@ for name, data in results.items():
 
 plt.xlabel("Zoom factor (1.0 excluded)")
 plt.ylabel("SNR (dB)  [original vs recovered]")
-plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W})")
+plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype = {img_gray.dtype})")
 plt.grid(True, alpha=0.35)
 plt.legend()
 plt.tight_layout()
@@ -287,3 +300,4 @@ plt.show()
 # Finally, we print a short summary of the runtime environment.
 
 print_runtime_context()
+print(f"Benchmark storage dtype: {DTYPE}")

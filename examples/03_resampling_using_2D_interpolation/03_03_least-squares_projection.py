@@ -33,6 +33,9 @@ def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
 
+# Use float32 for storage / IO (resize still computes internally in float64)
+DTYPE = np.float32
+
 # %%
 # Pipeline Diagram
 # ----------------
@@ -58,6 +61,10 @@ input_image_normalized = (
     input_image_normalized[:, :, 1] * 0.5870 +  # Green channel
     input_image_normalized[:, :, 2] * 0.1140    # Blue channel
 )
+
+# Run the spline backend in float32 for performance
+# (it still computes internally in float64).
+input_image_normalized = input_image_normalized.astype(DTYPE, copy=False)
 
 h_img, w_img = input_image_normalized.shape
 

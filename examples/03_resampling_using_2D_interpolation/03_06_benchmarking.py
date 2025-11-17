@@ -46,6 +46,8 @@ def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
 
+# Use float32 for storage / IO (resize still computes internally in float64).
+DTYPE = np.float32
 
 # %%
 # Test Image Configuration
@@ -103,11 +105,12 @@ IMAGE_CONFIG: Dict[str, Dict[str, object]] = {
 
 def _load_kodak_gray(url: str) -> np.ndarray:
     """
-    Download a Kodak image, convert to grayscale [0, 1] float64.
+    Download a Kodak image, convert to grayscale [0, 1] in DTYPE
+    (float32 by default).
 
     Returns
     -------
-    img_gray : ndarray, shape (H, W)
+    img_gray : ndarray, shape (H, W), dtype=DTYPE
     """
     with urlopen(url, timeout=10) as resp:
         img = Image.open(resp)
@@ -126,7 +129,7 @@ def _load_kodak_gray(url: str) -> np.ndarray:
         vmax = float(arr.max()) or 1.0
         gray = arr / vmax
 
-    return np.clip(gray, 0.0, 1.0)
+    return np.clip(gray, 0.0, 1.0).astype(DTYPE)
 
 # %%
 # Benchmark Configuration
@@ -177,7 +180,7 @@ def _run_once_forward(
         down = resize(img, zoom_factors=zoom_factors, method=method)
         elapsed = time.perf_counter() - t0
 
-    return np.asarray(down, dtype=np.float64), elapsed
+    return np.asarray(down, dtype=img.dtype), elapsed
 
 
 def run_with_repeats(

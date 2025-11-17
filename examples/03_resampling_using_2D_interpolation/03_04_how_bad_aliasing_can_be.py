@@ -35,6 +35,9 @@ from splineops.utils.plotting import show_roi_zoom
 
 # sphinx_gallery_thumbnail_number = 5  # show the fifth figure (std canvas) as thumbnail
 
+# Use float32 for storage / IO (resize still computes internally in float64).
+DTYPE = np.float32
+
 # %%
 # Load and Prepare Base ROI
 # -------------------------
@@ -51,7 +54,8 @@ ZOOM = (0.5, 0.5)              # 0.5× downsampling demo
 
 def to_gray01(img_rgb_uint8: np.ndarray) -> np.ndarray:
     g = img_rgb_uint8.astype(np.float64) / 255.0
-    return 0.2989 * g[..., 0] + 0.5870 * g[..., 1] + 0.1140 * g[..., 2]
+    gray = 0.2989 * g[..., 0] + 0.5870 * g[..., 1] + 0.1140 * g[..., 2]
+    return gray.astype(DTYPE)
 
 with urlopen(URL_A, timeout=10) as resp:
     A = to_gray01(np.array(Image.open(resp)))

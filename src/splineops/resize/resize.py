@@ -177,10 +177,12 @@ def resize(
 
     use_cpp = _HAS_CPP and (_ACCEL_EXP := (_ACCEL_ENV != "never"))
     if use_cpp:
-        # Native path – run everything (Standard/Oblique/LS) via C++.
-        arr64 = np.asarray(data, dtype=np.float64, order="C")
+        # NOTE: keep dtype, only enforce C-order for the C++ backend.
+        arr = np.asarray(data, order="C")
+
+        # _resize_nd_cpp will choose float32 vs float64 based on arr.dtype.
         output_data = _resize_nd_cpp(
-            arr64,
+            arr,
             list(zoom_factors),
             int(interp_degree),
             int(analy_degree),
