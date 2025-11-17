@@ -22,15 +22,26 @@ static std::vector<int64> shape_to_vec_i64(const py::array &a) {
     return s;
 }
 
-// If the per-axis zoom is effectively 1.0, disable projection and fall back
-// to standard interpolation (analy_degree = -1). For all other zoom values
-// the parameters are left unchanged.
+// For magnification, prefer Standard interpolation over LS/Oblique.
+//
+// Rationale (per axis):
+//  • When zoom > 1, the LS/Oblique "analysis → synthesis" behaves like a mild
+//    deconvolution and can introduce ringing/overshoot near edges. There is
+//    no aliasing to suppress when enlarging, so anti-aliasing projections are
+//    unnecessary and potentially harmful.
+//  • When zoom ≈ 1 (identity), running the projection is also pointless and can
+//    accumulate tiny numerical noise. We therefore disable it for stability.
+//
+// Policy:
+//  • If |zoom - 1| ≤ eps  OR  zoom > 1 + eps  →  disable projection by forcing
+//    analy_degree = -1   (i.e., use Standard interpolation for this axis).
+//  • For downsampling (zoom < 1), leave analy_degree as provided so LS/Oblique
+//    anti-aliasing remains active.
+//
 static inline void normalize_params_for_magnification(lsresize::LSParams& p) {
     const double eps = 1e-12;
-    // Identity safety: never run a projection at unity zoom
-    if (std::abs(p.zoom - 1.0) <= eps) {
+    if (std::abs(p.zoom - 1.0) <= eps || p.zoom > 1.0 + eps) {
         p.analy_degree = -1;
-        return;
     }
 }
 
