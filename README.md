@@ -2,11 +2,7 @@
 
 # SplineOps: Spline Operations
 
-<<<<<<< HEAD
-`splineops` is a Python-based N-dimensional signal-processing library with
-=======
 `splineops` is a Python and C++-based N-dimensional signal-processing library with
->>>>>>> fix/polish
 support for GPU computing.
 
 ## Installation
