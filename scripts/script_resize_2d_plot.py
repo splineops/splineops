@@ -51,6 +51,20 @@ except Exception:
     torch = None
     F = None
 
+# Optional OpenCV (for comparison)
+try:
+    import cv2
+    _HAS_CV2 = True
+except Exception:
+    _HAS_CV2 = False
+
+# Optional scikit-image (for comparison)
+try:
+    from skimage.transform import resize as sk_resize
+    _HAS_SKIMAGE = True
+except Exception:
+    _HAS_SKIMAGE = False
+
 # TK dialogs for interactive selection
 import tkinter as tk
 from tkinter import filedialog, simpledialog, messagebox
@@ -243,6 +257,128 @@ def torch_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]
     else:
         raise ValueError("Expected 2D (H×W) or 3D (H×W×C) image for PyTorch path.")
 
+def opencv_roundtrip(img: np.ndarray, z: float, which: str) -> Tuple[np.ndarray, float]:
+    """
+    Round-trip with OpenCV resize using the given interpolation:
+      which in {"area", "cubic", "lanczos"}.
+    Supports 2D (H,W) and 3D (H,W,C) arrays.
+    """
+    if not _HAS_CV2:
+        raise RuntimeError("OpenCV not available")
+
+    interp = {
+        "area":   cv2.INTER_AREA,
+        "cubic":  cv2.INTER_CUBIC,
+        "lanczos": cv2.INTER_LANCZOS4,
+    }[which]
+
+    H, W = img.shape[:2]
+    W1 = int(round(W * z))
+    H1 = int(round(H * z))
+
+    t0 = time.perf_counter()
+    out = cv2.resize(img, (W1, H1), interpolation=interp)
+    rec = cv2.resize(out, (W, H), interpolation=interp)
+    dt = time.perf_counter() - t0
+
+    rec = np.clip(rec, 0.0, 1.0)
+    return rec.astype(img.dtype, copy=False), dt
+
+
+def pillow_roundtrip(img: np.ndarray, z: float, which: str) -> Tuple[np.ndarray, float]:
+    """
+    Round-trip with Pillow's resize using LANCZOS or BICUBIC.
+    Supports 2D (H,W) and 3D (H,W,3) arrays.
+    """
+    resample_map = {
+        "lanczos": Image.Resampling.LANCZOS,
+        "bicubic": Image.Resampling.BICUBIC,
+    }
+    resample = resample_map[which]
+
+    H, W = img.shape[:2]
+    W1 = int(round(W * z))
+    H1 = int(round(H * z))
+
+    # Convert to uint8 for Pillow
+    arr01 = np.clip(img, 0.0, 1.0)
+    if img.ndim == 2:
+        u8 = np.rint(arr01 * 255.0).astype(np.uint8)
+        im = Image.fromarray(u8, mode="L")
+    elif img.ndim == 3 and img.shape[2] == 3:
+        u8 = np.rint(arr01 * 255.0).astype(np.uint8)
+        im = Image.fromarray(u8, mode="RGB")
+    else:
+        raise ValueError("Pillow round-trip expects 2D or 3D (H×W×3) array")
+
+    t0 = time.perf_counter()
+    out = im.resize((W1, H1), resample=resample)
+    rec_im = out.resize((W, H), resample=resample)
+    dt = time.perf_counter() - t0
+
+    rec_arr = np.asarray(rec_im, dtype=np.float64) / 255.0
+    rec_arr = np.clip(rec_arr, 0.0, 1.0)
+
+    # If grayscale, rec_arr is (H,W); if RGB, (H,W,3)
+    return rec_arr.astype(img.dtype, copy=False), dt
+
+def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
+    """
+    Round-trip with scikit-image.transform.resize using cubic (order=3) + anti_aliasing=True.
+    Supports 2D (H,W) and 3D (H,W,C) arrays.
+    """
+    if not _HAS_SKIMAGE:
+        raise RuntimeError("scikit-image not available")
+
+    arr = np.asarray(img, dtype=np.float64)
+    H, W = arr.shape[:2]
+    H1 = int(round(H * z))
+    W1 = int(round(W * z))
+
+    t0 = time.perf_counter()
+
+    if arr.ndim == 2:
+        out = sk_resize(
+            arr,
+            (H1, W1),
+            order=3,
+            anti_aliasing=True,
+            preserve_range=True,
+            mode="reflect",
+        )
+        rec = sk_resize(
+            out,
+            (H, W),
+            order=3,
+            anti_aliasing=True,
+            preserve_range=True,
+            mode="reflect",
+        )
+    elif arr.ndim == 3:
+        C = arr.shape[2]
+        out = sk_resize(
+            arr,
+            (H1, W1, C),
+            order=3,
+            anti_aliasing=True,
+            preserve_range=True,
+            mode="reflect",
+        )
+        rec = sk_resize(
+            out,
+            (H, W, C),
+            order=3,
+            anti_aliasing=True,
+            preserve_range=True,
+            mode="reflect",
+        )
+    else:
+        raise ValueError("scikit-image round-trip expects 2D or 3D (H×W×C) array")
+
+    dt = time.perf_counter() - t0
+
+    rec = np.clip(rec, 0.0, 1.0)
+    return rec.astype(img.dtype, copy=False), dt
 
 def average_time(run, repeats: int = 10):
     """Return (last_rec, mean_time, std_time) over 'repeats' runs."""
@@ -338,6 +474,19 @@ def main():
     else:
         print("[info] PyTorch not found; 'PyTorch bicubic (AA)' curve will be omitted.")
 
+    if _HAS_CV2:
+        METHODS["OpenCV INTER_AREA"] = ("opencv", "area")
+    else:
+        print("[info] OpenCV not found; 'OpenCV INTER_AREA' curve will be omitted.")
+
+    # Pillow is always available (we already import PIL.Image above)
+    METHODS["Pillow LANCZOS"] = ("pillow", "lanczos")
+
+    if _HAS_SKIMAGE:
+        METHODS["scikit-image (cubic, AA)"] = ("skimage", None)
+    else:
+        print("[info] scikit-image not found; 'scikit-image (cubic, AA)' curve will be omitted.")
+
     results: Dict[str, Dict[str, List[float]]] = {
         name: {"z": [], "time": [], "time_sd": [], "snr": []} for name in METHODS
     }
@@ -351,6 +500,12 @@ def main():
                 runner = lambda z=z, m=method: spl_roundtrip(img, z, m)
             elif kind == "torch":
                 runner = lambda z=z: torch_cubic_roundtrip(img, z)
+            elif kind == "opencv":
+                runner = lambda z=z, w=method: opencv_roundtrip(img, z, w)
+            elif kind == "pillow":
+                runner = lambda z=z, w=method: pillow_roundtrip(img, z, w)
+            elif kind == "skimage":
+                runner = lambda z=z: skimage_roundtrip(img, z)
             else:
                 continue
 
