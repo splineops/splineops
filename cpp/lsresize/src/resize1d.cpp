@@ -13,7 +13,7 @@
   #include <immintrin.h>
 #endif
 
-#if defined(__aarch64__) || defined(__ARM_NEON)
+#if defined(__aarch64__) || defined(__ARM_NEON) || defined(__ARM_NEON__)
   #include <arm_neon.h>
 #endif
 
@@ -79,22 +79,18 @@ static inline double dot_small(const double* w, const double* v, int M) {
     }
     return acc;
   }
-#elif defined(__aarch64__) || defined(__ARM_NEON__)
+#elif defined(__aarch64__) || defined(__ARM_NEON) || defined(__ARM_NEON__)
   {
-    // NEON double-precision dot product
     float64x2_t acc0 = vdupq_n_f64(0.0);
     int t = 0;
-    for (; t + 2 <= M; ++t) {
+    for (; t + 2 <= M; t += 2) {
       float64x2_t ww = vld1q_f64(w + t);
       float64x2_t vv = vld1q_f64(v + t);
       acc0 = vmlaq_f64(acc0, ww, vv);  // acc0 += ww * vv
-      t += 1; // we've consumed 2 doubles; adjust loop if you want to unroll more
     }
-    // Horizontal add of acc0's two lanes
     double tmp[2];
     vst1q_f64(tmp, acc0);
     double acc = tmp[0] + tmp[1];
-    // Handle remaining element if M is odd
     for (; t < M; ++t) {
       acc += w[t] * v[t];
     }
