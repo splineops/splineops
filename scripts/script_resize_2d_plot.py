@@ -1,18 +1,22 @@
 # splineops/scripts/script_resize_2d_plot.py
 """
-Sweep zoom factors in [0.01, 2.0) (2.0 excluded) while *excluding 1.0*, keep only those that
-round-trip image size exactly, and compare five methods:
+Sweep zoom factors in (0, 2) while *excluding 1.0*, keep only those that
+round-trip image size exactly, and compare multiple methods:
 
 - SciPy cubic
 - Standard cubic (splineops)
 - Least-Squares cubic (best AA, splineops)
 - Oblique cubic (fast AA, splineops)
-- PyTorch bicubic (antialiased)
+- PyTorch bicubic (antialiased, CPU)
+- OpenCV INTER_AREA
+- Pillow LANCZOS
+- scikit-image (cubic, anti-aliased)
 
 If --image is not provided, a file dialog pops up; canceling it prompts for a URL.
 
 This version averages timing over N runs per zoom (default: 10) and displays
-two plots: timing vs zoom and SNR vs zoom (no files are written to disk).
+timing and SNR vs zoom plots. You can plot downsampling (0<z<1), upsampling
+(1<z<2), or both.
 
 By default the sweep runs in float32 for performance. You can change the
 global DTYPE constant to np.float64 if you want full double precision.
@@ -257,6 +261,7 @@ def torch_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]
     else:
         raise ValueError("Expected 2D (H×W) or 3D (H×W×C) image for PyTorch path.")
 
+
 def opencv_roundtrip(img: np.ndarray, z: float, which: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip with OpenCV resize using the given interpolation:
@@ -322,6 +327,7 @@ def pillow_roundtrip(img: np.ndarray, z: float, which: str) -> Tuple[np.ndarray,
     # If grayscale, rec_arr is (H,W); if RGB, (H,W,3)
     return rec_arr.astype(img.dtype, copy=False), dt
 
+
 def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
     """
     Round-trip with scikit-image.transform.resize using cubic (order=3) + anti_aliasing=True.
@@ -380,6 +386,7 @@ def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
     rec = np.clip(rec, 0.0, 1.0)
     return rec.astype(img.dtype, copy=False), dt
 
+
 def average_time(run, repeats: int = 10):
     """Return (last_rec, mean_time, std_time) over 'repeats' runs."""
     times: List[float] = []
@@ -400,12 +407,19 @@ def main():
         description="Timing & SNR sweep with interactive image selection (averaged runs)."
     )
     ap.add_argument("--image", type=str, default=None, help="Optional path/URL; if omitted, a dialog opens.")
-    ap.add_argument("--samples", type=int, default=40,
+    ap.add_argument("--samples", type=int, default=200,
                     help="Base number of zoom samples per side if --samples-down/--samples-up are not given.")
     ap.add_argument("--samples-down", type=int, default=None,
                     help="Number of zoom samples in the interval (0, 1). Overrides --samples if set.")
     ap.add_argument("--samples-up", type=int, default=None,
                     help="Number of zoom samples in the interval (1, 2). Overrides --samples if set.")
+    ap.add_argument(
+        "--which",
+        type=str,
+        default="down",
+        choices=("both", "down", "up"),
+        help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
+    )
     ap.add_argument("--grayscale", type=int, default=1, help="1=convert to grayscale, 0=keep RGB.")
     ap.add_argument("--repeats", type=int, default=10, help="Average this many runs per (method, z).")
     args = brush_args(ap.parse_args())
@@ -422,13 +436,15 @@ def main():
     H, W = int(img.shape[0]), int(img.shape[1])
     print(f"Loaded image: {path_or_url} | shape={img.shape}, dtype={img.dtype}")
 
-    # Build separate zoom grids for downsampling (0 < z < 1) and upsampling (1 < z < 2)
+    #
+    # Build zoom candidates
+    #
     n_down = args.samples_down if args.samples_down is not None else args.samples
     n_up   = args.samples_up   if args.samples_up   is not None else args.samples
 
     eps = 1e-6  # margin to avoid hitting exactly 0, 1, or 2
     if n_down > 0:
-        z_down = np.linspace(0.01, 1.0 - eps, n_down, endpoint=True, dtype=np.float64)
+        z_down = np.linspace(0.001, 1.0 - eps, n_down, endpoint=True, dtype=np.float64)
     else:
         z_down = np.array([], dtype=np.float64)
 
@@ -437,7 +453,13 @@ def main():
     else:
         z_up = np.array([], dtype=np.float64)
 
-    z_candidates = np.concatenate([z_down, z_up])
+    # Use only the requested regime(s)
+    if args.which == "down":
+        z_candidates = z_down
+    elif args.which == "up":
+        z_candidates = z_up
+    else:  # "both"
+        z_candidates = np.concatenate([z_down, z_up])
 
     # Guard against any accidental inclusion of 1.0 or 2.0
     z_candidates = z_candidates[(z_candidates > 0.0) & (z_candidates < 2.0)]
@@ -458,11 +480,9 @@ def main():
         f"(down: {n_down}, up: {n_up}, |z-1|>{NEAR_ONE_EPS}, 2.0 excluded)."
     )
 
-    if not z_list:
-        print("No valid zoom factors after round-trip size check. Try increasing --samples.")
-        sys.exit(1)
-    print(f"Accepted {len(z_list)} / {len(z_candidates)} zooms (1.0 excluded).")
-
+    #
+    # Methods
+    #
     METHODS: Dict[str, Tuple[str, str | None]] = {
         "SciPy cubic":               ("scipy",     None),
         "Standard cubic":            ("splineops", "cubic"),
@@ -491,6 +511,9 @@ def main():
         name: {"z": [], "time": [], "time_sd": [], "snr": []} for name in METHODS
     }
 
+    #
+    # Run sweep
+    #
     for idx, z in enumerate(z_list, 1):
         print(f"[{idx:>3}/{len(z_list)}] z={z:.5f}", end="\r")
         for name, (kind, method) in METHODS.items():
@@ -512,7 +535,7 @@ def main():
             try:
                 rec, t_mean, t_sd = average_time(runner, repeats=args.repeats)
             except Exception as e:
-                # If PyTorch (or any method) fails at a particular zoom, skip it
+                # If any method fails at a particular zoom, skip that sample
                 print(f"\n[warn] {name} failed at z={z:.5f}: {e}")
                 continue
 
@@ -524,36 +547,69 @@ def main():
             results[name]["snr"].append(s)
     print("\nDone. Plotting...")
 
-    # Timing vs zoom
-    plt.figure(figsize=(9.5, 5.5))
-    for name, data in results.items():
-        if not data["z"]:
-            continue  # skipped (e.g. no PyTorch)
-        z = np.array(data["z"], dtype=float)
-        t = np.array(data["time"], dtype=float)
-        plt.plot(z, t, marker="o", markersize=3, linewidth=1.5, label=name)
-    plt.xlabel("Zoom factor (1.0 excluded)")
-    plt.ylabel(f"Time (s)  [avg of {args.repeats} runs, forward + backward]")
-    plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W}, dtype={DTYPE})")
-    plt.grid(True, alpha=0.35)
-    plt.legend()
-    plt.tight_layout()
+    #
+    # Plot helpers
+    #
+    def plot_region(region: str):
+        if region == "down":
+            title_suffix = " (downsampling, 0 < z < 1)"
+            mask_fn = lambda z: z < 1.0
+        elif region == "up":
+            title_suffix = " (upsampling, 1 < z < 2)"
+            mask_fn = lambda z: z > 1.0
+        else:
+            return  # no-op
 
-    # SNR vs zoom
-    plt.figure(figsize=(9.5, 5.5))
-    for name, data in results.items():
-        if not data["z"]:
-            continue
-        z = np.array(data["z"], dtype=float)
-        s = np.array(data["snr"], dtype=float)
-        s_plot = np.where(np.isfinite(s), s, np.nan)  # hide +inf for plotting
-        plt.plot(z, s_plot, marker="o", markersize=3, linewidth=1.5, label= name)
-    plt.xlabel("Zoom factor (1.0 excluded)")
-    plt.ylabel("SNR (dB)  [original vs recovered]")
-    plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype={DTYPE})")
-    plt.grid(True, alpha=0.35)
-    plt.legend()
-    plt.tight_layout()
+        # Timing
+        plt.figure(figsize=(9.5, 5.5))
+        any_curve = False
+        for name, data in results.items():
+            if not data["z"]:
+                continue
+            z = np.array(data["z"], dtype=float)
+            t = np.array(data["time"], dtype=float)
+            mask = mask_fn(z)
+            if not mask.any():
+                continue
+            any_curve = True
+            plt.plot(z[mask], t[mask], marker="o", markersize=3, linewidth=1.5, label=name)
+        if any_curve:
+            plt.xlabel("Zoom factor")
+            plt.ylabel(f"Time (s)  [avg of {args.repeats} runs, forward + backward]")
+            plt.title(f"Round-Trip Timing vs Zoom{title_suffix}  (H×W = {H}×{W}, dtype={DTYPE})")
+            plt.grid(True, alpha=0.35)
+            plt.legend()
+            plt.tight_layout()
+
+        # SNR
+        plt.figure(figsize=(9.5, 5.5))
+        any_curve = False
+        for name, data in results.items():
+            if not data["z"]:
+                continue
+            z = np.array(data["z"], dtype=float)
+            s = np.array(data["snr"], dtype=float)
+            mask = mask_fn(z)
+            if not mask.any():
+                continue
+            any_curve = True
+            s_plot = np.where(np.isfinite(s[mask]), s[mask], np.nan)
+            plt.plot(z[mask], s_plot, marker="o", markersize=3, linewidth=1.5, label=name)
+        if any_curve:
+            plt.xlabel("Zoom factor")
+            plt.ylabel("SNR (dB)  [original vs recovered]")
+            plt.title(f"Round-Trip SNR vs Zoom{title_suffix}  (H×W = {H}×{W}, dtype={DTYPE})")
+            plt.grid(True, alpha=0.35)
+            plt.legend()
+            plt.tight_layout()
+
+    #
+    # Plot selected regions
+    #
+    if args.which in ("both", "down"):
+        plot_region("down")
+    if args.which in ("both", "up"):
+        plot_region("up")
 
     plt.show()
 
