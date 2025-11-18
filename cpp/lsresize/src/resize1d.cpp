@@ -13,6 +13,10 @@
   #include <immintrin.h>
 #endif
 
+#if defined(__aarch64__) || defined(__ARM_NEON)
+  #include <arm_neon.h>
+#endif
+
 namespace lsresize {
 
 // -----------------------------------------------------------------------------
@@ -49,33 +53,60 @@ static inline double dot_small(const double* w, const double* v, int M) {
   if (!force_avx2() && M >= 64) {
     __m512d acc0 = _mm512_setzero_pd();
     int t = 0;
-    for (; t + 8 <= M; t += 8) {
+    for (; t + 8 <= M; ++t) {
       __m512d ww = _mm512_loadu_pd(w + t);
       __m512d vv = _mm512_loadu_pd(v + t);
       acc0 = _mm512_fmadd_pd(ww, vv, acc0);
     }
     double acc = hsum512(acc0);
-    for (; t < M; ++t) acc += w[t] * v[t];
+    for (; t < M; ++t) {
+      acc += w[t] * v[t];
+    }
     return acc;
   }
-#endif
-#if defined(__AVX2__)
+#elif defined(__AVX2__)
   {
     __m256d acc0 = _mm256_setzero_pd();
     int t = 0;
-    for (; t + 4 <= M; t += 4) {
+    for (; t + 4 <= M; ++t) {
       __m256d ww = _mm256_loadu_pd(w + t);
       __m256d vv = _mm256_loadu_pd(v + t);
       acc0 = _mm256_fmadd_pd(ww, vv, acc0);
     }
     double acc = hsum256(acc0);
-    for (; t < M; ++t) acc += w[t] * v[t];
+    for (; t < M; ++t) {
+      acc += w[t] * v[t];
+    }
+    return acc;
+  }
+#elif defined(__aarch64__) || defined(__ARM_NEON__)
+  {
+    // NEON double-precision dot product
+    float64x2_t acc0 = vdupq_n_f64(0.0);
+    int t = 0;
+    for (; t + 2 <= M; ++t) {
+      float64x2_t ww = vld1q_f64(w + t);
+      float64x2_t vv = vld1q_f64(v + t);
+      acc0 = vmlaq_f64(acc0, ww, vv);  // acc0 += ww * vv
+      t += 1; // we've consumed 2 doubles; adjust loop if you want to unroll more
+    }
+    // Horizontal add of acc0's two lanes
+    double tmp[2];
+    vst1q_f64(tmp, acc0);
+    double acc = tmp[0] + tmp[1];
+    // Handle remaining element if M is odd
+    for (; t < M; ++t) {
+      acc += w[t] * v[t];
+    }
     return acc;
   }
 #endif
+
   // Scalar fallback
   double acc = 0.0;
-  for (int t = 0; t < M; ++t) acc += w[t] * v[t];
+  for (int t = 0; t < M; ++t) {
+    acc += w[t] * v[t];
+  }
   return acc;
 }
 
