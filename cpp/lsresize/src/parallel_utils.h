@@ -51,16 +51,17 @@ inline void run_parallel_or_serial(std::int64_t nlines,
 
 #if defined(LSRESIZE_WITH_OPENMP)
   if (use_parallel(nlines, plan)) {
-    int chunk = 32;
-    if (const char* e = std::getenv("LSRESIZE_OMP_CHUNK")) {
-      if (int c = std::atoi(e); c > 0) chunk = c;
-    }
-
     #pragma omp parallel
     {
-      #pragma omp for schedule(static, chunk)
-      for (std::int64_t line = 0; line < nlines; ++line) {
-        worker(line, line + 1);
+      int nth = omp_get_num_threads();
+      int tid = omp_get_thread_num();
+
+      std::int64_t chunk = (nlines + nth - 1) / nth;
+      std::int64_t start = tid * chunk;
+      std::int64_t end   = std::min<std::int64_t>(nlines, start + chunk);
+
+      if (start < end) {
+        worker(start, end);  // one call per thread, many lines
       }
     }
     return;
