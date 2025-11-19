@@ -45,10 +45,11 @@ from PIL import Image
 # Default storage dtype for comparison (change to np.float64 if desired)
 DTYPE = np.float32
 
-# Optional deps (gracefully skipped when missing)
 try:
     import cv2
     _HAS_CV2 = True
+    # Undo OpenCV's Qt plugin path override to keep using the system/PyQt plugins
+    os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
 except Exception:
     _HAS_CV2 = False
 

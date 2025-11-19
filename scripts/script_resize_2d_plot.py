@@ -59,6 +59,8 @@ except Exception:
 try:
     import cv2
     _HAS_CV2 = True
+    # Undo OpenCV's Qt plugin path override to avoid conflicts with PyQt/Matplotlib
+    os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
 except Exception:
     _HAS_CV2 = False
 
