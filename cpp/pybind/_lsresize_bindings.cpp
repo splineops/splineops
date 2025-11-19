@@ -10,7 +10,7 @@
 #include <cmath>       // std::abs
 #include <functional>  // std::multiplies
 
-#include "../lsresize/src/resizend.h"
+#include "../lsresize/src/resize_nd.h"
 #include "../lsresize/src/utils.h"
 
 namespace py = pybind11;

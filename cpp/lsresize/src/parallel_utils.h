@@ -16,7 +16,7 @@
   #include <thread>
 #endif
 
-#include "resize1d.h"  // for lsresize::Plan1D
+#include "resize_1d.h"  // for lsresize::Plan1D
 
 namespace lsresize {
 

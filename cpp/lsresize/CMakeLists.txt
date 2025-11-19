@@ -18,8 +18,8 @@ message(STATUS "SRC_DIR = ${SRC_DIR}") # helpful sanity check
 # Core library
 add_library(lsresize STATIC
   "${SRC_DIR}/filters.cpp"
-  "${SRC_DIR}/resize1d.cpp"
-  "${SRC_DIR}/resizend.cpp"
+  "${SRC_DIR}/resize_1d.cpp"
+  "${SRC_DIR}/resize_nd.cpp"
 )
 target_include_directories(lsresize PUBLIC "${SRC_DIR}")
 target_compile_features(lsresize PUBLIC cxx_std_17)

@@ -1,5 +1,5 @@
-// splineops/cpp/lsresize/src/resize1d.cpp
-#include "resize1d.h"
+// splineops/cpp/lsresize/src/resize_1d.cpp
+#include "resize_1d.h"
 #include "bspline.h"
 #include "filters.h"
 #include "utils.h"
