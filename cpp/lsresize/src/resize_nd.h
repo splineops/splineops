@@ -1,8 +1,8 @@
-// splineops/cpp/lsresize/src/resizend.h
+// splineops/cpp/lsresize/src/resize_nd.h
 #pragma once
 #include <vector>
 #include <cstdint>
-#include "resize1d.h"
+#include "resize_1d.h"
 
 namespace lsresize {
 

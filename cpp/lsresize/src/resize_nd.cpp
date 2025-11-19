@@ -1,8 +1,8 @@
-// splineops/cpp/lsresize/src/resizend.cpp
-#include "resizend.h"
+// splineops/cpp/lsresize/src/resize_nd.cpp
+#include "resize_nd.h"
 #include "utils.h"
 #include "parallel_utils.h"
-#include "resize1d.h"
+#include "resize_1d.h"
 
 #include <vector>
 #include <numeric>

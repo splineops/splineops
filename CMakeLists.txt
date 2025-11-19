@@ -32,8 +32,8 @@ set(PYBIND_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/cpp/pybind")
 
 add_library(lsresize STATIC
   "${LSRESIZE_SRC_DIR}/filters.cpp"
-  "${LSRESIZE_SRC_DIR}/resize1d.cpp"
-  "${LSRESIZE_SRC_DIR}/resizend.cpp"
+  "${LSRESIZE_SRC_DIR}/resize_1d.cpp"
+  "${LSRESIZE_SRC_DIR}/resize_nd.cpp"
 )
 target_include_directories(lsresize PUBLIC "${LSRESIZE_SRC_DIR}")
 target_compile_features(lsresize PUBLIC cxx_std_17)
