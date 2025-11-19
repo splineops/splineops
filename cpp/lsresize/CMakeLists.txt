@@ -1,8 +1,11 @@
 # splineops/cpp/lsresize/src/CMakeLists.txt
 cmake_minimum_required(VERSION 3.20)
-project(lsresize LANGUAGES CXX)
+project(lsresize_demo LANGUAGES CXX)
 
-option(LSRESIZE_USE_OPENMP "Enable OpenMP for parallel loops" ON)
+# Parallel options (same semantics as top-level)
+option(LSRESIZE_USE_OPENMP  "Enable OpenMP for parallel loops" ON)
+option(LSRESIZE_USE_STDTHREAD
+       "Use std::thread for parallel loops if OpenMP is unavailable" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,13 +31,21 @@ else()
   target_compile_options(lsresize PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-# OpenMP (optional)
+# --- Parallel backend selection (OpenMP or std::thread) ---
+
 if (LSRESIZE_USE_OPENMP)
   find_package(OpenMP QUIET)
-  if (OpenMP_CXX_FOUND)
-    target_link_libraries(lsresize PUBLIC OpenMP::OpenMP_CXX)
-    target_compile_definitions(lsresize PUBLIC LSRESIZE_WITH_OPENMP=1)
-  endif()
+endif()
+
+if (OpenMP_CXX_FOUND)
+  message(STATUS "lsresize demo: building with OpenMP")
+  target_link_libraries(lsresize PUBLIC OpenMP::OpenMP_CXX)
+  target_compile_definitions(lsresize PUBLIC LSRESIZE_WITH_OPENMP=1)
+elseif (LSRESIZE_USE_STDTHREAD)
+  message(STATUS "lsresize demo: OpenMP not found, using std::thread fallback")
+  target_compile_definitions(lsresize PUBLIC LSRESIZE_WITH_STDTHREAD=1)
+else()
+  message(STATUS "lsresize demo: building single-threaded (no OpenMP, no std::thread)")
 endif()
 
 # Demo executable (placed at top-level next to this CMakeLists)
@@ -48,6 +59,7 @@ if (BUILD_TESTING)
   add_test(NAME run_demo_ok COMMAND run_demo)
 endif()
 
-# cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-# cmake --build build --config Release
-# .\build\Release\run_demo.exe 
+# Usage (example):
+#   cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+#   cmake --build build --config Release
+#   .\build\Release\run_demo.exe
