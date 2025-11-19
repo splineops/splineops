@@ -29,15 +29,15 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict
 
-# ---- Matplotlib backend (set BEFORE importing pyplot) ----
-# Use native Cocoa windows on macOS to avoid TkAgg/Tkinter interactions.
-if sys.platform == "darwin":
-    os.environ.setdefault("TK_SILENCE_DEPRECATION", "1")  # quiets some Tk deprecation logs
-    try:
-        import matplotlib as mpl
-        mpl.use("MacOSX")
-    except Exception:
-        pass  # fallback to default; dialog-parenting still helps
+# --- GUI / Matplotlib backend setup ---
+try:
+    from PyQt5 import QtWidgets  # single GUI toolkit for dialogs
+    import matplotlib as mpl
+    mpl.use("QtAgg")  # Use Qt-based backend on all platforms
+except Exception:
+    # Fallback: no PyQt5 available, let Matplotlib pick a default backend
+    import matplotlib as mpl
+    QtWidgets = None  # type: ignore[assignment]
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
