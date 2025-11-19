@@ -27,7 +27,7 @@ import sys
 import time
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, TYPE_CHECKING
+from typing import Optional, Tuple, List, Dict
 
 # ---- Matplotlib backend (set BEFORE importing pyplot) ----
 # Use native Cocoa windows on macOS to avoid TkAgg/Tkinter interactions.
@@ -55,19 +55,7 @@ except Exception:
 # Default storage dtype for the demo (change to np.float64 if desired)
 DTYPE = np.float32
 
-# --- Tkinter UI ---
-try:
-    import tkinter as tk
-    from tkinter import filedialog, messagebox, ttk
-except Exception:
-    tk = None  # type: ignore[assignment]
-    filedialog = None  # type: ignore[assignment]
-    messagebox = None  # type: ignore[assignment]
-    ttk = None  # type: ignore[assignment]
-
-# Typing-only alias
-if TYPE_CHECKING:
-    import tkinter as tkt
+from PyQt5 import QtWidgets
 
 # Import splineops (works when run directly or as module)
 try:
@@ -197,89 +185,115 @@ def _fmt_time(sec: Optional[float]) -> str:
     return f"{sec*1000:.1f} ms" if sec < 1.0 else f"{sec:.3f} s"
 
 # ------------------------
-# Tiny settings UI (Tkinter)
+# Tiny settings UI (PyQt5)
 # ------------------------
-class SettingsDialog:
-    def __init__(self, parent: "tkt.Tk", default_zoom: float = 0.5,
-                 default_method_key: str = "ls-cubic") -> None:
-        self.parent = parent
-        self.result: Optional[Tuple[float, str]] = None
+class SettingsDialog(QtWidgets.QDialog):
+    def __init__(
+        self,
+        parent: Optional[QtWidgets.QWidget] = None,
+        default_zoom: float = 0.5,
+        default_method_key: str = "ls-cubic",
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Resize Settings")
+        self._result: Optional[Tuple[float, str]] = None
 
-        self.top = tk.Toplevel(parent)
-        self.top.title("Resize Settings")
-        self.top.resizable(False, False)
-        self.top.grab_set()
+        layout = QtWidgets.QGridLayout(self)
 
-        frm = ttk.Frame(self.top, padding=12)
-        frm.grid(row=0, column=0, sticky="nsew")
+        # Zoom row
+        zoom_label = QtWidgets.QLabel("Zoom factor (> 0):")
+        self.zoom_edit = QtWidgets.QLineEdit(str(default_zoom))
+        self.zoom_edit.setFixedWidth(100)
 
-        ttk.Label(frm, text="Zoom factor (> 0):").grid(row=0, column=0, sticky="w")
-        self.zoom_var = tk.StringVar(value=str(default_zoom))
-        self.zoom_entry = ttk.Entry(frm, textvariable=self.zoom_var, width=12)
-        self.zoom_entry.grid(row=0, column=1, sticky="w", padx=(8, 0))
+        layout.addWidget(zoom_label, 0, 0)
+        layout.addWidget(self.zoom_edit, 0, 1)
 
-        ttk.Label(frm, text="Method:").grid(row=1, column=0, sticky="w", pady=(10, 0))
-        self.method_combo = ttk.Combobox(
-            frm, values=METHOD_LABELS, state="readonly", width=30
-        )
+        # Method row
+        method_label = QtWidgets.QLabel("Method:")
+        self.method_combo = QtWidgets.QComboBox()
+        self.method_combo.addItems(METHOD_LABELS)
+
         default_label = KEY_TO_LABEL.get(default_method_key, "Least-Squares Cubic")
-        self.method_combo.set(default_label)
-        self.method_combo.grid(row=1, column=1, sticky="w", padx=(8, 0), pady=(10, 0))
+        idx = self.method_combo.findText(default_label)
+        if idx >= 0:
+            self.method_combo.setCurrentIndex(idx)
+        else:
+            self.method_combo.setCurrentIndex(0)
 
-        btns = ttk.Frame(frm)
-        btns.grid(row=2, column=0, columnspan=2, sticky="e", pady=(12, 0))
-        ttk.Button(btns, text="OK", command=self._on_ok).grid(row=0, column=0, padx=(0, 6))
-        ttk.Button(btns, text="Cancel", command=self._on_cancel).grid(row=0, column=1)
+        layout.addWidget(method_label, 1, 0)
+        layout.addWidget(self.method_combo, 1, 1)
 
-        self.top.bind("<Return>", lambda e: self._on_ok())
-        self.top.bind("<Escape>", lambda e: self._on_cancel())
-        self.zoom_entry.focus_set()
-        self.top.protocol("WM_DELETE_WINDOW", self._on_cancel)
+        # Buttons row (OK / Cancel on the right)
+        btn_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        btn_box.accepted.connect(self._on_accept)
+        btn_box.rejected.connect(self.reject)
+        layout.addWidget(btn_box, 2, 0, 1, 2)
 
-        # Center dialog
-        self.parent.update_idletasks(); self.top.update_idletasks()
-        w, h = self.top.winfo_width(), self.top.winfo_height()
-        x = (self.top.winfo_screenwidth() - w) // 2
-        y = (self.top.winfo_screenheight() - h) // 3
-        self.top.geometry(f"+{x}+{y}")
+        self.zoom_edit.selectAll()
+        self.zoom_edit.setFocus()
 
-        self.parent.wait_window(self.top)
+        self.adjustSize()
+        self._center_on_screen()
 
-    def _on_ok(self):
+    @property
+    def result(self) -> Optional[Tuple[float, str]]:
+        return self._result
+
+    def _center_on_screen(self) -> None:
+        """Roughly center the dialog on the primary screen (similar to the Tk version)."""
+        screen = QtWidgets.QApplication.primaryScreen()
+        if screen is None:
+            return
+        geo = screen.availableGeometry()
+        x = geo.x() + (geo.width() - self.width()) // 2
+        y = geo.y() + (geo.height() - self.height()) // 3
+        self.move(x, y)
+
+    def _on_accept(self) -> None:
         try:
-            z = float(self.zoom_var.get().strip())
+            z = float(self.zoom_edit.text().strip())
             if not np.isfinite(z) or z <= 0:
                 raise ValueError
         except Exception:
-            messagebox.showerror("Invalid zoom", "Please enter a positive number for the zoom factor.",
-                                 parent=self.top)
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Invalid zoom",
+                "Please enter a positive number for the zoom factor.",
+            )
             return
-        label = self.method_combo.get()
+
+        label = self.method_combo.currentText()
         key = LABEL_TO_KEY.get(label)
         if key is None:
-            messagebox.showerror("Invalid method", "Please choose a resize method.", parent=self.top)
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Invalid method",
+                "Please choose a resize method.",
+            )
             return
-        self.result = (z, key)
-        self.top.destroy()
 
-    def _on_cancel(self):
-        self.result = None
-        self.top.destroy()
+        self._result = (z, key)
+        self.accept()
 
 # ------------------------
 # UI helpers
 # ------------------------
-def _select_image_with_dialog(parent=None) -> Optional[Path]:
-    filetypes = [
-        ("Image files", ("*.png", "*.jpg", "*.jpeg", "*.tif", "*.tiff")),
-        ("PNG", "*.png"),
-        ("JPEG", ("*.jpg", "*.jpeg")),
-        ("TIFF", ("*.tif", "*.tiff")),
-        ("All files", "*"),
-    ]
-    path = filedialog.askopenfilename(title="Select an image",
-                                      filetypes=filetypes,
-                                      parent=parent)
+def _select_image_with_dialog(parent: Optional[QtWidgets.QWidget] = None) -> Optional[Path]:
+    filters = (
+        "Image files (*.png *.jpg *.jpeg *.tif *.tiff);;"
+        "PNG (*.png);;"
+        "JPEG (*.jpg *.jpeg);;"
+        "TIFF (*.tif *.tiff);;"
+        "All files (*)"
+    )
+    path, _ = QtWidgets.QFileDialog.getOpenFileName(
+        parent,
+        "Select an image",
+        "",
+        filters,
+    )
     return Path(path).expanduser() if path else None
 
 def _show_gray_image(img01: np.ndarray):
@@ -365,46 +379,31 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
 # Main flow
 # ------------------------
 def main(argv=None) -> int:
-    if tk is None:
-        print("Error: Tkinter is not available (install python3-tk).", file=sys.stderr)
-        return 2
-
-    # Create a root for dialogs, keep it alive until AFTER we’ve read the image & params.
-    root = tk.Tk()
-    root.withdraw()
-    root.update()
+    # Ensure a Qt application exists for dialogs
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(sys.argv)
 
     cli_path = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else None
-    img_path = cli_path if (cli_path and cli_path.exists()) else _select_image_with_dialog(parent=root)
+    img_path = cli_path if (cli_path and cli_path.exists()) else _select_image_with_dialog(parent=None)
     if img_path is None:
-        try: root.destroy()
-        except Exception: pass
         return 0  # cancelled
 
-    dlg = SettingsDialog(root, default_zoom=0.5, default_method_key="ls-cubic")
-    if dlg.result is None:
-        try: root.destroy()
-        except Exception: pass
+    dlg = SettingsDialog(parent=None, default_zoom=0.5, default_method_key="ls-cubic")
+    if dlg.exec_() != QtWidgets.QDialog.Accepted or dlg.result is None:
         return 0  # cancelled
     zoom, method_key = dlg.result
 
-    # Load + grayscale (report errors with the root as parent)
+    # Load + grayscale (error reported via Qt message box, like before with Tk)
     try:
         gray01 = _open_as_gray01(img_path)
     except Exception as e:
-        messagebox.showerror("Open failed",
-                             f"Could not open image:\n{img_path}\n\n{e}",
-                             parent=root)
-        try: root.destroy()
-        except Exception: pass
+        QtWidgets.QMessageBox.critical(
+            None,
+            "Open failed",
+            f"Could not open image:\n{img_path}\n\n{e}",
+        )
         return 1
-
-    # IMPORTANT on macOS: destroy Tk root BEFORE opening any Matplotlib windows.
-    # We’re using the "MacOSX" backend for figures, so they don’t need Tk at all.
-    try:
-        root.destroy()
-    except Exception:
-        pass
 
     # 1) Original grayscale
     _show_gray_image(gray01)
@@ -413,7 +412,7 @@ def main(argv=None) -> int:
     try:
         out = _resize_gray(gray01, method_key, zoom)
     except Exception as e:
-        # No root here anymore: report to stderr and abort
+        # No main Qt window here: just report to stderr and abort
         print(f"Resize failed: {e}", file=sys.stderr)
         return 1
     _show_gray_image(out)
@@ -424,12 +423,11 @@ def main(argv=None) -> int:
     _comparison_figure(results, zoom, degree, base_shape=gray01.shape)
 
     try:
-        plt.close('all')
+        plt.close("all")
     except Exception:
         pass
 
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

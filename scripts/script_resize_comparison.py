@@ -11,7 +11,7 @@ Compare splineops interpolation against common stacks at a chosen zoom:
 - scikit-image (resize, order=3, anti_aliasing=True)
 - PyTorch (F.interpolate bicubic, antialias=True, CPU)
 
-pip install opencv-python scikit-image torch torchvision
+pip install opencv-python scikit-image torch torchvision PyQt5
 
 Workflow
 --------
@@ -88,17 +88,7 @@ try:
 except Exception:
     _HAS_REQUESTS = False
 
-# ---- Tk file/URL dialogs ----
-try:
-    import tkinter as tk
-    from tkinter import filedialog, simpledialog, messagebox
-    _HAS_TK = True
-except Exception:
-    _HAS_TK = False
-    filedialog = None
-    simpledialog = None
-    messagebox = None
-
+from PyQt5 import QtWidgets
 
 # ---------------------------
 # Utilities
@@ -182,50 +172,74 @@ def _load_image_any(path_or_url: str) -> Image.Image:
     return Image.open(path_or_url)
 
 def _choose_image_dialog() -> Optional[str]:
-    if not _HAS_TK:
-        return None
-    root = tk.Tk()
-    root.withdraw()
-    root.update()
-    path = filedialog.askopenfilename(
-        title="Select an image",
-        filetypes=[
-            ("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff"),
-            ("All files", "*.*"),
-        ],
+    """
+    Use a Qt file dialog to pick an image.
+    If cancelled, ask for a URL (same wording as before).
+    """
+    filters = (
+        "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff);;"
+        "All files (*)"
     )
-    root.update()
+
+    path, _ = QtWidgets.QFileDialog.getOpenFileName(
+        None,
+        "Select an image",
+        "",
+        filters,
+    )
+
     if path:
         try:
             Image.open(path).close()
-            root.destroy()
             return path
         except Exception as e:
-            messagebox.showerror("Open failed", f"Could not open file:\n{e}", parent=root)
-            root.destroy()
+            QtWidgets.QMessageBox.critical(
+                None,
+                "Open failed",
+                f"Could not open file:\n{e}",
+            )
             return None
 
-    # Fallback: ask for URL
-    url = simpledialog.askstring("Image URL", "Paste an image URL (or Cancel):", parent=root)
-    root.destroy()
-    return url.strip() if url else None
+    # Fallback: ask for URL (same title/prompt)
+    url, ok = QtWidgets.QInputDialog.getText(
+        None,
+        "Image URL",
+        "Paste an image URL (or Cancel):",
+    )
+    if ok:
+        url_str = str(url).strip()
+        if url_str:
+            return url_str
+
+    return None
 
 def _ask_zoom_factor(default: float = 0.3) -> Optional[float]:
-    if not _HAS_TK:
-        return default
-    root = tk.Tk(); root.withdraw(); root.update()
-    s = simpledialog.askstring("Zoom factor", "Enter zoom factor (>0):", initialvalue=str(default), parent=root)
-    root.destroy()
-    if s is None:
+    """
+    Ask for zoom factor via Qt input dialog.
+    Same title/prompt; returns None on cancel or invalid input.
+    """
+    text, ok = QtWidgets.QInputDialog.getText(
+        None,
+        "Zoom factor",
+        "Enter zoom factor (>0):",
+        text=str(default),
+    )
+    if not ok:
         return None
+
+    s = str(text).strip()
+    if not s:
+        return None
+
     try:
         z = float(s)
-        if not np.isfinite(z) or z <= 0:
-            return None
-        return z
     except Exception:
         return None
 
+    if not np.isfinite(z) or z <= 0:
+        return None
+
+    return z
 
 # ---------------------------
 # Normalization to grayscale [0,1]
@@ -372,6 +386,11 @@ def _avg_time(fn, repeats: int = 10, warmup: bool = True) -> Tuple[np.ndarray, f
 
 
 def main():
+    # Ensure a Qt application exists for dialogs
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(sys.argv)
+
     # --- Select image ---
     path_or_url = _choose_image_dialog() or ""
     if not path_or_url:

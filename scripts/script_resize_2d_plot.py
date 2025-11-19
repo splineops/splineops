@@ -69,55 +69,58 @@ try:
 except Exception:
     _HAS_SKIMAGE = False
 
-# TK dialogs for interactive selection
-import tkinter as tk
-from tkinter import filedialog, simpledialog, messagebox
+# PyQt5 dialogs for interactive selection
+from PyQt5 import QtWidgets
 
 # splineops
-from splineops.resize.resize import resize as spl_resize
+from splineops.resize import resize as spl_resize
 
 # Default storage dtype for the sweep (change to np.float64 if desired)
 DTYPE = np.float32
-
+DTYPE_NAME = np.dtype(DTYPE).name
 
 # -------------------------- UI / I/O helpers --------------------------
 
 def choose_image_dialog() -> str | None:
     """Open a file dialog; if canceled, prompt for URL; return a path/URL or None."""
-    root = tk.Tk()
-    root.withdraw()
-    root.update()
-
-    path = filedialog.askopenfilename(
-        title="Select an image",
-        filetypes=[
-            ("Images", ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.tif", "*.tiff")),
-            ("PNG", "*.png"),
-            ("JPEG", ("*.jpg", "*.jpeg")),
-            ("TIFF", ("*.tif", "*.tiff")),
-            ("All files", "*.*"),
-        ],
-        parent=root,
+    file_filter = (
+        "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff);;"
+        "PNG (*.png);;"
+        "JPEG (*.jpg *.jpeg);;"
+        "TIFF (*.tif *.tiff);;"
+        "All files (*)"
     )
-    root.update()
+
+    path, _ = QtWidgets.QFileDialog.getOpenFileName(
+        None,
+        "Select an image",
+        "",
+        file_filter,
+    )
 
     if path:
         try:
             Image.open(path).close()
-            root.destroy()
             return path
         except Exception as e:
-            messagebox.showerror("Open failed", f"Could not open file:\n{e}")
-            root.destroy()
+            QtWidgets.QMessageBox.critical(
+                None,
+                "Open failed",
+                f"Could not open file:\n{e}",
+            )
             return None
 
     # No file selected: ask for URL
-    url = simpledialog.askstring("Image URL", "Paste an image URL (or Cancel):", parent=root)
-    root.destroy()
-    if url and url.strip():
-        return url.strip()
+    url, ok = QtWidgets.QInputDialog.getText(
+        None,
+        "Image URL",
+        "Paste an image URL (or Cancel):",
+    )
+    if ok:
+        url = str(url).strip()
+        if url:
+            return url
     return None
-
 
 def load_image_any(path_or_url: str, grayscale: bool = True) -> np.ndarray:
     """Load local path or URL into [0,1] as DTYPE. If RGB and grayscale=True, convert."""
@@ -427,6 +430,11 @@ def main():
     # Pick image (dialog if not provided)
     path_or_url = args.image
     if path_or_url is None:
+        # We will show Qt dialogs → ensure QApplication exists
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            app = QtWidgets.QApplication(sys.argv)
+
         path_or_url = choose_image_dialog()
         if not path_or_url:
             print("No image selected. Aborting.")
@@ -576,7 +584,7 @@ def main():
         if any_curve:
             plt.xlabel("Zoom factor")
             plt.ylabel(f"Time (s)  [avg of {args.repeats} runs, forward + backward]")
-            plt.title(f"Round-Trip Timing vs Zoom{title_suffix}  (H×W = {H}×{W}, dtype={DTYPE})")
+            plt.title(f"Round-Trip Timing vs Zoom{title_suffix}  (H×W = {H}×{W}, dtype={DTYPE_NAME})")
             plt.grid(True, alpha=0.35)
             plt.legend()
             plt.tight_layout()
@@ -598,7 +606,7 @@ def main():
         if any_curve:
             plt.xlabel("Zoom factor")
             plt.ylabel("SNR (dB)  [original vs recovered]")
-            plt.title(f"Round-Trip SNR vs Zoom{title_suffix}  (H×W = {H}×{W}, dtype={DTYPE})")
+            plt.title(f"Round-Trip SNR vs Zoom{title_suffix}  (H×W = {H}×{W}, dtype={DTYPE_NAME})")
             plt.grid(True, alpha=0.35)
             plt.legend()
             plt.tight_layout()
