@@ -26,16 +26,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      # macOS only: try to install libomp. Non-fatal if it fails.
-      - name: (macOS) Try to install libomp (non-fatal)
-        if: matrix.os == 'macos-latest'
-        run: |
-          if command -v brew >/dev/null 2>&1; then
-            brew list libomp >/dev/null 2>&1 || brew install libomp || true
-          else
-            echo "Homebrew not available; building without libomp."
-          fi
-
       - name: Install cibuildwheel
         run: python -m pip install -U pip cibuildwheel build
 
@@ -46,14 +36,13 @@ jobs:
           CIBW_BUILD: "cp310-* cp311-* cp312-*"
 
           # Avoid unsupported/undesired targets
-          # - remove pp* warning by not listing it
-          # - skip musllinux explicitly (we don't ship those)
+          # - don't build musllinux wheels
           CIBW_SKIP: "*musllinux*"
 
           # Limit architectures to where SciPy wheels exist & what we support
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_WINDOWS: "AMD64"
-          # macOS: leave default ("auto") or pin to arm64; arm64 is safest on Apple Silicon runners
+          # macOS: arm64 is safest on Apple Silicon runners
           CIBW_ARCHS_MACOS: "arm64"
 
           # Simple smoke test: import and check native module presence
