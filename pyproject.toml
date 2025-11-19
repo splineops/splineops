@@ -13,7 +13,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "splineops"
-version = "1.0.2"
+version = "1.0.3"
 description = "Spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
 license = { file = "LICENSE" }
