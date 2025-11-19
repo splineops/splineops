@@ -55,7 +55,7 @@ def fmt_ms(seconds: float) -> str:
 
 # You can switch this to np.float64 if you want full double precision.
 DTYPE = np.float32
-
+DTYPE_NAME = np.dtype(DTYPE).name
 
 # %%
 # Load and Normalize an Image
@@ -263,7 +263,7 @@ for name, data in results.items():
 
 plt.xlabel("Zoom factor (1.0 excluded)")
 plt.ylabel(f"Time (s)  [avg of {REPEATS} runs, forward + backward]")
-plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W}, dtype = {img_gray.dtype})")
+plt.title(f"Round-Trip Timing vs Zoom  (H×W = {H}×{W}, dtype = {DTYPE_NAME})")
 plt.grid(True, alpha=0.35)
 plt.legend()
 plt.tight_layout()
@@ -287,7 +287,7 @@ for name, data in results.items():
 
 plt.xlabel("Zoom factor (1.0 excluded)")
 plt.ylabel("SNR (dB)  [original vs recovered]")
-plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype = {img_gray.dtype})")
+plt.title(f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype = {DTYPE_NAME})")
 plt.grid(True, alpha=0.35)
 plt.legend()
 plt.tight_layout()

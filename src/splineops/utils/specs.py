@@ -6,14 +6,16 @@ splineops.utils.specs
 Lightweight runtime context helper so benchmark tables can be interpreted
 in context (Python/OS/CPU/versions/threading env etc).
 
-No hard dependencies: if ``threadpoolctl`` is present, we also report
-BLAS/OpenMP thread pools; otherwise we skip that part.
+No hard dependencies:
+- If ``threadpoolctl`` is present, we also report BLAS/OpenMP thread pools.
+- If ``psutil`` is present, we report OS-level thread count for this process.
 """
 
 from __future__ import annotations
 
 import os
 import platform
+import threading
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -40,8 +42,17 @@ class RuntimeContext:
     # Env vars that affect perf/threading
     env: Dict[str, str]
 
-    # Optional threadpoolctl info
+    # Optional threadpoolctl info (BLAS/OpenMP threadpools)
     threadpools: List[Dict[str, str]]
+
+    # Process-level threading info
+    process_pid: int
+    python_threads: int           # threading.active_count()
+    process_threads: Optional[int]  # OS threads in this process (via psutil, if available)
+
+    # splineops / lsresize-specific config (derived from env)
+    lsresize_num_threads: Optional[int]
+    lsresize_parallel_threshold: Optional[float]
 
 
 def _safe_import_version(pkg: str) -> str:
@@ -72,7 +83,7 @@ def _splineops_info() -> tuple[str, bool]:
 
 
 def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
-    # core platform
+    # Core platform
     py_ver = platform.python_version()
     py_impl = platform.python_implementation()
     os_sys = platform.system()
@@ -81,15 +92,17 @@ def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
     cpu_name = platform.processor() or platform.uname().processor or "unknown"
     logical = os.cpu_count()
 
-    # libs
+    # Library versions
     np_ver = _safe_import_version("numpy")
     sp_ver = _safe_import_version("scipy")
     mpl_ver, mpl_backend = _matplotlib_info()
     so_ver, native = _splineops_info()
 
-    # perf-relevant env
+    # Perf-relevant env
     env_keys = (
         "SPLINEOPS_ACCEL",
+        "LSRESIZE_NUM_THREADS",
+        "LSRESIZE_PARALLEL_THRESHOLD",
         "OMP_NUM_THREADS",
         "OMP_DYNAMIC",
         "OMP_PROC_BIND",
@@ -98,9 +111,29 @@ def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
         "BLIS_NUM_THREADS",
         "NUMEXPR_NUM_THREADS",
     )
-    env = {k: v for k in env_keys if (v := os.environ.get(k)) is not None}
+    env: Dict[str, str] = {k: v for k in env_keys if (v := os.environ.get(k)) is not None}
 
-    # optional threadpoolctl
+    # Derive lsresize-specific config from env
+    lsresize_num_threads: Optional[int] = None
+    lsresize_parallel_threshold: Optional[float] = None
+
+    if "LSRESIZE_NUM_THREADS" in env:
+        try:
+            v = int(env["LSRESIZE_NUM_THREADS"])
+            if v > 0:
+                lsresize_num_threads = v
+        except Exception:
+            lsresize_num_threads = None
+
+    if "LSRESIZE_PARALLEL_THRESHOLD" in env:
+        try:
+            t = float(env["LSRESIZE_PARALLEL_THRESHOLD"])
+            if t > 0.0:
+                lsresize_parallel_threshold = t
+        except Exception:
+            lsresize_parallel_threshold = None
+
+    # Optional threadpoolctl info (BLAS/OpenMP pools)
     tps: List[Dict[str, str]] = []
     if include_threadpools:
         try:
@@ -114,6 +147,17 @@ def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
                 })
         except Exception:
             pass
+
+    # Process-level threading
+    process_pid = os.getpid()
+    python_threads = threading.active_count()
+    process_threads: Optional[int] = None
+    try:
+        import psutil  # type: ignore
+        p = psutil.Process(process_pid)
+        process_threads = p.num_threads()
+    except Exception:
+        process_threads = None
 
     return RuntimeContext(
         python_version=py_ver,
@@ -131,26 +175,53 @@ def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
         native_present=native,
         env=env,
         threadpools=tps,
+        process_pid=process_pid,
+        python_threads=python_threads,
+        process_threads=process_threads,
+        lsresize_num_threads=lsresize_num_threads,
+        lsresize_parallel_threshold=lsresize_parallel_threshold,
     )
 
 
 def format_runtime_context(ctx: RuntimeContext) -> str:
-    lines = []
+    lines: List[str] = []
     lines.append("Runtime context:")
     lines.append(f"  Python      : {ctx.python_version} ({ctx.python_impl})")
     lines.append(f"  OS          : {ctx.os_system} {ctx.os_release} ({ctx.machine})")
     lines.append(f"  CPU         : {ctx.cpu_name} | logical cores: {ctx.logical_cores}")
+
+    # Process / threading
+    proc_line = f"  Process     : pid={ctx.process_pid} | Python threads={ctx.python_threads}"
+    if ctx.process_threads is not None:
+        proc_line += f" | OS threads={ctx.process_threads}"
+    lines.append(proc_line)
+
+    # Libraries
     lines.append(f"  NumPy/SciPy : {ctx.numpy_version}/{ctx.scipy_version}")
     lines.append(f"  Matplotlib  : {ctx.matplotlib_version} | backend: {ctx.matplotlib_backend}")
     lines.append(f"  splineops   : {ctx.splineops_version} | native ext present: {ctx.native_present}")
+
+    # lsresize-specific config
+    if (ctx.lsresize_num_threads is not None) or (ctx.lsresize_parallel_threshold is not None):
+        parts = []
+        if ctx.lsresize_num_threads is not None:
+            parts.append(f"threads={ctx.lsresize_num_threads}")
+        if ctx.lsresize_parallel_threshold is not None:
+            parts.append(f"parallel_threshold={ctx.lsresize_parallel_threshold}")
+        lines.append(f"  lsresize    : " + ", ".join(parts))
+
+    # Environment variables
     for k, v in ctx.env.items():
         lines.append(f"  {k}={v}")
+
+    # BLAS/OpenMP threadpools
     if ctx.threadpools:
         for tp in ctx.threadpools:
             lib = tp.get("internal_api") or tp.get("class") or "threadpool"
             lines.append(
                 f"  threadpool  : {lib}  threads={tp.get('num_threads','')}  lib={tp.get('filename','')}"
             )
+
     return "\n".join(lines)
 
 
