@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.20)
 project(splineops_native LANGUAGES CXX)
 
 option(LSRESIZE_USE_OPENMP "Enable OpenMP for parallel loops" ON)
+option(LSRESIZE_USE_STDTHREAD
+       "Use std::thread for parallel loops if OpenMP is unavailable" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,9 +37,17 @@ add_library(lsresize STATIC
 )
 target_include_directories(lsresize PUBLIC "${LSRESIZE_SRC_DIR}")
 target_compile_features(lsresize PUBLIC cxx_std_17)
+
+# ---- Parallel backend selection (OpenMP or std::thread) ----
 if (OpenMP_CXX_FOUND)
+  message(STATUS "lsresize: building with OpenMP")
   target_link_libraries(lsresize PUBLIC OpenMP::OpenMP_CXX)
   target_compile_definitions(lsresize PUBLIC LSRESIZE_WITH_OPENMP=1)
+elseif (LSRESIZE_USE_STDTHREAD)
+  message(STATUS "lsresize: OpenMP not found, using std::thread fallback")
+  target_compile_definitions(lsresize PUBLIC LSRESIZE_WITH_STDTHREAD=1)
+else()
+  message(STATUS "lsresize: building single-threaded (no OpenMP, no std::thread)")
 endif()
 
 pybind11_add_module(_lsresize
