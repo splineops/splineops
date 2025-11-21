@@ -52,10 +52,17 @@ struct Work1D_T {
 using Plan1D  = Plan1D_T<double>;
 using Work1D  = Work1D_T<double>;
 
-// Build the reusable plan once per axis.
+// Float32 aliases for internal compute
+using Plan1Df = Plan1D_T<float>;
+using Work1Df = Work1D_T<float>;
+
+// Build the reusable plan once per axis (double internal)
 Plan1D make_plan_1d(int N, const LSParams& p);
 
-// Allocation-free fast paths (double-only API as before)
+// Build the reusable plan once per axis (float internal)
+Plan1Df make_plan_1d_f32(int N, const LSParams& p);
+
+// Allocation-free fast paths (double internal)
 void resize_1d_ws(const std::vector<double>& in,
                   std::vector<double>& out,
                   const LSParams& p,
@@ -67,5 +74,18 @@ void resize_1d_ws_raw(const double* in,
                       const LSParams& p,
                       const Plan1D& plan,
                       Work1D& ws);
+
+// Allocation-free fast paths (float internal)
+void resize_1d_ws_f32(const std::vector<float>& in,
+                      std::vector<float>& out,
+                      const LSParams& p,
+                      const Plan1Df& plan,
+                      Work1Df& ws);
+
+void resize_1d_ws_raw_f32(const float* in,
+                          float* out,
+                          const LSParams& p,
+                          const Plan1Df& plan,
+                          Work1Df& ws);
 
 } // namespace lsresize

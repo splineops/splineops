@@ -51,6 +51,9 @@ inline double beta(double x, int n) {
       if (x < 4.0)  { double a = 4.0 - x; double t = a*a*a; return t*t*a * (1.0/5040.0); }
       return 0.0;
   }
+
+  // Should be unreachable, but silences MSVC warning
+  return 0.0;
 }
 
 } // namespace lsresize
