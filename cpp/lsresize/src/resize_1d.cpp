@@ -11,10 +11,14 @@
 
 namespace lsresize {
 
-// Build the reusable 1-D plan (window metadata + contiguous weights + pad map)
-Plan1D make_plan_1d(int N, const LSParams& p)
+// -----------------------------------------------------------------------------
+// Templated plan builder (internal): Plan1D_T<Real>
+// Currently only instantiated for Real = double via make_plan_1d().
+// -----------------------------------------------------------------------------
+template <typename Real>
+static Plan1D_T<Real> make_plan_1d_T(int N, const LSParams& p)
 {
-  Plan1D plan{};
+  Plan1D_T<Real> plan{};
   plan.N = N;
 
   // Output size (same as before)
@@ -56,10 +60,11 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   const double half_support = 0.5 * (total_degree + 1);
 
   // Zoom exponent for LS / oblique (Unser–Muñoz step 3 factor)
-  const double fact = std::pow(
+  const double fact_d = std::pow(
       p.zoom,
       (p.analy_degree >= 0) ? (p.analy_degree + 1) : 0
   );
+  const Real fact = static_cast<Real>(fact_d);
 
   // Extended input length:
   //  - Interpolation: only need a small mirror tail up to the spline support.
@@ -141,7 +146,7 @@ Plan1D make_plan_1d(int N, const LSParams& p)
 
     for (int t = 0; t < wlen; ++t) {
       const int k = k0 + t;
-      const double w = fact * beta(x - k, total_degree);
+      const Real w = fact * static_cast<Real>(beta(x - k, total_degree));
       plan.weights[static_cast<size_t>(cursor++)] = w;
     }
   }
@@ -180,15 +185,25 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   return plan;
 }
 
-// Raw-pointer core: operates directly on in/out buffers using workspace vectors.
-static inline void resize_1d_core_raw(const double* in,
-                                      double* out,
-                                      const LSParams& p,
-                                      const Plan1D& plan,
-                                      std::vector<double>& coeff,
-                                      std::vector<double>& ext,
-                                      std::vector<double>& ext_full,
-                                      std::vector<double>& y)
+// Public double-based plan builder (current API)
+Plan1D make_plan_1d(int N, const LSParams& p)
+{
+  return make_plan_1d_T<double>(N, p);
+}
+
+// -----------------------------------------------------------------------------
+// Templated raw 1-D core: operates directly on in/out buffers using workspace.
+// This is the internal engine; currently instantiated only for Real = double.
+// -----------------------------------------------------------------------------
+template <typename Real>
+static inline void resize_1d_core_raw_T(const Real* in,
+                                        Real* out,
+                                        const LSParams& p,
+                                        const Plan1D_T<Real>& plan,
+                                        std::vector<Real>& coeff,
+                                        std::vector<Real>& ext,
+                                        std::vector<Real>& ext_full,
+                                        std::vector<Real>& y)
 {
   const int N = plan.N;
   if (N == 0) {
@@ -202,12 +217,14 @@ static inline void resize_1d_core_raw(const double* in,
   // 1) Interpolation coefficients (causal/anti-causal IIR on input)
   coeff.resize(static_cast<size_t>(N));
   std::copy(in, in + N, coeff.begin());
+  // NOTE: get_interpolation_coefficients currently expects std::vector<double>.
+  // This compiles because we only instantiate Real = double for now.
   get_interpolation_coefficients(coeff, p.interp_degree);
 
   // 2) Optional projection integration
-  double average = 0.0;
+  Real average = Real(0);
   if (p.analy_degree >= 0) {
-    average = do_integ(coeff, p.analy_degree + 1);
+    average = static_cast<Real>(do_integ(coeff, p.analy_degree + 1));
   }
 
   // 3) Build the finite extended buffer once (right tail only)
@@ -216,7 +233,7 @@ static inline void resize_1d_core_raw(const double* in,
   {
     const int rem = plan.length_total - N;
     if (rem > 0 && !plan.rp_src.empty()) {
-      const double sgn = static_cast<int>(plan.rp_sign);
+      const Real sgn = static_cast<Real>(static_cast<int>(plan.rp_sign));
       for (int i = 0; i < rem; ++i) {
         ext[static_cast<size_t>(N + i)] =
             sgn * coeff[static_cast<size_t>(plan.rp_src[static_cast<size_t>(i)])];
@@ -237,7 +254,7 @@ static inline void resize_1d_core_raw(const double* in,
     for (int i = 0; i < LP; ++i) {
       const int src = std::min(std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0),
                                std::max(0, N - 1));
-      const int sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(i)]);
+      const Real sgn = static_cast<Real>(plan.pad_src_sgn[static_cast<size_t>(i)]);
       ext_full[static_cast<size_t>(i)] = sgn * coeff[static_cast<size_t>(src)];
     }
   }
@@ -247,7 +264,7 @@ static inline void resize_1d_core_raw(const double* in,
 
   // Right pad (clamp)
   if (RP > 0) {
-    const double last = ext.back();
+    const Real last = ext.back();
     std::fill(ext_full.begin() + LP + plan.length_total, ext_full.end(), last);
   }
 
@@ -255,8 +272,8 @@ static inline void resize_1d_core_raw(const double* in,
   y.resize(static_cast<size_t>(plan.out_total));  // overwrite; no need to zero
   {
     const int*    rp = plan.row_ptr.data();
-    const double* ww = plan.weights.data();
-    const double* vf = ext_full.data();
+    const Real*   ww = plan.weights.data();
+    const Real*   vf = ext_full.data();
 
     for (int l = 0; l < plan.out_total; ++l) {
       const int begin = rp[static_cast<size_t>(l)];
@@ -264,10 +281,11 @@ static inline void resize_1d_core_raw(const double* in,
       const int M     = end - begin;
       const int k0    = plan.kmin[static_cast<size_t>(l)];
 
-      const double* w = ww + begin;
-      const double* v = vf + (LP + k0);
+      const Real* w = ww + begin;
+      const Real* v = vf + (LP + k0);
 
-      const double acc = dot_small(w, v, M);
+      // dot_small currently specialized for double; we only instantiate Real=double.
+      const Real acc = dot_small<Real>(w, v, M);
       y[static_cast<size_t>(l)] = acc;
     }
   }
@@ -287,6 +305,10 @@ static inline void resize_1d_core_raw(const double* in,
   std::copy(y.begin(), y.begin() + outN, out);
 }
 
+// -----------------------------------------------------------------------------
+// Double-based wrappers (current API)
+// -----------------------------------------------------------------------------
+
 // Old vector API now just wraps the raw core.
 static inline void resize_1d_core(const std::vector<double>& in,
                                   std::vector<double>& out,
@@ -303,8 +325,8 @@ static inline void resize_1d_core(const std::vector<double>& in,
     return;
   }
   out.resize(static_cast<size_t>(plan.outN));
-  resize_1d_core_raw(in.data(), out.data(), p, plan,
-                     coeff, ext, ext_full, y);
+  resize_1d_core_raw_T<double>(in.data(), out.data(), p, plan,
+                               coeff, ext, ext_full, y);
 }
 
 // Public, allocation-free wrappers
@@ -314,7 +336,8 @@ void resize_1d_ws(const std::vector<double>& in,
                   const Plan1D& plan,
                   Work1D& ws)
 {
-  resize_1d_core(in, out, p, plan, ws.coeff, ws.ext, ws.ext_full, ws.y);
+  resize_1d_core(in, out, p, plan,
+                 ws.coeff, ws.ext, ws.ext_full, ws.y);
 }
 
 // Raw-pointer wrapper for contiguous lines (no std::vector in/out).
@@ -324,7 +347,8 @@ void resize_1d_ws_raw(const double* in,
                       const Plan1D& plan,
                       Work1D& ws)
 {
-  resize_1d_core_raw(in, out, p, plan, ws.coeff, ws.ext, ws.ext_full, ws.y);
+  resize_1d_core_raw_T<double>(in, out, p, plan,
+                               ws.coeff, ws.ext, ws.ext_full, ws.y);
 }
 
 } // namespace lsresize
