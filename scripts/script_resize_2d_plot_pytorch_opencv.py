@@ -73,6 +73,7 @@ from splineops.resize import resize as spl_resize
 DTYPE = np.float32
 DTYPE_NAME = np.dtype(DTYPE).name
 
+MARKER_SIZE = 5
 
 # -------------------------- UI / I/O helpers --------------------------
 
@@ -511,6 +512,12 @@ def main():
         else:
             return  # no-op
 
+        # Assign distinct markers per method for B/W readability
+        marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
+        marker_for: Dict[str, str] = {}
+        for idx_name, name in enumerate(results.keys()):
+            marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
+
         # Timing
         plt.figure(figsize=(9.5, 5.5))
         any_curve = False
@@ -518,16 +525,16 @@ def main():
             if not data["z"]:
                 continue
             z_arr = np.array(data["z"], dtype=float)
-            t = np.array(data["time"], dtype=float)
+            t_arr = np.array(data["time"], dtype=float)
             mask = mask_fn(z_arr)
             if not mask.any():
                 continue
             any_curve = True
             plt.plot(
                 z_arr[mask],
-                t[mask],
-                marker="o",
-                markersize=3,
+                t_arr[mask],
+                marker=marker_for.get(name, "o"),
+                markersize=MARKER_SIZE,
                 linewidth=1.5,
                 label=name,
             )
@@ -551,17 +558,17 @@ def main():
             if not data["z"]:
                 continue
             z_arr = np.array(data["z"], dtype=float)
-            s = np.array(data["snr"], dtype=float)
+            s_arr = np.array(data["snr"], dtype=float)
             mask = mask_fn(z_arr)
             if not mask.any():
                 continue
             any_curve = True
-            s_plot = np.where(np.isfinite(s[mask]), s[mask], np.nan)
+            s_plot = np.where(np.isfinite(s_arr[mask]), s_arr[mask], np.nan)
             plt.plot(
                 z_arr[mask],
                 s_plot,
-                marker="o",
-                markersize=3,
+                marker=marker_for.get(name, "o"),
+                markersize=MARKER_SIZE,
                 linewidth=1.5,
                 label=name,
             )

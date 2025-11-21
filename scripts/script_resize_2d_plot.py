@@ -81,6 +81,7 @@ from splineops.resize import resize as spl_resize
 DTYPE = np.float32
 DTYPE_NAME = np.dtype(DTYPE).name
 
+MARKER_SIZE = 5
 
 # -------------------------- UI / I/O helpers --------------------------
 
@@ -674,6 +675,12 @@ def main():
         else:
             return  # no-op
 
+        # Prepare per-method markers for accessibility (B/W friendly)
+        marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
+        marker_for: Dict[str, str] = {}
+        for idx_name, name in enumerate(results.keys()):
+            marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
+
         # Timing
         plt.figure(figsize=(9.5, 5.5))
         any_curve = False
@@ -689,8 +696,8 @@ def main():
             plt.plot(
                 z_arr[mask],
                 t_arr[mask],
-                marker="o",
-                markersize=3,
+                marker=marker_for.get(name, "o"),
+                markersize=MARKER_SIZE,
                 linewidth=1.5,
                 label=name,
             )
@@ -723,8 +730,8 @@ def main():
             plt.plot(
                 z_arr[mask],
                 s_plot,
-                marker="o",
-                markersize=3,
+                marker=marker_for.get(name, "o"),
+                markersize=MARKER_SIZE,
                 linewidth=1.5,
                 label=name,
             )
