@@ -20,7 +20,7 @@ Workflow
 2) Enter zoom factor z (>0), e.g. 0.3 for downscale or 1.7 for upscale.
 3) Script runs round-trip per method (z, then 1/z), averages timing over N runs.
 4) Computes SNR/MSE over a fixed square ROI (≈256×256) and shows:
-   - ROI montage (nearest-neighbor magnified)
+   - ROI montage with ORIGINAL ROI + method ROIs (nearest-neighbor magnified)
    - Bar charts for timing and SNR
 
 Notes
@@ -46,10 +46,10 @@ from PIL import Image
 # Default storage dtype for comparison (change to np.float64 if desired)
 DTYPE = np.float32
 
-# ROI / detail-window configuration (match 03_06_benchmarking)
-ROI_SIZE_PX = 256              # approximate ROI size in original image
-ROI_CENTER_FRAC = (0.40, 0.50)   # (row_frac, col_frac) in [0, 1]; here: image center
-ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
+# ROI / detail-window configuration
+ROI_SIZE_PX = 256                # approximate ROI size in original image
+ROI_CENTER_FRAC = (0.75, 0.50)   # (row_frac, col_frac) in [0, 1]
+ROI_MAG_TARGET = 256             # target height for nearest-neighbour zoom tiles
 
 
 try:
@@ -466,7 +466,7 @@ def main():
     # --- Settings ---
     repeats = 10          # avg runs
 
-    # ROI: square patch similar to 03_06_benchmarking (≈256×256, centred)
+    # ROI: square patch similar to 03_06_benchmarking (≈256×256, fixed position)
     roi_rect = _roi_rect_from_frac(gray.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
     roi = _crop_roi(gray, roi_rect)
 
@@ -487,6 +487,10 @@ def main():
     rows: List[Dict] = []
     roi_tiles = []
 
+    # Add ORIGINAL ROI tile as first comparison panel
+    orig_tile = _nearest_big(roi, ROI_MAG_TARGET)
+    roi_tiles.append(("Original", orig_tile))
+
     print(f"\nBenchmarking round-trip @ zoom ×{z:.5g}  (repeats={repeats})\n")
     header = f"{'Method':<34} {'Time (mean)':>13} {'± SD':>10} {'SNR (dB)':>10} {'MSE':>14}"
     print(header)
@@ -496,7 +500,15 @@ def main():
         rec, t_mean, t_sd, err = _avg_time(runner, repeats=repeats, warmup=True)
         if err is not None or rec.size == 0:
             print(f"{name:<34} {'unavailable':>13} {'':>10} {'—':>10} {'—':>14}")
-            rows.append({"name": name, "time": np.nan, "sd": np.nan, "snr": np.nan, "mse": np.nan, "rec": None, "err": err})
+            rows.append({
+                "name": name,
+                "time": np.nan,
+                "sd": np.nan,
+                "snr": np.nan,
+                "mse": np.nan,
+                "rec": None,
+                "err": err,
+            })
             continue
 
         # Metrics on a fixed ROI (same rectangle as in the original)
@@ -505,7 +517,16 @@ def main():
         mse = float(np.mean((roi - rec_roi) ** 2, dtype=np.float64))
         print(f"{name:<34} {_fmt_time(t_mean):>13} {_fmt_time(t_sd):>10} {snr:>10.2f} {mse:>14.3e}")
 
-        rows.append({"name": name, "time": t_mean, "sd": t_sd, "snr": snr, "mse": mse, "rec": rec, "err": None})
+        rows.append({
+            "name": name,
+            "time": t_mean,
+            "sd": t_sd,
+            "snr": snr,
+            "mse": mse,
+            "rec": rec,
+            "err": None,
+        })
+
         # ROI tile for montage (detail window)
         tile = _nearest_big(rec_roi, ROI_MAG_TARGET)
         roi_tiles.append((name, tile))
@@ -528,7 +549,7 @@ def main():
             ax.set_axis_off()
         h_roi, w_roi = roi.shape
         fig.suptitle(
-            f"Recovered ROI ({h_roi}×{w_roi} px, centred) — zoom ×{z:g}",
+            f"ROI comparison (original + round-trip) — {h_roi}×{w_roi} px, zoom ×{z:g}",
             fontsize=12,
         )
         plt.tight_layout()
