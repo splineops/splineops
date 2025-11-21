@@ -81,7 +81,7 @@ from splineops.resize import resize as spl_resize
 DTYPE = np.float32
 DTYPE_NAME = np.dtype(DTYPE).name
 
-MARKER_SIZE = 4
+MARKER_SIZE = 3
 
 # -------------------------- UI / I/O helpers --------------------------
 
@@ -459,7 +459,7 @@ def main():
     ap.add_argument(
         "--samples",
         type=int,
-        default=200,
+        default=50,
         help="Base number of zoom samples per side if --samples-down/--samples-up are not given.",
     )
     ap.add_argument(
