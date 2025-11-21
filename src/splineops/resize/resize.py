@@ -91,18 +91,7 @@ def resize(
     This function will use the native C++ implementation (:mod:`splineops._lsresize`)
     for all supported presets—**interpolation** (degrees 0-3), **oblique** (deg 1-3),
     and **least-squares** (deg 1-3)—when the extension is available. Otherwise, it
-    falls back to the pure-Python reference implementation
-    :func:`splineops.resize.ls_oblique_resize.ls_oblique_resize`. You can control
-    native vs. Python behavior with the env var ``SPLINEOPS_EXTENSION``:
-
-      - ``SPLINEOPS_ACCEL=auto`` (default): use C++ if available, else Python
-      - ``SPLINEOPS_ACCEL=never``: force the Python fallback only
-
-    **Magnification policy (native path):**
-        For projection methods (``*-fast_antialiasing`` and ``*-best_antialiasing``),
-        the C++ backend applies the same analysis/synthesis model for all zoom
-        factors, and only disables projection on axes where ``zoom_factors[i]`` is
-        effectively 1 (identity safety).
+    falls back to the pure-Python reference implementation.
 
     Parameters
     ----------
