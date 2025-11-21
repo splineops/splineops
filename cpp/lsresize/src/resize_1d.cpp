@@ -180,15 +180,19 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   return plan;
 }
 
-// Raw-pointer core: operates directly on in/out buffers using workspace vectors.
-static inline void resize_1d_core_raw(const double* in,
-                                      double* out,
-                                      const LSParams& p,
-                                      const Plan1D& plan,
-                                      std::vector<double>& coeff,
-                                      std::vector<double>& ext,
-                                      std::vector<double>& ext_full,
-                                      std::vector<double>& y)
+// -----------------------------------------------------------------------------
+// Internal 1-D cores
+// -----------------------------------------------------------------------------
+
+// Core that assumes `coeff[0..N-1]` is already filled with input samples.
+// This lets callers (like the ND kernel) avoid an extra copy into coeff.
+static inline void resize_1d_core_from_coeff(double* out,
+                                             const LSParams& p,
+                                             const Plan1D& plan,
+                                             std::vector<double>& coeff,
+                                             std::vector<double>& ext,
+                                             std::vector<double>& ext_full,
+                                             std::vector<double>& y)
 {
   const int N = plan.N;
   if (N == 0) {
@@ -196,12 +200,10 @@ static inline void resize_1d_core_raw(const double* in,
   }
 
   const int corr_degree = (p.analy_degree < 0)
-                        ?  p.interp_degree
+                        ? p.interp_degree
                         : (p.analy_degree + p.synthe_degree + 1);
 
-  // 1) Interpolation coefficients (causal/anti-causal IIR on input)
-  coeff.resize(static_cast<size_t>(N));
-  std::copy(in, in + N, coeff.begin());
+  // 1) Interpolation coefficients (causal/anti-causal IIR on input), in-place.
   get_interpolation_coefficients(coeff, p.interp_degree);
 
   // 2) Optional projection integration
@@ -287,6 +289,31 @@ static inline void resize_1d_core_raw(const double* in,
   std::copy(y.begin(), y.begin() + outN, out);
 }
 
+// Raw-pointer core: operates directly on in/out buffers using workspace vectors.
+// This version still accepts `in` and copies it into `coeff` once, then
+// delegates to resize_1d_core_from_coeff.
+static inline void resize_1d_core_raw(const double* in,
+                                      double* out,
+                                      const LSParams& p,
+                                      const Plan1D& plan,
+                                      std::vector<double>& coeff,
+                                      std::vector<double>& ext,
+                                      std::vector<double>& ext_full,
+                                      std::vector<double>& y)
+{
+  const int N = plan.N;
+  if (N == 0) {
+    return;
+  }
+
+  // 1) Copy input into coeff
+  coeff.resize(static_cast<size_t>(N));
+  std::copy(in, in + N, coeff.begin());
+
+  // 2) Run the core assuming coeff is pre-filled
+  resize_1d_core_from_coeff(out, p, plan, coeff, ext, ext_full, y);
+}
+
 // Old vector API now just wraps the raw core.
 static inline void resize_1d_core(const std::vector<double>& in,
                                   std::vector<double>& out,
@@ -307,7 +334,10 @@ static inline void resize_1d_core(const std::vector<double>& in,
                      coeff, ext, ext_full, y);
 }
 
+// -----------------------------------------------------------------------------
 // Public, allocation-free wrappers
+// -----------------------------------------------------------------------------
+
 void resize_1d_ws(const std::vector<double>& in,
                   std::vector<double>& out,
                   const LSParams& p,
@@ -325,6 +355,24 @@ void resize_1d_ws_raw(const double* in,
                       Work1D& ws)
 {
   resize_1d_core_raw(in, out, p, plan, ws.coeff, ws.ext, ws.ext_full, ws.y);
+}
+
+// Wrapper used by the ND kernel when it has already filled `coeff`.
+// Avoids an extra copy from a temporary into ws.coeff.
+void resize_1d_ws_from_coeff(std::vector<double>& coeff,
+                             std::vector<double>& out,
+                             const LSParams& p,
+                             const Plan1D& plan,
+                             Work1D& ws)
+{
+  const int N = plan.N;
+  if (N == 0) {
+    out.clear();
+    return;
+  }
+  out.resize(static_cast<size_t>(plan.outN));
+  resize_1d_core_from_coeff(out.data(), p, plan,
+                            coeff, ws.ext, ws.ext_full, ws.y);
 }
 
 } // namespace lsresize

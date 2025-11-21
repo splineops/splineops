@@ -48,7 +48,7 @@ struct Plan1D {
 
 // Per-thread reusable workspace to avoid per-line allocations
 struct Work1D {
-  std::vector<double> coeff;     // interpolation coefficients
+  std::vector<double> coeff;     // interpolation coefficients / input line
   std::vector<double> ext;       // finite extension (right tail only)
   std::vector<double> ext_full;  // [left_pad | ext | right_pad] single buffer
   std::vector<double> y;         // accumulator / tail buffer
@@ -57,7 +57,7 @@ struct Work1D {
 // Build the reusable plan once per axis.
 Plan1D make_plan_1d(int N, const LSParams& p);
 
-// Allocation-free fast path: reuse the provided workspace.
+// Allocation-free fast path: reuse the provided workspace (vector in/out).
 void resize_1d_ws(const std::vector<double>& in,
                   std::vector<double>& out,
                   const LSParams& p,
@@ -70,5 +70,14 @@ void resize_1d_ws_raw(const double* in,
                       const LSParams& p,
                       const Plan1D& plan,
                       Work1D& ws);
+
+// Allocation-free fast path when the caller has already filled `coeff`
+// with N samples (plan.N). This avoids the extra copy from `in` into
+// `ws.coeff` and is used by the ND kernel fallback.
+void resize_1d_ws_from_coeff(std::vector<double>& coeff,
+                             std::vector<double>& out,
+                             const LSParams& p,
+                             const Plan1D& plan,
+                             Work1D& ws);
 
 } // namespace lsresize
