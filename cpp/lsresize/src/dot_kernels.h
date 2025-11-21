@@ -116,7 +116,7 @@ inline double dot_small(const double* w, const double* v, int M) {
   if (!force_avx2() && M >= 64) {
     __m512d acc0 = _mm512_setzero_pd();
     int t = 0;
-    for (; t + 8 <= M; ++t) {
+    for (; t + 8 <= M; t += 8) {                // step by 8
       __m512d ww = _mm512_loadu_pd(w + t);
       __m512d vv = _mm512_loadu_pd(v + t);
       acc0 = _mm512_fmadd_pd(ww, vv, acc0);
@@ -131,7 +131,7 @@ inline double dot_small(const double* w, const double* v, int M) {
   {
     __m256d acc0 = _mm256_setzero_pd();
     int t = 0;
-    for (; t + 4 <= M; ++t) {
+    for (; t + 4 <= M; t += 4) {                // step by 4
       __m256d ww = _mm256_loadu_pd(w + t);
       __m256d vv = _mm256_loadu_pd(v + t);
       acc0 = _mm256_fmadd_pd(ww, vv, acc0);

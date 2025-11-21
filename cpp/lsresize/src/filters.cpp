@@ -120,10 +120,22 @@ double do_integ(std::vector<double>& c, int nb) {
   };
 
   double m = 0.0, average = 0.0;
-  if (nb >= 1) { average = avg_of(c); integ_sa(c, average); }
-  if (nb >= 2) { std::vector<double> tmp=c; integ_as(tmp, c); }
-  if (nb >= 3) { m = avg_of(c); integ_sa(c, m); }
-  if (nb >= 4) { std::vector<double> tmp=c; integ_as(tmp, c); }
+  if (nb >= 1) {
+    average = avg_of(c);
+    integ_sa(c, average);
+  }
+  if (nb >= 2) {
+    // was: std::vector<double> tmp = c; integ_as(tmp, c);
+    integ_as(c, c);
+  }
+  if (nb >= 3) {
+    m = avg_of(c);
+    integ_sa(c, m);
+  }
+  if (nb >= 4) {
+    // was: std::vector<double> tmp = c; integ_as(tmp, c);
+    integ_as(c, c);
+  }
   return average;
 }
 
