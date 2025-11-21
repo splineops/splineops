@@ -92,6 +92,11 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
     line_in .reserve(static_cast<size_t>(N_line));
     line_out.reserve(static_cast<size_t>(plan.outN));
 
+    const bool axis_contig_in  =
+        (in_strides[static_cast<size_t>(axis)] == 1);
+    const bool axis_contig_out =
+        (out_strides[static_cast<size_t>(axis)] == 1);
+
     for (int64_t line = start; line < end; ++line) {
       std::fill(idx.begin(), idx.end(), 0);
 
@@ -116,14 +121,26 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
         }
       }
 
-      // Gather 1-D input line into double
-      const bool contig_in =
-          (in_strides[static_cast<size_t>(axis)] == 1);
+      // --- Fast path: axis contiguous in both in & out and Scalar == double ---
+      if constexpr (std::is_same_v<Scalar, double>) {
+        if (axis_contig_in && axis_contig_out) {
+          // Direct 1-D resize on raw buffers, no gather/scatter via vectors.
+          resize_1d_ws_raw(in + in_off,
+                           out + out_off,
+                           p, plan, ws);
+          continue;
+        }
+      }
+
+      // --- Fallback: gather into line_in, use vector API ---
+
+      const bool contig_in = axis_contig_in;
       line_in.resize(static_cast<size_t>(N_line));
       if (contig_in) {
-        // vector<double>::assign handles Scalar -> double conversion
+        // contiguous axis: simple block copy
         line_in.assign(in + in_off, in + in_off + N_line);
       } else {
+        // non-contiguous axis: strided gather
         for (int64_t i = 0;
              i < in_shape[static_cast<size_t>(axis)];
              ++i) {
@@ -138,8 +155,7 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
       resize_1d_ws(line_in, line_out, p, plan, ws);
 
       // Scatter to output (Scalar storage)
-      const bool contig_out =
-          (out_strides[static_cast<size_t>(axis)] == 1);
+      const bool contig_out = axis_contig_out;
       if (contig_out) {
         if constexpr (std::is_same_v<Scalar, double>) {
           // One-shot block write when the axis is contiguous

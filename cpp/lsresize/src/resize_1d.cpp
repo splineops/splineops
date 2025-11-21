@@ -275,24 +275,28 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   return plan;
 }
 
-static inline void resize_1d_core(const std::vector<double>& in,
-                                  std::vector<double>& out,
-                                  const LSParams& p,
-                                  const Plan1D& plan,
-                                  std::vector<double>& coeff,
-                                  std::vector<double>& ext,
-                                  std::vector<double>& ext_full,
-                                  std::vector<double>& y)
+// Raw-pointer core: operates directly on in/out buffers using workspace vectors.
+static inline void resize_1d_core_raw(const double* in,
+                                      double* out,
+                                      const LSParams& p,
+                                      const Plan1D& plan,
+                                      std::vector<double>& coeff,
+                                      std::vector<double>& ext,
+                                      std::vector<double>& ext_full,
+                                      std::vector<double>& y)
 {
   const int N = plan.N;
-  if (N == 0) { out.clear(); return; }
+  if (N == 0) {
+    return;
+  }
 
   const int corr_degree = (p.analy_degree < 0)
                         ?  p.interp_degree
                         : (p.analy_degree + p.synthe_degree + 1);
 
   // 1) Interpolation coefficients (causal/anti-causal IIR on input)
-  coeff.assign(in.begin(), in.end());
+  coeff.resize(static_cast<size_t>(N));
+  std::copy(in, in + N, coeff.begin());
   get_interpolation_coefficients(coeff, p.interp_degree);
 
   // 2) Optional projection integration
@@ -326,7 +330,8 @@ static inline void resize_1d_core(const std::vector<double>& in,
     #pragma omp simd
 #endif
     for (int i = 0; i < LP; ++i) {
-      const int src = std::min(std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0), std::max(0, N - 1));
+      const int src = std::min(std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0),
+                               std::max(0, N - 1));
       const int sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(i)]);
       ext_full[static_cast<size_t>(i)] = sgn * coeff[static_cast<size_t>(src)];
     }
@@ -344,9 +349,9 @@ static inline void resize_1d_core(const std::vector<double>& in,
   // 4) Accumulate using the plan (contiguous weights & samples)
   y.resize(static_cast<size_t>(plan.out_total));  // overwrite; no need to zero
   {
-    const int*    __restrict rp = plan.row_ptr.data();
-    const double* __restrict ww = plan.weights.data();
-    const double* __restrict vf = ext_full.data();
+    const int*    rp = plan.row_ptr.data();
+    const double* ww = plan.weights.data();
+    const double* vf = ext_full.data();
 
     for (int l = 0; l < plan.out_total; ++l) {
       const int begin = rp[static_cast<size_t>(l)];
@@ -354,8 +359,8 @@ static inline void resize_1d_core(const std::vector<double>& in,
       const int M     = end - begin;
       const int k0    = plan.kmin[static_cast<size_t>(l)];
 
-      const double* __restrict w = ww + begin;
-      const double* __restrict v = vf + (LP + k0);
+      const double* w = ww + begin;
+      const double* v = vf + (LP + k0);
 
       const double acc = dot_small(w, v, M);
       y[static_cast<size_t>(l)] = acc;
@@ -365,16 +370,39 @@ static inline void resize_1d_core(const std::vector<double>& in,
   // 5) Projection tail: differentiate, add average, IIR + symmetric FIR sampling
   if (p.analy_degree >= 0) {
     do_diff(y, p.analy_degree + 1);
-    for (int i = 0; i < plan.out_total; ++i) y[static_cast<size_t>(i)] += average;
+    for (int i = 0; i < plan.out_total; ++i) {
+      y[static_cast<size_t>(i)] += average;
+    }
     get_interpolation_coefficients(y, corr_degree);
     get_samples(y, p.synthe_degree);
   }
 
-  // 6) Crop to true output size
-  out.assign(y.begin(), y.begin() + plan.outN);
+  // 6) Copy to true output size
+  const int outN = plan.outN;
+  std::copy(y.begin(), y.begin() + outN, out);
 }
 
-// Public, allocation-free wrapper
+// Old vector API now just wraps the raw core.
+static inline void resize_1d_core(const std::vector<double>& in,
+                                  std::vector<double>& out,
+                                  const LSParams& p,
+                                  const Plan1D& plan,
+                                  std::vector<double>& coeff,
+                                  std::vector<double>& ext,
+                                  std::vector<double>& ext_full,
+                                  std::vector<double>& y)
+{
+  const int N = plan.N;
+  if (N == 0) {
+    out.clear();
+    return;
+  }
+  out.resize(static_cast<size_t>(plan.outN));
+  resize_1d_core_raw(in.data(), out.data(), p, plan,
+                     coeff, ext, ext_full, y);
+}
+
+// Public, allocation-free wrappers
 void resize_1d_ws(const std::vector<double>& in,
                   std::vector<double>& out,
                   const LSParams& p,
@@ -382,6 +410,16 @@ void resize_1d_ws(const std::vector<double>& in,
                   Work1D& ws)
 {
   resize_1d_core(in, out, p, plan, ws.coeff, ws.ext, ws.ext_full, ws.y);
+}
+
+// Raw-pointer wrapper for contiguous lines (no std::vector in/out).
+void resize_1d_ws_raw(const double* in,
+                      double* out,
+                      const LSParams& p,
+                      const Plan1D& plan,
+                      Work1D& ws)
+{
+  resize_1d_core_raw(in, out, p, plan, ws.coeff, ws.ext, ws.ext_full, ws.y);
 }
 
 } // namespace lsresize

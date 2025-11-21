@@ -64,4 +64,11 @@ void resize_1d_ws(const std::vector<double>& in,
                   const Plan1D& plan,
                   Work1D& ws);
 
+// Allocation-free fast path for contiguous raw buffers.
+void resize_1d_ws_raw(const double* in,
+                      double* out,
+                      const LSParams& p,
+                      const Plan1D& plan,
+                      Work1D& ws);
+
 } // namespace lsresize
