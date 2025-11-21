@@ -87,9 +87,10 @@ sdist.include = [
   "LICENSE",
 ]
 
+cmake.build-type = "Release"
+
 # You can uncomment/tweak these if you want to force options:
 # cmake.minimum-version = "3.20"
-# cmake.build-type = "Release"
 # cmake.args = ["-DLSRESIZE_USE_OPENMP=ON"]
 
 # pytest defaults (so `pytest -q` works everywhere)
