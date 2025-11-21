@@ -12,6 +12,7 @@ message(STATUS "SRC_DIR = ${SRC_DIR}") # helpful sanity check
 
 # Core library
 add_library(lsresize STATIC
+  "${SRC_DIR}/filters.cpp"
   "${SRC_DIR}/resize_1d.cpp"
   "${SRC_DIR}/resize_nd.cpp"
 )

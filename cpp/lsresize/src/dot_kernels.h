@@ -14,7 +14,10 @@
 namespace lsresize {
 
 // -----------------------------------------------------------------------------
-// AVX/FMA helpers (used only in the double specialization)
+// AVX/FMA dot kernel with selective AVX-512 usage.
+// - AVX-512 is used only when M is reasonably large (default: M >= 64) to
+//   avoid frequency throttling penalties on some CPUs.
+// - Force AVX2 via env: LSRESIZE_FORCE_AVX2=1
 // -----------------------------------------------------------------------------
 inline bool force_avx2() {
   const char* e = std::getenv("LSRESIZE_FORCE_AVX2");
@@ -39,16 +42,12 @@ inline double hsum512(__m512d v) {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// Generic templated dot kernels
-// -----------------------------------------------------------------------------
-
 // Small-M unrolled dot for very short kernels (M <= 8)
-template <typename Real>
-inline Real dot_small_unrolled(const Real* w, const Real* v, int M) {
+// This is hit all the time for spline degrees 1..3.
+inline double dot_small_unrolled(const double* w, const double* v, int M) {
   switch (M) {
     case 0:
-      return Real(0);
+      return 0.0;
     case 1:
       return w[0] * v[0];
     case 2:
@@ -97,39 +96,20 @@ inline Real dot_small_unrolled(const Real* w, const Real* v, int M) {
       break;
   }
 
-  Real acc = Real(0);
+  // Fallback if someone calls with M > 8 (should be guarded by caller).
+  double acc = 0.0;
   for (int t = 0; t < M; ++t) {
     acc += w[t] * v[t];
   }
   return acc;
 }
 
-template <typename Real>
-inline Real dot_small_generic(const Real* w, const Real* v, int M) {
-  Real acc = Real(0);
-  for (int t = 0; t < M; ++t) {
-    acc += w[t] * v[t];
-  }
-  return acc;
-}
-
-// Primary template: no SIMD, but still uses unrolled path for M <= 8
-template <typename Real>
-inline Real dot_small(const Real* w, const Real* v, int M) {
+// General dot product with optional AVX/NEON acceleration.
+// Uses unrolled scalar path for M <= 8.
+inline double dot_small(const double* w, const double* v, int M) {
+  // Fast path for the common small-kernel cases (cubic/LS/oblique)
   if (M <= 8) {
-    return dot_small_unrolled<Real>(w, v, M);
-  }
-  return dot_small_generic<Real>(w, v, M);
-}
-
-// -----------------------------------------------------------------------------
-// Specialization for double with AVX/NEON acceleration
-// -----------------------------------------------------------------------------
-template <>
-inline double dot_small<double>(const double* w, const double* v, int M) {
-  // Fast path for small kernels
-  if (M <= 8) {
-    return dot_small_unrolled<double>(w, v, M);
+    return dot_small_unrolled(w, v, M);
   }
 
 #if defined(__AVX512F__)
@@ -181,8 +161,12 @@ inline double dot_small<double>(const double* w, const double* v, int M) {
   }
 #endif
 
-  // Fallback: scalar dot
-  return dot_small_generic<double>(w, v, M);
+  // Scalar fallback for mid-sized kernels
+  double acc = 0.0;
+  for (int t = 0; t < M; ++t) {
+    acc += w[t] * v[t];
+  }
+  return acc;
 }
 
 } // namespace lsresize
