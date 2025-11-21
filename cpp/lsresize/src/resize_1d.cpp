@@ -190,7 +190,6 @@ static inline void resize_1d_core_from_coeff(double* out,
                                              const LSParams& p,
                                              const Plan1D& plan,
                                              std::vector<double>& coeff,
-                                             std::vector<double>& ext,
                                              std::vector<double>& ext_full,
                                              std::vector<double>& y)
 {
@@ -212,49 +211,47 @@ static inline void resize_1d_core_from_coeff(double* out,
     average = do_integ(coeff, p.analy_degree + 1);
   }
 
-  // 3) Build the finite extended buffer once (right tail only)
-  ext.resize(static_cast<size_t>(plan.length_total));
-  std::copy(coeff.begin(), coeff.end(), ext.begin());
-  {
-    const int rem = plan.length_total - N;
-    if (rem > 0 && !plan.rp_src.empty()) {
-      const double sgn = static_cast<int>(plan.rp_sign);
-      for (int i = 0; i < rem; ++i) {
-        ext[static_cast<size_t>(N + i)] =
-            sgn * coeff[static_cast<size_t>(plan.rp_src[static_cast<size_t>(i)])];
-      }
-    }
-  }
+  // 3) Single padded buffer [LP | ext | RP], built directly from coeff
+  const int LP     = plan.left_pad;
+  const int length = plan.length_total;
+  const int RP     = plan.right_pad;
 
-  // 3b) Single padded buffer for contiguous window access: [LP | ext | RP]
-  const int LP = plan.left_pad;
-  const int RP = plan.right_pad;
-  ext_full.resize(static_cast<size_t>(LP + plan.length_total + RP));
+  ext_full.resize(static_cast<size_t>(LP + length + RP));
+  double* dst = ext_full.data();
 
-  // Left pad using the precomputed mapping
+  // 3a) Left pad using the precomputed mapping
   if (LP > 0) {
-#if defined(_OPENMP) && !defined(_MSC_VER)
-    #pragma omp simd
-#endif
     for (int i = 0; i < LP; ++i) {
-      const int src = std::min(std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0),
-                               std::max(0, N - 1));
+      const int src = std::min(
+          std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0),
+          std::max(0, N - 1));
       const int sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(i)]);
-      ext_full[static_cast<size_t>(i)] = sgn * coeff[static_cast<size_t>(src)];
+      dst[static_cast<size_t>(i)] = sgn * coeff[static_cast<size_t>(src)];
     }
   }
 
-  // Copy main ext block
-  std::copy(ext.begin(), ext.end(), ext_full.begin() + LP);
+  // 3b) Main input samples
+  std::copy(coeff.begin(), coeff.end(), dst + LP);
 
-  // Right pad (clamp)
+  // 3c) Right extension into the middle block
+  const int rem = length - N;
+  if (rem > 0 && !plan.rp_src.empty()) {
+    const double sgn = static_cast<int>(plan.rp_sign);
+    double* tail = dst + LP + N;
+    for (int i = 0; i < rem; ++i) {
+      const int src = plan.rp_src[static_cast<size_t>(i)];
+      tail[static_cast<size_t>(i)] = sgn * coeff[static_cast<size_t>(src)];
+    }
+  }
+
+  // 3d) Right pad (clamp to last sample)
   if (RP > 0) {
-    const double last = ext.back();
-    std::fill(ext_full.begin() + LP + plan.length_total, ext_full.end(), last);
+    const double last = dst[LP + length - 1];
+    std::fill(dst + LP + length, dst + LP + length + RP, last);
   }
 
   // 4) Accumulate using the plan (contiguous weights & samples)
-  y.resize(static_cast<size_t>(plan.out_total));  // overwrite; no need to zero
+  y.resize(static_cast<size_t>(plan.out_total));
   {
     const int*    rp = plan.row_ptr.data();
     const double* ww = plan.weights.data();
@@ -269,12 +266,11 @@ static inline void resize_1d_core_from_coeff(double* out,
       const double* w = ww + begin;
       const double* v = vf + (LP + k0);
 
-      const double acc = dot_small(w, v, M);
-      y[static_cast<size_t>(l)] = acc;
+      y[static_cast<size_t>(l)] = dot_small(w, v, M);
     }
   }
 
-  // 5) Projection tail: differentiate, add average, IIR + symmetric FIR sampling
+  // 5) Projection tail (unchanged)
   if (p.analy_degree >= 0) {
     do_diff(y, p.analy_degree + 1);
     for (int i = 0; i < plan.out_total; ++i) {
@@ -285,8 +281,7 @@ static inline void resize_1d_core_from_coeff(double* out,
   }
 
   // 6) Copy to true output size
-  const int outN = plan.outN;
-  std::copy(y.begin(), y.begin() + outN, out);
+  std::copy(y.begin(), y.begin() + plan.outN, out);
 }
 
 // Raw-pointer core: operates directly on in/out buffers using workspace vectors.
@@ -297,21 +292,16 @@ static inline void resize_1d_core_raw(const double* in,
                                       const LSParams& p,
                                       const Plan1D& plan,
                                       std::vector<double>& coeff,
-                                      std::vector<double>& ext,
                                       std::vector<double>& ext_full,
                                       std::vector<double>& y)
 {
   const int N = plan.N;
-  if (N == 0) {
-    return;
-  }
+  if (N == 0) return;
 
-  // 1) Copy input into coeff
   coeff.resize(static_cast<size_t>(N));
   std::copy(in, in + N, coeff.begin());
 
-  // 2) Run the core assuming coeff is pre-filled
-  resize_1d_core_from_coeff(out, p, plan, coeff, ext, ext_full, y);
+  resize_1d_core_from_coeff(out, p, plan, coeff, ext_full, y);
 }
 
 // Old vector API now just wraps the raw core.
@@ -320,7 +310,6 @@ static inline void resize_1d_core(const std::vector<double>& in,
                                   const LSParams& p,
                                   const Plan1D& plan,
                                   std::vector<double>& coeff,
-                                  std::vector<double>& ext,
                                   std::vector<double>& ext_full,
                                   std::vector<double>& y)
 {
@@ -330,8 +319,7 @@ static inline void resize_1d_core(const std::vector<double>& in,
     return;
   }
   out.resize(static_cast<size_t>(plan.outN));
-  resize_1d_core_raw(in.data(), out.data(), p, plan,
-                     coeff, ext, ext_full, y);
+  resize_1d_core_raw(in.data(), out.data(), p, plan, coeff, ext_full, y);
 }
 
 // -----------------------------------------------------------------------------
@@ -344,7 +332,7 @@ void resize_1d_ws(const std::vector<double>& in,
                   const Plan1D& plan,
                   Work1D& ws)
 {
-  resize_1d_core(in, out, p, plan, ws.coeff, ws.ext, ws.ext_full, ws.y);
+  resize_1d_core(in, out, p, plan, ws.coeff, ws.ext_full, ws.y);
 }
 
 // Raw-pointer wrapper for contiguous lines (no std::vector in/out).
@@ -354,7 +342,7 @@ void resize_1d_ws_raw(const double* in,
                       const Plan1D& plan,
                       Work1D& ws)
 {
-  resize_1d_core_raw(in, out, p, plan, ws.coeff, ws.ext, ws.ext_full, ws.y);
+  resize_1d_core_raw(in, out, p, plan, ws.coeff, ws.ext_full, ws.y);
 }
 
 // Wrapper used by the ND kernel when it has already filled `coeff`.
@@ -372,7 +360,7 @@ void resize_1d_ws_from_coeff(std::vector<double>& coeff,
   }
   out.resize(static_cast<size_t>(plan.outN));
   resize_1d_core_from_coeff(out.data(), p, plan,
-                            coeff, ws.ext, ws.ext_full, ws.y);
+                            coeff, ws.ext_full, ws.y);
 }
 
 } // namespace lsresize

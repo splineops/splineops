@@ -89,6 +89,10 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
     std::vector<int64_t> idx(D, 0);
     std::vector<double>  line_out;
     ws.coeff.reserve(static_cast<size_t>(N_line));
+    ws.ext_full.reserve(static_cast<size_t>(plan.left_pad +
+                                            plan.length_total +
+                                            plan.right_pad));
+    ws.y.reserve(static_cast<size_t>(plan.out_total));
     line_out.reserve(static_cast<size_t>(plan.outN));
 
     const bool axis_contig_in  =
