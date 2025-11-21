@@ -26,15 +26,11 @@ static std::vector<int64> shape_to_vec_i64(const py::array &a) {
     return s;
 }
 
-// For magnification, prefer Standard interpolation over LS/Oblique.
-//
-// Policy (per axis):
-//  • If |zoom - 1| <= eps OR zoom > 1 + eps → disable projection
-//    by forcing analy_degree = -1.
-//  • For downsampling (zoom < 1), leave analy_degree as provided.
+// If |zoom - 1| <= eps → disable projection
+// by forcing analy_degree = -1.
 static inline void normalize_params_for_magnification(lsresize::LSParams& p) {
     const double eps = 1e-12;
-    if (std::abs(p.zoom - 1.0) <= eps || p.zoom > 1.0 + eps) {
+    if (std::abs(p.zoom - 1.0) <= eps){
         p.analy_degree = -1;
     }
 }
