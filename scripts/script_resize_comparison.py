@@ -8,19 +8,19 @@ Compare splineops interpolation against common stacks at a chosen zoom:
 - splineops: Standard (linear/cubic), Least-Squares (best AA), Oblique (fast AA)
 - SciPy ndimage.zoom (linear/cubic)
 - OpenCV (INTER_LINEAR / INTER_CUBIC)
-- Pillow (BILINEAR / BICUBIC / LANCZOS)
+- Pillow (BILINEAR / BICUBIC)
 - scikit-image (resize, order=1 or 3, anti_aliasing=True)
 - PyTorch (F.interpolate bilinear/bicubic, antialias=True, CPU)
-
-pip install opencv-python scikit-image torch torchvision PyQt5
 
 Workflow
 --------
 1) Pick an image (dialog). If you cancel, you'll be asked for a URL.
 2) Enter zoom factor z (>0), e.g. 0.3 for downscale or 1.7 for upscale.
 3) Script runs round-trip per method (z, then 1/z), averages timing over N runs.
-4) Computes SNR/MSE over a fixed square ROI (≈256×256) and shows:
-   - ROI montage with ORIGINAL ROI + method ROIs (nearest-neighbor magnified)
+4) Computes SNR/MSE on the round-trip image over a fixed square ROI (≈256×256)
+   and shows:
+   - ROI montage with ORIGINAL ROI + each method's *first-pass* ROI
+     (nearest-neighbour magnified at the mapped location)
    - Bar charts for timing and SNR
 
 Notes
@@ -48,9 +48,9 @@ from PIL import Image
 DTYPE = np.float32
 
 # ROI / detail-window configuration
-ROI_SIZE_PX = 256             # approximate ROI size in original image
+ROI_SIZE_PX = 256              # approximate ROI size in original image
 ROI_CENTER_FRAC = (0.4, 0.65)  # (row_frac, col_frac) in [0, 1]
-ROI_MAG_TARGET = 256          # target height for nearest-neighbour zoom tiles
+ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
 
 try:
     import cv2
@@ -109,17 +109,10 @@ from PyQt5 import QtWidgets
 # Utilities
 # ---------------------------
 
-
 def nearest_roundtrip_zoom(
     shape: Tuple[int, int], z: float, max_delta: float = 0.02
 ) -> float:
-    """
-    Find the closest zoom z' near z such that:
-      round(round(H*z') / z') == H and round(round(W*z') / z') == W
-
-    This makes naive round-trip with 1/z' shape-exact for libs that use 'round'
-    in their sizing. Searches in a small neighborhood around z.
-    """
+    """Search a small neighbourhood around z for a zoom that is shape-exact for round-trip."""
     H, W = int(shape[0]), int(shape[1])
 
     def ok(zz: float) -> bool:
@@ -134,7 +127,6 @@ def nearest_roundtrip_zoom(
     if z > 0 and ok(z):
         return z
 
-    # The smallest zoom tweak that flips a rounded size is ~1/H or ~1/W.
     base_step = 0.25 * min(1.0 / max(H, 1), 1.0 / max(W, 1))
     steps = max(1, int(max_delta / base_step))
 
@@ -152,7 +144,6 @@ def nearest_roundtrip_zoom(
             if d < best_d:
                 best_z, best_d = zz, d
 
-    # If none satisfies the strict round/round condition, return the closest tried
     return best_z
 
 
@@ -218,10 +209,7 @@ def _load_image_any(path_or_url: str) -> Image.Image:
 
 
 def _choose_image_dialog() -> Optional[str]:
-    """
-    Use a Qt file dialog to pick an image.
-    If cancelled, ask for a URL (same wording as before).
-    """
+    """Use a Qt file dialog to pick an image. If cancelled, ask for a URL."""
     filters = (
         "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff);;"
         "All files (*)"
@@ -246,7 +234,6 @@ def _choose_image_dialog() -> Optional[str]:
             )
             return None
 
-    # Fallback: ask for URL (same title/prompt)
     url, ok = QtWidgets.QInputDialog.getText(
         None,
         "Image URL",
@@ -261,10 +248,7 @@ def _choose_image_dialog() -> Optional[str]:
 
 
 def _ask_zoom_factor(default: float = 0.3) -> Optional[float]:
-    """
-    Ask for zoom factor via Qt input dialog.
-    Returns None on cancel or invalid input.
-    """
+    """Ask for zoom factor via Qt input dialog."""
     text, ok = QtWidgets.QInputDialog.getText(
         None,
         "Zoom factor",
@@ -293,7 +277,6 @@ def _ask_zoom_factor(default: float = 0.3) -> Optional[float]:
 # Normalization to grayscale [0,1]
 # ---------------------------
 
-
 def _to_gray01(im: Image.Image) -> np.ndarray:
     # Drop alpha for simplicity
     if im.mode in ("RGBA", "LA"):
@@ -314,34 +297,42 @@ def _to_gray01(im: Image.Image) -> np.ndarray:
 
 
 # ---------------------------
-# Backends (round-trip z → 1/z)
+# Backends: first-pass + round-trip
 # ---------------------------
-
 
 def _rt_splineops(
     gray: np.ndarray, z: float, preset: str
-) -> Tuple[np.ndarray, Optional[str]]:
+) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
+    """
+    Return (first, rec, err):
+
+    first = sp_resize(gray, z)    -- first-pass resized image
+    rec   = sp_resize(first, 1/z) -- round-trip back to original size
+    """
     if not _HAS_SPLINEOPS:
-        return gray, f"splineops unavailable: {_SPLINEOPS_IMPORT_ERR}"
+        return gray, gray, f"splineops unavailable: {_SPLINEOPS_IMPORT_ERR}"
     try:
-        out = sp_resize(gray, zoom_factors=(z, z), method=preset)
-        rec = sp_resize(out, output_size=gray.shape, method=preset)
-        return np.clip(rec, 0.0, 1.0), None
+        first = sp_resize(gray, zoom_factors=(z, z), method=preset)
+        rec = sp_resize(first, output_size=gray.shape, method=preset)
+        first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
+        return first, rec, None
     except Exception as e:
-        return gray, str(e)
+        return gray, gray, str(e)
 
 
 def _rt_scipy(
     gray: np.ndarray, z: float, degree: str
-) -> Tuple[np.ndarray, Optional[str]]:
+) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
+    """Return (first, rec, err) using SciPy ndimage.zoom with order=1/3."""
     if not _HAS_SCIPY:
-        return gray, "SciPy not installed"
+        return gray, gray, "SciPy not installed"
     try:
         order_map = {"linear": 1, "cubic": 3}
         order = order_map[degree]
         need_prefilter = order >= 3
 
-        out = _ndi_zoom(
+        first = _ndi_zoom(
             gray,
             (z, z),
             order=order,
@@ -349,10 +340,11 @@ def _rt_scipy(
             mode="reflect",
             grid_mode=False,
         )
-        Hz, Wz = out.shape
+
+        Hz, Wz = first.shape
         back = (gray.shape[0] / Hz, gray.shape[1] / Wz)
         rec = _ndi_zoom(
-            out,
+            first,
             back,
             order=order,
             prefilter=need_prefilter,
@@ -360,6 +352,7 @@ def _rt_scipy(
             grid_mode=False,
         )
         rec = np.clip(rec, 0.0, 1.0)
+        first = np.clip(first, 0.0, 1.0)
 
         if rec.shape != gray.shape:
             h = min(rec.shape[0], gray.shape[0])
@@ -377,139 +370,181 @@ def _rt_scipy(
             tmp[g0:g1, g2:g3] = rc
             rec = tmp
 
-        return rec, None
+        first = first.astype(gray.dtype, copy=False)
+        rec = rec.astype(gray.dtype, copy=False)
+        return first, rec, None
     except Exception as e:
-        return gray, str(e)
+        return gray, gray, str(e)
 
 
 def _rt_opencv(
     gray: np.ndarray, z: float, which: str
-) -> Tuple[np.ndarray, Optional[str]]:
+) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
+    """Return (first, rec, err) using OpenCV INTER_LINEAR / INTER_CUBIC."""
     if not _HAS_CV2:
-        return gray, "OpenCV not installed"
+        return gray, gray, "OpenCV not installed"
     try:
         interp = {
             "linear": cv2.INTER_LINEAR,
             "cubic": cv2.INTER_CUBIC,
         }[which]
         H, W = gray.shape
-        out = cv2.resize(
-            gray,
-            (int(round(W * z)), int(round(H * z))),
-            interpolation=interp,
-        )
-        rec = cv2.resize(out, (W, H), interpolation=interp)
-        return np.clip(rec, 0.0, 1.0), None
+        H1 = int(round(H * z))
+        W1 = int(round(W * z))
+
+        first = cv2.resize(gray, (W1, H1), interpolation=interp)
+        rec = cv2.resize(first, (W, H), interpolation=interp)
+
+        first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
+        return first, rec, None
     except Exception as e:
-        return gray, str(e)
+        return gray, gray, str(e)
 
 
 def _rt_pillow(
     gray: np.ndarray, z: float, which: str
-) -> Tuple[np.ndarray, Optional[str]]:
+) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
+    """Return (first, rec, err) using Pillow BILINEAR/BICUBIC."""
     try:
-        from PIL import Image
+        from PIL import Image as _Image
 
         resample = {
-            "linear": Image.Resampling.BILINEAR,
-            "cubic": Image.Resampling.BICUBIC,
+            "linear": _Image.Resampling.BILINEAR,
+            "cubic": _Image.Resampling.BICUBIC,
         }[which]
         H, W = gray.shape
-        im = Image.fromarray(
+        H1 = int(round(H * z))
+        W1 = int(round(W * z))
+
+        im = _Image.fromarray(
             np.rint(np.clip(gray, 0, 1) * 255.0).astype(np.uint8), mode="L"
         )
-        out = im.resize(
-            (int(round(W * z)), int(round(H * z))), resample=resample
-        )
-        rec = out.resize((W, H), resample=resample)
-        arr = np.asarray(rec, dtype=np.float64) / 255.0
-        return np.clip(arr, 0.0, 1.0), None
+        first_im = im.resize((W1, H1), resample=resample)
+        rec_im = first_im.resize((W, H), resample=resample)
+
+        first = np.asarray(first_im, dtype=np.float64) / 255.0
+        rec = np.asarray(rec_im, dtype=np.float64) / 255.0
+
+        first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
+        return first, rec, None
     except Exception as e:
-        return gray, str(e)
+        return gray, gray, str(e)
 
 
 def _rt_skimage(
     gray: np.ndarray, z: float, degree: str
-) -> Tuple[np.ndarray, Optional[str]]:
+) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
+    """Return (first, rec, err) using skimage.transform.resize with order=1/3."""
     if not _HAS_SKIMAGE:
-        return gray, "scikit-image not installed"
+        return gray, gray, "scikit-image not installed"
     try:
         order_map = {"linear": 1, "cubic": 3}
         order = order_map[degree]
         H, W = gray.shape
-        out = _sk_resize(
+        H1 = int(round(H * z))
+        W1 = int(round(W * z))
+
+        first = _sk_resize(
             gray,
-            (int(round(H * z)), int(round(W * z))),
+            (H1, W1),
             order=order,
             anti_aliasing=True,
             preserve_range=True,
             mode="reflect",
         ).astype(np.float64)
         rec = _sk_resize(
-            out,
+            first,
             (H, W),
             order=order,
             anti_aliasing=True,
             preserve_range=True,
             mode="reflect",
         ).astype(np.float64)
-        return np.clip(rec, 0.0, 1.0), None
+
+        first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
+        return first, rec, None
     except Exception as e:
-        return gray, str(e)
+        return gray, gray, str(e)
 
 
 def _rt_torch(
     gray: np.ndarray, z: float, degree: str
-) -> Tuple[np.ndarray, Optional[str]]:
+) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
+    """Return (first, rec, err) using torch F.interpolate with bilinear/bicubic + AA."""
     if not _HAS_TORCH:
-        return gray, "PyTorch not installed"
+        return gray, gray, "PyTorch not installed"
     try:
         mode = "bilinear" if degree == "linear" else "bicubic"
-        x = torch.from_numpy(gray[None, None].astype(np.float32))
         H, W = gray.shape
-        y = F.interpolate(
+        H1 = int(round(H * z))
+        W1 = int(round(W * z))
+
+        x = torch.from_numpy(gray[None, None].astype(np.float32))
+        first_t = F.interpolate(
             x,
-            size=(int(round(H * z)), int(round(W * z))),
+            size=(H1, W1),
             mode=mode,
             align_corners=False,
             antialias=True,
         )
-        y2 = F.interpolate(
-            y,
+        rec_t = F.interpolate(
+            first_t,
             size=(H, W),
             mode=mode,
             align_corners=False,
             antialias=True,
         )
-        arr = y2[0, 0].detach().cpu().numpy().astype(np.float64)
-        return np.clip(arr, 0.0, 1.0), None
+        first = first_t[0, 0].detach().cpu().numpy().astype(np.float64)
+        rec = rec_t[0, 0].detach().cpu().numpy().astype(np.float64)
+
+        first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
+        return first, rec, None
     except Exception as e:
-        return gray, str(e)
+        return gray, gray, str(e)
 
 
 # ---------------------------
 # Benchmark harness
 # ---------------------------
 
-
 def _avg_time(fn, repeats: int = 10, warmup: bool = True):
-    """Return (last_rec, mean_time, std_time, error)."""
+    """
+    Run `fn()` (which must return (first, rec, err)) `repeats` times,
+    measuring total time of first+rec per run.
+
+    Returns (last_first, last_rec, mean_time, std_time, err).
+    """
     if warmup:
         try:
-            _ = fn()
+            first, rec, err = fn()
+            if err is not None:
+                return np.array([]), np.array([]), float("nan"), float("nan"), err
         except Exception as e:
-            return np.array([]), float("nan"), float("nan"), str(e)
+            return np.array([]), np.array([]), float("nan"), float("nan"), str(e)
 
-    times = []
-    rec = None
+    times: List[float] = []
+    last_first: Optional[np.ndarray] = None
+    last_rec: Optional[np.ndarray] = None
+
     for _ in range(max(1, repeats)):
         t0 = time.perf_counter()
-        rec, err = fn()
+        first, rec, err = fn()
         if err is not None:
-            return np.array([]), float("nan"), float("nan"), err
-        times.append(time.perf_counter() - t0)
-    t = np.asarray(times, dtype=np.float64)
-    return rec, float(t.mean()), float(t.std(ddof=1 if len(t) > 1 else 0)), None
+            return np.array([]), np.array([]), float("nan"), float("nan"), err
+        dt = time.perf_counter() - t0
+        times.append(dt)
+        last_first = first
+        last_rec = rec
+
+    t_arr = np.asarray(times, dtype=np.float64)
+    mean_t = float(t_arr.mean())
+    sd_t = float(t_arr.std(ddof=1 if len(t_arr) > 1 else 0))
+    assert last_first is not None and last_rec is not None
+    return last_first, last_rec, mean_t, sd_t, None
 
 
 def main(argv=None):
@@ -525,6 +560,26 @@ def main(argv=None):
     )
     args = ap.parse_args(argv)
     degree = args.degree
+
+    # Ensure a Qt application exists before degree dialog / file dialog
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(sys.argv)
+
+    # Degree selection dialog
+    items = ["Linear", "Cubic"]
+    default_idx = 0 if degree == "linear" else 1
+    choice, ok = QtWidgets.QInputDialog.getItem(
+        None,
+        "Interpolation degree",
+        "Choose interpolation degree:",
+        items,
+        default_idx,
+        False,
+    )
+    if ok and choice:
+        degree = choice.lower()
+
     degree_label = degree.title()
 
     # Ensure a Qt application exists for dialogs
@@ -556,9 +611,15 @@ def main(argv=None):
     # --- Settings ---
     repeats = 10  # avg runs
 
-    # ROI: square patch similar to 03_06_benchmarking (≈256×256, fixed position)
+    # ROI in the *original* image (for round-trip quality metrics)
     roi_rect = _roi_rect_from_frac(gray.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
     roi = _crop_roi(gray, roi_rect)
+
+    # Precompute original ROI center/size to map into resized space
+    roi_h = roi_rect[2]
+    roi_w = roi_rect[3]
+    center_r = roi_rect[0] + roi_h / 2.0
+    center_c = roi_rect[1] + roi_w / 2.0
 
     # --- Methods to compare ---
     methods = [
@@ -597,7 +658,7 @@ def main(argv=None):
     ]
 
     rows: List[Dict] = []
-    roi_tiles = []
+    roi_tiles: List[Tuple[str, np.ndarray]] = []
 
     # Add ORIGINAL ROI tile as first comparison panel
     orig_tile = _nearest_big(roi, ROI_MAG_TARGET)
@@ -609,8 +670,8 @@ def main(argv=None):
     print("-" * len(header))
 
     for name, runner in methods:
-        rec, t_mean, t_sd, err = _avg_time(runner, repeats=repeats, warmup=True)
-        if err is not None or rec.size == 0:
+        first, rec, t_mean, t_sd, err = _avg_time(runner, repeats=repeats, warmup=True)
+        if err is not None or rec.size == 0 or first.size == 0:
             print(f"{name:<40} {'unavailable':>13} {'':>10} {'—':>10} {'—':>14}")
             rows.append(
                 {
@@ -619,13 +680,12 @@ def main(argv=None):
                     "sd": np.nan,
                     "snr": np.nan,
                     "mse": np.nan,
-                    "rec": None,
                     "err": err,
                 }
             )
             continue
 
-        # Metrics on a fixed ROI (same rectangle as in the original)
+        # Round-trip metrics on fixed ROI in original resolution
         rec_roi = _crop_roi(rec, roi_rect)
         snr = _snr_db(roi, rec_roi)
         mse = float(np.mean((roi - rec_roi) ** 2, dtype=np.float64))
@@ -641,16 +701,36 @@ def main(argv=None):
                 "sd": t_sd,
                 "snr": snr,
                 "mse": mse,
-                "rec": rec,
                 "err": None,
             }
         )
 
-        # ROI tile for montage (detail window)
-        tile = _nearest_big(rec_roi, ROI_MAG_TARGET)
+        # ROI tile for montage: map original ROI center + size into resized space
+        H1, W1 = first.shape
+        roi_h_res = max(1, int(round(roi_h * z)))
+        roi_w_res = max(1, int(round(roi_w * z)))
+
+        if roi_h_res > H1 or roi_w_res > W1:
+            # If the mapped ROI is larger than the resized image, just use full image
+            first_roi = first
+        else:
+            center_r_res = int(round(center_r * z))
+            center_c_res = int(round(center_c * z))
+            row_top_res = int(
+                np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res)
+            )
+            col_left_res = int(
+                np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res)
+            )
+            first_roi = first[
+                row_top_res : row_top_res + roi_h_res,
+                col_left_res : col_left_res + roi_w_res,
+            ]
+
+        tile = _nearest_big(first_roi, ROI_MAG_TARGET)
         roi_tiles.append((name, tile))
 
-    # --- ROI montage ---
+    # --- ROI montage (original + first-pass results) ---
     if roi_tiles:
         cols = min(3, len(roi_tiles))
         rows_n = int(np.ceil(len(roi_tiles) / cols))
@@ -670,14 +750,14 @@ def main(argv=None):
             ax.set_axis_off()
         h_roi, w_roi = roi.shape
         fig.suptitle(
-            f"ROI comparison (original + round-trip) — "
+            f"ROI comparison (original + first-pass resized) — "
             f"{h_roi}×{w_roi} px, zoom ×{z:g}, degree={degree_label}",
             fontsize=12,
         )
         plt.tight_layout()
         plt.show()
 
-    # --- Timing bar chart ---
+    # --- Timing bar chart (round-trip) ---
     valid = [r for r in rows if np.isfinite(r["time"])]
     if valid:
         names = [r["name"] for r in valid]
@@ -702,7 +782,7 @@ def main(argv=None):
         plt.tight_layout()
         plt.show()
 
-    # --- SNR bar chart ---
+    # --- SNR bar chart (round-trip SNR) ---
     valid = [r for r in rows if np.isfinite(r["snr"])]
     if valid:
         names = [r["name"] for r in valid]
@@ -715,7 +795,7 @@ def main(argv=None):
         x = np.arange(len(names))
         plt.bar(x, snrs, alpha=0.85)
         plt.xticks(x, names, rotation=30, ha="right", fontsize=9)
-        plt.ylabel("SNR (dB) on fixed ROI")
+        plt.ylabel("SNR (dB) on fixed ROI (round-trip)")
         plt.title(
             f"SNR vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})"
         )
