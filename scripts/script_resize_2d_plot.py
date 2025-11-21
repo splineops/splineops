@@ -78,7 +78,7 @@ from PyQt5 import QtWidgets
 from splineops.resize import resize as spl_resize
 
 # Default storage dtype for the sweep (change to np.float64 if desired)
-DTYPE = np.float32
+DTYPE = np.float64
 DTYPE_NAME = np.dtype(DTYPE).name
 
 # -------------------------- UI / I/O helpers --------------------------
