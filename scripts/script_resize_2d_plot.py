@@ -505,9 +505,9 @@ def main():
         print("[info] PyTorch not found; 'PyTorch bicubic (AA)' curve will be omitted.")
 
     if _HAS_CV2:
-        METHODS["OpenCV INTER_AREA"] = ("opencv", "area")
+        METHODS["OpenCV INTER_CUBIC"] = ("opencv", "cubic")
     else:
-        print("[info] OpenCV not found; 'OpenCV INTER_AREA' curve will be omitted.")
+        print("[info] OpenCV not found; 'OpenCV INTER_CUBIC' curve will be omitted.")
 
     # Pillow is always available (we already import PIL.Image above)
     METHODS["Pillow LANCZOS"] = ("pillow", "lanczos")

@@ -476,9 +476,7 @@ def main():
         ("Splineops — LS (best AA) cubic",  lambda: _rt_splineops(gray, z, "cubic-best_antialiasing")),
         ("Splineops — Oblique (fast AA)",   lambda: _rt_splineops(gray, z, "cubic-fast_antialiasing")),
         ("SciPy cubic",                     lambda: _rt_scipy(gray, z)),
-        # Single OpenCV baseline (INTER_AREA is a good downsampling reference)
-        ("OpenCV INTER_AREA",               lambda: _rt_opencv(gray, z, "area")),
-        # Single Pillow baseline (LANCZOS as “high-quality” reference)
+        ("OpenCV INTER_CUBIC",              lambda: _rt_opencv(gray, z, "cubic")),
         ("Pillow LANCZOS",                  lambda: _rt_pillow(gray, z, "lanczos")),
         ("scikit-image (cubic, AA)",        lambda: _rt_skimage(gray, z)),
         ("PyTorch bicubic (AA, CPU)",       lambda: _rt_torch(gray, z)),
