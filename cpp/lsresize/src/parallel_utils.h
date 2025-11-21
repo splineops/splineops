@@ -8,13 +8,12 @@
 #include <algorithm>
 #include <thread>
 
-#include "resize_1d.h"  // for lsresize::Plan1D_T
+#include "resize_1d.h"  // for lsresize::Plan1D
 
 namespace lsresize {
 
 // Heuristic: decide when it's worth parallelizing.
-template <typename Real>
-inline bool use_parallel(std::int64_t nlines, const lsresize::Plan1D_T<Real>& plan)
+inline bool use_parallel(std::int64_t nlines, const lsresize::Plan1D& plan)
 {
   const double L   = static_cast<double>(plan.out_total);
   const double nnz = plan.row_ptr.empty()
@@ -23,8 +22,11 @@ inline bool use_parallel(std::int64_t nlines, const lsresize::Plan1D_T<Real>& pl
   const double wavg  = (L > 0.0) ? (nnz / L) : 0.0;
   const double flops = 2.0 * static_cast<double>(nlines) * L * wavg;
 
+  // Default FLOP threshold: ~1e6 operations
   double thr = 1e6;
 
+  // Optional override via env:
+  //   LSRESIZE_PARALLEL_THRESHOLD = minimum FLOPs to trigger multithreading
   if (const char* env = std::getenv("LSRESIZE_PARALLEL_THRESHOLD")) {
     if (double t = std::atof(env); t > 0.0) {
       thr = t;
@@ -34,21 +36,31 @@ inline bool use_parallel(std::int64_t nlines, const lsresize::Plan1D_T<Real>& pl
   return (nlines > 64) || (flops > thr);
 }
 
-// Centralized scheduler (std::thread only)
-template <typename Real, typename Worker>
+// Centralized scheduler (std::thread only):
+//   - If use_parallel(...) is true → launch a thread pool
+//   - Else → run worker(0, nlines) in the current thread
+//
+// The Worker functor must have the signature:
+//    void operator()(std::int64_t start, std::int64_t end);
+// where [start, end) is a range of 1-D "lines" to process.
+template <typename Worker>
 inline void run_parallel_or_serial(std::int64_t nlines,
-                                   const lsresize::Plan1D_T<Real>& plan,
+                                   const lsresize::Plan1D& plan,
                                    Worker&& worker)
 {
   if (nlines <= 0) {
     return;
   }
 
-  if (!use_parallel<Real>(nlines, plan)) {
+  if (!use_parallel(nlines, plan)) {
+    // Serial fallback
     worker(0, nlines);
     return;
   }
 
+  // Determine number of threads:
+  //  - default: hardware_concurrency()
+  //  - override: LSRESIZE_NUM_THREADS (if > 0)
   unsigned hw = std::thread::hardware_concurrency();
   if (hw == 0) {
     hw = 1;

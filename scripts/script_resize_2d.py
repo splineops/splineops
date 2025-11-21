@@ -53,7 +53,7 @@ except Exception:
     _HAS_IMAGECMS = False
 
 # Default storage dtype for the demo (change to np.float64 if desired)
-DTYPE = np.float32
+DTYPE = np.float64
 
 from PyQt5 import QtWidgets
 
