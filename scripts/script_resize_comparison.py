@@ -1,3 +1,4 @@
+# splineops/scripts/script_resize_comparison.py
 # -*- coding: utf-8 -*-
 """
 script_resize_comparison.py
@@ -18,7 +19,7 @@ Workflow
 1) Pick an image (dialog). If you cancel, you'll be asked for a URL.
 2) Enter zoom factor z (>0), e.g. 0.3 for downscale or 1.7 for upscale.
 3) Script runs round-trip per method (z, then 1/z), averages timing over N runs.
-4) Computes SNR/MSE over a central crop and shows:
+4) Computes SNR/MSE over a fixed square ROI (≈256×256) and shows:
    - ROI montage (nearest-neighbor magnified)
    - Bar charts for timing and SNR
 
@@ -44,6 +45,12 @@ from PIL import Image
 
 # Default storage dtype for comparison (change to np.float64 if desired)
 DTYPE = np.float32
+
+# ROI / detail-window configuration (match 03_06_benchmarking)
+ROI_SIZE_PX = 256              # approximate ROI size in original image
+ROI_CENTER_FRAC = (0.40, 0.50)   # (row_frac, col_frac) in [0, 1]; here: image center
+ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
+
 
 try:
     import cv2
@@ -151,6 +158,49 @@ def _central_crop(arr: np.ndarray, frac: float = 0.2) -> np.ndarray:
     dh = int(round(h * frac))
     dw = int(round(w * frac))
     return arr[dh:h - dh if dh else h, dw:w - dw if dw else w]
+
+
+def _roi_rect_from_frac(
+    shape: Tuple[int, int],
+    roi_size_px: int,
+    center_frac: Tuple[float, float],
+) -> Tuple[int, int, int, int]:
+    """Compute a square ROI inside an image, centred at fractional coordinates.
+
+    Parameters
+    ----------
+    shape : (H, W)
+        Image shape.
+    roi_size_px : int
+        Desired ROI side length in pixels (approximate; clipped to image size).
+    center_frac : (row_frac, col_frac)
+        ROI centre as fractions of height/width in [0, 1].
+
+    Returns
+    -------
+    row_top, col_left, height, width : int
+        Rectangle parameters for the ROI.
+    """
+    H, W = shape[:2]
+    row_frac, col_frac = center_frac
+
+    size = int(min(roi_size_px, H, W))
+    if size < 1:
+        size = min(H, W)
+
+    center_r = int(round(row_frac * H))
+    center_c = int(round(col_frac * W))
+
+    row_top = int(np.clip(center_r - size // 2, 0, H - size))
+    col_left = int(np.clip(center_c - size // 2, 0, W - size))
+
+    return row_top, col_left, size, size
+
+
+def _crop_roi(arr: np.ndarray, rect: Tuple[int, int, int, int]) -> np.ndarray:
+    """Crop a rectangular ROI given (row_top, col_left, height, width)."""
+    r0, c0, h, w = rect
+    return arr[r0:r0 + h, c0:c0 + w]
 
 def _fmt_time(s: Optional[float]) -> str:
     if s is None or not np.isfinite(s):
@@ -415,8 +465,10 @@ def main():
 
     # --- Settings ---
     repeats = 10          # avg runs
-    border_frac = 0.2     # central crop for metrics
-    roi = _central_crop(gray, border_frac)
+
+    # ROI: square patch similar to 03_06_benchmarking (≈256×256, centred)
+    roi_rect = _roi_rect_from_frac(gray.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
+    roi = _crop_roi(gray, roi_rect)
 
     # --- Methods to compare ---
     methods = [
@@ -447,15 +499,15 @@ def main():
             rows.append({"name": name, "time": np.nan, "sd": np.nan, "snr": np.nan, "mse": np.nan, "rec": None, "err": err})
             continue
 
-        # Metrics on central crop
-        rec_roi = _central_crop(rec, border_frac)
+        # Metrics on a fixed ROI (same rectangle as in the original)
+        rec_roi = _crop_roi(rec, roi_rect)
         snr = _snr_db(roi, rec_roi)
         mse = float(np.mean((roi - rec_roi) ** 2, dtype=np.float64))
         print(f"{name:<34} {_fmt_time(t_mean):>13} {_fmt_time(t_sd):>10} {snr:>10.2f} {mse:>14.3e}")
 
         rows.append({"name": name, "time": t_mean, "sd": t_sd, "snr": snr, "mse": mse, "rec": rec, "err": None})
-        # ROI tile for montage
-        tile = _nearest_big(rec_roi, 240)
+        # ROI tile for montage (detail window)
+        tile = _nearest_big(rec_roi, ROI_MAG_TARGET)
         roi_tiles.append((name, tile))
 
     # --- ROI montage ---
@@ -474,7 +526,11 @@ def main():
             ax.imshow(tile, cmap="gray", interpolation="nearest")
             ax.set_title(name, fontsize=9)
             ax.set_axis_off()
-        fig.suptitle(f"Recovered ROI (central {int((1-2*border_frac)*100)}% area) — zoom ×{z:g}", fontsize=12)
+        h_roi, w_roi = roi.shape
+        fig.suptitle(
+            f"Recovered ROI ({h_roi}×{w_roi} px, centred) — zoom ×{z:g}",
+            fontsize=12,
+        )
         plt.tight_layout()
         plt.show()
 
@@ -511,7 +567,7 @@ def main():
         x = np.arange(len(names))
         plt.bar(x, snrs, color="tab:green", alpha=0.85)
         plt.xticks(x, names, rotation=30, ha="right", fontsize=9)
-        plt.ylabel("SNR (dB) on central crop")
+        plt.ylabel("SNR (dB) on fixed ROI")
         plt.title(f"SNR vs Method (H×W = {H}×{W}, zoom ×{z:g})")
         plt.grid(axis="y", alpha=0.3)
         plt.tight_layout()
