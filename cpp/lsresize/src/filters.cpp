@@ -147,10 +147,32 @@ void integ_sa(std::vector<double>& c, double m) {
 void integ_as(const std::vector<double>& c, std::vector<double>& y) {
   const size_t N = c.size();
   y.resize(N);
-  std::vector<double> z = c;
-  y[0] = z[0];
-  if (N > 1) y[1] = 0.0;
-  for (size_t i = 2; i < N; ++i) y[i] = y[i-1] - z[i-1];
+  if (N == 0) return;
+
+  if (&c == &y) {
+    // In-place variant: read & write the same vector
+    double c0 = y[0];
+    if (N > 1) {
+      double accum = 0.0;
+      for (size_t i = 1; i < N; ++i) {
+        double tmp = y[i];                 // original c[i]
+        y[i] = (i == 1) ? 0.0 : -accum;    // y[i] = 0 for i=1, otherwise -sum c[1..i-1]
+        accum += tmp;                      // accum = sum c[1..i]
+      }
+    }
+    y[0] = c0;
+  } else {
+    // Separate input/output buffers
+    y[0] = c[0];
+    if (N > 1) {
+      double accum = 0.0;
+      for (size_t i = 1; i < N; ++i) {
+        double tmp = c[i];
+        y[i] = (i == 1) ? 0.0 : -accum;
+        accum += tmp;
+      }
+    }
+  }
 }
 
 void do_diff(std::vector<double>& c, int nb) {

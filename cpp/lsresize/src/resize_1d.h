@@ -49,7 +49,6 @@ struct Plan1D {
 // Per-thread reusable workspace to avoid per-line allocations
 struct Work1D {
   std::vector<double> coeff;     // interpolation coefficients / input line
-  std::vector<double> ext;       // finite extension (right tail only)
   std::vector<double> ext_full;  // [left_pad | ext | right_pad] single buffer
   std::vector<double> y;         // accumulator / tail buffer
 };
