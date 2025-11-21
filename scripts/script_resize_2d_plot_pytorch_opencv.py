@@ -2,11 +2,11 @@
 """
 Sweep zoom factors in (0, 2) while *excluding 1.0*, and compare:
 
-- Standard cubic (splineops)
-- Least-Squares cubic (best AA, splineops)
-- Oblique cubic (fast AA, splineops)
-- PyTorch bicubic (antialiased, CPU)
-- OpenCV INTER_CUBIC
+- Standard linear/cubic (splineops)
+- Least-Squares linear/cubic (best AA, splineops)
+- Oblique linear/cubic (fast AA, splineops)
+- PyTorch bilinear/bicubic (antialiased, CPU)
+- OpenCV INTER_LINEAR / INTER_CUBIC
 
 If --image is not provided, a file dialog pops up; canceling it prompts for a URL.
 
@@ -14,8 +14,7 @@ This version averages timing over N runs per zoom (default: 10) and displays
 timing and SNR vs zoom plots. You can plot downsampling (0<z<1), upsampling
 (1<z<2), or both.
 
-Unlike the SciPy-based variant, this script uses *all* zoom factors from the
-linspace (no roundtrip-size filtering). For each z, we:
+For each z, we:
 
   1. Resize to target size (H1, W1) ≈ (z·H, z·W)
   2. Resize back explicitly to (H, W)
@@ -47,6 +46,7 @@ except Exception:
 try:
     import torch
     import torch.nn.functional as F
+
     _HAS_TORCH = True
 except Exception:
     _HAS_TORCH = False
@@ -56,6 +56,7 @@ except Exception:
 # Optional OpenCV (for comparison)
 try:
     import cv2
+
     _HAS_CV2 = True
     # Undo OpenCV's Qt plugin path override to avoid conflicts with PyQt/Matplotlib
     os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
@@ -74,6 +75,7 @@ DTYPE_NAME = np.dtype(DTYPE).name
 
 
 # -------------------------- UI / I/O helpers --------------------------
+
 
 def choose_image_dialog() -> str | None:
     """Open a file dialog; if canceled, prompt for URL; return a path/URL or None."""
@@ -135,9 +137,9 @@ def load_image_any(path_or_url: str, grayscale: bool = True) -> np.ndarray:
         out = arr / 255.0
         if grayscale:
             out = (
-                0.2989 * out[..., 0] +
-                0.5870 * out[..., 1] +
-                0.1140 * out[..., 2]
+                0.2989 * out[..., 0]
+                + 0.5870 * out[..., 1]
+                + 0.1140 * out[..., 2]
             )
     out = np.clip(out, 0.0, 1.0)
     return np.ascontiguousarray(out, dtype=DTYPE)
@@ -155,6 +157,7 @@ def snr_db(x: np.ndarray, y: np.ndarray) -> float:
 
 
 # ----------------------------- runners ------------------------------
+
 
 def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, float]:
     """
@@ -185,22 +188,23 @@ def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, f
     return np.asarray(rec, dtype=img.dtype), dt
 
 
-def torch_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
+def torch_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
     """
-    Round-trip using torch.nn.functional.interpolate with bicubic + antialias=True.
-    Runs on CPU. Works for 2D (H,W) and 3D (H,W,C) images.
+    Round-trip using torch.nn.functional.interpolate with bilinear (linear)
+    or bicubic (cubic) + antialias=True. Runs on CPU.
+    Works for 2D (H,W) and 3D (H,W,C) images.
     """
     if not _HAS_TORCH:
         raise RuntimeError("PyTorch not available")
 
+    mode = "bilinear" if degree == "linear" else "bicubic"
+
     arr = img
-    # Map numpy dtype to torch dtype
     if arr.dtype == np.float32:
         t_dtype = torch.float32
     elif arr.dtype == np.float64:
         t_dtype = torch.float64
     else:
-        # upcast other types to float32
         t_dtype = torch.float32
         arr = arr.astype(np.float32, copy=False)
 
@@ -214,14 +218,14 @@ def torch_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]
         y = F.interpolate(
             x,
             size=(H1, W1),
-            mode="bicubic",
+            mode=mode,
             align_corners=False,
             antialias=True,
         )
         y2 = F.interpolate(
             y,
             size=(H, W),
-            mode="bicubic",
+            mode=mode,
             align_corners=False,
             antialias=True,
         )
@@ -231,20 +235,19 @@ def torch_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]
 
     elif arr.ndim == 3:
         C = arr.shape[2]
-        # Convert H×W×C -> 1×C×H×W
         x = torch.from_numpy(arr).to(t_dtype).permute(2, 0, 1).unsqueeze(0)
         t0 = time.perf_counter()
         y = F.interpolate(
             x,
             size=(H1, W1),
-            mode="bicubic",
+            mode=mode,
             align_corners=False,
             antialias=True,
         )
         y2 = F.interpolate(
             y,
             size=(H, W),
-            mode="bicubic",
+            mode=mode,
             align_corners=False,
             antialias=True,
         )
@@ -256,20 +259,20 @@ def torch_cubic_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]
         raise ValueError("Expected 2D (H×W) or 3D (H×W×C) image for PyTorch path.")
 
 
-def opencv_roundtrip(img: np.ndarray, z: float, which: str = "cubic") -> Tuple[np.ndarray, float]:
+def opencv_roundtrip(
+    img: np.ndarray, z: float, which: str = "cubic"
+) -> Tuple[np.ndarray, float]:
     """
     Round-trip with OpenCV resize using the given interpolation.
 
-      which in {"cubic"} (INTER_CUBIC).
+      which in {"linear","cubic"}.
 
     Supports 2D (H,W) and 3D (H,W,C) arrays. Rec has exactly the same shape as img.
     """
     if not _HAS_CV2:
         raise RuntimeError("OpenCV not available")
 
-    interp = {
-        "cubic": cv2.INTER_CUBIC,
-    }[which]
+    interp = {"linear": cv2.INTER_LINEAR, "cubic": cv2.INTER_CUBIC}[which]
 
     H, W = img.shape[:2]
     H1 = max(1, int(round(H * z)))
@@ -299,18 +302,35 @@ def average_time(run, repeats: int = 10):
 
 # ------------------------------ main -------------------------------
 
+
 def main():
     ap = argparse.ArgumentParser(
         description="Timing & SNR sweep (splineops vs PyTorch vs OpenCV) with averaged runs."
     )
-    ap.add_argument("--image", type=str, default=None,
-                    help="Optional path/URL; if omitted, a dialog opens.")
-    ap.add_argument("--samples", type=int, default=50,
-                    help="Base number of zoom samples per side if --samples-down/--samples-up are not given.")
-    ap.add_argument("--samples-down", type=int, default=None,
-                    help="Number of zoom samples in the interval (0, 1). Overrides --samples if set.")
-    ap.add_argument("--samples-up", type=int, default=None,
-                    help="Number of zoom samples in the interval (1, 2). Overrides --samples if set.")
+    ap.add_argument(
+        "--image",
+        type=str,
+        default=None,
+        help="Optional path/URL; if omitted, a dialog opens.",
+    )
+    ap.add_argument(
+        "--samples",
+        type=int,
+        default=50,
+        help="Base number of zoom samples per side if --samples-down/--samples-up are not given.",
+    )
+    ap.add_argument(
+        "--samples-down",
+        type=int,
+        default=None,
+        help="Number of zoom samples in the interval (0, 1). Overrides --samples if set.",
+    )
+    ap.add_argument(
+        "--samples-up",
+        type=int,
+        default=None,
+        help="Number of zoom samples in the interval (1, 2). Overrides --samples if set.",
+    )
     ap.add_argument(
         "--which",
         type=str,
@@ -318,11 +338,29 @@ def main():
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
-    ap.add_argument("--grayscale", type=int, default=1,
-                    help="1=convert to grayscale, 0=keep RGB.")
-    ap.add_argument("--repeats", type=int, default=10,
-                    help="Average this many runs per (method, z).")
+    ap.add_argument(
+        "--grayscale",
+        type=int,
+        default=1,
+        help="1=convert to grayscale, 0=keep RGB.",
+    )
+    ap.add_argument(
+        "--repeats",
+        type=int,
+        default=10,
+        help="Average this many runs per (method, z).",
+    )
+    ap.add_argument(
+        "--degree",
+        type=str,
+        default="cubic",
+        choices=("linear", "cubic"),
+        help="Degree / interpolation mode for splineops and other libs.",
+    )
+
     args = brush_args(ap.parse_args())
+    degree = args.degree
+    degree_label = degree.title()
 
     # Pick image (dialog if not provided)
     path_or_url = args.image
@@ -345,7 +383,7 @@ def main():
     # Build zoom candidates
     #
     n_down = args.samples_down if args.samples_down is not None else args.samples
-    n_up   = args.samples_up   if args.samples_up   is not None else args.samples
+    n_up = args.samples_up if args.samples_up is not None else args.samples
 
     eps = 1e-6  # margin to avoid hitting exactly 0, 1, or 2
     if n_down > 0:
@@ -384,19 +422,32 @@ def main():
     # Methods: splineops + PyTorch + OpenCV
     #
     METHODS: Dict[str, Tuple[str, str | None]] = {
-        "Standard cubic":           ("splineops", "cubic"),
-        "Least-Squares (AA cubic)": ("splineops", "cubic-best_antialiasing"),
-        "Oblique (fast AA cubic)":  ("splineops", "cubic-fast_antialiasing"),
+        f"Standard {degree_label}": (
+            "splineops",
+            degree,
+        ),
+        f"Least-Squares (AA {degree_label})": (
+            "splineops",
+            f"{degree}-best_antialiasing",
+        ),
+        f"Oblique (fast AA {degree_label})": (
+            "splineops",
+            f"{degree}-fast_antialiasing",
+        ),
     }
     if _HAS_TORCH:
-        METHODS["PyTorch bicubic (AA)"] = ("torch", None)
+        METHODS[f"PyTorch {degree_label} (AA)"] = ("torch", degree)
     else:
-        print("[info] PyTorch not found; 'PyTorch bicubic (AA)' curve will be omitted.")
+        print(
+            "[info] PyTorch not found; 'PyTorch (AA)' curve will be omitted."
+        )
 
     if _HAS_CV2:
-        METHODS["OpenCV INTER_CUBIC"] = ("opencv", "cubic")
+        METHODS[f"OpenCV INTER_{degree_label.upper()}"] = ("opencv", degree)
     else:
-        print("[info] OpenCV not found; 'OpenCV INTER_CUBIC' curve will be omitted.")
+        print(
+            "[info] OpenCV not found; 'OpenCV' curve will be omitted."
+        )
 
     results: Dict[str, Dict[str, List[float]]] = {
         name: {"z": [], "time": [], "time_sd": [], "snr": []} for name in METHODS
@@ -411,7 +462,7 @@ def main():
             if kind == "splineops":
                 runner = lambda z=z, m=method: spl_roundtrip(img, z, m)
             elif kind == "torch":
-                runner = lambda z=z: torch_cubic_roundtrip(img, z)
+                runner = lambda z=z, deg=method: torch_roundtrip(img, z, deg)
             elif kind == "opencv":
                 runner = lambda z=z, w=method: opencv_roundtrip(img, z, w)
             else:
@@ -451,17 +502,29 @@ def main():
         for name, data in results.items():
             if not data["z"]:
                 continue
-            z = np.array(data["z"], dtype=float)
+            z_arr = np.array(data["z"], dtype=float)
             t = np.array(data["time"], dtype=float)
-            mask = mask_fn(z)
+            mask = mask_fn(z_arr)
             if not mask.any():
                 continue
             any_curve = True
-            plt.plot(z[mask], t[mask], marker="o", markersize=3, linewidth=1.5, label=name)
+            plt.plot(
+                z_arr[mask],
+                t[mask],
+                marker="o",
+                markersize=3,
+                linewidth=1.5,
+                label=name,
+            )
         if any_curve:
             plt.xlabel("Zoom factor")
-            plt.ylabel(f"Time (s)  [avg of {args.repeats} runs, forward + backward]")
-            plt.title(f"Round-Trip Timing vs Zoom{title_suffix}  (H×W = {H}×{W}, dtype={DTYPE_NAME})")
+            plt.ylabel(
+                f"Time (s)  [avg of {args.repeats} runs, forward + backward]"
+            )
+            plt.title(
+                f"Round-Trip Timing vs Zoom{title_suffix}  "
+                f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})"
+            )
             plt.grid(True, alpha=0.35)
             plt.legend()
             plt.tight_layout()
@@ -472,18 +535,28 @@ def main():
         for name, data in results.items():
             if not data["z"]:
                 continue
-            z = np.array(data["z"], dtype=float)
+            z_arr = np.array(data["z"], dtype=float)
             s = np.array(data["snr"], dtype=float)
-            mask = mask_fn(z)
+            mask = mask_fn(z_arr)
             if not mask.any():
                 continue
             any_curve = True
             s_plot = np.where(np.isfinite(s[mask]), s[mask], np.nan)
-            plt.plot(z[mask], s_plot, marker="o", markersize=3, linewidth=1.5, label=name)
+            plt.plot(
+                z_arr[mask],
+                s_plot,
+                marker="o",
+                markersize=3,
+                linewidth=1.5,
+                label=name,
+            )
         if any_curve:
             plt.xlabel("Zoom factor")
             plt.ylabel("SNR (dB)  [original vs recovered]")
-            plt.title(f"Round-Trip SNR vs Zoom{title_suffix}  (H×W = {H}×{W}, dtype={DTYPE_NAME})")
+            plt.title(
+                f"Round-Trip SNR vs Zoom{title_suffix}  "
+                f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})"
+            )
             plt.grid(True, alpha=0.35)
             plt.legend()
             plt.tight_layout()
