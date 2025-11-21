@@ -24,7 +24,6 @@ set(LSRESIZE_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cpp/lsresize/src")
 set(PYBIND_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/cpp/pybind")
 
 add_library(lsresize STATIC
-  "${LSRESIZE_SRC_DIR}/filters.cpp"
   "${LSRESIZE_SRC_DIR}/resize_1d.cpp"
   "${LSRESIZE_SRC_DIR}/resize_nd.cpp"
 )
