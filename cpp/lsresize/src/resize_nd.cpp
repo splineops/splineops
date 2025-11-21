@@ -87,9 +87,8 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
   auto worker = [&](int64_t start, int64_t end) {
     Work1D ws; // per-thread reusable workspace (double internal)
     std::vector<int64_t> idx(D, 0);
-    std::vector<double>  line_in;
     std::vector<double>  line_out;
-    line_in .reserve(static_cast<size_t>(N_line));
+    ws.coeff.reserve(static_cast<size_t>(N_line));
     line_out.reserve(static_cast<size_t>(plan.outN));
 
     const bool axis_contig_in  =
@@ -132,27 +131,30 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
         }
       }
 
-      // --- Fallback: gather into line_in, use vector API ---
+      // --- Fallback: gather into ws.coeff (double), run 1-D core from coeff ---
 
-      const bool contig_in = axis_contig_in;
-      line_in.resize(static_cast<size_t>(N_line));
-      if (contig_in) {
-        // contiguous axis: simple block copy
-        line_in.assign(in + in_off, in + in_off + N_line);
+      ws.coeff.resize(static_cast<size_t>(N_line));
+
+      if (axis_contig_in) {
+        // contiguous axis: simple block copy with cast
+        const Scalar* in_line = in + in_off;
+        for (int i = 0; i < N_line; ++i) {
+          ws.coeff[static_cast<size_t>(i)] =
+              static_cast<double>(in_line[static_cast<size_t>(i)]);
+        }
       } else {
-        // non-contiguous axis: strided gather
-        for (int64_t i = 0;
-             i < in_shape[static_cast<size_t>(axis)];
-             ++i) {
-          line_in[static_cast<size_t>(i)] =
+        // non-contiguous axis: strided gather with cast
+        const int64_t stride = in_strides[static_cast<size_t>(axis)];
+        for (int i = 0; i < N_line; ++i) {
+          ws.coeff[static_cast<size_t>(i)] =
               static_cast<double>(
                   in[in_off +
-                     i * in_strides[static_cast<size_t>(axis)]]);
+                     static_cast<int64_t>(i) * stride]);
         }
       }
 
       // Fast planned path with workspace reuse (double internal)
-      resize_1d_ws(line_in, line_out, p, plan, ws);
+      resize_1d_ws_from_coeff(ws.coeff, line_out, p, plan, ws);
 
       // Scatter to output (Scalar storage)
       const bool contig_out = axis_contig_out;
