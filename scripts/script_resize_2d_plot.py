@@ -502,16 +502,31 @@ def main():
     args = brush_args(ap.parse_args())
 
     degree = args.degree
+
+    # Ensure a Qt application exists before showing degree dialog / file dialog
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(sys.argv)
+
+    # Small degree dialog (overrides CLI if confirmed)
+    items = ["Linear", "Cubic"]
+    default_idx = 0 if degree == "linear" else 1
+    choice, ok = QtWidgets.QInputDialog.getItem(
+        None,
+        "Interpolation degree",
+        "Choose interpolation degree:",
+        items,
+        default_idx,
+        False,
+    )
+    if ok and choice:
+        degree = choice.lower()
+
     degree_label = degree.title()
 
     # Pick image (dialog if not provided)
     path_or_url = args.image
     if path_or_url is None:
-        # We will show Qt dialogs → ensure QApplication exists
-        app = QtWidgets.QApplication.instance()
-        if app is None:
-            app = QtWidgets.QApplication(sys.argv)
-
         path_or_url = choose_image_dialog()
         if not path_or_url:
             print("No image selected. Aborting.")
