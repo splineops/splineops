@@ -48,7 +48,74 @@ static inline double hsum512(__m512d v) {
 }
 #endif
 
+// Small-M unrolled dot for very short kernels (M <= 8)
+// This is hit all the time for spline degrees 1..3.
+static inline double dot_small_unrolled(const double* w, const double* v, int M) {
+  switch (M) {
+    case 0:
+      return 0.0;
+    case 1:
+      return w[0] * v[0];
+    case 2:
+      return w[0] * v[0] +
+             w[1] * v[1];
+    case 3:
+      return w[0] * v[0] +
+             w[1] * v[1] +
+             w[2] * v[2];
+    case 4:
+      return w[0] * v[0] +
+             w[1] * v[1] +
+             w[2] * v[2] +
+             w[3] * v[3];
+    case 5:
+      return w[0] * v[0] +
+             w[1] * v[1] +
+             w[2] * v[2] +
+             w[3] * v[3] +
+             w[4] * v[4];
+    case 6:
+      return w[0] * v[0] +
+             w[1] * v[1] +
+             w[2] * v[2] +
+             w[3] * v[3] +
+             w[4] * v[4] +
+             w[5] * v[5];
+    case 7:
+      return w[0] * v[0] +
+             w[1] * v[1] +
+             w[2] * v[2] +
+             w[3] * v[3] +
+             w[4] * v[4] +
+             w[5] * v[5] +
+             w[6] * v[6];
+    case 8:
+      return w[0] * v[0] +
+             w[1] * v[1] +
+             w[2] * v[2] +
+             w[3] * v[3] +
+             w[4] * v[4] +
+             w[5] * v[5] +
+             w[6] * v[6] +
+             w[7] * v[7];
+    default:
+      break;
+  }
+
+  // Shouldn't happen if we guard with M <= 8
+  double acc = 0.0;
+  for (int t = 0; t < M; ++t) {
+    acc += w[t] * v[t];
+  }
+  return acc;
+}
+
 static inline double dot_small(const double* w, const double* v, int M) {
+  // Fast path for the common small-kernel cases (cubic/LS/oblique)
+  if (M <= 8) {
+    return dot_small_unrolled(w, v, M);
+  }
+
 #if defined(__AVX512F__)
   if (!force_avx2() && M >= 64) {
     __m512d acc0 = _mm512_setzero_pd();
@@ -98,7 +165,7 @@ static inline double dot_small(const double* w, const double* v, int M) {
   }
 #endif
 
-  // Scalar fallback
+  // Scalar fallback for mid-sized kernels
   double acc = 0.0;
   for (int t = 0; t < M; ++t) {
     acc += w[t] * v[t];

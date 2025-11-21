@@ -305,7 +305,7 @@ def main():
     )
     ap.add_argument("--image", type=str, default=None,
                     help="Optional path/URL; if omitted, a dialog opens.")
-    ap.add_argument("--samples", type=int, default=200,
+    ap.add_argument("--samples", type=int, default=50,
                     help="Base number of zoom samples per side if --samples-down/--samples-up are not given.")
     ap.add_argument("--samples-down", type=int, default=None,
                     help="Number of zoom samples in the interval (0, 1). Overrides --samples if set.")
