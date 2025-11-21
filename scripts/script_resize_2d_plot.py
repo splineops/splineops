@@ -81,7 +81,7 @@ from splineops.resize import resize as spl_resize
 DTYPE = np.float32
 DTYPE_NAME = np.dtype(DTYPE).name
 
-MARKER_SIZE = 5
+MARKER_SIZE = 4
 
 # -------------------------- UI / I/O helpers --------------------------
 
