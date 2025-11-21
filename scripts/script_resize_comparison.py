@@ -19,6 +19,9 @@ Workflow
 3) Script runs round-trip per method (z, then 1/z), averages timing over N runs.
 4) Computes SNR/MSE on the round-trip image over a fixed square ROI (≈256×256)
    and shows:
+   - Initial 2×2 figure:
+       row 1: original image + magnified ROI
+       row 2: LS first-pass resized image on white canvas + magnified mapped ROI
    - ROI montage with ORIGINAL ROI + each method's *first-pass* ROI
      (nearest-neighbour magnified at the mapped location)
    - Bar charts for timing and SNR
@@ -42,6 +45,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from PIL import Image
 
 # Default storage dtype for comparison (change to np.float64 if desired)
@@ -109,44 +113,6 @@ from PyQt5 import QtWidgets
 # Utilities
 # ---------------------------
 
-def nearest_roundtrip_zoom(
-    shape: Tuple[int, int], z: float, max_delta: float = 0.02
-) -> float:
-    """Search a small neighbourhood around z for a zoom that is shape-exact for round-trip."""
-    H, W = int(shape[0]), int(shape[1])
-
-    def ok(zz: float) -> bool:
-        H1 = int(round(H * zz))
-        W1 = int(round(W * zz))
-        if H1 < 1 or W1 < 1:
-            return False
-        H2 = int(round(H1 * (1.0 / zz)))
-        W2 = int(round(W1 * (1.0 / zz)))
-        return (H2 == H) and (W2 == W)
-
-    if z > 0 and ok(z):
-        return z
-
-    base_step = 0.25 * min(1.0 / max(H, 1), 1.0 / max(W, 1))
-    steps = max(1, int(max_delta / base_step))
-
-    best_z = z
-    best_d = float("inf")
-
-    for k in range(1, steps + 1):
-        for sgn in (-1, +1):
-            zz = z + sgn * k * base_step
-            if zz <= 0:
-                continue
-            if ok(zz):
-                return zz
-            d = abs(zz - z)
-            if d < best_d:
-                best_z, best_d = zz, d
-
-    return best_z
-
-
 def _snr_db(x: np.ndarray, y: np.ndarray) -> float:
     num = float(np.sum(x * x, dtype=np.float64))
     den = float(np.sum((x - y) ** 2, dtype=np.float64))
@@ -180,7 +146,6 @@ def _roi_rect_from_frac(
 
 
 def _crop_roi(arr: np.ndarray, rect: Tuple[int, int, int, int]) -> np.ndarray:
-    """Crop a rectangular ROI given (row_top, col_left, height, width)."""
     r0, c0, h, w = rect
     return arr[r0 : r0 + h, c0 : c0 + w]
 
@@ -272,10 +237,6 @@ def _ask_zoom_factor(default: float = 0.3) -> Optional[float]:
 
     return z
 
-
-# ---------------------------
-# Normalization to grayscale [0,1]
-# ---------------------------
 
 def _to_gray01(im: Image.Image) -> np.ndarray:
     # Drop alpha for simplicity
@@ -547,6 +508,130 @@ def _avg_time(fn, repeats: int = 10, warmup: bool = True):
     return last_first, last_rec, mean_t, sd_t, None
 
 
+# ---------------------------
+# Initial 2×2 figure helper
+# ---------------------------
+
+def _show_initial_original_vs_ls(
+    gray: np.ndarray,
+    roi_rect: Tuple[int, int, int, int],
+    ls_first: np.ndarray,
+    z: float,
+    degree_label: str,
+) -> None:
+    """
+    Plot a 2x2 figure:
+
+    Row 1:
+      - Original image with red ROI box
+      - Magnified original ROI
+
+    Row 2:
+      - LS first-pass resized image on white canvas with mapped ROI box
+      - Magnified mapped ROI from LS first-pass
+    """
+    H, W = gray.shape
+    row0, col0, roi_h, roi_w = roi_rect
+
+    # Original ROI
+    roi_orig = _crop_roi(gray, roi_rect)
+    roi_orig_big = _nearest_big(roi_orig, ROI_MAG_TARGET)
+
+    # LS first-pass ROI mapping
+    H1, W1 = ls_first.shape
+    # Original ROI center
+    center_r = row0 + roi_h / 2.0
+    center_c = col0 + roi_w / 2.0
+
+    roi_h_res = max(1, int(round(roi_h * z)))
+    roi_w_res = max(1, int(round(roi_w * z)))
+
+    if roi_h_res > H1 or roi_w_res > W1:
+        # If mapped ROI is larger than LS image, just use full LS image
+        ls_roi = ls_first
+        row_top_res = 0
+        col_left_res = 0
+        roi_h_res = H1
+        roi_w_res = W1
+    else:
+        center_r_res = int(round(center_r * z))
+        center_c_res = int(round(center_c * z))
+        row_top_res = int(
+            np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res)
+        )
+        col_left_res = int(
+            np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res)
+        )
+        ls_roi = ls_first[
+            row_top_res : row_top_res + roi_h_res,
+            col_left_res : col_left_res + roi_w_res,
+        ]
+
+    ls_roi_big = _nearest_big(ls_roi, ROI_MAG_TARGET)
+
+    # LS canvas: white background with LS first in the top-left (possibly cropped)
+    canvas_ls = np.ones_like(gray, dtype=ls_first.dtype)
+    h_copy = min(H, H1)
+    w_copy = min(W, W1)
+    canvas_ls[:h_copy, :w_copy] = ls_first[:h_copy, :w_copy]
+
+    # Build the figure
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+    # Row 1, left: original with ROI box
+    ax = axes[0, 0]
+    ax.imshow(gray, cmap="gray", interpolation="nearest", aspect="equal")
+    rect = patches.Rectangle(
+        (col0, row0),
+        roi_w,
+        roi_h,
+        linewidth=2,
+        edgecolor="red",
+        facecolor="none",
+    )
+    ax.add_patch(rect)
+    ax.set_title("Original image with ROI")
+    ax.axis("off")
+
+    # Row 1, right: magnified original ROI
+    ax = axes[0, 1]
+    ax.imshow(roi_orig_big, cmap="gray", interpolation="nearest", aspect="equal")
+    ax.set_title("Original ROI (nearest magnified)")
+    ax.axis("off")
+
+    # Row 2, left: LS first-pass on canvas with mapped ROI box
+    ax = axes[1, 0]
+    ax.imshow(canvas_ls, cmap="gray", interpolation="nearest", aspect="equal")
+    # Only draw box if ROI fits inside LS extents we pasted
+    if row_top_res < h_copy and col_left_res < w_copy:
+        box_h = min(roi_h_res, h_copy - row_top_res)
+        box_w = min(roi_w_res, w_copy - col_left_res)
+        rect_ls = patches.Rectangle(
+            (col_left_res, row_top_res),
+            box_w,
+            box_h,
+            linewidth=2,
+            edgecolor="red",
+            facecolor="none",
+        )
+        ax.add_patch(rect_ls)
+    ax.set_title(f"Splineops LS first-pass ({degree_label}, zoom ×{z:g})")
+    ax.axis("off")
+
+    # Row 2, right: magnified LS ROI
+    ax = axes[1, 1]
+    ax.imshow(ls_roi_big, cmap="gray", interpolation="nearest", aspect="equal")
+    ax.set_title("LS first-pass ROI (nearest magnified)")
+    ax.axis("off")
+
+    fig.tight_layout()
+    plt.show()
+
+
+# ---------------------------
+# main
+# ---------------------------
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Compare splineops vs common stacks at a chosen zoom (linear/cubic)."
@@ -581,11 +666,6 @@ def main(argv=None):
         degree = choice.lower()
 
     degree_label = degree.title()
-
-    # Ensure a Qt application exists for dialogs
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication(sys.argv)
 
     # --- Select image ---
     path_or_url = _choose_image_dialog() or ""
@@ -664,6 +744,9 @@ def main(argv=None):
     orig_tile = _nearest_big(roi, ROI_MAG_TARGET)
     roi_tiles.append(("Original", orig_tile))
 
+    # We also want to remember LS first-pass image for the initial 2x2 figure
+    ls_first_for_plot: Optional[np.ndarray] = None
+
     print(f"\nBenchmarking round-trip @ zoom ×{z:.5g}  (repeats={repeats})\n")
     header = f"{'Method':<40} {'Time (mean)':>13} {'± SD':>10} {'SNR (dB)':>10} {'MSE':>14}"
     print(header)
@@ -684,6 +767,10 @@ def main(argv=None):
                 }
             )
             continue
+
+        # Capture LS first-pass for the initial figure
+        if name.startswith("Splineops — LS (best AA)"):
+            ls_first_for_plot = first.copy()
 
         # Round-trip metrics on fixed ROI in original resolution
         rec_roi = _crop_roi(rec, roi_rect)
@@ -729,6 +816,16 @@ def main(argv=None):
 
         tile = _nearest_big(first_roi, ROI_MAG_TARGET)
         roi_tiles.append((name, tile))
+
+    # --- Initial 2×2 figure: original vs LS first-pass ---
+    if ls_first_for_plot is not None:
+        _show_initial_original_vs_ls(
+            gray=gray,
+            roi_rect=roi_rect,
+            ls_first=ls_first_for_plot,
+            z=z,
+            degree_label=degree_label,
+        )
 
     # --- ROI montage (original + first-pass results) ---
     if roi_tiles:
