@@ -334,7 +334,7 @@ def main():
     ap.add_argument(
         "--samples",
         type=int,
-        default=200,
+        default=100,
         help="Base number of zoom samples per side if --samples-down/--samples-up are not given.",
     )
     ap.add_argument(
@@ -352,7 +352,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="up",
+        default="down",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )

@@ -501,7 +501,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="up",
+        default="down",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
