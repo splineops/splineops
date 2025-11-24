@@ -12,7 +12,7 @@ Compares:
 - PyTorch bilinear/bicubic (AA)
 - OpenCV INTER_LINEAR / INTER_CUBIC
 - Pillow LANCZOS
-- scikit-image (cubic, AA)
+- scikit-image (linear/cubic, AA)
 
 Zoom sweep:
   • 0 < z < 2, excluding 1.0
@@ -386,13 +386,17 @@ def pillow_roundtrip(
     dt = time.perf_counter() - t0
     return rec_arr, dt
 
-def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
+def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
     """
-    Round-trip with scikit-image.transform.resize using cubic (order=3) + anti_aliasing=True.
+    Round-trip with scikit-image.transform.resize using order=1 (linear) or
+    order=3 (cubic) + anti_aliasing=True.
     Supports 2D (H,W) and 3D (H,W,C) arrays.
     """
     if not _HAS_SKIMAGE:
         raise RuntimeError("scikit-image not available")
+
+    order_map = {"linear": 1, "cubic": 3}
+    order = order_map[degree]
 
     arr = np.asarray(img, dtype=np.float64)
     H, W = arr.shape[:2]
@@ -405,7 +409,7 @@ def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
         out = sk_resize(
             arr,
             (H1, W1),
-            order=3,
+            order=order,
             anti_aliasing=True,
             preserve_range=True,
             mode="reflect",
@@ -413,7 +417,7 @@ def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
         rec = sk_resize(
             out,
             (H, W),
-            order=3,
+            order=order,
             anti_aliasing=True,
             preserve_range=True,
             mode="reflect",
@@ -423,7 +427,7 @@ def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
         out = sk_resize(
             arr,
             (H1, W1, C),
-            order=3,
+            order=order,
             anti_aliasing=True,
             preserve_range=True,
             mode="reflect",
@@ -431,7 +435,7 @@ def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
         rec = sk_resize(
             out,
             (H, W, C),
-            order=3,
+            order=order,
             anti_aliasing=True,
             preserve_range=True,
             mode="reflect",
@@ -636,10 +640,10 @@ def main():
     METHODS["Pillow LANCZOS"] = ("pillow", "lanczos")
 
     if _HAS_SKIMAGE:
-        METHODS["scikit-image (cubic, AA)"] = ("skimage", None)
+        METHODS[f"scikit-image ({degree_label}, AA)"] = ("skimage", degree)
     else:
         print(
-            "[info] scikit-image not found; 'scikit-image (cubic, AA)' curve will be omitted."
+            "[info] scikit-image not found; 'scikit-image (AA)' curve will be omitted."
         )
 
     results: Dict[str, Dict[str, List[float]]] = {
@@ -663,7 +667,7 @@ def main():
             elif kind == "pillow":
                 runner = lambda z=z, w=method: pillow_roundtrip(img, z, w)
             elif kind == "skimage":
-                runner = lambda z=z: skimage_roundtrip(img, z)
+                runner = lambda z=z, deg=method: skimage_roundtrip(img, z, deg)
             else:
                 continue
 
