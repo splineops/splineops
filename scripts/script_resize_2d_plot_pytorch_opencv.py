@@ -194,9 +194,16 @@ def torch_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray,
     Round-trip using torch.nn.functional.interpolate with bilinear (linear)
     or bicubic (cubic) + antialias=True. Runs on CPU.
     Works for 2D (H,W) and 3D (H,W,C) images.
+
+    Timing includes:
+      - numpy -> torch conversion
+      - forward + backward interpolate
+      - torch -> numpy conversion
     """
     if not _HAS_TORCH:
         raise RuntimeError("PyTorch not available")
+
+    t0 = time.perf_counter()  # start timing before conversions
 
     mode = "bilinear" if degree == "linear" else "bicubic"
 
@@ -215,7 +222,6 @@ def torch_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray,
 
     if arr.ndim == 2:
         x = torch.from_numpy(arr).to(t_dtype).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
-        t0 = time.perf_counter()
         y = F.interpolate(
             x,
             size=(H1, W1),
@@ -230,14 +236,11 @@ def torch_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray,
             align_corners=False,
             antialias=True,
         )
-        dt = time.perf_counter() - t0
         rec = y2[0, 0].cpu().numpy().astype(arr.dtype, copy=False)
-        return rec, dt
 
     elif arr.ndim == 3:
         C = arr.shape[2]
         x = torch.from_numpy(arr).to(t_dtype).permute(2, 0, 1).unsqueeze(0)
-        t0 = time.perf_counter()
         y = F.interpolate(
             x,
             size=(H1, W1),
@@ -252,13 +255,18 @@ def torch_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray,
             align_corners=False,
             antialias=True,
         )
-        dt = time.perf_counter() - t0
-        rec = y2[0].permute(1, 2, 0).cpu().numpy().astype(arr.dtype, copy=False)
-        return rec, dt
-
+        rec = (
+            y2[0]
+            .permute(1, 2, 0)
+            .cpu()
+            .numpy()
+            .astype(arr.dtype, copy=False)
+        )
     else:
         raise ValueError("Expected 2D (H×W) or 3D (H×W×C) image for PyTorch path.")
 
+    dt = time.perf_counter() - t0
+    return rec, dt
 
 def opencv_roundtrip(
     img: np.ndarray, z: float, which: str = "cubic"
@@ -288,8 +296,15 @@ def opencv_roundtrip(
     return rec.astype(img.dtype, copy=False), dt
 
 
-def average_time(run, repeats: int = 10):
-    """Return (last_rec, mean_time, std_time) over 'repeats' runs."""
+def average_time(run, repeats: int = 10, warmup: bool = True):
+    """
+    Return (last_rec, mean_time, std_time) over 'repeats' runs.
+
+    If warmup=True, run one extra un-timed warmup call (like script_resize_comparison._avg_time).
+    """
+    if warmup:
+        run()  # warmup, ignore timing
+
     times: List[float] = []
     rec = None
     for _ in range(max(1, repeats)):
@@ -485,7 +500,7 @@ def main():
                 continue
 
             try:
-                rec, t_mean, t_sd = average_time(runner, repeats=args.repeats)
+                rec, t_mean, t_sd = average_time(runner, repeats=args.repeats, warmup=True)
             except Exception as e:
                 # If any method fails at a particular zoom, skip that sample for that method
                 print(f"\n[warn] {name} failed at z={z:.5f}: {e}")
