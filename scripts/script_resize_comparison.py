@@ -108,6 +108,13 @@ except Exception:
 
 from PyQt5 import QtWidgets
 
+# Optional: runtime specs (Python/OS/libs/etc.)
+try:
+    from splineops.utils.specs import print_runtime_context as _print_runtime_context
+    _HAS_SPECS = True
+except Exception:
+    _print_runtime_context = None
+    _HAS_SPECS = False
 
 # ---------------------------
 # Utilities
@@ -746,6 +753,12 @@ def main(argv=None):
 
     # We also want to remember LS first-pass image for the initial 2x2 figure
     ls_first_for_plot: Optional[np.ndarray] = None
+
+    # Print runtime specs (if available)
+    if _HAS_SPECS and _print_runtime_context is not None:
+        print()
+        _print_runtime_context(include_threadpools=True)
+        print()
 
     print(f"\nBenchmarking round-trip @ zoom ×{z:.5g}  (repeats={repeats})\n")
     header = f"{'Method':<40} {'Time (mean)':>13} {'± SD':>10} {'SNR (dB)':>10} {'MSE':>14}"
