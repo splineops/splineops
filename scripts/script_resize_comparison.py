@@ -446,11 +446,24 @@ def _rt_torch(
         return gray, gray, "PyTorch not installed"
     try:
         mode = "bilinear" if degree == "linear" else "bicubic"
-        H, W = gray.shape
+
+        # Work with the existing dtype; only cast if needed
+        arr = gray
+        if arr.dtype == np.float32:
+            t_dtype = torch.float32
+        elif arr.dtype == np.float64:
+            t_dtype = torch.float64
+        else:
+            t_dtype = torch.float32
+            arr = arr.astype(np.float32, copy=False)
+
+        H, W = arr.shape
         H1 = int(round(H * z))
         W1 = int(round(W * z))
 
-        x = torch.from_numpy(gray[None, None].astype(np.float32))
+        # (1, 1, H, W) tensor
+        x = torch.from_numpy(arr).to(t_dtype).unsqueeze(0).unsqueeze(0)
+
         first_t = F.interpolate(
             x,
             size=(H1, W1),
@@ -465,15 +478,18 @@ def _rt_torch(
             align_corners=False,
             antialias=True,
         )
-        first = first_t[0, 0].detach().cpu().numpy().astype(np.float64)
-        rec = rec_t[0, 0].detach().cpu().numpy().astype(np.float64)
 
+        # Back to NumPy
+        first = first_t[0, 0].detach().cpu().numpy()
+        rec = rec_t[0, 0].detach().cpu().numpy()
+
+        # Clip + cast to match other methods / DTYPE
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
         rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
+
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
-
 
 # ---------------------------
 # Benchmark harness

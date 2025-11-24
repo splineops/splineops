@@ -265,6 +265,8 @@ def torch_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray,
     else:
         raise ValueError("Expected 2D (H×W) or 3D (H×W×C) image for PyTorch path.")
 
+    rec = np.clip(rec, 0.0, 1.0).astype(img.dtype, copy=False)
+
     dt = time.perf_counter() - t0
     return rec, dt
 
