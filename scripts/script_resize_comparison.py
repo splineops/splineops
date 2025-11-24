@@ -53,7 +53,7 @@ DTYPE = np.float32
 
 # ROI / detail-window configuration
 ROI_SIZE_PX = 256              # approximate ROI size in original image
-ROI_CENTER_FRAC = (0.4, 0.65)  # (row_frac, col_frac) in [0, 1]
+ROI_CENTER_FRAC = (0.40, 0.65)  # (row_frac, col_frac) in [0, 1]
 ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
 
 try:
