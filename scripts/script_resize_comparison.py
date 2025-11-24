@@ -596,7 +596,7 @@ def _show_initial_original_vs_ls(
     # Row 1, right: magnified original ROI
     ax = axes[0, 1]
     ax.imshow(roi_orig_big, cmap="gray", interpolation="nearest", aspect="equal")
-    ax.set_title("Original ROI (nearest magnified)")
+    ax.set_title("Original ROI (magnified, nearest neighbors)")
     ax.axis("off")
 
     # Row 2, left: LS first-pass on canvas with mapped ROI box
@@ -621,7 +621,7 @@ def _show_initial_original_vs_ls(
     # Row 2, right: magnified LS ROI
     ax = axes[1, 1]
     ax.imshow(ls_roi_big, cmap="gray", interpolation="nearest", aspect="equal")
-    ax.set_title("LS first-pass ROI (nearest magnified)")
+    ax.set_title("LS first-pass ROI (magnified, nearest neighbors)")
     ax.axis("off")
 
     fig.tight_layout()
@@ -879,25 +879,66 @@ def main(argv=None):
         plt.tight_layout()
         plt.show()
 
-    # --- SNR bar chart (round-trip SNR) ---
-    valid = [r for r in rows if np.isfinite(r["snr"])]
+    # --- SNR + MSE bar chart (round-trip) ---
+    valid = [r for r in rows if np.isfinite(r["snr"]) and np.isfinite(r["mse"])]
     if valid:
         names = [r["name"] for r in valid]
         snrs = np.array([r["snr"] for r in valid])
-        order = np.argsort(-snrs)  # higher is better
+        mses = np.array([r["mse"] for r in valid])
+
+        # Sort by SNR (higher is better) and keep same order for MSE
+        order = np.argsort(-snrs)
         names = [names[i] for i in order]
         snrs = snrs[order]
+        mses = mses[order]
 
-        plt.figure(figsize=(10, 5))
         x = np.arange(len(names))
-        plt.bar(x, snrs, alpha=0.85)
-        plt.xticks(x, names, rotation=30, ha="right", fontsize=9)
-        plt.ylabel("SNR (dB) on fixed ROI (round-trip)")
-        plt.title(
-            f"SNR vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})"
+        width = 0.4  # bar width for each metric
+
+        fig, ax1 = plt.subplots(figsize=(10, 5))
+
+        # Left y-axis: SNR
+        snr_color = "tab:blue"
+        mse_color = "tab:orange"
+
+        snr_bars = ax1.bar(
+            x - width / 2,
+            snrs,
+            width,
+            label="SNR (dB)",
+            alpha=0.85,
+            color=snr_color,
         )
-        plt.grid(axis="y", alpha=0.3)
-        plt.tight_layout()
+        ax1.set_ylabel("SNR (dB)", color=snr_color)
+        ax1.tick_params(axis="y", labelcolor=snr_color)
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(names, rotation=30, ha="right", fontsize=9)
+        ax1.grid(axis="y", alpha=0.3)
+
+        # Right y-axis: MSE
+        ax2 = ax1.twinx()
+        mse_bars = ax2.bar(
+            x + width / 2,
+            mses,
+            width,
+            label="MSE",
+            alpha=0.6,
+            color=mse_color,
+        )
+        ax2.set_ylabel("MSE", color=mse_color)
+        ax2.tick_params(axis="y", labelcolor=mse_color)
+
+        # Shared title / legend
+        ax1.set_title(
+            f"SNR / MSE vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})"
+        )
+
+        # Combine legends from both axes
+        handles = snr_bars.patches[:1] + mse_bars.patches[:1]
+        labels = ["SNR (dB)", "MSE"]
+        fig.legend(handles, labels, loc="upper right", bbox_to_anchor=(1, 1))
+
+        fig.tight_layout()
         plt.show()
 
     return 0
