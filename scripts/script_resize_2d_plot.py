@@ -235,9 +235,16 @@ def torch_roundtrip(
     """
     Round-trip using torch.nn.functional.interpolate with bilinear (linear)
     or bicubic (cubic) + antialias=True. Runs on CPU.
+
+    Timing includes:
+      - numpy -> torch conversion
+      - forward + backward interpolate
+      - torch -> numpy conversion
     """
     if not _HAS_TORCH:
         raise RuntimeError("PyTorch not available")
+
+    t0 = time.perf_counter()  # start timing before conversions
 
     mode = "bilinear" if degree == "linear" else "bicubic"
 
@@ -255,7 +262,6 @@ def torch_roundtrip(
         H1 = int(round(H * z))
         W1 = int(round(W * z))
         x = torch.from_numpy(arr).to(t_dtype).unsqueeze(0).unsqueeze(0)
-        t0 = time.perf_counter()
         y = F.interpolate(
             x,
             size=(H1, W1),
@@ -270,16 +276,13 @@ def torch_roundtrip(
             align_corners=False,
             antialias=True,
         )
-        dt = time.perf_counter() - t0
         rec = y2[0, 0].cpu().numpy().astype(arr.dtype, copy=False)
-        return rec, dt
 
     elif arr.ndim == 3:
         H, W, C = arr.shape
         H1 = int(round(H * z))
         W1 = int(round(W * z))
         x = torch.from_numpy(arr).to(t_dtype).permute(2, 0, 1).unsqueeze(0)
-        t0 = time.perf_counter()
         y = F.interpolate(
             x,
             size=(H1, W1),
@@ -294,13 +297,18 @@ def torch_roundtrip(
             align_corners=False,
             antialias=True,
         )
-        dt = time.perf_counter() - t0
-        rec = y2[0].permute(1, 2, 0).cpu().numpy().astype(arr.dtype, copy=False)
-        return rec, dt
-
+        rec = (
+            y2[0]
+            .permute(1, 2, 0)
+            .cpu()
+            .numpy()
+            .astype(arr.dtype, copy=False)
+        )
     else:
         raise ValueError("Expected 2D (H×W) or 3D (H×W×C) image for PyTorch path.")
 
+    dt = time.perf_counter() - t0
+    return rec, dt
 
 def opencv_roundtrip(
     img: np.ndarray, z: float, which: str
@@ -337,12 +345,19 @@ def pillow_roundtrip(
     """
     Round-trip with Pillow's resize using LANCZOS or BICUBIC.
     Supports 2D (H,W) and 3D (H,W,3) arrays.
+
+    Timing includes:
+      - NumPy -> uint8 -> PIL.Image
+      - forward + backward resize
+      - PIL.Image -> NumPy float in [0,1]
     """
     resample_map = {
         "lanczos": Image.Resampling.LANCZOS,
         "bicubic": Image.Resampling.BICUBIC,
     }
     resample = resample_map[which]
+
+    t0 = time.perf_counter()  # start timing before conversions
 
     H, W = img.shape[:2]
     W1 = int(round(W * z))
@@ -359,17 +374,15 @@ def pillow_roundtrip(
     else:
         raise ValueError("Pillow round-trip expects 2D or 3D (H×W×3) array")
 
-    t0 = time.perf_counter()
     out = im.resize((W1, H1), resample=resample)
     rec_im = out.resize((W, H), resample=resample)
-    dt = time.perf_counter() - t0
 
     rec_arr = np.asarray(rec_im, dtype=np.float64) / 255.0
     rec_arr = np.clip(rec_arr, 0.0, 1.0)
+    rec_arr = rec_arr.astype(img.dtype, copy=False)
 
-    # If grayscale, rec_arr is (H,W); if RGB, (H,W,3)
-    return rec_arr.astype(img.dtype, copy=False), dt
-
+    dt = time.perf_counter() - t0
+    return rec_arr, dt
 
 def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
     """
@@ -429,9 +442,16 @@ def skimage_roundtrip(img: np.ndarray, z: float) -> Tuple[np.ndarray, float]:
     rec = np.clip(rec, 0.0, 1.0)
     return rec.astype(img.dtype, copy=False), dt
 
+def average_time(run, repeats: int = 10, warmup: bool = True):
+    """
+    Return (last_rec, mean_time, std_time) over 'repeats' runs.
 
-def average_time(run, repeats: int = 10):
-    """Return (last_rec, mean_time, std_time) over 'repeats' runs."""
+    If warmup=True, run one extra un-timed warmup call (like script_resize_comparison._avg_time).
+    """
+    if warmup:
+        # Warmup run (ignore timing + result)
+        run()
+
     times: List[float] = []
     rec = None
     for _ in range(max(1, repeats)):
@@ -442,9 +462,7 @@ def average_time(run, repeats: int = 10):
     sd_t = float(times_arr.std(ddof=1 if times_arr.size > 1 else 0))
     return rec, mean_t, sd_t
 
-
 # ------------------------------ main -------------------------------
-
 
 def main():
     ap = argparse.ArgumentParser(
@@ -648,7 +666,7 @@ def main():
                 continue
 
             try:
-                rec, t_mean, t_sd = average_time(runner, repeats=args.repeats)
+                rec, t_mean, t_sd = average_time(runner, repeats=args.repeats, warmup=True)
             except Exception as e:
                 # If any method fails at a particular zoom, skip that sample
                 print(f"\n[warn] {name} failed at z={z:.5f}: {e}")
