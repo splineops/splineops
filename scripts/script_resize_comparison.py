@@ -63,6 +63,10 @@ PLOT_LABEL_FONTSIZE = 18
 PLOT_TICK_FONTSIZE = 18
 PLOT_LEGEND_FONTSIZE = 18
 
+# ROI montage titles
+ROI_TILE_TITLE_FONTSIZE = 14
+ROI_SUPTITLE_FONTSIZE = 16
+
 try:
     import cv2
 
@@ -738,15 +742,15 @@ def main(argv=None):
     # --- Methods to compare ---
     methods = [
         (
-            f"Splineops — Standard {degree_label}",
+            f"Splineops Standard {degree_label}",
             lambda: _rt_splineops(gray, z, degree),
         ),
         (
-            f"Splineops — LS (best AA) {degree_label}",
+            f"Splineops LS {degree_label}",
             lambda: _rt_splineops(gray, z, f"{degree}-best_antialiasing"),
         ),
         (
-            f"Splineops — Oblique (fast AA) {degree_label}",
+            f"Splineops Oblique {degree_label}",
             lambda: _rt_splineops(gray, z, f"{degree}-fast_antialiasing"),
         ),
         (
@@ -809,7 +813,7 @@ def main(argv=None):
             continue
 
         # Capture LS first-pass for the initial figure
-        if name.startswith("Splineops — LS (best AA)"):
+        if name.startswith("Splineops LS"):
             ls_first_for_plot = first.copy()
 
         # Round-trip metrics on fixed ROI in original resolution
@@ -871,27 +875,29 @@ def main(argv=None):
     if roi_tiles:
         cols = min(3, len(roi_tiles))
         rows_n = int(np.ceil(len(roi_tiles) / cols))
+
         fig, axes = plt.subplots(
-            rows_n, cols, figsize=(cols * 3.2, rows_n * 3.4)
+            rows_n,
+            cols,
+            figsize=(cols * 3.2, rows_n * 3.4),  # no extra +1.0, save space
         )
+
         if not isinstance(axes, np.ndarray):
             axes = np.array([[axes]])
         axes = axes.reshape(rows_n, cols)
+
         for ax in axes.ravel():
             ax.set_axis_off()
+
         for idx, (name, tile) in enumerate(roi_tiles):
             r, c = divmod(idx, cols)
             ax = axes[r, c]
             ax.imshow(tile, cmap="gray", interpolation="nearest")
-            ax.set_title(name, fontsize=9)
+            ax.set_title(name, fontsize=14, pad=3)  # or ROI_TILE_TITLE_FONTSIZE
             ax.set_axis_off()
-        h_roi, w_roi = roi.shape
-        fig.suptitle(
-            f"ROI comparison (original + first-pass resized) — "
-            f"{h_roi}×{w_roi} px, zoom ×{z:g}, degree={degree_label}",
-            fontsize=12,
-        )
-        plt.tight_layout()
+
+        # No fig.suptitle(...) here anymore
+        fig.tight_layout()
         plt.show()
 
         # --- Timing bar chart (round-trip) ---
@@ -909,7 +915,7 @@ def main(argv=None):
             y = np.arange(len(names))
             plt.barh(y, times, xerr=sds, alpha=0.8)
             plt.yticks(y, names, fontsize=PLOT_TICK_FONTSIZE)
-            plt.xticks(fontsize=PLOT_TICK_FONTSIZE)  # ⬅️ make 0.000, 0.005, ... big too
+            plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
             plt.xlabel(
                 f"Round-trip time (s) — mean ± sd over {repeats} runs",
                 fontsize=PLOT_LABEL_FONTSIZE,
