@@ -56,6 +56,13 @@ ROI_SIZE_PX = 256              # approximate ROI size in original image
 ROI_CENTER_FRAC = (0.40, 0.65)  # (row_frac, col_frac) in [0, 1]
 ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
 
+# Plot appearance for slide-friendly export
+PLOT_FIGSIZE = (14, 7)      # same 2:1 ratio as (10, 5), just larger
+PLOT_TITLE_FONTSIZE = 18
+PLOT_LABEL_FONTSIZE = 14
+PLOT_TICK_FONTSIZE = 12
+PLOT_LEGEND_FONTSIZE = 12
+
 try:
     import cv2
 
@@ -883,92 +890,106 @@ def main(argv=None):
         plt.tight_layout()
         plt.show()
 
-    # --- Timing bar chart (round-trip) ---
-    valid = [r for r in rows if np.isfinite(r["time"])]
-    if valid:
-        names = [r["name"] for r in valid]
-        times = np.array([r["time"] for r in valid])
-        sds = np.array([r["sd"] for r in valid])
-        order = np.argsort(times)
-        names = [names[i] for i in order]
-        times = times[order]
-        sds = sds[order]
+        # --- Timing bar chart (round-trip) ---
+        valid = [r for r in rows if np.isfinite(r["time"])]
+        if valid:
+            names = [r["name"] for r in valid]
+            times = np.array([r["time"] for r in valid])
+            sds = np.array([r["sd"] for r in valid])
+            order = np.argsort(times)
+            names = [names[i] for i in order]
+            times = times[order]
+            sds = sds[order]
 
-        plt.figure(figsize=(10, 5))
-        y = np.arange(len(names))
-        plt.barh(y, times, xerr=sds, alpha=0.8)
-        plt.yticks(y, names, fontsize=9)
-        plt.xlabel(
-            f"Round-trip time (s) — mean ± sd over {repeats} runs"
-        )
-        plt.title(
-            f"Timing vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})"
-        )
-        plt.grid(axis="x", alpha=0.3)
-        plt.tight_layout()
-        plt.show()
+            plt.figure(figsize=PLOT_FIGSIZE)
+            y = np.arange(len(names))
+            plt.barh(y, times, xerr=sds, alpha=0.8)
+            plt.yticks(y, names, fontsize=PLOT_TICK_FONTSIZE)
+            plt.xlabel(
+                f"Round-trip time (s) — mean ± sd over {repeats} runs",
+                fontsize=PLOT_LABEL_FONTSIZE,
+            )
+            plt.title(
+                f"Timing vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
+                fontsize=PLOT_TITLE_FONTSIZE,
+            )
+            plt.grid(axis="x", alpha=0.3)
+            plt.tight_layout()
+            plt.show()
 
-    # --- SNR + MSE bar chart (round-trip) ---
-    valid = [r for r in rows if np.isfinite(r["snr"]) and np.isfinite(r["mse"])]
-    if valid:
-        names = [r["name"] for r in valid]
-        snrs = np.array([r["snr"] for r in valid])
-        mses = np.array([r["mse"] for r in valid])
+        # --- SNR + MSE bar chart (round-trip) ---
+        valid = [r for r in rows if np.isfinite(r["snr"]) and np.isfinite(r["mse"])]
+        if valid:
+            names = [r["name"] for r in valid]
+            snrs = np.array([r["snr"] for r in valid])
+            mses = np.array([r["mse"] for r in valid])
 
-        # Sort by SNR (higher is better) and keep same order for MSE
-        order = np.argsort(-snrs)
-        names = [names[i] for i in order]
-        snrs = snrs[order]
-        mses = mses[order]
+            # Sort by SNR (higher is better) and keep same order for MSE
+            order = np.argsort(-snrs)
+            names = [names[i] for i in order]
+            snrs = snrs[order]
+            mses = mses[order]
 
-        x = np.arange(len(names))
-        width = 0.4  # bar width for each metric
+            x = np.arange(len(names))
+            width = 0.4  # bar width for each metric
 
-        fig, ax1 = plt.subplots(figsize=(10, 5))
+            fig, ax1 = plt.subplots(figsize=PLOT_FIGSIZE)
 
-        # Left y-axis: SNR
-        snr_color = "tab:blue"
-        mse_color = "tab:orange"
+            # Left y-axis: SNR
+            snr_color = "tab:blue"
+            mse_color = "tab:orange"
 
-        snr_bars = ax1.bar(
-            x - width / 2,
-            snrs,
-            width,
-            label="SNR (dB)",
-            alpha=0.85,
-            color=snr_color,
-        )
-        ax1.set_ylabel("SNR (dB)", color=snr_color)
-        ax1.tick_params(axis="y", labelcolor=snr_color)
-        ax1.set_xticks(x)
-        ax1.set_xticklabels(names, rotation=30, ha="right", fontsize=9)
-        ax1.grid(axis="y", alpha=0.3)
+            snr_bars = ax1.bar(
+                x - width / 2,
+                snrs,
+                width,
+                label="SNR (dB)",
+                alpha=0.85,
+                color=snr_color,
+            )
+            ax1.set_ylabel("SNR (dB)", color=snr_color, fontsize=PLOT_LABEL_FONTSIZE)
+            ax1.tick_params(axis="y", labelcolor=snr_color, labelsize=PLOT_TICK_FONTSIZE)
+            ax1.set_xticks(x)
+            ax1.set_xticklabels(
+                names,
+                rotation=30,
+                ha="right",
+                fontsize=PLOT_TICK_FONTSIZE,
+            )
+            ax1.grid(axis="y", alpha=0.3)
 
-        # Right y-axis: MSE
-        ax2 = ax1.twinx()
-        mse_bars = ax2.bar(
-            x + width / 2,
-            mses,
-            width,
-            label="MSE",
-            alpha=0.6,
-            color=mse_color,
-        )
-        ax2.set_ylabel("MSE", color=mse_color)
-        ax2.tick_params(axis="y", labelcolor=mse_color)
+            # Right y-axis: MSE
+            ax2 = ax1.twinx()
+            mse_bars = ax2.bar(
+                x + width / 2,
+                mses,
+                width,
+                label="MSE",
+                alpha=0.6,
+                color=mse_color,
+            )
+            ax2.set_ylabel("MSE", color=mse_color, fontsize=PLOT_LABEL_FONTSIZE)
+            ax2.tick_params(axis="y", labelcolor=mse_color, labelsize=PLOT_TICK_FONTSIZE)
 
-        # Shared title / legend
-        ax1.set_title(
-            f"SNR / MSE vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})"
-        )
+            # Shared title / legend
+            ax1.set_title(
+                f"SNR / MSE vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
+                fontsize=PLOT_TITLE_FONTSIZE,
+            )
 
-        # Combine legends from both axes
-        handles = snr_bars.patches[:1] + mse_bars.patches[:1]
-        labels = ["SNR (dB)", "MSE"]
-        fig.legend(handles, labels, loc="upper right", bbox_to_anchor=(1, 1))
+            # Combine legends from both axes
+            handles = snr_bars.patches[:1] + mse_bars.patches[:1]
+            labels = ["SNR (dB)", "MSE"]
+            fig.legend(
+                handles,
+                labels,
+                loc="upper right",
+                bbox_to_anchor=(1, 1),
+                fontsize=PLOT_LEGEND_FONTSIZE,
+            )
 
-        fig.tight_layout()
-        plt.show()
+            fig.tight_layout()
+            plt.show()
 
     return 0
 
