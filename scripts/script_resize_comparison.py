@@ -59,9 +59,9 @@ ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
 # Plot appearance for slide-friendly export
 PLOT_FIGSIZE = (14, 7)      # same 2:1 ratio as (10, 5), just larger
 PLOT_TITLE_FONTSIZE = 18
-PLOT_LABEL_FONTSIZE = 14
-PLOT_TICK_FONTSIZE = 12
-PLOT_LEGEND_FONTSIZE = 12
+PLOT_LABEL_FONTSIZE = 18
+PLOT_TICK_FONTSIZE = 18
+PLOT_LEGEND_FONTSIZE = 18
 
 try:
     import cv2
@@ -905,6 +905,7 @@ def main(argv=None):
             y = np.arange(len(names))
             plt.barh(y, times, xerr=sds, alpha=0.8)
             plt.yticks(y, names, fontsize=PLOT_TICK_FONTSIZE)
+            plt.xticks(fontsize=PLOT_TICK_FONTSIZE)  # ⬅️ make 0.000, 0.005, ... big too
             plt.xlabel(
                 f"Round-trip time (s) — mean ± sd over {repeats} runs",
                 fontsize=PLOT_LABEL_FONTSIZE,
