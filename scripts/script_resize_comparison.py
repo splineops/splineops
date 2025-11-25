@@ -630,7 +630,7 @@ def _show_initial_original_vs_ls(
     # Row 1, right: magnified original ROI
     ax = axes[0, 1]
     ax.imshow(roi_orig_big, cmap="gray", interpolation="nearest", aspect="equal")
-    ax.set_title(f"Original ROI ({roi_h}×{roi_w} px, magnified)")
+    ax.set_title(f"Original ROI ({roi_h}×{roi_w} px, NN magnified)")
     ax.axis("off")
 
     # Row 2, left: LS first-pass on canvas with mapped ROI box
@@ -658,7 +658,7 @@ def _show_initial_original_vs_ls(
     ax = axes[1, 1]
     ax.imshow(ls_roi_big, cmap="gray", interpolation="nearest", aspect="equal")
     ax.set_title(
-        f"LS first-pass ROI ({roi_h_res}×{roi_w_res} px, magnified)"
+        f"LS first-pass ROI ({roi_h_res}×{roi_w_res} px, NN magnified)"
     )
     ax.axis("off")
 
