@@ -620,13 +620,13 @@ def _show_initial_original_vs_ls(
         facecolor="none",
     )
     ax.add_patch(rect)
-    ax.set_title("Original image with ROI")
+    ax.set_title(f"Original image with ROI ({H}×{W} px)")
     ax.axis("off")
 
     # Row 1, right: magnified original ROI
     ax = axes[0, 1]
     ax.imshow(roi_orig_big, cmap="gray", interpolation="nearest", aspect="equal")
-    ax.set_title("Original ROI (magnified, nearest neighbors)")
+    ax.set_title(f"Original ROI ({roi_h}×{roi_w} px, magnified)")
     ax.axis("off")
 
     # Row 2, left: LS first-pass on canvas with mapped ROI box
@@ -645,13 +645,17 @@ def _show_initial_original_vs_ls(
             facecolor="none",
         )
         ax.add_patch(rect_ls)
-    ax.set_title(f"Splineops LS first-pass ({degree_label}, zoom ×{z:g})")
+    ax.set_title(
+        f"Splineops LS first-pass ({degree_label}, zoom ×{z:g}, {H1}×{W1} px)"
+    )
     ax.axis("off")
 
     # Row 2, right: magnified LS ROI
     ax = axes[1, 1]
     ax.imshow(ls_roi_big, cmap="gray", interpolation="nearest", aspect="equal")
-    ax.set_title("LS first-pass ROI (magnified, nearest neighbors)")
+    ax.set_title(
+        f"LS first-pass ROI ({roi_h_res}×{roi_w_res} px, magnified)"
+    )
     ax.axis("off")
 
     fig.tight_layout()
