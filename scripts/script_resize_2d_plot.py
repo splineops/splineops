@@ -81,7 +81,15 @@ from splineops.resize import resize as spl_resize
 DTYPE = np.float32
 DTYPE_NAME = np.dtype(DTYPE).name
 
-MARKER_SIZE = 3
+# Plot appearance for slide-friendly export
+PLOT_FIGSIZE = (14, 7)      # wider, 2:1-ish
+PLOT_TITLE_FONTSIZE = 18
+PLOT_LABEL_FONTSIZE = 18
+PLOT_TICK_FONTSIZE = 18
+PLOT_LEGEND_FONTSIZE = 18
+
+MARKER_SIZE = 6             # bigger markers
+LINEWIDTH = 2.0             # thicker lines
 
 # -------------------------- UI / I/O helpers --------------------------
 
@@ -705,8 +713,8 @@ def main():
         for idx_name, name in enumerate(results.keys()):
             marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
 
-        # Timing
-        plt.figure(figsize=(9.5, 5.5))
+        # ---------------- Timing plot ----------------
+        plt.figure(figsize=PLOT_FIGSIZE)
         any_curve = False
         for name, data in results.items():
             if not data["z"]:
@@ -722,24 +730,28 @@ def main():
                 t_arr[mask],
                 marker=marker_for.get(name, "o"),
                 markersize=MARKER_SIZE,
-                linewidth=1.5,
+                linewidth=LINEWIDTH,
                 label=name,
             )
         if any_curve:
-            plt.xlabel("Zoom factor")
+            plt.xlabel("Zoom factor", fontsize=PLOT_LABEL_FONTSIZE)
             plt.ylabel(
-                f"Time (s)  [avg of {args.repeats} runs, forward + backward]"
+                f"Time (s)  [avg of {args.repeats} runs, forward + backward]",
+                fontsize=PLOT_LABEL_FONTSIZE,
             )
             plt.title(
                 f"Round-Trip Timing vs Zoom{title_suffix}  "
-                f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})"
+                f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
+                fontsize=PLOT_TITLE_FONTSIZE,
             )
+            plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
+            plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
             plt.grid(True, alpha=0.35)
-            plt.legend()
+            plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
             plt.tight_layout()
 
-        # SNR
-        plt.figure(figsize=(9.5, 5.5))
+        # ---------------- SNR plot ----------------
+        plt.figure(figsize=PLOT_FIGSIZE)
         any_curve = False
         for name, data in results.items():
             if not data["z"]:
@@ -756,18 +768,21 @@ def main():
                 s_plot,
                 marker=marker_for.get(name, "o"),
                 markersize=MARKER_SIZE,
-                linewidth=1.5,
+                linewidth=LINEWIDTH,
                 label=name,
             )
         if any_curve:
-            plt.xlabel("Zoom factor")
-            plt.ylabel("SNR (dB)  [original vs recovered]")
+            plt.xlabel("Zoom factor", fontsize=PLOT_LABEL_FONTSIZE)
+            plt.ylabel("SNR (dB)  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
             plt.title(
                 f"Round-Trip SNR vs Zoom{title_suffix}  "
-                f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})"
+                f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
+                fontsize=PLOT_TITLE_FONTSIZE,
             )
+            plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
+            plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
             plt.grid(True, alpha=0.35)
-            plt.legend()
+            plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
             plt.tight_layout()
 
     #
