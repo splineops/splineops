@@ -893,7 +893,7 @@ def main(argv=None):
             r, c = divmod(idx, cols)
             ax = axes[r, c]
             ax.imshow(tile, cmap="gray", interpolation="nearest")
-            ax.set_title(name, fontsize=14, pad=3)  # or ROI_TILE_TITLE_FONTSIZE
+            ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE, pad=3)
             ax.set_axis_off()
 
         # No fig.suptitle(...) here anymore
