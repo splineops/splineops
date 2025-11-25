@@ -624,13 +624,19 @@ def _show_initial_original_vs_ls(
         facecolor="none",
     )
     ax.add_patch(rect)
-    ax.set_title(f"Original image with ROI ({H}×{W} px)")
+    ax.set_title(
+        f"Original image with ROI ({H}×{W} px)",
+        fontsize=ROI_TILE_TITLE_FONTSIZE,
+    )
     ax.axis("off")
 
     # Row 1, right: magnified original ROI
     ax = axes[0, 1]
     ax.imshow(roi_orig_big, cmap="gray", interpolation="nearest", aspect="equal")
-    ax.set_title(f"Original ROI ({roi_h}×{roi_w} px, NN magnified)")
+    ax.set_title(
+        f"Original ROI ({roi_h}×{roi_w} px, NN magnified)",
+        fontsize=ROI_TILE_TITLE_FONTSIZE,
+    )
     ax.axis("off")
 
     # Row 2, left: LS first-pass on canvas with mapped ROI box
@@ -650,7 +656,8 @@ def _show_initial_original_vs_ls(
         )
         ax.add_patch(rect_ls)
     ax.set_title(
-        f"Splineops LS first-pass ({degree_label}, zoom ×{z:g}, {H1}×{W1} px)"
+        f"Splineops LS ({degree_label}, zoom ×{z:g}, {H1}×{W1} px)",
+        fontsize=ROI_TILE_TITLE_FONTSIZE,
     )
     ax.axis("off")
 
@@ -658,13 +665,13 @@ def _show_initial_original_vs_ls(
     ax = axes[1, 1]
     ax.imshow(ls_roi_big, cmap="gray", interpolation="nearest", aspect="equal")
     ax.set_title(
-        f"LS first-pass ROI ({roi_h_res}×{roi_w_res} px, NN magnified)"
+        f"LS ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+        fontsize=ROI_TILE_TITLE_FONTSIZE,
     )
     ax.axis("off")
 
     fig.tight_layout()
     plt.show()
-
 
 # ---------------------------
 # main
@@ -917,7 +924,7 @@ def main(argv=None):
             plt.yticks(y, names, fontsize=PLOT_TICK_FONTSIZE)
             plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
             plt.xlabel(
-                f"Round-trip time (s) — mean ± sd over {repeats} runs",
+                f"Round-trip time (s) mean ± sd over {repeats} runs",
                 fontsize=PLOT_LABEL_FONTSIZE,
             )
             plt.title(
