@@ -9,10 +9,10 @@ Compares:
 - splineops Standard (linear / cubic)
 - splineops Least-Squares (best AA, linear / cubic)
 - splineops Oblique (fast AA, linear / cubic)
-- PyTorch bilinear/bicubic (AA)
+- PyTorch bilinear/bicubic
 - OpenCV INTER_LINEAR / INTER_CUBIC
-- Pillow LANCZOS
-- scikit-image (linear/cubic, AA)
+- Pillow
+- scikit-image (linear/cubic)
 
 Zoom sweep:
   • 0 < z < 2, excluding 1.0
@@ -275,14 +275,14 @@ def torch_roundtrip(
             size=(H1, W1),
             mode=mode,
             align_corners=False,
-            antialias=True,
+            antialias=False,
         )
         y2 = F.interpolate(
             y,
             size=(H, W),
             mode=mode,
             align_corners=False,
-            antialias=True,
+            antialias=False,
         )
         rec = y2[0, 0].cpu().numpy().astype(arr.dtype, copy=False)
 
@@ -296,14 +296,14 @@ def torch_roundtrip(
             size=(H1, W1),
             mode=mode,
             align_corners=False,
-            antialias=True,
+            antialias=False,
         )
         y2 = F.interpolate(
             y,
             size=(H, W),
             mode=mode,
             align_corners=False,
-            antialias=True,
+            antialias=False,
         )
         rec = (
             y2[0]
@@ -418,7 +418,7 @@ def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarra
             arr,
             (H1, W1),
             order=order,
-            anti_aliasing=True,
+            anti_aliasing=False,
             preserve_range=True,
             mode="reflect",
         )
@@ -426,7 +426,7 @@ def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarra
             out,
             (H, W),
             order=order,
-            anti_aliasing=True,
+            anti_aliasing=False,
             preserve_range=True,
             mode="reflect",
         )
@@ -436,7 +436,7 @@ def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarra
             arr,
             (H1, W1, C),
             order=order,
-            anti_aliasing=True,
+            anti_aliasing=False,
             preserve_range=True,
             mode="reflect",
         )
@@ -444,7 +444,7 @@ def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarra
             out,
             (H, W, C),
             order=order,
-            anti_aliasing=True,
+            anti_aliasing=False,
             preserve_range=True,
             mode="reflect",
         )
@@ -631,10 +631,10 @@ def main():
         ),
     }
     if _HAS_TORCH:
-        METHODS[f"PyTorch {degree_label} (AA)"] = ("torch", degree)
+        METHODS[f"PyTorch {degree_label}"] = ("torch", degree)
     else:
         print(
-            "[info] PyTorch not found; 'PyTorch (AA)' curve will be omitted."
+            "[info] PyTorch not found; 'PyTorch' curve will be omitted."
         )
 
     if _HAS_CV2:
@@ -651,10 +651,10 @@ def main():
         METHODS["Pillow BICUBIC (float)"] = ("pillow", "bicubic")
 
     if _HAS_SKIMAGE:
-        METHODS[f"scikit-image ({degree_label}, AA)"] = ("skimage", degree)
+        METHODS[f"scikit-image ({degree_label})"] = ("skimage", degree)
     else:
         print(
-            "[info] scikit-image not found; 'scikit-image (AA)' curve will be omitted."
+            "[info] scikit-image not found; 'scikit-image' curve will be omitted."
         )
 
     results: Dict[str, Dict[str, List[float]]] = {
