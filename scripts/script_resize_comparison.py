@@ -380,11 +380,14 @@ def _rt_opencv(
     except Exception as e:
         return gray, gray, str(e)
 
-
 def _rt_pillow(
     gray: np.ndarray, z: float, which: str
 ) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
-    """Return (first, rec, err) using Pillow BILINEAR/BICUBIC."""
+    """Return (first, rec, err) using Pillow BILINEAR/BICUBIC on float32 images.
+
+    This keeps everything in [0,1] float so the comparison with splineops/SciPy/etc.
+    is numerically fair (no 8-bit quantization for Pillow only).
+    """
     try:
         from PIL import Image as _Image
 
@@ -392,21 +395,25 @@ def _rt_pillow(
             "linear": _Image.Resampling.BILINEAR,
             "cubic": _Image.Resampling.BICUBIC,
         }[which]
+
         H, W = gray.shape
         H1 = int(round(H * z))
         W1 = int(round(W * z))
 
-        im = _Image.fromarray(
-            np.rint(np.clip(gray, 0, 1) * 255.0).astype(np.uint8), mode="L"
-        )
+        # Pillow float image: mode="F" is 32-bit float per pixel
+        # gray is already [0,1], dtype float32/float64
+        im = _Image.fromarray(gray.astype(np.float32, copy=False), mode="F")
+
         first_im = im.resize((W1, H1), resample=resample)
         rec_im = first_im.resize((W, H), resample=resample)
 
-        first = np.asarray(first_im, dtype=np.float64) / 255.0
-        rec = np.asarray(rec_im, dtype=np.float64) / 255.0
+        first = np.asarray(first_im, dtype=np.float32)
+        rec = np.asarray(rec_im, dtype=np.float32)
 
+        # Back to [0,1] and original dtype
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
         rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
+
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
