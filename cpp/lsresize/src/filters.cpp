@@ -112,7 +112,9 @@ void symmetric_fir(const std::vector<double>& h, const std::vector<double>& c, s
 
 double do_integ(std::vector<double>& c, int nb) {
   const size_t N = c.size();
-  if (N == 0 || nb <= 0) return 0.0;
+  if (N <= 1 || nb <= 0) {
+    return 0.0;  // nothing to integrate; no average to restore
+  }
 
   auto avg_of = [&](const std::vector<double>& x)->double {
     const double sum = std::accumulate(x.begin(), x.end(), 0.0);
