@@ -806,7 +806,7 @@ def main(argv=None):
         print()
 
     print(f"\nBenchmarking round-trip @ zoom ×{z:.5g}  (repeats={repeats})\n")
-    header = f"{'Method':<40} {'Time (mean)':>13} {'± SD':>10} {'SNR (dB)':>10} {'MSE':>14}"
+    header = f"{'Method':<40} {'Time (mean)':>13} {'± SD':>10} {'SNR (dB)':>10} {'MSE':>14} {'SSIM':>8}"
     print(header)
     print("-" * len(header))
 
@@ -821,6 +821,7 @@ def main(argv=None):
                     "sd": np.nan,
                     "snr": np.nan,
                     "mse": np.nan,
+                    "ssim": np.nan,
                     "err": err,
                 }
             )
@@ -834,9 +835,19 @@ def main(argv=None):
         rec_roi = _crop_roi(rec, roi_rect)
         snr = _snr_db(roi, rec_roi)
         mse = float(np.mean((roi - rec_roi) ** 2, dtype=np.float64))
+
+        # SSIM over the ROI (if skimage is available)
+        if _HAS_SKIMAGE and _ssim is not None:
+            try:
+                ssim = float(_ssim(roi, rec_roi, data_range=1.0))
+            except Exception:
+                ssim = float("nan")
+        else:
+            ssim = float("nan")
+
         print(
             f"{name:<40} {_fmt_time(t_mean):>13} {_fmt_time(t_sd):>10} "
-            f"{snr:>10.2f} {mse:>14.3e}"
+            f"{snr:>10.2f} {mse:>14.3e} {ssim:>8.4f}"
         )
 
         rows.append(
@@ -846,6 +857,7 @@ def main(argv=None):
                 "sd": t_sd,
                 "snr": snr,
                 "mse": mse,
+                "ssim": ssim,
                 "err": None,
             }
         )
@@ -1015,6 +1027,39 @@ def main(argv=None):
 
             fig.tight_layout()
             plt.show()
+
+        # --- SSIM bar chart (round-trip) ---
+        if _HAS_SKIMAGE and _ssim is not None:
+            valid_ssim = [r for r in rows if np.isfinite(r.get("ssim", np.nan))]
+            if valid_ssim:
+                names = [r["name"] for r in valid_ssim]
+                ssims = np.array([r["ssim"] for r in valid_ssim])
+
+                # Sort by SSIM (higher is better)
+                order = np.argsort(-ssims)
+                names = [names[i] for i in order]
+                ssims = ssims[order]
+
+                x = np.arange(len(names))
+
+                plt.figure(figsize=PLOT_FIGSIZE)
+                plt.bar(x, ssims, alpha=0.85)
+                plt.xticks(
+                    x,
+                    names,
+                    rotation=30,
+                    ha="right",
+                    fontsize=PLOT_TICK_FONTSIZE,
+                )
+                plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
+                plt.ylabel("SSIM", fontsize=PLOT_LABEL_FONTSIZE)
+                plt.title(
+                    f"SSIM vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
+                    fontsize=PLOT_TITLE_FONTSIZE,
+                )
+                plt.grid(axis="y", alpha=0.3)
+                plt.tight_layout()
+                plt.show()
 
     return 0
 
