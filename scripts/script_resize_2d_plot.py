@@ -354,43 +354,45 @@ def pillow_roundtrip(
 ) -> Tuple[np.ndarray, float]:
     """
     Round-trip with Pillow's resize using LANCZOS or BICUBIC.
-    Supports 2D (H,W) and 3D (H,W,3) arrays.
 
-    Timing includes:
-      - NumPy -> uint8 -> PIL.Image
-      - forward + backward resize
-      - PIL.Image -> NumPy float in [0,1]
+    For 2D (grayscale) arrays, this uses a pure float32 ("F" mode) pipeline so
+    there is no 8-bit quantization advantage. For RGB images we fall back to
+    uint8, since Pillow doesn't support multi-channel float modes directly.
     """
     resample_map = {
         "lanczos": Image.Resampling.LANCZOS,
         "bicubic": Image.Resampling.BICUBIC,
     }
+    if which not in resample_map:
+        raise ValueError(f"Unsupported Pillow kernel: {which}")
     resample = resample_map[which]
-
-    t0 = time.perf_counter()  # start timing before conversions
 
     H, W = img.shape[:2]
     W1 = int(round(W * z))
     H1 = int(round(H * z))
 
-    # Convert to uint8 for Pillow
-    arr01 = np.clip(img, 0.0, 1.0)
+    t0 = time.perf_counter()  # include conversions + resize in timing
+
     if img.ndim == 2:
+        # Pure float pipeline (grayscale). img already in [0,1].
+        im = Image.fromarray(img.astype(np.float32, copy=False), mode="F")
+        out = im.resize((W1, H1), resample=resample)
+        rec_im = out.resize((W, H), resample=resample)
+        rec_arr = np.asarray(rec_im, dtype=np.float32)
+
+    elif img.ndim == 3 and img.shape[2] in (3, 4):
+        # Fallback: RGB/RGBA via uint8. For fair benchmarking, prefer grayscale.
+        arr01 = np.clip(img, 0.0, 1.0)
         u8 = np.rint(arr01 * 255.0).astype(np.uint8)
-        im = Image.fromarray(u8, mode="L")
-    elif img.ndim == 3 and img.shape[2] == 3:
-        u8 = np.rint(arr01 * 255.0).astype(np.uint8)
-        im = Image.fromarray(u8, mode="RGB")
+        mode = "RGB" if img.shape[2] == 3 else "RGBA"
+        im = Image.fromarray(u8, mode=mode)
+        out = im.resize((W1, H1), resample=resample)
+        rec_im = out.resize((W, H), resample=resample)
+        rec_arr = np.asarray(rec_im, dtype=np.float32) / 255.0
     else:
-        raise ValueError("Pillow round-trip expects 2D or 3D (H×W×3) array")
+        raise ValueError("Pillow round-trip expects 2D or 3D (H×W×3/4) array")
 
-    out = im.resize((W1, H1), resample=resample)
-    rec_im = out.resize((W, H), resample=resample)
-
-    rec_arr = np.asarray(rec_im, dtype=np.float64) / 255.0
-    rec_arr = np.clip(rec_arr, 0.0, 1.0)
-    rec_arr = rec_arr.astype(img.dtype, copy=False)
-
+    rec_arr = np.clip(rec_arr, 0.0, 1.0).astype(img.dtype, copy=False)
     dt = time.perf_counter() - t0
     return rec_arr, dt
 
@@ -645,7 +647,7 @@ def main():
         )
 
     # Pillow is always available (we already import PIL.Image above)
-    METHODS["Pillow LANCZOS"] = ("pillow", "lanczos")
+    METHODS["Pillow LANCZOS (float)"] = ("pillow", "lanczos")
 
     if _HAS_SKIMAGE:
         METHODS[f"scikit-image ({degree_label}, AA)"] = ("skimage", degree)
