@@ -53,7 +53,7 @@ DTYPE = np.float32
 
 # ROI / detail-window configuration
 ROI_SIZE_PX = 256              # approximate ROI size in original image
-ROI_CENTER_FRAC = (0.40, 0.65)  # (row_frac, col_frac) in [0, 1]
+ROI_CENTER_FRAC = (0.65, 0.35)  # (row_frac, col_frac) in [0, 1]
 ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
 
 # Plot appearance for slide-friendly export
@@ -436,7 +436,7 @@ def _rt_skimage(
             gray,
             (H1, W1),
             order=order,
-            anti_aliasing=True,
+            anti_aliasing=False,
             preserve_range=True,
             mode="reflect",
         ).astype(np.float64)
@@ -444,7 +444,7 @@ def _rt_skimage(
             first,
             (H, W),
             order=order,
-            anti_aliasing=True,
+            anti_aliasing=False,
             preserve_range=True,
             mode="reflect",
         ).astype(np.float64)
@@ -459,7 +459,7 @@ def _rt_skimage(
 def _rt_torch(
     gray: np.ndarray, z: float, degree: str
 ) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
-    """Return (first, rec, err) using torch F.interpolate with bilinear/bicubic + AA."""
+    """Return (first, rec, err) using torch F.interpolate with bilinear/bicubic."""
     if not _HAS_TORCH:
         return gray, gray, "PyTorch not installed"
     try:
@@ -487,14 +487,14 @@ def _rt_torch(
             size=(H1, W1),
             mode=mode,
             align_corners=False,
-            antialias=True,
+            antialias=False,
         )
         rec_t = F.interpolate(
             first_t,
             size=(H, W),
             mode=mode,
             align_corners=False,
-            antialias=True,
+            antialias=False,
         )
 
         # Back to NumPy
@@ -780,11 +780,11 @@ def main(argv=None):
             lambda: _rt_pillow(gray, z, degree),
         ),
         (
-            f"scikit-image ({degree_label}, AA)",
+            f"scikit-image ({degree_label})",
             lambda: _rt_skimage(gray, z, degree),
         ),
         (
-            f"PyTorch {degree_label} (AA, CPU)",
+            f"PyTorch {degree_label} (CPU)",
             lambda: _rt_torch(gray, z, degree),
         ),
     ]
