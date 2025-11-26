@@ -353,15 +353,16 @@ def pillow_roundtrip(
     img: np.ndarray, z: float, which: str
 ) -> Tuple[np.ndarray, float]:
     """
-    Round-trip with Pillow's resize using LANCZOS or BICUBIC.
+    Round-trip with Pillow's resize using BILINEAR/BICUBIC/LANCZOS.
 
     For 2D (grayscale) arrays, this uses a pure float32 ("F" mode) pipeline so
     there is no 8-bit quantization advantage. For RGB images we fall back to
     uint8, since Pillow doesn't support multi-channel float modes directly.
     """
     resample_map = {
-        "lanczos": Image.Resampling.LANCZOS,
-        "bicubic": Image.Resampling.BICUBIC,
+        "bilinear": Image.Resampling.BILINEAR,
+        "bicubic":  Image.Resampling.BICUBIC,
+        "lanczos":  Image.Resampling.LANCZOS,
     }
     if which not in resample_map:
         raise ValueError(f"Unsupported Pillow kernel: {which}")
@@ -371,17 +372,14 @@ def pillow_roundtrip(
     W1 = int(round(W * z))
     H1 = int(round(H * z))
 
-    t0 = time.perf_counter()  # include conversions + resize in timing
+    t0 = time.perf_counter()
 
     if img.ndim == 2:
-        # Pure float pipeline (grayscale). img already in [0,1].
         im = Image.fromarray(img.astype(np.float32, copy=False), mode="F")
         out = im.resize((W1, H1), resample=resample)
         rec_im = out.resize((W, H), resample=resample)
         rec_arr = np.asarray(rec_im, dtype=np.float32)
-
     elif img.ndim == 3 and img.shape[2] in (3, 4):
-        # Fallback: RGB/RGBA via uint8. For fair benchmarking, prefer grayscale.
         arr01 = np.clip(img, 0.0, 1.0)
         u8 = np.rint(arr01 * 255.0).astype(np.uint8)
         mode = "RGB" if img.shape[2] == 3 else "RGBA"
@@ -511,7 +509,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="down",
+        default="up",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
@@ -646,8 +644,11 @@ def main():
             "[info] OpenCV not found; 'OpenCV' curve will be omitted."
         )
 
-    # Pillow is always available (we already import PIL.Image above)
-    METHODS["Pillow LANCZOS (float)"] = ("pillow", "lanczos")
+    # Pillow: mirror script_resize_comparison
+    if degree == "linear":
+        METHODS["Pillow BILINEAR (float)"] = ("pillow", "bilinear")
+    else:
+        METHODS["Pillow BICUBIC (float)"] = ("pillow", "bicubic")
 
     if _HAS_SKIMAGE:
         METHODS[f"scikit-image ({degree_label}, AA)"] = ("skimage", degree)
