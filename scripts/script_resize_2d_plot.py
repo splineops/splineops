@@ -91,6 +91,17 @@ PLOT_LEGEND_FONTSIZE = 18
 MARKER_SIZE = 6             # bigger markers
 LINEWIDTH = 2.0             # thicker lines
 
+# ---------------- Method toggles ----------------
+# Set any of these to False to skip computing/plotting that method.
+ENABLE_SCIPY              = True
+ENABLE_SPLINEOPS_STANDARD = True
+ENABLE_SPLINEOPS_LS       = True
+ENABLE_SPLINEOPS_OBLIQUE  = True
+ENABLE_TORCH              = True
+ENABLE_OPENCV             = True
+ENABLE_PILLOW             = True
+ENABLE_SKIMAGE            = True
+
 # -------------------------- UI / I/O helpers --------------------------
 
 
@@ -509,7 +520,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="up",
+        default="down",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
@@ -618,44 +629,57 @@ def main():
     #
     # Methods
     #
-    METHODS: Dict[str, Tuple[str, str | None]] = {
-        f"SciPy {degree_label}": ("scipy", degree),
-        f"Standard {degree_label}": ("splineops", degree),
-        f"Least-Squares (AA {degree_label})": (
+    METHODS: Dict[str, Tuple[str, str | None]] = {}
+
+    # SciPy
+    if ENABLE_SCIPY:
+        METHODS[f"SciPy {degree_label}"] = ("scipy", degree)
+
+    # splineops: Standard / LS / Oblique
+    if ENABLE_SPLINEOPS_STANDARD:
+        METHODS[f"Standard {degree_label}"] = ("splineops", degree)
+
+    if ENABLE_SPLINEOPS_LS:
+        METHODS[f"Least-Squares (AA {degree_label})"] = (
             "splineops",
             f"{degree}-best_antialiasing",
-        ),
-        f"Oblique (fast AA {degree_label})": (
+        )
+
+    if ENABLE_SPLINEOPS_OBLIQUE:
+        METHODS[f"Oblique (fast AA {degree_label})"] = (
             "splineops",
             f"{degree}-fast_antialiasing",
-        ),
-    }
-    if _HAS_TORCH:
-        METHODS[f"PyTorch {degree_label}"] = ("torch", degree)
-    else:
-        print(
-            "[info] PyTorch not found; 'PyTorch' curve will be omitted."
         )
 
-    if _HAS_CV2:
-        METHODS[f"OpenCV INTER_{degree_label.upper()}"] = ("opencv", degree)
-    else:
-        print(
-            "[info] OpenCV not found; 'OpenCV' curve will be omitted."
-        )
+    # PyTorch
+    if ENABLE_TORCH:
+        if _HAS_TORCH:
+            METHODS[f"PyTorch {degree_label}"] = ("torch", degree)
+        else:
+            print("[info] PyTorch not found; 'PyTorch' curve will be omitted.")
+
+    # OpenCV
+    if ENABLE_OPENCV:
+        if _HAS_CV2:
+            METHODS[f"OpenCV INTER_{degree_label.upper()}"] = ("opencv", degree)
+        else:
+            print("[info] OpenCV not found; 'OpenCV' curve will be omitted.")
 
     # Pillow: mirror script_resize_comparison
-    if degree == "linear":
-        METHODS["Pillow BILINEAR (float)"] = ("pillow", "bilinear")
-    else:
-        METHODS["Pillow BICUBIC (float)"] = ("pillow", "bicubic")
+    if ENABLE_PILLOW:
+        if degree == "linear":
+            METHODS["Pillow BILINEAR (float)"] = ("pillow", "bilinear")
+        else:
+            METHODS["Pillow BICUBIC (float)"] = ("pillow", "bicubic")
 
-    if _HAS_SKIMAGE:
-        METHODS[f"scikit-image ({degree_label})"] = ("skimage", degree)
-    else:
-        print(
-            "[info] scikit-image not found; 'scikit-image' curve will be omitted."
-        )
+    # scikit-image
+    if ENABLE_SKIMAGE:
+        if _HAS_SKIMAGE:
+            METHODS[f"scikit-image ({degree_label})"] = ("skimage", degree)
+        else:
+            print(
+                "[info] scikit-image not found; 'scikit-image' curve will be omitted."
+            )
 
     results: Dict[str, Dict[str, List[float]]] = {
         name: {"z": [], "time": [], "time_sd": [], "snr": []} for name in METHODS
