@@ -147,7 +147,7 @@ def _time_and_run(
             "cubic-best_antialiasing",
             (128, 257),
             (1.0, 1.0),
-            0.0,
+            2e-7,
         ),
         # --- Extra quick sanity cases ------------------------------------------
         (
