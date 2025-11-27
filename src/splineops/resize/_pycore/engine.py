@@ -19,11 +19,13 @@ def compute_zoom(
     inversable: bool
 ) -> None:
     """
-    Apply per-axis resize with the same magnification policy as the C++ path:
-      • If zoom > 1 (magnification) or |zoom - 1| <= eps (identity),
-        disable LS/Oblique projection (analy_degree = -1) to avoid ringing
-        and to skip useless projection near identity.
-      • For downsampling (zoom < 1), keep the requested LS/Oblique projection.
+    Apply per-axis resize using the explicit (interp_degree, analy_degree,
+    synthe_degree) triple along each axis.
+
+    Unlike older versions, this function does not modify the degrees based on
+    zoom: if you request LS/oblique (analy_degree >= 0), it is applied for both
+    down-sampling and magnification. Identity handling is only enabled for
+    pure interpolation (analy_degree < 0 and zoom ≈ 1).
     """
     img = np.asarray(input_img, dtype=np.float64, order="C")
     out = img
@@ -37,12 +39,9 @@ def compute_zoom(
             inversable=inversable,
         )
 
-        # Magnification/identity policy (matches C++ binding):
-        # - If zoom > 1 (magnify) OR zoom ≈ 1, disable projection along this axis.
-        if p.analy_degree >= 0 and (abs(p.zoom - 1.0) <= _EPS or p.zoom > 1.0 + _EPS):
-            p.analy_degree = -1
-
-        # Fast identity short-circuit: if no projection and no shift, skip the axis
+        # Fast identity short-circuit:
+        #  - Only for pure interpolation (analy_degree < 0)
+        #  - zoom ≈ 1 and zero shift
         if p.analy_degree < 0 and abs(p.zoom - 1.0) <= _EPS and abs(p.shift) <= 1e-15:
             continue
 
