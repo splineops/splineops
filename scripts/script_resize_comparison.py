@@ -56,6 +56,9 @@ ROI_SIZE_PX = 256              # approximate ROI size in original image
 ROI_CENTER_FRAC = (0.4, 0.65)  # (row_frac, col_frac) in [0, 1]
 ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
 
+# Whether to use a local square ROI window (True) or the full image (False)
+USE_WINDOW_ROI_DEFAULT = True  # set to False to make "full image ROI" the default
+
 # Plot appearance for slide-friendly export
 PLOT_FIGSIZE = (14, 7)      # same 2:1 ratio as (10, 5), just larger
 PLOT_TITLE_FONTSIZE = 18
@@ -763,8 +766,25 @@ def main(argv=None):
         choices=("linear", "cubic"),
         help="Degree / interpolation mode (linear or cubic) for all methods.",
     )
+    # ROI control: window vs full image
+    ap.add_argument(
+        "--full-image-roi",
+        dest="use_window_roi",
+        action="store_false",
+        help="Use the full image as ROI instead of the local square window.",
+    )
+    ap.add_argument(
+        "--window-roi",
+        dest="use_window_roi",
+        action="store_true",
+        help="Use the local square ROI window (overrides --full-image-roi).",
+    )
+    # Default comes from the hardcoded constant at the top
+    ap.set_defaults(use_window_roi=USE_WINDOW_ROI_DEFAULT)
+
     args = ap.parse_args(argv)
     degree = args.degree
+    use_window_roi = args.use_window_roi
 
     # Ensure a Qt application exists before degree dialog / file dialog
     app = QtWidgets.QApplication.instance()
@@ -812,7 +832,18 @@ def main(argv=None):
     repeats = 10  # avg runs
 
     # ROI in the *original* image (for round-trip quality metrics)
-    roi_rect = _roi_rect_from_frac(gray.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
+    if use_window_roi:
+        # Local square ROI around ROI_CENTER_FRAC with approx ROI_SIZE_PX
+        roi_rect = _roi_rect_from_frac(gray.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
+        print(
+            f"Using local ROI window: center_frac={ROI_CENTER_FRAC}, "
+            f"size≈{ROI_SIZE_PX} px"
+        )
+    else:
+        # Full-image ROI
+        roi_rect = (0, 0, H, W)
+        print("Using full-image ROI for metrics and visualizations.")
+
     roi = _crop_roi(gray, roi_rect)
 
     # Precompute original ROI center/size to map into resized space
