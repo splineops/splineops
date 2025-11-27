@@ -8,16 +8,15 @@ Flow:
   2) Pick zoom (>0) + method:
        - SciPy Linear / Quadratic / Cubic
        - Standard Linear / Quadratic / Cubic
-       - Least-Squares Linear / Quadratic / Cubic
-       - Oblique Linear / Quadratic / Cubic
+       - Antialiasing Linear / Quadratic / Cubic
   3) Show ORIGINAL grayscale (no text)
   4) Show RESIZED grayscale (no text)
-  5) Show COMPARISON figure: the four families at the same degree with timing
+  5) Show COMPARISON figure: the three families at the same degree with timing
 
 Notes:
   - Displays use RGB uint8 (no colormap) to avoid large float RGBA buffers.
   - SciPy is optional; missing SciPy shows a friendly message in the comparison panel.
-  - On macOS we force Matplotlib to the native "MacOSX" backend so Tk isn't used by figures.
+  - On macOS we force Matplotlib to the native Qt-based backend so Tk isn't used by figures.
 """
 
 from __future__ import annotations
@@ -55,7 +54,7 @@ except Exception:
 # Default storage dtype for the demo (change to np.float64 if desired)
 DTYPE = np.float64
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets  # type: ignore[assignment]
 
 # Import splineops (works when run directly or as module)
 try:
@@ -129,8 +128,7 @@ DEGREES = ("linear", "quadratic", "cubic")
 FAMILIES = (
     ("scipy",   "SciPy"),
     ("standard","Standard"),
-    ("ls",      "Least-Squares"),
-    ("oblique", "Oblique"),
+    ("aa",      "Antialiasing"),
 )
 METHOD_LABELS = [f"{fam_name} {deg.title()}" for fam_key, fam_name in FAMILIES for deg in DEGREES]
 LABEL_TO_KEY = {f"{fam_name} {deg.title()}": f"{fam_key}-{deg}"
@@ -163,11 +161,11 @@ def _scipy_zoom_gray(data01: np.ndarray, z: float, degree: str) -> np.ndarray:
 
 def _splineops_resize_gray(data01: np.ndarray, z: float, family: str, degree: str) -> np.ndarray:
     if family == "standard":
+        # Pure interpolation (no antialiasing)
         sp_method = degree
-    elif family == "ls":
-        sp_method = f"{degree}-best_antialiasing"
-    elif family == "oblique":
-        sp_method = f"{degree}-fast_antialiasing"
+    elif family == "aa":
+        # Oblique antialiasing
+        sp_method = f"{degree}-antialiasing"
     else:
         raise ValueError(f"Unsupported family for splineops: {family}")
     out = sp_resize(data01, zoom_factors=(z, z), method=sp_method)
@@ -192,7 +190,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self,
         parent: Optional[QtWidgets.QWidget] = None,
         default_zoom: float = 0.5,
-        default_method_key: str = "ls-cubic",
+        default_method_key: str = "aa-cubic",
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Resize Settings")
@@ -213,7 +211,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self.method_combo = QtWidgets.QComboBox()
         self.method_combo.addItems(METHOD_LABELS)
 
-        default_label = KEY_TO_LABEL.get(default_method_key, "Least-Squares Cubic")
+        default_label = KEY_TO_LABEL.get(default_method_key, "Antialiasing Cubic")
         idx = self.method_combo.findText(default_label)
         if idx >= 0:
             self.method_combo.setCurrentIndex(idx)
@@ -242,7 +240,7 @@ class SettingsDialog(QtWidgets.QDialog):
         return self._result
 
     def _center_on_screen(self) -> None:
-        """Roughly center the dialog on the primary screen (similar to the Tk version)."""
+        """Roughly center the dialog on the primary screen."""
         screen = QtWidgets.QApplication.primaryScreen()
         if screen is None:
             return
@@ -313,16 +311,15 @@ def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
     families = [
         ("scipy",   "SciPy"),
         ("standard","Standard"),
-        ("ls",      "Least-Squares"),
-        ("oblique", "Oblique"),
+        ("aa",      "Antialiasing"),
     ]
     results: List[Dict] = []
     for fam_key, fam_name in families:
         key = f"{fam_key}-{degree}"
         label = f"{fam_name} {degree.title()}"
         img = None
-        elapsed = None
-        err = None
+        elapsed: Optional[float] = None
+        err: Optional[str] = None
         try:
             img = _resize_gray(gray01, key, zoom)
             elapsed = _avg_runtime(lambda: _resize_gray(gray01, key, zoom),
@@ -389,12 +386,12 @@ def main(argv=None) -> int:
     if img_path is None:
         return 0  # cancelled
 
-    dlg = SettingsDialog(parent=None, default_zoom=0.5, default_method_key="ls-cubic")
+    dlg = SettingsDialog(parent=None, default_zoom=0.5, default_method_key="aa-cubic")
     if dlg.exec_() != QtWidgets.QDialog.Accepted or dlg.result is None:
         return 0  # cancelled
     zoom, method_key = dlg.result
 
-    # Load + grayscale (error reported via Qt message box, like before with Tk)
+    # Load + grayscale
     try:
         gray01 = _open_as_gray01(img_path)
     except Exception as e:
@@ -412,7 +409,6 @@ def main(argv=None) -> int:
     try:
         out = _resize_gray(gray01, method_key, zoom)
     except Exception as e:
-        # No main Qt window here: just report to stderr and abort
         print(f"Resize failed: {e}", file=sys.stderr)
         return 1
     _show_gray_image(out)
