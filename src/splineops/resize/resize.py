@@ -5,7 +5,7 @@
 #
 # Public resizing APIs:
 #
-# * `resize`          – backwards-compatible API using a `method` preset string.
+# * `resize`          – preset-based API using a `method` string.
 # * `resize_degrees`  – advanced API exposing the three spline degrees
 #                       (interp_degree, analy_degree, synthe_degree).
 #
@@ -43,42 +43,42 @@ MAX_SUPPORTED_DEGREE = 3
 
 METHOD_MAP: Dict[
     str,
-    Tuple[Literal["interpolation", "oblique", "least-squares"], int],
+    Tuple[Literal["interpolation", "oblique"], int],
 ] = {
-    # pure interpolation – no anti-aliasing
-    "fast": ("interpolation", 0),
-    "linear": ("interpolation", 1),
+    # interpolation – no anti-aliasing
+    "fast":      ("interpolation", 0),
+    "linear":    ("interpolation", 1),
     "quadratic": ("interpolation", 2),
-    "cubic": ("interpolation", 3),
-    # oblique projection – fast anti-aliasing
-    "linear-fast_antialiasing": ("oblique", 1),
-    "quadratic-fast_antialiasing": ("oblique", 2),
-    "cubic-fast_antialiasing": ("oblique", 3),
-    # least-squares – best anti-aliasing
-    "linear-best_antialiasing": ("least-squares", 1),
-    "quadratic-best_antialiasing": ("least-squares", 2),
-    "cubic-best_antialiasing": ("least-squares", 3),
+    "cubic":     ("interpolation", 3),
+
+    # antialiasing (oblique projection) – preferred for down-sampling
+    "linear-antialiasing":    ("oblique", 1),
+    "quadratic-antialiasing": ("oblique", 2),
+    "cubic-antialiasing":     ("oblique", 3),
+
+    # (Optional aliases for a transition period; commented out by default)
+    # "linear-fast_antialiasing":    ("oblique", 1),
+    # "quadratic-fast_antialiasing": ("oblique", 2),
+    # "cubic-fast_antialiasing":     ("oblique", 3),
 }
 
-# Helper for ls_oblique_resize ↔︎ degree name (fallback path only)
+# Helper for naming in messages (fallback path only)
 _DEGREE_TO_NAME = {0: "nearest", 1: "linear", 2: "quadratic", 3: "cubic"}
 
 
 def _resolve_degrees_for(algo: str, degree: int) -> Tuple[int, int, int]:
     """
     Map (algo, public_degree) -> (interp_degree, analy_degree, synthe_degree)
-    to match the original Python implementation's behavior.
+    in a way that matches the classic interpolation / antialiasing behavior.
 
-    algo ∈ {"interpolation", "oblique", "least-squares"}.
+    algo ∈ {"interpolation", "oblique"}.
     """
     interp_degree = degree
     synthe_degree = degree
     if algo == "interpolation":
         analy_degree = -1
-    elif algo == "least-squares":
-        analy_degree = degree
     else:  # "oblique"
-        # Oblique uses analy 0 for linear, 1 for quadratic/cubic
+        # Oblique uses analy=0 for linear, analy=1 for quadratic/cubic.
         analy_degree = 0 if degree == 1 else 1
     return interp_degree, analy_degree, synthe_degree
 
@@ -131,11 +131,11 @@ def _map_degrees_to_python_backend(
     Map (interp_degree, analy_degree, synthe_degree) to the minimal
     (py_method, base_degree) that the pure-Python engine understands.
 
-    The Python fallback supports only the canonical families:
+    The Python fallback only implements a small set of canonical families:
 
       - Standard interpolation: (n, -1, n)
-      - Least-squares:         (n,  n, n)
-      - Oblique (fast AA):     (1, 0, 1) or (n, 1, n) for n in {2,3}
+      - Oblique antialiasing:   (1, 0, 1) or (n, 1, n) for n in {2,3}
+      - Equal-degree projection: (n, n, n)
 
     Any other combination requires the C++ backend.
     """
@@ -148,9 +148,11 @@ def _map_degrees_to_python_backend(
             )
         return "interpolation", interp_degree
 
-    # Least-squares: analy == synthe == interp
+    # Equal-degree projection (same degree for analysis, synthesis, and interp).
     if analy_degree == interp_degree and synthe_degree == interp_degree:
-        return "least-squares", interp_degree
+        # Internal label; python_resize treats any non-"interpolation"/"oblique"
+        # as a generic projection with analy_degree == degree.
+        return "projection", interp_degree
 
     # Oblique presets (same policy as the original implementation)
     if interp_degree == 1 and analy_degree == 0 and synthe_degree == 1:
@@ -180,12 +182,11 @@ def resize_degrees(
     """
     Resize an *N*-dimensional array using explicit spline degrees.
 
-    This is the most general entry point: it exposes the three degrees used
-    in the Muñoz/Unser framework:
+    This is the most general entry point: it exposes the three degrees:
 
-      - interp_degree (φ): interpolation spline degree (0..3)
-      - analy_degree  (φ₁): analysis spline degree (-1..3, -1 = no projection)
-      - synthe_degree (φ₂): synthesis spline degree (0..3)
+      - interp_degree : degree of the interpolation B-spline φ (0..3)
+      - analy_degree  : analysis spline degree (-1..3, -1 = no projection)
+      - synthe_degree : synthesis spline degree (0..3)
 
     Parameters
     ----------
@@ -205,7 +206,7 @@ def resize_degrees(
         Degree of the analysis spline φ₁:
 
           - -1 → no projection (pure interpolation)
-          - 0..3 → LS/oblique-style projection.
+          - 0..3 → projection-based resizing (e.g. oblique/antialiasing, equal-degree projection).
 
     synthe_degree : int, optional
         Degree of the synthesis spline φ₂ (output space). Defaults to
@@ -259,16 +260,14 @@ def resize_degrees(
             bool(inversable),
         )
     else:
-        # Python fallback via reference LS/Oblique/Standard solver.
+        # Python fallback via reference projection/interpolation solver.
         py_method, base_degree = _map_degrees_to_python_backend(
             interp_degree, analy_degree, synthe_degree
         )
-        # Any zoom-dependent policy is handled inside the pure-Python engine;
-        # this wrapper simply forwards the request.
         output_data = _python_fallback_resize(
             data,
             zoom_factors,
-            py_method,  # "interpolation" | "oblique" | "least-squares"
+            py_method,  # "interpolation" | "oblique" | "projection"
             base_degree,
             inversable=inversable,
         )
@@ -299,14 +298,11 @@ def resize(
     method: str = "cubic",
 ) -> npt.NDArray:
     """
-    Resize an *N*-dimensional array using splines.
+    Resize an *N*-dimensional array using spline interpolation or
+    antialiasing projection.
 
-    This entry point is **backwards compatible** with the original API and
-    selects both the algorithm and the spline degree via a single `method`
-    string.
-
-    Under the hood, it maps `method` to explicit degrees and calls
-    :func:`resize_degrees`.
+    This entry point selects both the algorithm and the spline degree via a
+    single ``method`` string, and then delegates to :func:`resize_degrees`.
 
     Parameters
     ----------
@@ -323,20 +319,21 @@ def resize(
     method : str
         Preset selecting **both** the algorithm *and* the spline degree.
 
-        The following values are supported:
+        Interpolation (no anti-aliasing):
 
-        - ``"fast"``: interpolation, degree 0
-        - ``"linear"``: interpolation, degree 1
-        - ``"quadratic"``: interpolation, degree 2
-        - ``"cubic"``: interpolation, degree 3
-        - ``"linear-fast_antialiasing"``: oblique, degree 1
-        - ``"quadratic-fast_antialiasing"``: oblique, degree 2
-        - ``"cubic-fast_antialiasing"``: oblique, degree 3
-        - ``"linear-best_antialiasing"``: least-squares, degree 1
-        - ``"quadratic-best_antialiasing"``: least-squares, degree 2
-        - ``"cubic-best_antialiasing"``: least-squares, degree 3
+          - ``"fast"``      – interpolation, degree 0 (nearest)
+          - ``"linear"``    – interpolation, degree 1
+          - ``"quadratic"`` – interpolation, degree 2
+          - ``"cubic"``     – interpolation, degree 3
 
-        Anti-aliasing variants are preferred for down-sampling.
+        Antialiasing (oblique projection – recommended for down-sampling):
+
+          - ``"linear-antialiasing"``    – oblique, degree 1
+          - ``"quadratic-antialiasing"`` – oblique, degree 2
+          - ``"cubic-antialiasing"``     – oblique, degree 3
+
+        Anti-aliasing presets are preferred whenever you are reducing the
+        spatial resolution along an axis.
 
     Returns
     -------
@@ -361,7 +358,7 @@ def resize(
         interp_degree=interp_degree,
         analy_degree=analy_degree,
         synthe_degree=synthe_degree,
-        inversable=False,  # preserve previous default
+        inversable=False,  # keep previous default
     )
 
 
@@ -385,6 +382,4 @@ def resize(
 #     tensor = TensorSpline(data=data, coordinates=src_coords, bases=basis, modes=modes)
 #     return tensor.eval(coordinates=tgt_coords, grid=True)
 #
-# This approach has been fully replaced by the C++-accelerated path above,
-# which now handles both interpolation and projection (Oblique/LS) and
-# matches your test-validated coordinate normalization and per-axis sizing.
+# This approach has been fully replaced by the C++-accelerated path above.

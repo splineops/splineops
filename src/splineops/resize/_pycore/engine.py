@@ -22,10 +22,10 @@ def compute_zoom(
     Apply per-axis resize using the explicit (interp_degree, analy_degree,
     synthe_degree) triple along each axis.
 
-    Unlike older versions, this function does not modify the degrees based on
-    zoom: if you request LS/oblique (analy_degree >= 0), it is applied for both
-    down-sampling and magnification. Identity handling is only enabled for
-    pure interpolation (analy_degree < 0 and zoom ≈ 1).
+    This function does not modify the degrees based on zoom: if you request
+    a projection (analy_degree >= 0), it is applied for both down-sampling
+    and magnification. Identity handling is only enabled for pure interpolation
+    (analy_degree < 0 and zoom ≈ 1).
     """
     img = np.asarray(input_img, dtype=np.float64, order="C")
     out = img
@@ -52,7 +52,7 @@ def compute_zoom(
 def python_resize(
     data: np.ndarray,
     zoom_factors: Sequence[float],
-    algo: str,                 # "interpolation" | "least-squares" | "oblique"
+    algo: str,                 # "interpolation" | "oblique" | generic projection
     degree: int,
     inversable: bool = False
 ) -> np.ndarray:
@@ -67,15 +67,18 @@ def python_resize(
     arr = np.asarray(data, order="C")
     input_dtype = arr.dtype
 
-    # degree mapping (matches _resolve_degrees_for in the public wrapper)
+    # degree mapping (matches _resolve_degrees_for / _map_degrees_to_python_backend)
     interp_degree = degree
     synthe_degree = degree
-    if   algo == "interpolation":
+    if algo == "interpolation":
         analy_degree = -1
-    elif algo == "least-squares":
-        analy_degree = degree
-    else:  # "oblique"
+    elif algo == "oblique":
+        # Oblique antialiasing: analy=0 for linear, analy=1 for quadratic/cubic.
         analy_degree = 0 if degree == 1 else 1
+    else:
+        # Generic projection: analysis degree equals interpolation degree.
+        # This covers equal-degree projection (interp=analy=synthe).
+        analy_degree = degree
 
     shifts = [0.0] * len(zoom_factors)
 
