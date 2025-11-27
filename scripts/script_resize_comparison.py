@@ -53,7 +53,7 @@ DTYPE = np.float32
 
 # ROI / detail-window configuration
 ROI_SIZE_PX = 256              # approximate ROI size in original image
-ROI_CENTER_FRAC = (0.65, 0.35)  # (row_frac, col_frac) in [0, 1]
+ROI_CENTER_FRAC = (0.4, 0.65)  # (row_frac, col_frac) in [0, 1]
 ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
 
 # Plot appearance for slide-friendly export
@@ -180,6 +180,74 @@ def _nearest_big(roi: np.ndarray, target_h: int) -> np.ndarray:
     out = np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
     return out
 
+def _fft_log_magnitude(img: np.ndarray) -> np.ndarray:
+    """2D FFT log-magnitude (un-normalized, centered) for visualization."""
+    f = np.fft.fft2(img.astype(np.float64, copy=False))
+    fshift = np.fft.fftshift(f)
+    mag = np.abs(fshift)
+    logmag = np.log1p(mag)  # log(1 + |F|)
+    return logmag
+
+def _show_tiles_montage(
+    tiles: List[Tuple[str, np.ndarray]],
+    suptitle: str,
+    cmap: str = "gray",
+    fixed_vmin: Optional[float] = None,
+    fixed_vmax: Optional[float] = None,
+) -> None:
+    """Generic montage for tiles of shape (H, W)."""
+    if not tiles:
+        return
+
+    cols = min(3, len(tiles))
+    rows_n = int(np.ceil(len(tiles) / cols))
+
+    fig, axes = plt.subplots(
+        rows_n,
+        cols,
+        figsize=(cols * 3.2, rows_n * 3.4),
+    )
+
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([[axes]])
+    axes = axes.reshape(rows_n, cols)
+
+    for ax in axes.ravel():
+        ax.set_axis_off()
+
+    vmin = fixed_vmin
+    vmax = fixed_vmax
+
+    # If no global vmin/vmax, compute them over all tiles
+    if vmin is None or vmax is None:
+        all_vals = np.concatenate([t[1].ravel() for t in tiles])
+        vmin = float(all_vals.min())
+        vmax = float(all_vals.max())
+
+    for idx, (name, tile) in enumerate(tiles):
+        r, c = divmod(idx, cols)
+        ax = axes[r, c]
+        ax.imshow(tile, cmap=cmap, interpolation="nearest", vmin=vmin, vmax=vmax)
+        ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE, pad=3)
+        ax.set_axis_off()
+
+    fig.suptitle(suptitle, fontsize=ROI_SUPTITLE_FONTSIZE)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+def _diff_normalized(orig: np.ndarray, rec: np.ndarray) -> np.ndarray:
+    """
+    Normalize signed difference into [0,1] for display.
+
+    0.5 = no difference, >0.5 positive, <0.5 negative.
+    """
+    diff = rec.astype(np.float64) - orig.astype(np.float64)
+    max_abs = np.max(np.abs(diff))
+    if max_abs <= 0:
+        return 0.5 * np.ones_like(diff, dtype=DTYPE)
+    norm = 0.5 + 0.5 * diff / max_abs
+    norm = np.clip(norm, 0.0, 1.0)
+    return norm.astype(DTYPE, copy=False)
 
 def _load_image_any(path_or_url: str) -> Image.Image:
     if "://" in path_or_url:
@@ -796,6 +864,19 @@ def main(argv=None):
     orig_tile = _nearest_big(roi, ROI_MAG_TARGET)
     roi_tiles.append(("Original", orig_tile))
 
+    # New: tiles for FFT and difference visualization (over the round-trip ROI)
+    fft_tiles: List[Tuple[str, np.ndarray]] = []
+    diff_tiles: List[Tuple[str, np.ndarray]] = []
+
+    # Original reference for these too
+    fft_orig = _fft_log_magnitude(roi)
+    fft_orig_big = _nearest_big(fft_orig, ROI_MAG_TARGET)
+    fft_tiles.append(("Original ROI FFT", fft_orig_big))
+
+    diff_zero = 0.5 * np.ones_like(roi, dtype=DTYPE)  # no diff for original
+    diff_zero_big = _nearest_big(diff_zero, ROI_MAG_TARGET)
+    diff_tiles.append(("Original (no diff)", diff_zero_big))
+
     # We also want to remember LS first-pass image for the initial 2x2 figure
     ls_first_for_plot: Optional[np.ndarray] = None
 
@@ -887,6 +968,16 @@ def main(argv=None):
         tile = _nearest_big(first_roi, ROI_MAG_TARGET)
         roi_tiles.append((name, tile))
 
+        # FFT log-magnitude of the round-trip ROI (same size as original ROI)
+        fft_roi = _fft_log_magnitude(rec_roi)
+        fft_roi_big = _nearest_big(fft_roi, ROI_MAG_TARGET)
+        fft_tiles.append((name, fft_roi_big))
+
+        # Normalized signed difference in ROI (rec - orig), visualized
+        diff_roi = _diff_normalized(roi, rec_roi)
+        diff_roi_big = _nearest_big(diff_roi, ROI_MAG_TARGET)
+        diff_tiles.append((name, diff_roi_big))
+
     # --- Initial 2×2 figure: original vs LS first-pass ---
     if ls_first_for_plot is not None:
         _show_initial_original_vs_ls(
@@ -925,6 +1016,28 @@ def main(argv=None):
         # No fig.suptitle(...) here anymore
         fig.tight_layout()
         plt.show()
+
+        # --- FFT log-magnitude montage (round-trip ROI) ---
+        if fft_tiles:
+            _show_tiles_montage(
+                fft_tiles,
+                suptitle=(
+                    "FFT log-magnitude of ROI "
+                    "(Original vs round-trip per method)"
+                ),
+                cmap="gray",
+            )
+
+        # --- Difference montage (rec - original in ROI) ---
+        if diff_tiles:
+            _show_tiles_montage(
+                diff_tiles,
+                suptitle=(
+                    "Normalized signed difference in ROI "
+                    "(rec - original; 0.5 = no error)"
+                ),
+                cmap="gray",
+            )
 
         # --- Timing bar chart (round-trip) ---
         valid = [r for r in rows if np.isfinite(r["time"])]

@@ -26,16 +26,36 @@ static std::vector<int64> shape_to_vec_i64(const py::array &a) {
     return s;
 }
 
-// For magnification, prefer Standard interpolation over LS/Oblique.
+// Restrict and sanity-check the degrees coming from Python.
+// We treat 3 as the hard ceiling for robustness:
 //
-// Policy (per axis):
-//  • If |zoom - 1| <= eps OR zoom > 1 + eps → disable projection
-//    by forcing analy_degree = -1.
-//  • For downsampling (zoom < 1), leave analy_degree as provided.
-static inline void normalize_params_for_magnification(lsresize::LSParams& p) {
-    const double eps = 1e-12;
-    if (std::abs(p.zoom - 1.0) <= eps || p.zoom > 1.0 + eps) {
-        p.analy_degree = -1;
+//   - 0 <= interp_degree <= 3
+//   - -1 <= analy_degree <= 3   (-1 = no projection / pure interpolation)
+//   - 0 <= synthe_degree <= 3
+//   - if analy_degree >= 0: analy_degree <= interp_degree
+//   - synthe_degree <= interp_degree
+//
+static void validate_degrees(int interp_degree, int analy_degree, int synthe_degree)
+{
+    const int MAX_DEG = 3;
+
+    if (interp_degree < 0 || interp_degree > MAX_DEG) {
+        throw std::runtime_error("interp_degree must be in [0, 3]");
+    }
+    if (analy_degree < -1 || analy_degree > MAX_DEG) {
+        throw std::runtime_error("analy_degree must be in [-1, 3]");
+    }
+    if (synthe_degree < 0 || synthe_degree > MAX_DEG) {
+        throw std::runtime_error("synthe_degree must be in [0, 3]");
+    }
+
+    if (analy_degree >= 0 && analy_degree > interp_degree) {
+        throw std::runtime_error(
+            "analy_degree must be <= interp_degree when analy_degree >= 0");
+    }
+    if (synthe_degree > interp_degree) {
+        throw std::runtime_error(
+            "synthe_degree must be <= interp_degree");
     }
 }
 
@@ -136,7 +156,6 @@ py::array_t<T> resize_nd_impl(py::array input,
         p.zoom          = zoom_factors[static_cast<size_t>(ax)];
         p.shift         = 0.0;
         p.inversable    = inversable;
-        normalize_params_for_magnification(p);
 
         const bool first_pass = (ax == 0);
         const bool last_pass  = (ax == D - 1);
@@ -183,6 +202,9 @@ static py::array resize_nd(py::array input,
                            int synthe_degree,
                            bool inversable)
 {
+    // Safety net: ensure degrees/combos are within the supported regime.
+    validate_degrees(interp_degree, analy_degree, synthe_degree);
+
     py::dtype dt = input.dtype();
 
     // Keep float32 as float32 storage, double-internal.
