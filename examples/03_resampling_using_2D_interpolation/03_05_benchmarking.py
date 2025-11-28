@@ -1,5 +1,5 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/03_06_benchmarking.py
+# splineops/examples/03_resampling_using_2d_interpolation/03_05_benchmarking.py
 # sphinx_gallery_end_ignore
 
 """
@@ -17,8 +17,7 @@ We compare:
 
 - SciPy cubic interpolation.
 - Standard cubic interpolation.
-- Least-Squares cubic anti-aliasing.
-- Oblique cubic fast anti-aliasing.
+- Cubic antialiasing (oblique projection).
 """
 
 # %%
@@ -52,13 +51,6 @@ DTYPE = np.float32
 # %%
 # Test Image Configuration
 # ------------------------
-#
-# All images are downloaded as RGB, converted to grayscale, and normalized
-# to [0, 1]. For each image we also define:
-#
-# - a specific zoom factor,
-# - an ROI size (square),
-# - an ROI center given as (row_frac, col_frac) in [0, 1].
 
 KODAK_BASE = "https://r0k.us/graphics/kodak/kodak"
 KODAK_IMAGES = [
@@ -105,27 +97,20 @@ IMAGE_CONFIG: Dict[str, Dict[str, object]] = {
 
 def _load_kodak_gray(url: str) -> np.ndarray:
     """
-    Download a Kodak image, convert to grayscale [0, 1] in DTYPE
-    (float32 by default).
-
-    Returns
-    -------
-    img_gray : ndarray, shape (H, W), dtype=DTYPE
+    Download a Kodak image, convert to grayscale [0, 1] in DTYPE (float32).
     """
     with urlopen(url, timeout=10) as resp:
         img = Image.open(resp)
     arr = np.asarray(img, dtype=np.float64)
 
-    # RGB → grayscale; if already single-channel, assume 8-bit-ish
     if arr.ndim == 3 and arr.shape[2] >= 3:
         arr01 = arr / 255.0
         gray = (
-            0.2989 * arr01[..., 0] +
-            0.5870 * arr01[..., 1] +
-            0.1140 * arr01[..., 2]
+            0.2989 * arr01[..., 0]
+            + 0.5870 * arr01[..., 1]
+            + 0.1140 * arr01[..., 2]
         )
     else:
-        # Fallback: scale to [0, 1] by max value
         vmax = float(arr.max()) or 1.0
         gray = arr / vmax
 
@@ -134,29 +119,20 @@ def _load_kodak_gray(url: str) -> np.ndarray:
 # %%
 # Benchmark Configuration
 # -----------------------
-#
-# Number of timing runs per (image, method). One warm-up run is not counted.
 
 N_TRIALS = 10
 
-# Methods to benchmark:
-# - label shown in tables/plots
-# - kind: "scipy" or "splineops"
-# - splineops `method` string when kind == "splineops"
+# (label, kind, method)
+# kind: "scipy" or "splineops"
 BENCH_METHODS: List[Tuple[str, str, str | None]] = [
-    ("SciPy",              "scipy",     None),
-    ("Standard",           "splineops", "cubic"),
-    ("Least-Squares", "splineops", "cubic-best_antialiasing"),
-    ("Oblique",  "splineops", "cubic-fast_antialiasing"),
+    ("SciPy",        "scipy",     None),
+    ("Standard",     "splineops", "cubic"),
+    ("Antialiasing", "splineops", "cubic-antialiasing"),
 ]
 
-
 # %%
-# Timing Helper
-# -------------
-#
-# For each method we only time the **forward** (downsampling) pass. We still
-# keep the downsampled image so we can display it later.
+# Timing Helpers
+# --------------
 
 def _run_once_forward(
     img: np.ndarray,
@@ -169,12 +145,10 @@ def _run_once_forward(
     One forward run, returning (downsampled_image, elapsed_sec).
     """
     if kind == "scipy":
-        # SciPy baseline using ndimage.zoom with cubic interpolation
         t0 = time.perf_counter()
         down = _scipy_zoom(img, zoom_factors, order=3, mode="reflect", prefilter=True)
         elapsed = time.perf_counter() - t0
     else:
-        # splineops.resize path
         assert method is not None
         t0 = time.perf_counter()
         down = resize(img, zoom_factors=zoom_factors, method=method)
@@ -198,39 +172,27 @@ def run_with_repeats(
     Returns
     -------
     downsampled : ndarray
-        Downsampled image from the last run (deterministic).
     time_mean : float
-        Mean forward runtime over all trials (seconds).
     time_sd : float
-        Sample standard deviation of forward runtime (seconds).
     """
-    # warm-up (not counted)
     for _ in range(warmup):
         _run_once_forward(img, zoom_factors=zoom_factors, kind=kind, method=method)
 
-    # first measured run – keep result + time
     downsampled, t = _run_once_forward(img, zoom_factors=zoom_factors, kind=kind, method=method)
     times = [t]
 
-    # additional runs – time only
     for _ in range(trials - 1):
         _, t = _run_once_forward(img, zoom_factors=zoom_factors, kind=kind, method=method)
         times.append(t)
 
-    times = np.asarray(times, dtype=np.float64)
-    time_mean = float(times.mean())
-    time_sd   = float(times.std(ddof=1)) if times.size > 1 else 0.0
+    times_arr = np.asarray(times, dtype=np.float64)
+    time_mean = float(times_arr.mean())
+    time_sd = float(times_arr.std(ddof=1)) if times_arr.size > 1 else 0.0
     return downsampled, time_mean, time_sd
-
 
 # %%
 # Run Benchmark
 # -------------
-#
-# For each image and each method, we run the benchmark and store:
-#
-# - Average runtime and standard deviation
-# - One downsampled image (for visual inspection)
 
 results: List[Dict[str, object]] = []
 orig_images: Dict[str, np.ndarray] = {}
@@ -267,7 +229,6 @@ for name, url in KODAK_IMAGES:
 
 print("\n=== Timing summary over all images (forward pass only) ===\n")
 
-# Print a simple text table (grouped by image)
 for name, url in KODAK_IMAGES:
     cfg = IMAGE_CONFIG[name]
     zoom = float(cfg["zoom"])
@@ -288,17 +249,12 @@ for name, url in KODAK_IMAGES:
 print(f"Timings averaged over {N_TRIALS} runs (1 warm-up run not counted).\n")
 print_runtime_context()
 
-
 # %%
 # ROI Helpers
 # -----------
-#
-# We will focus on image-specific square ROIs to inspect aliasing in detail.
 
 def _nearest_big(roi: np.ndarray, target_h: int = 256) -> np.ndarray:
-    """
-    Enlarge a small ROI with nearest-neighbour so that its height is ~target_h.
-    """
+    """Enlarge a small ROI with nearest-neighbour so that its height is ~target_h."""
     h, w = roi.shape
     mag = max(1, int(round(target_h / h)))
     return np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
@@ -317,50 +273,31 @@ def _build_canvas_and_roi(
     """
     Place the downsampled image on a white canvas of original size and compute
     matching ROI parameters and a small ROI patch in downsampled space.
-
-    Returns
-    -------
-    canvas : ndarray, shape (h_img, w_img)
-        White canvas with the downsampled image pasted at (0, 0).
-    roi_kwargs_on_canvas : dict
-        kwargs to pass into `show_roi_zoom` to produce the ROI inset.
-    roi_patch : ndarray
-        Small ROI patch cropped from the downsampled image.
     """
     zoom_r, zoom_c = zoom_factors
     h_res, w_res = down.shape
 
-    # ROI size in the downsampled image: direct scaled footprint of the
-    # original ROI. We keep it as-is (up to integer rounding).
     roi_h_res = max(1, int(round(roi_size_px * zoom_r)))
     roi_w_res = max(1, int(round(roi_size_px * zoom_c)))
-
-    # Make the ROI square by taking the smaller side
     roi_side = int(max(1, min(roi_h_res, roi_w_res)))
     roi_h_res = roi_side
     roi_w_res = roi_side
 
-    # Same *relative* center as in original
     center_r_res = int(round(center_r * zoom_r))
     center_c_res = int(round(center_c * zoom_c))
 
-    # Top-left of the ROI in downsampled coords, clipped to bounds
     row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res - roi_h_res))
     col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, w_res - roi_w_res))
 
-    # Build original-size white canvas and paste downsampled at (0, 0)
     canvas = np.ones((h_img, w_img), dtype=down.dtype)
     canvas[:h_res, :w_res] = down
 
-    # Tell show_roi_zoom to use exactly roi_h_res×roi_h_res on the canvas,
-    # starting at (row_top_res, col_left_res).
     roi_kwargs_on_canvas = dict(
         roi_height_frac=roi_h_res / h_img,
         grayscale=True,
         roi_xy=(row_top_res, col_left_res),
     )
 
-    # Crop the same region for the 4-way ROI comparison
     roi_patch = down[
         row_top_res : row_top_res + roi_h_res,
         col_left_res : col_left_res + roi_w_res,
@@ -369,8 +306,8 @@ def _build_canvas_and_roi(
     return canvas, roi_kwargs_on_canvas, roi_patch
 
 # %%
-# Image
-# -----
+# IMAGE: kodim05
+# --------------
 
 img_name = "kodim05"
 img_orig = orig_images[img_name]
@@ -379,10 +316,8 @@ cfg = IMAGE_CONFIG[img_name]
 zoom = float(cfg["zoom"])
 zoom_factors_2d = (zoom, zoom)
 roi_size_px = int(cfg["roi_size_px"])
-roi_center_frac = cfg["roi_center_frac"]  # (row_frac, col_frac)
-row_frac, col_frac = float(roi_center_frac[0]), float(roi_center_frac[1])
+row_frac, col_frac = map(float, cfg["roi_center_frac"])
 
-# Image-specific ROI center in absolute pixels
 center_r = int(round(row_frac * h_img))
 center_c = int(round(col_frac * w_img))
 row_top = int(np.clip(center_r - roi_size_px // 2, 0, h_img - roi_size_px))
@@ -395,7 +330,7 @@ roi_kwargs_orig = dict(
     roi_xy=(row_top, col_left),
 )
 
-# Collect downsampled results + timings for this image
+# Downsampled results + timings for this image
 rows_this = [r for r in results if r["image"] == img_name]
 down_by_label = {r["method_label"]: r["downsampled"] for r in rows_this}
 time_by_label = {
@@ -403,27 +338,21 @@ time_by_label = {
     for r in rows_this
 }
 
-# %%
 # Original with ROI
-# ~~~~~~~~~~~~~~~~~
-
 _ = show_roi_zoom(
     img_orig,
     ax_titles=("Original with ROI", None),
     **roi_kwargs_orig,
 )
 
-# Prepare storage for ROI comparison
-roi_patches = []
-roi_titles  = []
+# Prepare ROI tiles: first ORIGINAL, then methods
+orig_roi_patch = img_orig[row_top:row_top+roi_size_px, col_left:col_left+roi_size_px]
+roi_patches = [orig_roi_patch]
+roi_titles  = ["Original"]
 
-# %%
-# SciPy Interpolation
-# ~~~~~~~~~~~~~~~~~~~
-
+# SciPy
 down_scipy = down_by_label["SciPy"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
-
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
     h_img=h_img,
@@ -437,7 +366,6 @@ roi_patches.append(roi_patch_scipy)
 roi_titles.append(
     f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
-
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
@@ -448,13 +376,9 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_scipy,
 )
 
-# %%
-# Standard Interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~
-
+# Standard
 down_std = down_by_label["Standard"]
 t_mean_std, t_sd_std = time_by_label["Standard"]
-
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
     h_img=h_img,
@@ -468,7 +392,6 @@ roi_patches.append(roi_patch_std)
 roi_titles.append(
     f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
-
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
@@ -479,15 +402,11 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_std,
 )
 
-# %%
-# Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-
-down_ls = down_by_label["Least-Squares"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
-
-canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
-    down_ls,
+# Antialiasing
+down_aa = down_by_label["Antialiasing"]
+t_mean_aa, t_sd_aa = time_by_label["Antialiasing"]
+canvas_aa, roi_kwargs_canvas_aa, roi_patch_aa = _build_canvas_and_roi(
+    down_aa,
     h_img=h_img,
     w_img=w_img,
     center_r=center_r,
@@ -495,76 +414,36 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     roi_size_px=roi_size_px,
     zoom_factors=zoom_factors_2d,
 )
-roi_patches.append(roi_patch_ls)
+roi_patches.append(roi_patch_aa)
 roi_titles.append(
-    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Antialiasing\n{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}"
 )
-
 _ = show_roi_zoom(
-    canvas_ls,
+    canvas_aa,
     ax_titles=(
-        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
+        f"Antialiasing (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}",
         None,
     ),
-    **roi_kwargs_canvas_ls,
+    **roi_kwargs_canvas_aa,
 )
 
-# %%
-# Oblique Projection
-# ~~~~~~~~~~~~~~~~~~
-
-down_ob = down_by_label["Oblique"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique"]
-
-canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
-    down_ob,
-    h_img=h_img,
-    w_img=w_img,
-    center_r=center_r,
-    center_c=center_c,
-    roi_size_px=roi_size_px,
-    zoom_factors=zoom_factors_2d,
-)
-roi_patches.append(roi_patch_ob)
-roi_titles.append(
-    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
-)
-
-_ = show_roi_zoom(
-    canvas_ob,
-    ax_titles=(
-        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
-        None,
-    ),
-    **roi_kwargs_canvas_ob,
-)
-
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
-
+# ROI Comparison (Original + 3 methods)
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
-
-# Make the figure a bit taller so multi-line titles and the suptitle
-# have enough vertical room, even when the ROIs are square.
 fig_width = 12.5
-fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
-
-fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
+fig_height = 5.0
+fig, axes = plt.subplots(1, len(roi_big_list), figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
-
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
+fig.tight_layout(rect=[0, 0, 1, 0.93])
 plt.show()
 
 # %%
-# Image
-# -----
+# IMAGE: kodim07
+# --------------
 
 img_name = "kodim07"
 img_orig = orig_images[img_name]
@@ -573,10 +452,8 @@ cfg = IMAGE_CONFIG[img_name]
 zoom = float(cfg["zoom"])
 zoom_factors_2d = (zoom, zoom)
 roi_size_px = int(cfg["roi_size_px"])
-roi_center_frac = cfg["roi_center_frac"]  # (row_frac, col_frac)
-row_frac, col_frac = float(roi_center_frac[0]), float(roi_center_frac[1])
+row_frac, col_frac = map(float, cfg["roi_center_frac"])
 
-# Image-specific ROI center in absolute pixels
 center_r = int(round(row_frac * h_img))
 center_c = int(round(col_frac * w_img))
 row_top = int(np.clip(center_r - roi_size_px // 2, 0, h_img - roi_size_px))
@@ -589,7 +466,6 @@ roi_kwargs_orig = dict(
     roi_xy=(row_top, col_left),
 )
 
-# Collect downsampled results + timings for this image
 rows_this = [r for r in results if r["image"] == img_name]
 down_by_label = {r["method_label"]: r["downsampled"] for r in rows_this}
 time_by_label = {
@@ -597,27 +473,18 @@ time_by_label = {
     for r in rows_this
 }
 
-# %%
-# Original with ROI
-# ~~~~~~~~~~~~~~~~~
-
 _ = show_roi_zoom(
     img_orig,
     ax_titles=("Original with ROI", None),
     **roi_kwargs_orig,
 )
 
-# Prepare storage for ROI comparison
-roi_patches = []
-roi_titles  = []
-
-# %%
-# SciPy Interpolation
-# ~~~~~~~~~~~~~~~~~~~
+orig_roi_patch = img_orig[row_top:row_top+roi_size_px, col_left:col_left+roi_size_px]
+roi_patches = [orig_roi_patch]
+roi_titles  = ["Original"]
 
 down_scipy = down_by_label["SciPy"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
-
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
     h_img=h_img,
@@ -631,7 +498,6 @@ roi_patches.append(roi_patch_scipy)
 roi_titles.append(
     f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
-
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
@@ -642,13 +508,8 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_scipy,
 )
 
-# %%
-# Standard Interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~
-
 down_std = down_by_label["Standard"]
 t_mean_std, t_sd_std = time_by_label["Standard"]
-
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
     h_img=h_img,
@@ -662,7 +523,6 @@ roi_patches.append(roi_patch_std)
 roi_titles.append(
     f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
-
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
@@ -673,15 +533,10 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_std,
 )
 
-# %%
-# Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-
-down_ls = down_by_label["Least-Squares"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
-
-canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
-    down_ls,
+down_aa = down_by_label["Antialiasing"]
+t_mean_aa, t_sd_aa = time_by_label["Antialiasing"]
+canvas_aa, roi_kwargs_canvas_aa, roi_patch_aa = _build_canvas_and_roi(
+    down_aa,
     h_img=h_img,
     w_img=w_img,
     center_r=center_r,
@@ -689,76 +544,35 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     roi_size_px=roi_size_px,
     zoom_factors=zoom_factors_2d,
 )
-roi_patches.append(roi_patch_ls)
+roi_patches.append(roi_patch_aa)
 roi_titles.append(
-    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Antialiasing\n{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}"
 )
-
 _ = show_roi_zoom(
-    canvas_ls,
+    canvas_aa,
     ax_titles=(
-        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
+        f"Antialiasing (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}",
         None,
     ),
-    **roi_kwargs_canvas_ls,
+    **roi_kwargs_canvas_aa,
 )
-
-# %%
-# Oblique Projection
-# ~~~~~~~~~~~~~~~~~~
-
-down_ob = down_by_label["Oblique"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique"]
-
-canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
-    down_ob,
-    h_img=h_img,
-    w_img=w_img,
-    center_r=center_r,
-    center_c=center_c,
-    roi_size_px=roi_size_px,
-    zoom_factors=zoom_factors_2d,
-)
-roi_patches.append(roi_patch_ob)
-roi_titles.append(
-    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
-)
-
-_ = show_roi_zoom(
-    canvas_ob,
-    ax_titles=(
-        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
-        None,
-    ),
-    **roi_kwargs_canvas_ob,
-)
-
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
-
-# Make the figure a bit taller so multi-line titles and the suptitle
-# have enough vertical room, even when the ROIs are square.
 fig_width = 12.5
-fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
-
-fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
+fig_height = 5.0
+fig, axes = plt.subplots(1, len(roi_big_list), figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
-
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
+fig.tight_layout(rect=[0, 0, 1, 0.93])
 plt.show()
 
 # %%
-# Image
-# -----
+# IMAGE: kodim14
+# --------------
 
 img_name = "kodim14"
 img_orig = orig_images[img_name]
@@ -767,10 +581,8 @@ cfg = IMAGE_CONFIG[img_name]
 zoom = float(cfg["zoom"])
 zoom_factors_2d = (zoom, zoom)
 roi_size_px = int(cfg["roi_size_px"])
-roi_center_frac = cfg["roi_center_frac"]  # (row_frac, col_frac)
-row_frac, col_frac = float(roi_center_frac[0]), float(roi_center_frac[1])
+row_frac, col_frac = map(float, cfg["roi_center_frac"])
 
-# Image-specific ROI center in absolute pixels
 center_r = int(round(row_frac * h_img))
 center_c = int(round(col_frac * w_img))
 row_top = int(np.clip(center_r - roi_size_px // 2, 0, h_img - roi_size_px))
@@ -783,7 +595,6 @@ roi_kwargs_orig = dict(
     roi_xy=(row_top, col_left),
 )
 
-# Collect downsampled results + timings for this image
 rows_this = [r for r in results if r["image"] == img_name]
 down_by_label = {r["method_label"]: r["downsampled"] for r in rows_this}
 time_by_label = {
@@ -791,27 +602,18 @@ time_by_label = {
     for r in rows_this
 }
 
-# %%
-# Original with ROI
-# ~~~~~~~~~~~~~~~~~
-
 _ = show_roi_zoom(
     img_orig,
     ax_titles=("Original with ROI", None),
     **roi_kwargs_orig,
 )
 
-# Prepare storage for ROI comparison
-roi_patches = []
-roi_titles  = []
-
-# %%
-# SciPy Interpolation
-# ~~~~~~~~~~~~~~~~~~~
+orig_roi_patch = img_orig[row_top:row_top+roi_size_px, col_left:col_left+roi_size_px]
+roi_patches = [orig_roi_patch]
+roi_titles  = ["Original"]
 
 down_scipy = down_by_label["SciPy"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
-
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
     h_img=h_img,
@@ -825,7 +627,6 @@ roi_patches.append(roi_patch_scipy)
 roi_titles.append(
     f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
-
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
@@ -836,13 +637,8 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_scipy,
 )
 
-# %%
-# Standard Interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~
-
 down_std = down_by_label["Standard"]
 t_mean_std, t_sd_std = time_by_label["Standard"]
-
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
     h_img=h_img,
@@ -856,7 +652,6 @@ roi_patches.append(roi_patch_std)
 roi_titles.append(
     f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
-
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
@@ -867,15 +662,10 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_std,
 )
 
-# %%
-# Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-
-down_ls = down_by_label["Least-Squares"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
-
-canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
-    down_ls,
+down_aa = down_by_label["Antialiasing"]
+t_mean_aa, t_sd_aa = time_by_label["Antialiasing"]
+canvas_aa, roi_kwargs_canvas_aa, roi_patch_aa = _build_canvas_and_roi(
+    down_aa,
     h_img=h_img,
     w_img=w_img,
     center_r=center_r,
@@ -883,76 +673,35 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     roi_size_px=roi_size_px,
     zoom_factors=zoom_factors_2d,
 )
-roi_patches.append(roi_patch_ls)
+roi_patches.append(roi_patch_aa)
 roi_titles.append(
-    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Antialiasing\n{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}"
 )
-
 _ = show_roi_zoom(
-    canvas_ls,
+    canvas_aa,
     ax_titles=(
-        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
+        f"Antialiasing (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}",
         None,
     ),
-    **roi_kwargs_canvas_ls,
+    **roi_kwargs_canvas_aa,
 )
-
-# %%
-# Oblique Projection
-# ~~~~~~~~~~~~~~~~~~
-
-down_ob = down_by_label["Oblique"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique"]
-
-canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
-    down_ob,
-    h_img=h_img,
-    w_img=w_img,
-    center_r=center_r,
-    center_c=center_c,
-    roi_size_px=roi_size_px,
-    zoom_factors=zoom_factors_2d,
-)
-roi_patches.append(roi_patch_ob)
-roi_titles.append(
-    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
-)
-
-_ = show_roi_zoom(
-    canvas_ob,
-    ax_titles=(
-        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
-        None,
-    ),
-    **roi_kwargs_canvas_ob,
-)
-
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
-
-# Make the figure a bit taller so multi-line titles and the suptitle
-# have enough vertical room, even when the ROIs are square.
 fig_width = 12.5
-fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
-
-fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
+fig_height = 5.0
+fig, axes = plt.subplots(1, len(roi_big_list), figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
-
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
+fig.tight_layout(rect=[0, 0, 1, 0.93])
 plt.show()
 
 # %%
-# Image
-# -----
+# IMAGE: kodim15
+# --------------
 
 img_name = "kodim15"
 img_orig = orig_images[img_name]
@@ -961,10 +710,8 @@ cfg = IMAGE_CONFIG[img_name]
 zoom = float(cfg["zoom"])
 zoom_factors_2d = (zoom, zoom)
 roi_size_px = int(cfg["roi_size_px"])
-roi_center_frac = cfg["roi_center_frac"]  # (row_frac, col_frac)
-row_frac, col_frac = float(roi_center_frac[0]), float(roi_center_frac[1])
+row_frac, col_frac = map(float, cfg["roi_center_frac"])
 
-# Image-specific ROI center in absolute pixels
 center_r = int(round(row_frac * h_img))
 center_c = int(round(col_frac * w_img))
 row_top = int(np.clip(center_r - roi_size_px // 2, 0, h_img - roi_size_px))
@@ -977,7 +724,6 @@ roi_kwargs_orig = dict(
     roi_xy=(row_top, col_left),
 )
 
-# Collect downsampled results + timings for this image
 rows_this = [r for r in results if r["image"] == img_name]
 down_by_label = {r["method_label"]: r["downsampled"] for r in rows_this}
 time_by_label = {
@@ -985,27 +731,18 @@ time_by_label = {
     for r in rows_this
 }
 
-# %%
-# Original with ROI
-# ~~~~~~~~~~~~~~~~~
-
 _ = show_roi_zoom(
     img_orig,
     ax_titles=("Original with ROI", None),
     **roi_kwargs_orig,
 )
 
-# Prepare storage for ROI comparison
-roi_patches = []
-roi_titles  = []
-
-# %%
-# SciPy Interpolation
-# ~~~~~~~~~~~~~~~~~~~
+orig_roi_patch = img_orig[row_top:row_top+roi_size_px, col_left:col_left+roi_size_px]
+roi_patches = [orig_roi_patch]
+roi_titles  = ["Original"]
 
 down_scipy = down_by_label["SciPy"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
-
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
     h_img=h_img,
@@ -1019,7 +756,6 @@ roi_patches.append(roi_patch_scipy)
 roi_titles.append(
     f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
-
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
@@ -1030,13 +766,8 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_scipy,
 )
 
-# %%
-# Standard Interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~
-
 down_std = down_by_label["Standard"]
 t_mean_std, t_sd_std = time_by_label["Standard"]
-
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
     h_img=h_img,
@@ -1050,7 +781,6 @@ roi_patches.append(roi_patch_std)
 roi_titles.append(
     f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
-
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
@@ -1061,15 +791,10 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_std,
 )
 
-# %%
-# Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-
-down_ls = down_by_label["Least-Squares"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
-
-canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
-    down_ls,
+down_aa = down_by_label["Antialiasing"]
+t_mean_aa, t_sd_aa = time_by_label["Antialiasing"]
+canvas_aa, roi_kwargs_canvas_aa, roi_patch_aa = _build_canvas_and_roi(
+    down_aa,
     h_img=h_img,
     w_img=w_img,
     center_r=center_r,
@@ -1077,76 +802,35 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     roi_size_px=roi_size_px,
     zoom_factors=zoom_factors_2d,
 )
-roi_patches.append(roi_patch_ls)
+roi_patches.append(roi_patch_aa)
 roi_titles.append(
-    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Antialiasing\n{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}"
 )
-
 _ = show_roi_zoom(
-    canvas_ls,
+    canvas_aa,
     ax_titles=(
-        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
+        f"Antialiasing (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}",
         None,
     ),
-    **roi_kwargs_canvas_ls,
+    **roi_kwargs_canvas_aa,
 )
-
-# %%
-# Oblique Projection
-# ~~~~~~~~~~~~~~~~~~
-
-down_ob = down_by_label["Oblique"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique"]
-
-canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
-    down_ob,
-    h_img=h_img,
-    w_img=w_img,
-    center_r=center_r,
-    center_c=center_c,
-    roi_size_px=roi_size_px,
-    zoom_factors=zoom_factors_2d,
-)
-roi_patches.append(roi_patch_ob)
-roi_titles.append(
-    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
-)
-
-_ = show_roi_zoom(
-    canvas_ob,
-    ax_titles=(
-        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
-        None,
-    ),
-    **roi_kwargs_canvas_ob,
-)
-
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
-
-# Make the figure a bit taller so multi-line titles and the suptitle
-# have enough vertical room, even when the ROIs are square.
 fig_width = 12.5
-fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
-
-fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
+fig_height = 5.0
+fig, axes = plt.subplots(1, len(roi_big_list), figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
-
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
+fig.tight_layout(rect=[0, 0, 1, 0.93])
 plt.show()
 
 # %%
-# Image
-# -----
+# IMAGE: kodim19
+# --------------
 
 img_name = "kodim19"
 img_orig = orig_images[img_name]
@@ -1155,10 +839,8 @@ cfg = IMAGE_CONFIG[img_name]
 zoom = float(cfg["zoom"])
 zoom_factors_2d = (zoom, zoom)
 roi_size_px = int(cfg["roi_size_px"])
-roi_center_frac = cfg["roi_center_frac"]  # (row_frac, col_frac)
-row_frac, col_frac = float(roi_center_frac[0]), float(roi_center_frac[1])
+row_frac, col_frac = map(float, cfg["roi_center_frac"])
 
-# Image-specific ROI center in absolute pixels
 center_r = int(round(row_frac * h_img))
 center_c = int(round(col_frac * w_img))
 row_top = int(np.clip(center_r - roi_size_px // 2, 0, h_img - roi_size_px))
@@ -1171,7 +853,6 @@ roi_kwargs_orig = dict(
     roi_xy=(row_top, col_left),
 )
 
-# Collect downsampled results + timings for this image
 rows_this = [r for r in results if r["image"] == img_name]
 down_by_label = {r["method_label"]: r["downsampled"] for r in rows_this}
 time_by_label = {
@@ -1179,27 +860,18 @@ time_by_label = {
     for r in rows_this
 }
 
-# %%
-# Original with ROI
-# ~~~~~~~~~~~~~~~~~
-
 _ = show_roi_zoom(
     img_orig,
     ax_titles=("Original with ROI", None),
     **roi_kwargs_orig,
 )
 
-# Prepare storage for ROI comparison
-roi_patches = []
-roi_titles  = []
-
-# %%
-# SciPy Interpolation
-# ~~~~~~~~~~~~~~~~~~~
+orig_roi_patch = img_orig[row_top:row_top+roi_size_px, col_left:col_left+roi_size_px]
+roi_patches = [orig_roi_patch]
+roi_titles  = ["Original"]
 
 down_scipy = down_by_label["SciPy"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
-
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
     h_img=h_img,
@@ -1213,7 +885,6 @@ roi_patches.append(roi_patch_scipy)
 roi_titles.append(
     f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
-
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
@@ -1224,13 +895,8 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_scipy,
 )
 
-# %%
-# Standard Interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~
-
 down_std = down_by_label["Standard"]
 t_mean_std, t_sd_std = time_by_label["Standard"]
-
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
     h_img=h_img,
@@ -1244,7 +910,6 @@ roi_patches.append(roi_patch_std)
 roi_titles.append(
     f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
-
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
@@ -1255,15 +920,10 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_std,
 )
 
-# %%
-# Least-Squares Interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-down_ls = down_by_label["Least-Squares"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
-
-canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
-    down_ls,
+down_aa = down_by_label["Antialiasing"]
+t_mean_aa, t_sd_aa = time_by_label["Antialiasing"]
+canvas_aa, roi_kwargs_canvas_aa, roi_patch_aa = _build_canvas_and_roi(
+    down_aa,
     h_img=h_img,
     w_img=w_img,
     center_r=center_r,
@@ -1271,76 +931,35 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     roi_size_px=roi_size_px,
     zoom_factors=zoom_factors_2d,
 )
-roi_patches.append(roi_patch_ls)
+roi_patches.append(roi_patch_aa)
 roi_titles.append(
-    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Antialiasing\n{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}"
 )
-
 _ = show_roi_zoom(
-    canvas_ls,
+    canvas_aa,
     ax_titles=(
-        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
+        f"Antialiasing (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}",
         None,
     ),
-    **roi_kwargs_canvas_ls,
+    **roi_kwargs_canvas_aa,
 )
-
-# %%
-# Oblique Projection
-# ~~~~~~~~~~~~~~~~~~
-
-down_ob = down_by_label["Oblique"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique"]
-
-canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
-    down_ob,
-    h_img=h_img,
-    w_img=w_img,
-    center_r=center_r,
-    center_c=center_c,
-    roi_size_px=roi_size_px,
-    zoom_factors=zoom_factors_2d,
-)
-roi_patches.append(roi_patch_ob)
-roi_titles.append(
-    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
-)
-
-_ = show_roi_zoom(
-    canvas_ob,
-    ax_titles=(
-        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
-        None,
-    ),
-    **roi_kwargs_canvas_ob,
-)
-
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
-
-# Make the figure a bit taller so multi-line titles and the suptitle
-# have enough vertical room, even when the ROIs are square.
 fig_width = 12.5
-fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
-
-fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
+fig_height = 5.0
+fig, axes = plt.subplots(1, len(roi_big_list), figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
-
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
+fig.tight_layout(rect=[0, 0, 1, 0.93])
 plt.show()
 
 # %%
-# Image
-# -----
+# IMAGE: kodim23
+# --------------
 
 img_name = "kodim23"
 img_orig = orig_images[img_name]
@@ -1349,10 +968,8 @@ cfg = IMAGE_CONFIG[img_name]
 zoom = float(cfg["zoom"])
 zoom_factors_2d = (zoom, zoom)
 roi_size_px = int(cfg["roi_size_px"])
-roi_center_frac = cfg["roi_center_frac"]  # (row_frac, col_frac)
-row_frac, col_frac = float(roi_center_frac[0]), float(roi_center_frac[1])
+row_frac, col_frac = map(float, cfg["roi_center_frac"])
 
-# Image-specific ROI center in absolute pixels
 center_r = int(round(row_frac * h_img))
 center_c = int(round(col_frac * w_img))
 row_top = int(np.clip(center_r - roi_size_px // 2, 0, h_img - roi_size_px))
@@ -1365,7 +982,6 @@ roi_kwargs_orig = dict(
     roi_xy=(row_top, col_left),
 )
 
-# Collect downsampled results + timings for this image
 rows_this = [r for r in results if r["image"] == img_name]
 down_by_label = {r["method_label"]: r["downsampled"] for r in rows_this}
 time_by_label = {
@@ -1373,27 +989,18 @@ time_by_label = {
     for r in rows_this
 }
 
-# %%
-# Original with ROI
-# ~~~~~~~~~~~~~~~~~
-
 _ = show_roi_zoom(
     img_orig,
     ax_titles=("Original with ROI", None),
     **roi_kwargs_orig,
 )
 
-# Prepare storage for ROI comparison
-roi_patches = []
-roi_titles  = []
-
-# %%
-# SciPy Interpolation
-# ~~~~~~~~~~~~~~~~~~~
+orig_roi_patch = img_orig[row_top:row_top+roi_size_px, col_left:col_left+roi_size_px]
+roi_patches = [orig_roi_patch]
+roi_titles  = ["Original"]
 
 down_scipy = down_by_label["SciPy"]
 t_mean_scipy, t_sd_scipy = time_by_label["SciPy"]
-
 canvas_scipy, roi_kwargs_canvas_scipy, roi_patch_scipy = _build_canvas_and_roi(
     down_scipy,
     h_img=h_img,
@@ -1407,7 +1014,6 @@ roi_patches.append(roi_patch_scipy)
 roi_titles.append(
     f"SciPy\n{fmt_ms(t_mean_scipy)} ± {fmt_ms(t_sd_scipy)}"
 )
-
 _ = show_roi_zoom(
     canvas_scipy,
     ax_titles=(
@@ -1418,13 +1024,8 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_scipy,
 )
 
-# %%
-# Standard Interpolation
-# ~~~~~~~~~~~~~~~~~~~~~~
-
 down_std = down_by_label["Standard"]
 t_mean_std, t_sd_std = time_by_label["Standard"]
-
 canvas_std, roi_kwargs_canvas_std, roi_patch_std = _build_canvas_and_roi(
     down_std,
     h_img=h_img,
@@ -1438,7 +1039,6 @@ roi_patches.append(roi_patch_std)
 roi_titles.append(
     f"Standard\n{fmt_ms(t_mean_std)} ± {fmt_ms(t_sd_std)}"
 )
-
 _ = show_roi_zoom(
     canvas_std,
     ax_titles=(
@@ -1449,15 +1049,10 @@ _ = show_roi_zoom(
     **roi_kwargs_canvas_std,
 )
 
-# %%
-# Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-
-down_ls = down_by_label["Least-Squares"]
-t_mean_ls, t_sd_ls = time_by_label["Least-Squares"]
-
-canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
-    down_ls,
+down_aa = down_by_label["Antialiasing"]
+t_mean_aa, t_sd_aa = time_by_label["Antialiasing"]
+canvas_aa, roi_kwargs_canvas_aa, roi_patch_aa = _build_canvas_and_roi(
+    down_aa,
     h_img=h_img,
     w_img=w_img,
     center_r=center_r,
@@ -1465,69 +1060,28 @@ canvas_ls, roi_kwargs_canvas_ls, roi_patch_ls = _build_canvas_and_roi(
     roi_size_px=roi_size_px,
     zoom_factors=zoom_factors_2d,
 )
-roi_patches.append(roi_patch_ls)
+roi_patches.append(roi_patch_aa)
 roi_titles.append(
-    f"Least-Squares\n{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}"
+    f"Antialiasing\n{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}"
 )
-
 _ = show_roi_zoom(
-    canvas_ls,
+    canvas_aa,
     ax_titles=(
-        f"Least-Squares (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ls)} ± {fmt_ms(t_sd_ls)}",
+        f"Antialiasing (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
+        f"{fmt_ms(t_mean_aa)} ± {fmt_ms(t_sd_aa)}",
         None,
     ),
-    **roi_kwargs_canvas_ls,
+    **roi_kwargs_canvas_aa,
 )
-
-# %%
-# Oblique Projection
-# ~~~~~~~~~~~~~~~~~~
-
-down_ob = down_by_label["Oblique"]
-t_mean_ob, t_sd_ob = time_by_label["Oblique"]
-
-canvas_ob, roi_kwargs_canvas_ob, roi_patch_ob = _build_canvas_and_roi(
-    down_ob,
-    h_img=h_img,
-    w_img=w_img,
-    center_r=center_r,
-    center_c=center_c,
-    roi_size_px=roi_size_px,
-    zoom_factors=zoom_factors_2d,
-)
-roi_patches.append(roi_patch_ob)
-roi_titles.append(
-    f"Oblique\n{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}"
-)
-
-_ = show_roi_zoom(
-    canvas_ob,
-    ax_titles=(
-        f"Oblique (zoom={zoom:.3f}, orig={h_img}×{w_img})\n"
-        f"{fmt_ms(t_mean_ob)} ± {fmt_ms(t_sd_ob)}",
-        None,
-    ),
-    **roi_kwargs_canvas_ob,
-)
-
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
 
 roi_big_list = [_nearest_big(r, 256) for r in roi_patches]
-
-# Make the figure a bit taller so multi-line titles and the suptitle
-# have enough vertical room, even when the ROIs are square.
 fig_width = 12.5
-fig_height = 5.0  # was 3.8; bump to 5.0 to avoid clipping
-
-fig, axes = plt.subplots(1, 4, figsize=(fig_width, fig_height))
+fig_height = 5.0
+fig, axes = plt.subplots(1, len(roi_big_list), figsize=(fig_width, fig_height))
 for ax, im, title in zip(axes, roi_big_list, roi_titles):
     ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title, fontsize=9)
     ax.axis("off")
-
 fig.suptitle("Downsampled ROI comparison", fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.93])  # leave a touch more room for the suptitle
+fig.tight_layout(rect=[0, 0, 1, 0.93])
 plt.show()
