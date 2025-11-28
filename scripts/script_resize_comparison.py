@@ -1046,105 +1046,82 @@ def main(argv=None):
             plt.tight_layout()
             plt.show()
 
-        # SNR + MSE bar chart
-        valid = [r for r in rows if np.isfinite(r["snr"]) and np.isfinite(r["mse"])]
-        if valid:
-            names = [r["name"] for r in valid]
-            snrs = np.array([r["snr"] for r in valid])
-            mses = np.array([r["mse"] for r in valid])
-
-            order = np.argsort(-snrs)
-            names = [names[i] for i in order]
-            snrs = snrs[order]
-            mses = mses[order]
-
-            x = np.arange(len(names))
-            width = 0.4
-
-            fig, ax1 = plt.subplots(figsize=PLOT_FIGSIZE)
-
-            snr_color = "tab:blue"
-            mse_color = "tab:orange"
-
-            snr_bars = ax1.bar(
-                x - width / 2,
-                snrs,
-                width,
-                label="SNR (dB)",
-                alpha=0.85,
-                color=snr_color,
-            )
-            ax1.set_ylabel("SNR (dB)", color=snr_color, fontsize=PLOT_LABEL_FONTSIZE)
-            ax1.tick_params(axis="y", labelcolor=snr_color, labelsize=PLOT_TICK_FONTSIZE)
-            ax1.set_xticks(x)
-            ax1.set_xticklabels(
-                names,
-                rotation=30,
-                ha="right",
-                fontsize=PLOT_TICK_FONTSIZE,
-            )
-            ax1.grid(axis="y", alpha=0.3)
-
-            ax2 = ax1.twinx()
-            mse_bars = ax2.bar(
-                x + width / 2,
-                mses,
-                width,
-                label="MSE",
-                alpha=0.6,
-                color=mse_color,
-            )
-            ax2.set_ylabel("MSE", color=mse_color, fontsize=PLOT_LABEL_FONTSIZE)
-            ax2.tick_params(axis="y", labelcolor=mse_color, labelsize=PLOT_TICK_FONTSIZE)
-
-            ax1.set_title(
-                f"SNR / MSE vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
-                fontsize=PLOT_TITLE_FONTSIZE,
-            )
-
-            handles = snr_bars.patches[:1] + mse_bars.patches[:1]
-            labels = ["SNR (dB)", "MSE"]
-            fig.legend(
-                handles,
-                labels,
-                loc="upper right",
-                bbox_to_anchor=(1, 1),
-                fontsize=PLOT_LEGEND_FONTSIZE,
-            )
-
-            fig.tight_layout()
-            plt.show()
-
-        # SSIM bar chart
+        # --- SNR + SSIM bar chart (round-trip) ---
         if _HAS_SKIMAGE and _ssim is not None:
-            valid_ssim = [r for r in rows if np.isfinite(r.get("ssim", np.nan))]
-            if valid_ssim:
-                names = [r["name"] for r in valid_ssim]
-                ssims = np.array([r["ssim"] for r in valid_ssim])
+            valid = [
+                r for r in rows
+                if np.isfinite(r.get("snr", np.nan))
+                and np.isfinite(r.get("ssim", np.nan))
+            ]
+            if valid:
+                names = [r["name"] for r in valid]
+                snrs = np.array([r["snr"] for r in valid])
+                ssims = np.array([r["ssim"] for r in valid])
 
-                order = np.argsort(-ssims)
+                # Sort by SNR (higher is better); SSIM follows same order
+                order = np.argsort(-snrs)
                 names = [names[i] for i in order]
+                snrs = snrs[order]
                 ssims = ssims[order]
 
                 x = np.arange(len(names))
+                width = 0.4
 
-                plt.figure(figsize=PLOT_FIGSIZE)
-                plt.bar(x, ssims, alpha=0.85)
-                plt.xticks(
-                    x,
+                fig, ax1 = plt.subplots(figsize=PLOT_FIGSIZE)
+
+                snr_color = "tab:blue"
+                ssim_color = "tab:green"
+
+                # Left y-axis: SNR
+                snr_bars = ax1.bar(
+                    x - width / 2,
+                    snrs,
+                    width,
+                    label="SNR (dB)",
+                    alpha=0.85,
+                    color=snr_color,
+                )
+                ax1.set_ylabel("SNR (dB)", color=snr_color, fontsize=PLOT_LABEL_FONTSIZE)
+                ax1.tick_params(axis="y", labelcolor=snr_color, labelsize=PLOT_TICK_FONTSIZE)
+                ax1.set_xticks(x)
+                ax1.set_xticklabels(
                     names,
                     rotation=30,
                     ha="right",
                     fontsize=PLOT_TICK_FONTSIZE,
                 )
-                plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
-                plt.ylabel("SSIM", fontsize=PLOT_LABEL_FONTSIZE)
-                plt.title(
-                    f"SSIM vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
+                ax1.grid(axis="y", alpha=0.3)
+
+                # Right y-axis: SSIM
+                ax2 = ax1.twinx()
+                ssim_bars = ax2.bar(
+                    x + width / 2,
+                    ssims,
+                    width,
+                    label="SSIM",
+                    alpha=0.6,
+                    color=ssim_color,
+                )
+                ax2.set_ylabel("SSIM", color=ssim_color, fontsize=PLOT_LABEL_FONTSIZE)
+                ax2.tick_params(axis="y", labelcolor=ssim_color, labelsize=PLOT_TICK_FONTSIZE)
+
+                ax1.set_title(
+                    f"SNR / SSIM vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
                     fontsize=PLOT_TITLE_FONTSIZE,
                 )
-                plt.grid(axis="y", alpha=0.3)
-                plt.tight_layout()
+
+                # Combine legends from both axes
+                handles = snr_bars.patches[:1] + ssim_bars.patches[:1]
+                labels = ["SNR (dB)", "SSIM"]
+                fig.legend(
+                    handles,
+                    labels,
+                    loc="upper right",
+                    bbox_to_anchor=(1, 1),
+                    fontsize=PLOT_LEGEND_FONTSIZE,
+                )
+
+                fig.tight_layout()
                 plt.show()
 
     return 0
