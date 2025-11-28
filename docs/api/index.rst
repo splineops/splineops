@@ -12,7 +12,7 @@ API Reference
    * - :ref:`Spline interpolation <api-spline_interpolation>`
      - Interpolation class for multidimensional data.
    * - :ref:`Resize <api-resize>`
-     - Resize using splines or LS/Oblique projection.
+     - Resize using high-quality projection-based methods.
    * - :ref:`Rotate <api-rotate>`
      - Rotate 2D/3D data around a user-defined center.
    * - :ref:`Adaptive Regression Splines <api-adaptive_regression_splines>`
