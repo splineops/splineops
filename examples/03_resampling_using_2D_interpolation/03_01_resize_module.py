@@ -48,7 +48,7 @@ def resize_rgb(
         Isotropic zoom factor (same for H and W).
     method : str
         One of the splineops presets, e.g. "linear", "cubic",
-        "cubic-fast_antialiasing", "cubic-best_antialiasing", ...
+        "cubic-antialiasing", ...
 
     Returns
     -------
@@ -94,7 +94,7 @@ adjusted_uint8 = (np.clip(adjusted, 0.0, 1.0) * 255).astype(np.uint8)
 
 # 3) Shrink with splineops (channel-wise)
 shrunken_f = resize_rgb(
-    adjusted,               # float64 [0, 1]
+    adjusted,
     shrink_factor,
     method="cubic",         # plain cubic interpolation (no anti-aliasing)
 )
@@ -160,39 +160,39 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Least-Squares shrink/expand (anti-aliased)
-# ------------------------------------------
+# Antialiasing shrink/expand
+# --------------------------
 #
 # Now we repeat the same shrink/expand pipeline, but this time we use the
-# **Least-Squares** projection variant when shrinking:
+# **antialiasing** variant when shrinking:
 #
-#   * "cubic-best_antialiasing" applies a proper low-pass filter before
-#     down-sampling, which strongly reduces aliasing.
+#   * ``"cubic-antialiasing"`` applies an oblique-projection low-pass
+#     filter before down-sampling, which strongly reduces aliasing.
 #   * For the expansion step, plain cubic interpolation is enough; the
 #     important part is that the shrink was anti-aliased.
 
-ls_shrunken_f = resize_rgb(
+aa_shrunken_f = resize_rgb(
     adjusted,
     shrink_factor,
-    method="cubic-best_antialiasing",  # LS projection, degree 3
+    method="cubic-antialiasing",  # antialiasing shrink, degree 3
 )
-ls_shrunken = (np.clip(ls_shrunken_f, 0.0, 1.0) * 255).astype(np.uint8)
+aa_shrunken = (np.clip(aa_shrunken_f, 0.0, 1.0) * 255).astype(np.uint8)
 
-ls_expanded = resize_rgb(
-    ls_shrunken.astype(DTYPE) / DTYPE(255.0),
+aa_expanded = resize_rgb(
+    aa_shrunken.astype(DTYPE) / DTYPE(255.0),
     1.0 / shrink_factor,
     method="cubic",  # standard cubic interpolation for upsampling
 )
-ls_expanded = np.clip(ls_expanded, 0.0, 1.0)
+aa_expanded = np.clip(aa_expanded, 0.0, 1.0)
 
 fig, axes = plt.subplots(1, 2, figsize=(14, 7))
 
 axes[0].imshow(expanded)
-axes[0].set_title("Expanded after plain cubic interpolation")
+axes[0].set_title("Expanded after plain cubic shrink", fontsize=16)
 axes[0].axis("off")
 
-axes[1].imshow(ls_expanded)
-axes[1].set_title("Expanded after LS anti-aliased shrink")
+axes[1].imshow(aa_expanded)
+axes[1].set_title("Expanded after antialiased shrink", fontsize=16)
 axes[1].axis("off")
 
 plt.tight_layout()
