@@ -714,7 +714,7 @@ def _show_initial_original_vs_aa(
         )
         ax.add_patch(rect_aa)
     ax.set_title(
-        f"Splineops Antialiasing ({degree_label}, zoom ×{z:g}, {H1}×{W1} px)",
+        f"Antialiasing ({degree_label}, zoom ×{z:g}, {H1}×{W1} px)",
         fontsize=ROI_TILE_TITLE_FONTSIZE,
     )
     ax.axis("off")

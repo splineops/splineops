@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple, Union, Dict, Literal
+from typing import Optional, Sequence, Tuple, Union, Dict
 import os
 
 import numpy as np
@@ -38,49 +38,39 @@ MAX_SUPPORTED_DEGREE = 3
 
 
 # --------------------------------------------------------------------------- #
-# Mapping from `method` strings to (algorithm, spline_degree)                 #
+# Mapping from `method` strings to (interp_degree, analy_degree, synthe_degree)
 # --------------------------------------------------------------------------- #
+#
+# Each preset is a concrete triple of degrees:
+#
+#   - interp_degree : degree of the interpolation spline φ  (0..3)
+#   - analy_degree  : degree of the analysis spline φ₁      (-1..3, -1 = no projection)
+#   - synthe_degree : degree of the synthesis spline φ₂     (0..3)
+#
+# The behavior is entirely encoded by this triple.
 
-METHOD_MAP: Dict[
-    str,
-    Tuple[Literal["interpolation", "oblique"], int],
-] = {
-    # interpolation – no anti-aliasing
-    "fast":      ("interpolation", 0),
-    "linear":    ("interpolation", 1),
-    "quadratic": ("interpolation", 2),
-    "cubic":     ("interpolation", 3),
+METHOD_MAP: Dict[str, Tuple[int, int, int]] = {
+    # Interpolation – no anti-aliasing (analy = -1)
+    "fast":      (0, -1, 0),  # nearest
+    "linear":    (1, -1, 1),
+    "quadratic": (2, -1, 2),
+    "cubic":     (3, -1, 3),
 
-    # antialiasing (oblique projection) – preferred for down-sampling
-    "linear-antialiasing":    ("oblique", 1),
-    "quadratic-antialiasing": ("oblique", 2),
-    "cubic-antialiasing":     ("oblique", 3),
+    # Antialiasing (projection-based), recommended for down-sampling.
+    # These are the classic Muñoz/Unser “oblique” combinations:
+    #   (1, 0, 1), (2, 1, 2), (3, 1, 3)
+    "linear-antialiasing":    (1, 0, 1),
+    "quadratic-antialiasing": (2, 1, 2),
+    "cubic-antialiasing":     (3, 1, 3),
 
-    # (Optional aliases for a transition period; commented out by default)
-    # "linear-fast_antialiasing":    ("oblique", 1),
-    # "quadratic-fast_antialiasing": ("oblique", 2),
-    # "cubic-fast_antialiasing":     ("oblique", 3),
+    # Legacy aliases (optional) – uncomment if you want to support older names:
+    # "linear-fast_antialiasing":    (1, 0, 1),
+    # "quadratic-fast_antialiasing": (2, 1, 2),
+    # "cubic-fast_antialiasing":     (3, 1, 3),
 }
 
-# Helper for naming in messages (fallback path only)
+# Helper for naming in messages (if you ever want it)
 _DEGREE_TO_NAME = {0: "nearest", 1: "linear", 2: "quadratic", 3: "cubic"}
-
-
-def _resolve_degrees_for(algo: str, degree: int) -> Tuple[int, int, int]:
-    """
-    Map (algo, public_degree) -> (interp_degree, analy_degree, synthe_degree)
-    in a way that matches the classic interpolation / antialiasing behavior.
-
-    algo ∈ {"interpolation", "oblique"}.
-    """
-    interp_degree = degree
-    synthe_degree = degree
-    if algo == "interpolation":
-        analy_degree = -1
-    else:  # "oblique"
-        # Oblique uses analy=0 for linear, analy=1 for quadratic/cubic.
-        analy_degree = 0 if degree == 1 else 1
-    return interp_degree, analy_degree, synthe_degree
 
 
 def _validate_degrees(
@@ -122,52 +112,6 @@ def _validate_degrees(
     return int(interp_degree), int(analy_degree), int(synthe_degree)
 
 
-def _map_degrees_to_python_backend(
-    interp_degree: int,
-    analy_degree: int,
-    synthe_degree: int,
-) -> Tuple[str, int]:
-    """
-    Map (interp_degree, analy_degree, synthe_degree) to the minimal
-    (py_method, base_degree) that the pure-Python engine understands.
-
-    The Python fallback only implements a small set of canonical families:
-
-      - Standard interpolation: (n, -1, n)
-      - Oblique antialiasing:   (1, 0, 1) or (n, 1, n) for n in {2,3}
-      - Equal-degree projection: (n, n, n)
-
-    Any other combination requires the C++ backend.
-    """
-    # Pure interpolation: analy=-1, synthe matches interp
-    if analy_degree < 0:
-        if synthe_degree != interp_degree:
-            raise NotImplementedError(
-                "Python fallback only supports synthe_degree == interp_degree "
-                "for interpolation mode."
-            )
-        return "interpolation", interp_degree
-
-    # Equal-degree projection (same degree for analysis, synthesis, and interp).
-    if analy_degree == interp_degree and synthe_degree == interp_degree:
-        # Internal label; python_resize treats any non-"interpolation"/"oblique"
-        # as a generic projection with analy_degree == degree.
-        return "projection", interp_degree
-
-    # Oblique presets (same policy as the original implementation)
-    if interp_degree == 1 and analy_degree == 0 and synthe_degree == 1:
-        return "oblique", interp_degree
-
-    if interp_degree in (2, 3) and analy_degree == 1 and synthe_degree == interp_degree:
-        return "oblique", interp_degree
-
-    raise NotImplementedError(
-        "This (interp_degree, analy_degree, synthe_degree) combination is only "
-        "supported when the C++ backend is available. "
-        f"Got interp={interp_degree}, analy={analy_degree}, synthe={synthe_degree}."
-    )
-
-
 def resize_degrees(
     data: npt.NDArray,
     *,
@@ -206,7 +150,7 @@ def resize_degrees(
         Degree of the analysis spline φ₁:
 
           - -1 → no projection (pure interpolation)
-          - 0..3 → projection-based resizing (e.g. oblique/antialiasing, equal-degree projection).
+          - 0..3 → projection-based resizing (antialiasing, equal-degree projection, etc.)
 
     synthe_degree : int, optional
         Degree of the synthesis spline φ₂ (output space). Defaults to
@@ -222,13 +166,12 @@ def resize_degrees(
     if synthe_degree is None:
         synthe_degree = interp_degree
 
-    # Validate degrees and their relationships
     interp_degree, analy_degree, synthe_degree = _validate_degrees(
         interp_degree, analy_degree, synthe_degree
     )
 
     # ----------------------------
-    # Resolve target shape/zooms
+    # Resolve target shape / zooms
     # ----------------------------
     if output_size is not None:
         zoom_factors = [
@@ -247,10 +190,8 @@ def resize_degrees(
     use_cpp = _HAS_CPP and (_ACCEL_ENV != "never")
 
     if use_cpp:
-        # NOTE: keep dtype, only enforce C-order for the C++ backend.
+        # Keep dtype, only enforce C-order
         arr = np.asarray(data, order="C")
-
-        # _resize_nd_cpp will choose float32 vs float64 based on arr.dtype.
         output_data = _resize_nd_cpp(
             arr,
             list(zoom_factors),
@@ -260,15 +201,13 @@ def resize_degrees(
             bool(inversable),
         )
     else:
-        # Python fallback via reference projection/interpolation solver.
-        py_method, base_degree = _map_degrees_to_python_backend(
-            interp_degree, analy_degree, synthe_degree
-        )
+        # Pure-Python fallback driven directly by the degree triple
         output_data = _python_fallback_resize(
             data,
             zoom_factors,
-            py_method,  # "interpolation" | "oblique" | "projection"
-            base_degree,
+            interp_degree=interp_degree,
+            analy_degree=analy_degree,
+            synthe_degree=synthe_degree,
             inversable=inversable,
         )
 
@@ -298,10 +237,10 @@ def resize(
     method: str = "cubic",
 ) -> npt.NDArray:
     """
-    Resize an *N*-dimensional array using spline interpolation or
-    antialiasing projection.
+    Resize an *N*-dimensional array using spline interpolation or an
+    antialiasing projection preset.
 
-    This entry point selects both the algorithm and the spline degree via a
+    This entry point selects both the algorithm and the spline degrees via a
     single ``method`` string, and then delegates to :func:`resize_degrees`.
 
     Parameters
@@ -317,38 +256,32 @@ def resize(
     output_size : tuple of int, optional
         Desired shape (overrides *zoom_factors*).
     method : str
-        Preset selecting **both** the algorithm *and* the spline degree.
+        Preset selecting a specific (interp_degree, analy_degree, synthe_degree)
+        triple.
 
-        Interpolation (no anti-aliasing):
+        Interpolation (no anti-aliasing, analy = -1):
 
-          - ``"fast"``      – interpolation, degree 0 (nearest)
-          - ``"linear"``    – interpolation, degree 1
-          - ``"quadratic"`` – interpolation, degree 2
-          - ``"cubic"``     – interpolation, degree 3
+          - ``"fast"``      – degree 0 (nearest)
+          - ``"linear"``    – degree 1
+          - ``"quadratic"`` – degree 2
+          - ``"cubic"``     – degree 3
 
-        Antialiasing (oblique projection – recommended for down-sampling):
+        Antialiasing (projection-based, recommended for down-sampling):
 
-          - ``"linear-antialiasing"``    – oblique, degree 1
-          - ``"quadratic-antialiasing"`` – oblique, degree 2
-          - ``"cubic-antialiasing"``     – oblique, degree 3
-
-        Anti-aliasing presets are preferred whenever you are reducing the
-        spatial resolution along an axis.
+          - ``"linear-antialiasing"``    – (interp=1, analy=0, synthe=1)
+          - ``"quadratic-antialiasing"`` – (interp=2, analy=1, synthe=2)
+          - ``"cubic-antialiasing"``     – (interp=3, analy=1, synthe=3)
 
     Returns
     -------
     ndarray
         Resized data: either a new array or the one supplied via *output*.
     """
-    # ----------------------------
-    # Validate & interpret preset
-    # ----------------------------
     if method not in METHOD_MAP:  # pragma: no cover
         valid = ", ".join(sorted(METHOD_MAP))
         raise ValueError(f"Unknown method '{method}'. Valid options: {valid}")
 
-    algo, degree = METHOD_MAP[method]
-    interp_degree, analy_degree, synthe_degree = _resolve_degrees_for(algo, degree)
+    interp_degree, analy_degree, synthe_degree = METHOD_MAP[method]
 
     return resize_degrees(
         data,
@@ -358,28 +291,5 @@ def resize(
         interp_degree=interp_degree,
         analy_degree=analy_degree,
         synthe_degree=synthe_degree,
-        inversable=False,  # keep previous default
+        inversable=False,  # preserve previous default
     )
-
-
-# ---------------------------------------------------------------------------
-# Legacy reference (no longer used): how `TensorSpline` wired into `resize`
-# ---------------------------------------------------------------------------
-#
-# from splineops.bases.utils import asbasis
-# from splineops.spline_interpolation.tensorspline import TensorSpline
-#
-# def _tensorspline_interpolation(
-#     data: npt.NDArray,
-#     zoom_factors: Sequence[float],
-#     degree: int,
-#     modes: Union[str, Sequence[str]] = "auto-or-‘mirror’",
-# ) -> npt.NDArray:
-#     basis = asbasis(f"bspline{degree}")  # degrees 0..3 supported
-#     src_coords = [np.linspace(0, n-1, n, dtype=data.dtype) for n in data.shape]
-#     tgt_coords = [np.linspace(0, n-1, int(round(n*z)), dtype=data.dtype)
-#                   for n, z in zip(data.shape, zoom_factors)]
-#     tensor = TensorSpline(data=data, coordinates=src_coords, bases=basis, modes=modes)
-#     return tensor.eval(coordinates=tgt_coords, grid=True)
-#
-# This approach has been fully replaced by the C++-accelerated path above.
