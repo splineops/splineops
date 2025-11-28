@@ -6,9 +6,9 @@
 Compare Python vs C++ Implementations (synthetic images)
 =======================================================
 
-Measure the performance of **Least-Squares (best AA)** and **Oblique (fast AA)**
-using the **pure-Python** fallback versus the **C++-accelerated** path on two
-synthetic test images.
+Measure the performance of **Standard**, **Least-Squares (LS projection)** and
+**Antialiasing** cubic resize using the **pure-Python** fallback versus the
+**C++-accelerated** path on two synthetic test images.
 
 This version is tuned for **maximum throughput** by default:
 - OpenMP (C++ path) uses **all available CPU cores**.
@@ -67,21 +67,73 @@ print(f"[splineops] OMP_PROC_BIND={os.environ.get('OMP_PROC_BIND','<unset>')}\n"
 # ------------------------------------------------------------------ #
 # Timing helpers                                                     #
 # ------------------------------------------------------------------ #
-def _time_resize(mode: str, img: np.ndarray, zoom: tuple[float, float], preset: str, repeats: int = 5):
+def _time_resize(
+    mode: str,
+    img: np.ndarray,
+    zoom: tuple[float, float],
+    preset: str,
+    repeats: int = 5,
+):
     """
-    Return (best_time_sec, output_array) for one policy ('always' C++, 'never' Python).
-    Reloads resize module so it re-reads SPLINEOPS_ACCEL.
+    Return (best_time_sec, output_array) for one policy ('always' C++, 'never' Python)
+    using the preset-based API: resize(..., method=preset).
     """
     if mode == "always" and not HAS_CPP:
         return float("nan"), None
     os.environ["SPLINEOPS_ACCEL"] = mode
     rz = _load_resize_module(force_reload=True)
+
     # warmup
     out = rz.resize(img, zoom_factors=zoom, method=preset)
     best = float("inf")
     for _ in range(repeats):
         t0 = time.perf_counter()
         out_tmp = rz.resize(img, zoom_factors=zoom, method=preset)
+        best = min(best, time.perf_counter() - t0)
+        out = out_tmp
+    return best, out
+
+
+def _time_resize_ls(
+    mode: str,
+    img: np.ndarray,
+    zoom: tuple[float, float],
+    degree: int,
+    repeats: int = 5,
+):
+    """
+    Return (best_time_sec, output_array) for LS-style projection:
+
+        resize_degrees(...,
+                       interp_degree=degree,
+                       analy_degree=degree,
+                       synthe_degree=degree)
+    """
+    if mode == "always" and not HAS_CPP:
+        return float("nan"), None
+    os.environ["SPLINEOPS_ACCEL"] = mode
+    rz = _load_resize_module(force_reload=True)
+
+    # warmup
+    out = rz.resize_degrees(
+        img,
+        zoom_factors=zoom,
+        interp_degree=degree,
+        analy_degree=degree,
+        synthe_degree=degree,
+        inversable=False,
+    )
+    best = float("inf")
+    for _ in range(repeats):
+        t0 = time.perf_counter()
+        out_tmp = rz.resize_degrees(
+            img,
+            zoom_factors=zoom,
+            interp_degree=degree,
+            analy_degree=degree,
+            synthe_degree=degree,
+            inversable=False,
+        )
         best = min(best, time.perf_counter() - t0)
         out = out_tmp
     return best, out
@@ -100,10 +152,13 @@ for dtype in DTYPES:
     images.append((f"synthetic_1024x1024_{suffix}", rng.random((1024, 1024), dtype=dtype)))
     images.append((f"synthetic_640x480_{suffix}",   rng.random((480, 640),  dtype=dtype)))
 
-# Presets & zoom scenarios
+# Methods & zoom scenarios
+# kind: "preset" → use _time_resize with arg=preset string
+#       "ls"     → use _time_resize_ls with arg=degree
 methods = [
-    ("Least-Squares (best AA)", "cubic-best_antialiasing"),
-    ("Oblique (fast AA)",       "cubic-fast_antialiasing"),
+    ("Standard (cubic)",      "preset", "cubic"),
+    ("Least-Squares (cubic)", "ls",     3),
+    ("Antialiasing (cubic)",  "preset", "cubic-antialiasing"),
 ]
 zooms = [
     ("↓0.5×", (0.5, 0.5)),
@@ -113,16 +168,26 @@ zooms = [
 # ---------------------------------------------------------------------------- #
 # Run comparisons                                                              #
 # ---------------------------------------------------------------------------- #
-all_rows = []  # (img_name, method_label, zoom_label, t_cpp, t_py, speedup, max_abs_diff)
+all_rows = []  # (img_name, method_label, zoom_label, t_cpp, t_py, speed, max_abs_diff)
 
 for img_name, img in images:
     print(f"\n=== {img_name}  shape={img.shape}, dtype={img.dtype} ===")
-    for meth_label, preset in methods:
+    for meth_label, kind, arg in methods:
         for zoom_label, zoom in zooms:
-            # C++
-            t_cpp, y_cpp = _time_resize("always", img, zoom, preset, repeats=5)
-            # Python
-            t_py, y_py = _time_resize("never",  img, zoom, preset, repeats=5)
+            if kind == "preset":
+                preset = arg  # type: ignore[assignment]
+                # C++
+                t_cpp, y_cpp = _time_resize("always", img, zoom, preset, repeats=5)
+                # Python
+                t_py, y_py = _time_resize("never", img, zoom, preset, repeats=5)
+            elif kind == "ls":
+                degree = int(arg)  # type: ignore[arg-type]
+                # C++
+                t_cpp, y_cpp = _time_resize_ls("always", img, zoom, degree, repeats=5)
+                # Python
+                t_py, y_py = _time_resize_ls("never", img, zoom, degree, repeats=5)
+            else:
+                raise ValueError(f"Unknown kind '{kind}'")
 
             # numeric sanity (if C++ ran)
             if HAS_CPP and y_cpp is not None:
@@ -138,7 +203,10 @@ for img_name, img in images:
             sp_str  = "n/a" if not HAS_CPP else f"×{speed:4.1f}"
             diff_str = "n/a" if not HAS_CPP else f"{maxdiff:.2e}"
 
-            print(f"  {meth_label:24s} {zoom_label:>5s}  C++ {cxx_str}  Py {py_str}  {sp_str}  max|Δ|={diff_str}")
+            print(
+                f"  {meth_label:24s} {zoom_label:>5s}  "
+                f"C++ {cxx_str}  Py {py_str}  {sp_str}  max|Δ|={diff_str}"
+            )
 
             all_rows.append((img_name, meth_label, zoom_label, t_cpp, t_py, speed, maxdiff))
 
@@ -163,7 +231,7 @@ if SHOW_PLOT and len(all_rows) > 0:
         bars = ax.bar(x, speedups)
         ax.set_xticks(x, labels, rotation=35, ha="right")
         ax.set_ylabel("Speedup (Python time / C++ time)")
-        ax.set_title("C++ vs Python – LS/Oblique (best-of-5)")
+        ax.set_title("C++ vs Python – Standard / LS / Antialiasing (best-of-5)")
         for i, s in enumerate(speedups):
             ax.text(i, bars[i].get_height(), f"×{s:.1f}", ha="center", va="bottom", fontsize=9)
         fig.tight_layout()
