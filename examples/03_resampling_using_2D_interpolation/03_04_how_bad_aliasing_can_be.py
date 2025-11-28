@@ -6,7 +6,7 @@
 How Bad Aliasing Can Be
 =======================
 
-We construct an A/B corner mix image where, in each 2x2 tile, the
+We construct an A/B corner mix image where, in each 2×2 tile, the
 top-left pixel comes from image A and the other three come from B.
 We then:
 
@@ -14,9 +14,8 @@ We then:
 2. Downsample by 0.5 with standard cubic interpolation (no explicit
    anti-aliasing) and observe a surprising result: the mix collapses to
    something very close to A.
-3. Downsample by 0.5 with least-squares projection
-   and see how proper low-pass filtering
-   preserves the expected 25%/75% mixture in the ROI.
+3. Downsample by 0.5 with an **antialiased** cubic projection and see how
+   proper low-pass filtering preserves the expected 25%/75% mixture in the ROI.
 
 This illustrates why anti-aliasing is essential for faithful downsampling.
 """
@@ -30,7 +29,7 @@ import matplotlib.pyplot as plt
 from urllib.request import urlopen
 from PIL import Image
 
-from splineops.resize.resize import resize
+from splineops.resize import resize
 from splineops.utils.plotting import show_roi_zoom
 
 # sphinx_gallery_thumbnail_number = 5  # show the fifth figure (std canvas) as thumbnail
@@ -91,7 +90,7 @@ mixed[0::2, 0::2] = A[0::2, 0::2]
 
 _ = show_roi_zoom(
     mixed,
-    ax_titles=("A/B corner mix (A at TL of each 2x2)", None),
+    ax_titles=("A/B corner mix (A at TL of each 2×2)", None),
     **roi_kwargs_orig,
 )
 
@@ -111,7 +110,7 @@ else:
     mixed_odd = mixed
 
 h_odd, w_odd = mixed_odd.shape
-assert (h_odd % 2 == 1) and (w_odd % 2 == 1), "Expect odd HxW after the crop."
+assert (h_odd % 2 == 1) and (w_odd % 2 == 1), "Expect odd H×W after the crop."
 
 res_std = resize(
     mixed_odd,
@@ -148,25 +147,24 @@ def show_resized_on_original_canvas_same_relpos(resized: np.ndarray, title: str)
     return show_roi_zoom(canvas, ax_titles=(title, None), **roi_kwargs_canvas)
 
 _ = show_resized_on_original_canvas_same_relpos(
-    res_std, "Downsampled 0.5x (standard cubic, no AA)"
+    res_std, "Downsampled 0.5× (standard cubic, no AA)"
 )
 
 # %%
 # Downsampling (Antialiasing)
 # ---------------------------
 #
-# Now we apply downsampling with antialiasing, which
-# performs a least-squares projection that includes a matched low-pass filter
-# before decimation.
+# Now we apply downsampling with antialiasing, which performs a projection
+# that includes a matched low-pass filter before decimation.
 
-res_ls = resize(
+res_aa = resize(
     mixed_odd,
     zoom_factors=ZOOM,
-    method="cubic-best_antialiasing",  # least-squares (best anti-aliasing)
+    method="cubic-antialiasing",  # antialiased (oblique projection) cubic
 )
 
 _ = show_resized_on_original_canvas_same_relpos(
-    res_ls, "Downsampled 0.5x (least-squares, best AA)"
+    res_aa, "Downsampled 0.5× (cubic antialiasing)"
 )
 
 # %%
@@ -188,14 +186,14 @@ col_left_std = int(np.clip(center_c_std - roi_side_res // 2, 0, w_std - roi_side
 roi_std = res_std[row_top_std : row_top_std + roi_side_res,
                   col_left_std : col_left_std + roi_side_res]
 
-# ROI in least-squares result (same physical location)
-h_ls, w_ls = res_ls.shape
-center_r_ls = int(round(rel_center_r * h_ls))
-center_c_ls = int(round(rel_center_c * w_ls))
-row_top_ls = int(np.clip(center_r_ls - roi_side_res // 2, 0, h_ls - roi_side_res))
-col_left_ls = int(np.clip(center_c_ls - roi_side_res // 2, 0, w_ls - roi_side_res))
-roi_ls = res_ls[row_top_ls : row_top_ls + roi_side_res,
-                col_left_ls : col_left_ls + roi_side_res]
+# ROI in antialiased result (same physical location)
+h_aa, w_aa = res_aa.shape
+center_r_aa = int(round(rel_center_r * h_aa))
+center_c_aa = int(round(rel_center_c * w_aa))
+row_top_aa = int(np.clip(center_r_aa - roi_side_res // 2, 0, h_aa - roi_side_res))
+col_left_aa = int(np.clip(center_c_aa - roi_side_res // 2, 0, w_aa - roi_side_res))
+roi_aa = res_aa[row_top_aa : row_top_aa + roi_side_res,
+                col_left_aa : col_left_aa + roi_side_res]
 
 def _nearest_big(roi: np.ndarray, target_h: int = 256) -> np.ndarray:
     h, w = roi.shape
@@ -203,15 +201,15 @@ def _nearest_big(roi: np.ndarray, target_h: int = 256) -> np.ndarray:
     return np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
 
 roi_big_std = _nearest_big(roi_std, 256)
-roi_big_ls  = _nearest_big(roi_ls, 256)
+roi_big_aa  = _nearest_big(roi_aa, 256)
 
 fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 for ax, im, title in zip(
     axes,
-    [roi_big_std, roi_big_ls],
-    ["Standard cubic (no AA)", "Least-Squares (best AA)"],
+    [roi_big_std, roi_big_aa],
+    ["Standard cubic (no AA)", "Cubic antialiasing"],
 ):
-    ark = ax.imshow(im, cmap="gray", interpolation="nearest")
+    ax.imshow(im, cmap="gray", interpolation="nearest")
     ax.set_title(title)
     ax.axis("off")
     ax.set_aspect("equal")
@@ -253,14 +251,13 @@ _ = show_roi_zoom(B, ax_titles=("Image B (with ROI)", None), **roi_kwargs_orig)
 #   The 75% B content is largely aliased away into lower frequencies, which
 #   is why the pattern appears to “collapse” to A there.
 #
-# • **Least-squares projection (best AA)** performs a proper low-pass
-#   (anti-aliasing) filtering matched to the downsampling, then decimates.
-#   On this pattern, that filter averages over each 2×2 neighbourhood, so the
-#   result tends toward 25% A + 75% B — visually “more B”, more like
-#   the mix. This is exactly what anti-aliasing should do: remove the
-#   high-frequency checkerboard content so it doesn’t fold (alias) into the
-#   downsample.
+# • **Cubic antialiasing** performs a proper low-pass (anti-aliasing) filtering
+#   matched to the downsampling, then decimates. On this pattern, that filter
+#   averages over each 2×2 neighbourhood, so the result tends toward
+#   25% A + 75% B — visually “more B”, more like the mix. This is exactly what
+#   anti-aliasing should do: remove the high-frequency checkerboard content so
+#   it doesn’t fold (alias) into the downsample.
 #
 # In short: interpolation without AA does sample-and-aliasing (here it locks
-# onto A due to phase). Least-squares projection implements the textbook
+# onto A due to phase). Antialiased cubic implements the textbook
 # low-pass-then-sample strategy, preserving the true average content.
