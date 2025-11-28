@@ -5,7 +5,7 @@ script_resize_comparison.py
 
 Compare splineops interpolation against common stacks at a chosen zoom:
 
-- splineops: Standard (linear/cubic), Least-Squares (best AA), Oblique (fast AA)
+- splineops: Standard (linear/cubic), Antialiasing (oblique projection)
 - SciPy ndimage.zoom (linear/cubic)
 - OpenCV (INTER_LINEAR / INTER_CUBIC)
 - Pillow (BILINEAR / BICUBIC)
@@ -21,10 +21,11 @@ Workflow
    and shows:
    - Initial 2×2 figure:
        row 1: original image + magnified ROI
-       row 2: LS first-pass resized image on white canvas + magnified mapped ROI
+       row 2: Splineops Antialiasing first-pass image on white canvas
+              + magnified mapped ROI
    - ROI montage with ORIGINAL ROI + each method's *first-pass* ROI
      (nearest-neighbour magnified at the mapped location)
-   - Bar charts for timing and SNR
+   - Bar charts for timing and SNR/MSE/SSIM
 
 Notes
 -----
@@ -105,7 +106,7 @@ except Exception:
 
 # splineops
 try:
-    from splineops.resize.resize import resize as sp_resize
+    from splineops.resize import resize as sp_resize
 
     _HAS_SPLINEOPS = True
 except Exception as e:
@@ -454,11 +455,7 @@ def _rt_opencv(
 def _rt_pillow(
     gray: np.ndarray, z: float, which: str
 ) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
-    """Return (first, rec, err) using Pillow BILINEAR/BICUBIC on float32 images.
-
-    This keeps everything in [0,1] float so the comparison with splineops/SciPy/etc.
-    is numerically fair (no 8-bit quantization for Pillow only).
-    """
+    """Return (first, rec, err) using Pillow BILINEAR/BICUBIC on float32 images."""
     try:
         from PIL import Image as _Image
 
@@ -471,8 +468,6 @@ def _rt_pillow(
         H1 = int(round(H * z))
         W1 = int(round(W * z))
 
-        # Pillow float image: mode="F" is 32-bit float per pixel
-        # gray is already [0,1], dtype float32/float64
         im = _Image.fromarray(gray.astype(np.float32, copy=False), mode="F")
 
         first_im = im.resize((W1, H1), resample=resample)
@@ -481,7 +476,6 @@ def _rt_pillow(
         first = np.asarray(first_im, dtype=np.float32)
         rec = np.asarray(rec_im, dtype=np.float32)
 
-        # Back to [0,1] and original dtype
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
         rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
 
@@ -536,7 +530,6 @@ def _rt_torch(
     try:
         mode = "bilinear" if degree == "linear" else "bicubic"
 
-        # Work with the existing dtype; only cast if needed
         arr = gray
         if arr.dtype == np.float32:
             t_dtype = torch.float32
@@ -550,7 +543,6 @@ def _rt_torch(
         H1 = int(round(H * z))
         W1 = int(round(W * z))
 
-        # (1, 1, H, W) tensor
         x = torch.from_numpy(arr).to(t_dtype).unsqueeze(0).unsqueeze(0)
 
         first_t = F.interpolate(
@@ -568,11 +560,9 @@ def _rt_torch(
             antialias=False,
         )
 
-        # Back to NumPy
         first = first_t[0, 0].detach().cpu().numpy()
         rec = rec_t[0, 0].detach().cpu().numpy()
 
-        # Clip + cast to match other methods / DTYPE
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
         rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
 
@@ -624,10 +614,10 @@ def _avg_time(fn, repeats: int = 10, warmup: bool = True):
 # Initial 2×2 figure helper
 # ---------------------------
 
-def _show_initial_original_vs_ls(
+def _show_initial_original_vs_aa(
     gray: np.ndarray,
     roi_rect: Tuple[int, int, int, int],
-    ls_first: np.ndarray,
+    aa_first: np.ndarray,
     z: float,
     degree_label: str,
 ) -> None:
@@ -639,19 +629,17 @@ def _show_initial_original_vs_ls(
       - Magnified original ROI
 
     Row 2:
-      - LS first-pass resized image on white canvas with mapped ROI box
-      - Magnified mapped ROI from LS first-pass
+      - Splineops Antialiasing first-pass resized image on white canvas with
+        mapped ROI box
+      - Magnified mapped ROI from the Antialiasing first-pass
     """
     H, W = gray.shape
     row0, col0, roi_h, roi_w = roi_rect
 
-    # Original ROI
     roi_orig = _crop_roi(gray, roi_rect)
     roi_orig_big = _nearest_big(roi_orig, ROI_MAG_TARGET)
 
-    # LS first-pass ROI mapping
-    H1, W1 = ls_first.shape
-    # Original ROI center
+    H1, W1 = aa_first.shape
     center_r = row0 + roi_h / 2.0
     center_c = col0 + roi_w / 2.0
 
@@ -659,8 +647,7 @@ def _show_initial_original_vs_ls(
     roi_w_res = max(1, int(round(roi_w * z)))
 
     if roi_h_res > H1 or roi_w_res > W1:
-        # If mapped ROI is larger than LS image, just use full LS image
-        ls_roi = ls_first
+        aa_roi = aa_first
         row_top_res = 0
         col_left_res = 0
         roi_h_res = H1
@@ -668,26 +655,20 @@ def _show_initial_original_vs_ls(
     else:
         center_r_res = int(round(center_r * z))
         center_c_res = int(round(center_c * z))
-        row_top_res = int(
-            np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res)
-        )
-        col_left_res = int(
-            np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res)
-        )
-        ls_roi = ls_first[
+        row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res))
+        col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res))
+        aa_roi = aa_first[
             row_top_res : row_top_res + roi_h_res,
             col_left_res : col_left_res + roi_w_res,
         ]
 
-    ls_roi_big = _nearest_big(ls_roi, ROI_MAG_TARGET)
+    aa_roi_big = _nearest_big(aa_roi, ROI_MAG_TARGET)
 
-    # LS canvas: white background with LS first in the top-left (possibly cropped)
-    canvas_ls = np.ones_like(gray, dtype=ls_first.dtype)
+    canvas_aa = np.ones_like(gray, dtype=aa_first.dtype)
     h_copy = min(H, H1)
     w_copy = min(W, W1)
-    canvas_ls[:h_copy, :w_copy] = ls_first[:h_copy, :w_copy]
+    canvas_aa[:h_copy, :w_copy] = aa_first[:h_copy, :w_copy]
 
-    # Build the figure
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
 
     # Row 1, left: original with ROI box
@@ -717,14 +698,13 @@ def _show_initial_original_vs_ls(
     )
     ax.axis("off")
 
-    # Row 2, left: LS first-pass on canvas with mapped ROI box
+    # Row 2, left: Antialiasing first-pass on canvas with mapped ROI box
     ax = axes[1, 0]
-    ax.imshow(canvas_ls, cmap="gray", interpolation="nearest", aspect="equal")
-    # Only draw box if ROI fits inside LS extents we pasted
+    ax.imshow(canvas_aa, cmap="gray", interpolation="nearest", aspect="equal")
     if row_top_res < h_copy and col_left_res < w_copy:
         box_h = min(roi_h_res, h_copy - row_top_res)
         box_w = min(roi_w_res, w_copy - col_left_res)
-        rect_ls = patches.Rectangle(
+        rect_aa = patches.Rectangle(
             (col_left_res, row_top_res),
             box_w,
             box_h,
@@ -732,18 +712,18 @@ def _show_initial_original_vs_ls(
             edgecolor="red",
             facecolor="none",
         )
-        ax.add_patch(rect_ls)
+        ax.add_patch(rect_aa)
     ax.set_title(
-        f"Splineops LS ({degree_label}, zoom ×{z:g}, {H1}×{W1} px)",
+        f"Splineops Antialiasing ({degree_label}, zoom ×{z:g}, {H1}×{W1} px)",
         fontsize=ROI_TILE_TITLE_FONTSIZE,
     )
     ax.axis("off")
 
-    # Row 2, right: magnified LS ROI
+    # Row 2, right: magnified Antialiasing ROI
     ax = axes[1, 1]
-    ax.imshow(ls_roi_big, cmap="gray", interpolation="nearest", aspect="equal")
+    ax.imshow(aa_roi_big, cmap="gray", interpolation="nearest", aspect="equal")
     ax.set_title(
-        f"LS ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+        f"Antialiasing ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
         fontsize=ROI_TILE_TITLE_FONTSIZE,
     )
     ax.axis("off")
@@ -766,7 +746,6 @@ def main(argv=None):
         choices=("linear", "cubic"),
         help="Degree / interpolation mode (linear or cubic) for all methods.",
     )
-    # ROI control: window vs full image
     ap.add_argument(
         "--full-image-roi",
         dest="use_window_roi",
@@ -779,19 +758,16 @@ def main(argv=None):
         action="store_true",
         help="Use the local square ROI window (overrides --full-image-roi).",
     )
-    # Default comes from the hardcoded constant at the top
     ap.set_defaults(use_window_roi=USE_WINDOW_ROI_DEFAULT)
 
     args = ap.parse_args(argv)
     degree = args.degree
     use_window_roi = args.use_window_roi
 
-    # Ensure a Qt application exists before degree dialog / file dialog
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication(sys.argv)
 
-    # Degree selection dialog
     items = ["Linear", "Cubic"]
     default_idx = 0 if degree == "linear" else 1
     choice, ok = QtWidgets.QInputDialog.getItem(
@@ -807,7 +783,7 @@ def main(argv=None):
 
     degree_label = degree.title()
 
-    # --- Select image ---
+    # Select image
     path_or_url = _choose_image_dialog() or ""
     if not path_or_url:
         print("No image selected. Aborting.")
@@ -822,49 +798,41 @@ def main(argv=None):
     H, W = gray.shape
     print(f"Loaded: {path_or_url} | shape={gray.shape}, dtype={gray.dtype}")
 
-    # --- Ask zoom ---
+    # Zoom
     z = _ask_zoom_factor(0.3)
     if z is None or z <= 0:
         print("Invalid or cancelled zoom factor. Aborting.")
         return 0
 
-    # --- Settings ---
     repeats = 10  # avg runs
 
-    # ROI in the *original* image (for round-trip quality metrics)
+    # ROI in the original image
     if use_window_roi:
-        # Local square ROI around ROI_CENTER_FRAC with approx ROI_SIZE_PX
         roi_rect = _roi_rect_from_frac(gray.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
         print(
             f"Using local ROI window: center_frac={ROI_CENTER_FRAC}, "
             f"size≈{ROI_SIZE_PX} px"
         )
     else:
-        # Full-image ROI
         roi_rect = (0, 0, H, W)
         print("Using full-image ROI for metrics and visualizations.")
 
     roi = _crop_roi(gray, roi_rect)
 
-    # Precompute original ROI center/size to map into resized space
     roi_h = roi_rect[2]
     roi_w = roi_rect[3]
     center_r = roi_rect[0] + roi_h / 2.0
     center_c = roi_rect[1] + roi_w / 2.0
 
-    # --- Methods to compare ---
+    # Methods to compare
     methods = [
         (
             f"Splineops Standard {degree_label}",
-            lambda: _rt_splineops(gray, z, degree),
+            lambda: _rt_splineops(gray, z, degree),  # method="linear"/"cubic"
         ),
         (
-            f"Splineops LS {degree_label}",
-            lambda: _rt_splineops(gray, z, f"{degree}-best_antialiasing"),
-        ),
-        (
-            f"Splineops Oblique {degree_label}",
-            lambda: _rt_splineops(gray, z, f"{degree}-fast_antialiasing"),
+            f"Splineops Antialiasing {degree_label}",
+            lambda: _rt_splineops(gray, z, f"{degree}-antialiasing"),
         ),
         (
             f"SciPy {degree_label}",
@@ -891,27 +859,24 @@ def main(argv=None):
     rows: List[Dict] = []
     roi_tiles: List[Tuple[str, np.ndarray]] = []
 
-    # Add ORIGINAL ROI tile as first comparison panel
+    # Original ROI tile
     orig_tile = _nearest_big(roi, ROI_MAG_TARGET)
     roi_tiles.append(("Original", orig_tile))
 
-    # New: tiles for FFT and difference visualization (over the round-trip ROI)
     fft_tiles: List[Tuple[str, np.ndarray]] = []
     diff_tiles: List[Tuple[str, np.ndarray]] = []
 
-    # Original reference for these too
     fft_orig = _fft_log_magnitude(roi)
     fft_orig_big = _nearest_big(fft_orig, ROI_MAG_TARGET)
     fft_tiles.append(("Original ROI FFT", fft_orig_big))
 
-    diff_zero = 0.5 * np.ones_like(roi, dtype=DTYPE)  # no diff for original
+    diff_zero = 0.5 * np.ones_like(roi, dtype=DTYPE)
     diff_zero_big = _nearest_big(diff_zero, ROI_MAG_TARGET)
     diff_tiles.append(("Original (no diff)", diff_zero_big))
 
-    # We also want to remember LS first-pass image for the initial 2x2 figure
-    ls_first_for_plot: Optional[np.ndarray] = None
+    # Antialiasing first-pass for the initial 2x2 figure
+    aa_first_for_plot: Optional[np.ndarray] = None
 
-    # Print runtime specs (if available)
     if _HAS_SPECS and _print_runtime_context is not None:
         print()
         _print_runtime_context(include_threadpools=True)
@@ -939,16 +904,14 @@ def main(argv=None):
             )
             continue
 
-        # Capture LS first-pass for the initial figure
-        if name.startswith("Splineops LS"):
-            ls_first_for_plot = first.copy()
+        # Capture Antialiasing first-pass for the initial figure
+        if name.startswith("Splineops Antialiasing"):
+            aa_first_for_plot = first.copy()
 
-        # Round-trip metrics on fixed ROI in original resolution
         rec_roi = _crop_roi(rec, roi_rect)
         snr = _snr_db(roi, rec_roi)
         mse = float(np.mean((roi - rec_roi) ** 2, dtype=np.float64))
 
-        # SSIM over the ROI (if skimage is available)
         if _HAS_SKIMAGE and _ssim is not None:
             try:
                 ssim = float(_ssim(roi, rec_roi, data_range=1.0))
@@ -974,23 +937,17 @@ def main(argv=None):
             }
         )
 
-        # ROI tile for montage: map original ROI center + size into resized space
         H1, W1 = first.shape
         roi_h_res = max(1, int(round(roi_h * z)))
         roi_w_res = max(1, int(round(roi_w * z)))
 
         if roi_h_res > H1 or roi_w_res > W1:
-            # If the mapped ROI is larger than the resized image, just use full image
             first_roi = first
         else:
             center_r_res = int(round(center_r * z))
             center_c_res = int(round(center_c * z))
-            row_top_res = int(
-                np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res)
-            )
-            col_left_res = int(
-                np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res)
-            )
+            row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res))
+            col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res))
             first_roi = first[
                 row_top_res : row_top_res + roi_h_res,
                 col_left_res : col_left_res + roi_w_res,
@@ -999,27 +956,25 @@ def main(argv=None):
         tile = _nearest_big(first_roi, ROI_MAG_TARGET)
         roi_tiles.append((name, tile))
 
-        # FFT log-magnitude of the round-trip ROI (same size as original ROI)
         fft_roi = _fft_log_magnitude(rec_roi)
         fft_roi_big = _nearest_big(fft_roi, ROI_MAG_TARGET)
         fft_tiles.append((name, fft_roi_big))
 
-        # Normalized signed difference in ROI (rec - orig), visualized
         diff_roi = _diff_normalized(roi, rec_roi)
         diff_roi_big = _nearest_big(diff_roi, ROI_MAG_TARGET)
         diff_tiles.append((name, diff_roi_big))
 
-    # --- Initial 2×2 figure: original vs LS first-pass ---
-    if ls_first_for_plot is not None:
-        _show_initial_original_vs_ls(
+    # Initial 2×2 figure using Antialiasing first-pass
+    if aa_first_for_plot is not None:
+        _show_initial_original_vs_aa(
             gray=gray,
             roi_rect=roi_rect,
-            ls_first=ls_first_for_plot,
+            aa_first=aa_first_for_plot,
             z=z,
             degree_label=degree_label,
         )
 
-    # --- ROI montage (original + first-pass results) ---
+    # ROI montage (original + first-pass results)
     if roi_tiles:
         cols = min(3, len(roi_tiles))
         rows_n = int(np.ceil(len(roi_tiles) / cols))
@@ -1027,7 +982,7 @@ def main(argv=None):
         fig, axes = plt.subplots(
             rows_n,
             cols,
-            figsize=(cols * 3.2, rows_n * 3.4),  # no extra +1.0, save space
+            figsize=(cols * 3.2, rows_n * 3.4),
         )
 
         if not isinstance(axes, np.ndarray):
@@ -1044,33 +999,26 @@ def main(argv=None):
             ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE, pad=3)
             ax.set_axis_off()
 
-        # No fig.suptitle(...) here anymore
         fig.tight_layout()
         plt.show()
 
-        # --- FFT log-magnitude montage (round-trip ROI) ---
+        # FFT montage
         if fft_tiles:
             _show_tiles_montage(
                 fft_tiles,
-                suptitle=(
-                    "FFT log-magnitude of ROI "
-                    "(Original vs round-trip per method)"
-                ),
+                suptitle="FFT log-magnitude of ROI (Original vs round-trip per method)",
                 cmap="gray",
             )
 
-        # --- Difference montage (rec - original in ROI) ---
+        # Difference montage
         if diff_tiles:
             _show_tiles_montage(
                 diff_tiles,
-                suptitle=(
-                    "Normalized signed difference in ROI "
-                    "(rec - original; 0.5 = no error)"
-                ),
+                suptitle="Normalized signed difference in ROI (rec - original; 0.5 = no error)",
                 cmap="gray",
             )
 
-        # --- Timing bar chart (round-trip) ---
+        # Timing bar chart
         valid = [r for r in rows if np.isfinite(r["time"])]
         if valid:
             names = [r["name"] for r in valid]
@@ -1098,25 +1046,23 @@ def main(argv=None):
             plt.tight_layout()
             plt.show()
 
-        # --- SNR + MSE bar chart (round-trip) ---
+        # SNR + MSE bar chart
         valid = [r for r in rows if np.isfinite(r["snr"]) and np.isfinite(r["mse"])]
         if valid:
             names = [r["name"] for r in valid]
             snrs = np.array([r["snr"] for r in valid])
             mses = np.array([r["mse"] for r in valid])
 
-            # Sort by SNR (higher is better) and keep same order for MSE
             order = np.argsort(-snrs)
             names = [names[i] for i in order]
             snrs = snrs[order]
             mses = mses[order]
 
             x = np.arange(len(names))
-            width = 0.4  # bar width for each metric
+            width = 0.4
 
             fig, ax1 = plt.subplots(figsize=PLOT_FIGSIZE)
 
-            # Left y-axis: SNR
             snr_color = "tab:blue"
             mse_color = "tab:orange"
 
@@ -1139,7 +1085,6 @@ def main(argv=None):
             )
             ax1.grid(axis="y", alpha=0.3)
 
-            # Right y-axis: MSE
             ax2 = ax1.twinx()
             mse_bars = ax2.bar(
                 x + width / 2,
@@ -1152,13 +1097,11 @@ def main(argv=None):
             ax2.set_ylabel("MSE", color=mse_color, fontsize=PLOT_LABEL_FONTSIZE)
             ax2.tick_params(axis="y", labelcolor=mse_color, labelsize=PLOT_TICK_FONTSIZE)
 
-            # Shared title / legend
             ax1.set_title(
                 f"SNR / MSE vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
                 fontsize=PLOT_TITLE_FONTSIZE,
             )
 
-            # Combine legends from both axes
             handles = snr_bars.patches[:1] + mse_bars.patches[:1]
             labels = ["SNR (dB)", "MSE"]
             fig.legend(
@@ -1172,14 +1115,13 @@ def main(argv=None):
             fig.tight_layout()
             plt.show()
 
-        # --- SSIM bar chart (round-trip) ---
+        # SSIM bar chart
         if _HAS_SKIMAGE and _ssim is not None:
             valid_ssim = [r for r in rows if np.isfinite(r.get("ssim", np.nan))]
             if valid_ssim:
                 names = [r["name"] for r in valid_ssim]
                 ssims = np.array([r["ssim"] for r in valid_ssim])
 
-                # Sort by SSIM (higher is better)
                 order = np.argsort(-ssims)
                 names = [names[i] for i in order]
                 ssims = ssims[order]
