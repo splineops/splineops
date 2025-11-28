@@ -8,7 +8,7 @@ Resize
 Overview
 --------
 
-The *resize* function in the *splineops* library delivers high-performance, high-fidelity resizing for N-dimensional data arrays using advanced spline-based methods [1]_, [2]_, [3]_.
+The *resize* function in the *splineops* library delivers high-performance, high-fidelity resizing for N-dimensional data arrays using advanced spline-based methods [1]_, [2]_, [3]_, [4]_.
 
 It offers three distinct modes, each designed for a different balance of speed, accuracy and control:
 
@@ -191,7 +191,12 @@ References
    IEEE Transactions on Image Processing, vol. 10, no. 9, pp. 1365-1378,
    September 2001.
 
-.. [3] P. Thévenaz, T. Blu, M. Unser,
+.. [3] C. Lee, M. Eden, M. Unser,
+   `High-Quality Image Resizing Using Oblique Projection Operators <https://doi.org/10.1109/83.668025>`_,
+   IEEE Transactions on Image Processing, vol. 7, no. 5,
+   pp. 679–692, May 1998.
+
+.. [4] P. Thévenaz, T. Blu, M. Unser,
    `Interpolation Revisited <https://doi.org/10.1109/42.875199>`_,
    IEEE Transactions on Medical Imaging, vol. 19, no. 7, pp. 739-758,
    July 2000.
