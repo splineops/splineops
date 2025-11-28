@@ -32,14 +32,16 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 from scipy.ndimage import zoom as _scipy_zoom  # only if you want extra comparisons
-from splineops.resize import resize
+from splineops.resize import resize, resize_degrees
 from splineops.utils.metrics import compute_snr_and_mse_region
 from splineops.utils.plotting import plot_difference_image, show_roi_zoom
 from splineops.utils.diagram import draw_two_method_comparisons
 
+
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
+
 
 # Use float32 for storage / IO (resize still computes internally in float64)
 DTYPE = np.float32
@@ -61,7 +63,7 @@ _ = draw_two_method_comparisons(
 # Load and Normalize an Image
 # ---------------------------
 
-url = 'https://r0k.us/graphics/kodak/kodak/kodim14.png'
+url = "https://r0k.us/graphics/kodak/kodak/kodim14.png"
 with urlopen(url, timeout=10) as resp:
     img = Image.open(resp)
 data = np.array(img, dtype=np.float64)
@@ -69,9 +71,9 @@ data = np.array(img, dtype=np.float64)
 # Convert to [0..1] + grayscale
 input_image_normalized = data / 255.0
 input_image_normalized = (
-    input_image_normalized[:, :, 0] * 0.2989 +  # Red channel
-    input_image_normalized[:, :, 1] * 0.5870 +  # Green channel
-    input_image_normalized[:, :, 2] * 0.1140    # Blue channel
+    input_image_normalized[:, :, 0] * 0.2989  # Red channel
+    + input_image_normalized[:, :, 1] * 0.5870  # Green channel
+    + input_image_normalized[:, :, 2] * 0.1140  # Blue channel
 )
 
 # Run the spline backend in float32 for performance
@@ -125,9 +127,9 @@ recovered_2d_std = resize(
 )
 t2 = time.perf_counter()
 
-time_2d_std_fwd   = t1 - t0         # forward resize (down/up)
-time_2d_std_back  = t2 - t1         # backward resize (return to original size)
-time_2d_std       = t2 - t0         # total pipeline time
+time_2d_std_fwd = t1 - t0         # forward resize (down/up)
+time_2d_std_back = t2 - t1        # backward resize (return to original size)
+time_2d_std = t2 - t0             # total pipeline time
 
 # SNR/MSE on central region (no ROI cropping here)
 snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
@@ -150,13 +152,13 @@ t1 = time.perf_counter()
 recovered_2d_aa = resize(
     resized_2d_aa,
     output_size=input_image_normalized.shape,
-    method="cubic-antialiasing",  # standard cubic for upsampling
+    method="cubic-antialiasing",  # (you could also use "cubic" here)
 )
 t2 = time.perf_counter()
 
-time_2d_aa_fwd   = t1 - t0
-time_2d_aa_back  = t2 - t1
-time_2d_aa       = t2 - t0
+time_2d_aa_fwd = t1 - t0
+time_2d_aa_back = t2 - t1
+time_2d_aa = t2 - t0
 
 snr_2d_aa, mse_2d_aa = compute_snr_and_mse_region(
     input_image_normalized,
@@ -361,6 +363,71 @@ print(header_line)
 print("-" * len(header_line))
 
 for name, snr_val, mse_val, t in methods:
+    print(
+        f"{name:<40} "
+        f"{snr_val:>10.2f} "
+        f"{mse_val:>16.2e} "
+        f"{t:>12.4f}"
+    )
+
+# %%
+# Least-Squares vs Antialiasing
+# -----------------------------
+#
+# We can also compare the antialiasing pipeline
+# against a full **Least-Squares** projection of degree 3 using the low-level
+# :func:`resize_degrees` API. We don't change any of the figures above; we only
+# print SNR / MSE / time numbers here.
+#
+# In this particular example, the Least-Squares variant often achieves very
+# good metrics (SNR/MSE) and can even look slightly “cleaner” numerically.
+# However, in practice we generally recommend the **Antialiasing** preset:
+#
+# - it is extremely stable and robust across a wide range of zooms and images,
+# - it is faster than full Least-Squares,
+# - and the visual quality is usually very close.
+
+t0 = time.perf_counter()
+resized_2d_ls = resize_degrees(
+    input_image_normalized,
+    zoom_factors=zoom_factors_2d,
+    interp_degree=3,
+    analy_degree=3,
+    synthe_degree=3,
+    inversable=False,
+)
+t1 = time.perf_counter()
+recovered_2d_ls = resize_degrees(
+    resized_2d_ls,
+    output_size=input_image_normalized.shape,
+    interp_degree=3,
+    analy_degree=3,
+    synthe_degree=3,
+    inversable=False,
+)
+t2 = time.perf_counter()
+
+time_2d_ls_fwd = t1 - t0
+time_2d_ls_back = t2 - t1
+time_2d_ls = t2 - t0
+
+snr_2d_ls, mse_2d_ls = compute_snr_and_mse_region(
+    input_image_normalized,
+    recovered_2d_ls,
+    border_fraction=border_fraction,
+)
+
+methods_ls_vs_aa = [
+    ("Antialiasing (cubic shrink, cubic up)", snr_2d_aa, mse_2d_aa, time_2d_aa),
+    ("Least-Squares (cubic) shrink+up",       snr_2d_ls, mse_2d_ls, time_2d_ls),
+]
+
+header_line_ls = f"{'Method':<40} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
+print()
+print(header_line_ls)
+print("-" * len(header_line_ls))
+
+for name, snr_val, mse_val, t in methods_ls_vs_aa:
     print(
         f"{name:<40} "
         f"{snr_val:>10.2f} "
