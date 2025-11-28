@@ -2,19 +2,72 @@
 
 import pytest
 import numpy as np
-from splineops.resize.resize import resize
+from splineops.resize import resize, resize_degrees
 
-# --- helper to map (method, degree) -> new method preset string ---
-def to_preset(method: str, degree: int) -> str:
-    name = {0: "fast", 1: "linear", 2: "quadratic", 3: "cubic"}[degree]
+# Map numeric degree -> base name used by splineops
+_DEGREE_TO_NAME = {0: "fast", 1: "linear", 2: "quadratic", 3: "cubic"}
+
+
+def _apply_resize(
+    data: np.ndarray,
+    *,
+    method: str,            # "least-squares" | "oblique" | "interpolation" | "standard"
+    degree: int,            # 0..3
+    zoom_factors=None,
+    output_size=None,
+):
+    """
+    Dispatch into the new splineops API:
+
+      - interpolation / standard:
+          --> resize(..., method=name)
+      - oblique:
+          --> resize(..., method=f"{name}-antialiasing")
+      - least-squares:
+          --> resize_degrees(..., interp=analy=synthe=degree)
+    """
+    if (zoom_factors is None) == (output_size is None):
+        raise ValueError("Exactly one of zoom_factors or output_size must be provided.")
+
+    name = _DEGREE_TO_NAME[degree]
+
+    # Pure interpolation (no projection)
+    if method in {"interpolation", "standard"}:
+        preset = name
+        return resize(
+            data=data,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            method=preset,
+        )
+
+    # Oblique antialiasing → new "-antialiasing" notation
+    if method == "oblique":
+        preset = f"{name}-antialiasing"
+        return resize(
+            data=data,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            method=preset,
+        )
+
+    # Equal-degree projection (LS-style) via explicit degrees
     if method == "least-squares":
-        return f"{name}-best_antialiasing"
-    elif method == "oblique":
-        return f"{name}-fast_antialiasing"
-    elif method in {"interpolation", "standard"}:
-        return name
-    else:
-        raise ValueError(f"Unknown method '{method}'")
+        interp_degree = degree
+        analy_degree = degree
+        synthe_degree = degree
+        return resize_degrees(
+            data=data,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            interp_degree=interp_degree,
+            analy_degree=analy_degree,
+            synthe_degree=synthe_degree,
+            inversable=False,
+        )
+
+    raise ValueError(f"Unknown method '{method}'")
+
 
 # Hardcoded Java-generated images for comparison
 DOWNSCALED_0_5_JAVA_SQUARE_LS_3_3_3 = np.array([
@@ -193,27 +246,26 @@ def mse(matrix1, matrix2):
 
 # Helper functions for resizing and comparing square and sinusoid images
 def resize_and_compare_square(java_downscaled, java_reverted, degree, method, tolerance, dtype=np.float64):
-    preset = to_preset(method, degree)
-
     input_img = np.zeros((10, 10), dtype=dtype)
     input_img[3:7, 3:7] = dtype(255.0)
     input_img_normalized = input_img / dtype(255.0)
 
     # Step 1: Downscale
-    downscaled_img = resize(
+    downscaled_img = _apply_resize(
         data=input_img_normalized,
+        method=method,
+        degree=degree,
         zoom_factors=(0.5, 0.5),
-        method=preset
-    )
-    
-    # Step 2: Revert by upscaling
-    reverted_img = resize(
-        data=downscaled_img,
-        output_size=(10, 10),
-        method=preset
     )
 
-    # Compute and assert MSE for downscaled and reverted
+    # Step 2: Revert by upscaling
+    reverted_img = _apply_resize(
+        data=downscaled_img,
+        method=method,
+        degree=degree,
+        output_size=(10, 10),
+    )
+
     downscaled_mse = mse(downscaled_img, java_downscaled)
     reverted_mse = mse(reverted_img, java_reverted)
 
@@ -221,9 +273,7 @@ def resize_and_compare_square(java_downscaled, java_reverted, degree, method, to
     assert reverted_mse < tolerance, f"Reverted MSE {reverted_mse} exceeds tolerance {tolerance}"
 
 def resize_and_compare_sinusoid(java_downscaled, java_reverted, degree, method, tolerance, dtype=np.float64):
-    preset = to_preset(method, degree)
-
-    # Do math in float64, then cast once to dtype
+    # Build input sinusoid in float64 then cast to dtype at the end
     input_img = np.zeros((5, 5), dtype=np.float64)
     freq_x, freq_y = 2.0 * np.pi / 5.0, 3.0 * np.pi / 5.0
     for x in range(5):
@@ -233,27 +283,28 @@ def resize_and_compare_sinusoid(java_downscaled, java_reverted, degree, method, 
     input_img_normalized = (input_img / (1.0 + np.max(input_img))).astype(dtype)
 
     # Step 1: Upscale
-    upscaled_img = resize(
+    upscaled_img = _apply_resize(
         data=input_img_normalized,
+        method=method,
+        degree=degree,
         zoom_factors=(2.0, 2.0),
-        method=preset
-    )
-    
-    # Step 2: Revert by downscaling
-    reverted_img = resize(
-        data=upscaled_img,
-        output_size=(5, 5),
-        method=preset
     )
 
-    # Compute and assert MSE for upscaled and reverted
+    # Step 2: Revert by downscaling
+    reverted_img = _apply_resize(
+        data=upscaled_img,
+        method=method,
+        degree=degree,
+        output_size=(5, 5),
+    )
+
     upscaled_mse = mse(upscaled_img, java_downscaled)
     reverted_mse = mse(reverted_img, java_reverted)
 
     assert upscaled_mse < tolerance, f"Upscaled MSE {upscaled_mse} exceeds tolerance {tolerance}"
     assert reverted_mse < tolerance, f"Reverted MSE {reverted_mse} exceeds tolerance {tolerance}"
 
-# Define each test individually as a pytest function
+# --- Tests ---
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_square_ls_3_3_3(dtype):
