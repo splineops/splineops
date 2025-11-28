@@ -7,8 +7,7 @@ Compares:
 
 - SciPy ndimage.zoom (linear / cubic)
 - splineops Standard (linear / cubic)
-- splineops Least-Squares (best AA, linear / cubic)
-- splineops Oblique (fast AA, linear / cubic)
+- splineops Antialiasing (linear / cubic)
 - PyTorch bilinear/bicubic
 - OpenCV INTER_LINEAR / INTER_CUBIC
 - Pillow
@@ -93,14 +92,13 @@ LINEWIDTH = 2.0             # thicker lines
 
 # ---------------- Method toggles ----------------
 # Set any of these to False to skip computing/plotting that method.
-ENABLE_SCIPY              = True
-ENABLE_SPLINEOPS_STANDARD = True
-ENABLE_SPLINEOPS_LS       = True
-ENABLE_SPLINEOPS_OBLIQUE  = True
-ENABLE_TORCH              = True
-ENABLE_OPENCV             = True
-ENABLE_PILLOW             = True
-ENABLE_SKIMAGE            = True
+ENABLE_SCIPY                   = True
+ENABLE_SPLINEOPS_STANDARD      = True
+ENABLE_SPLINEOPS_ANTIALIASING  = True
+ENABLE_TORCH                   = True
+ENABLE_OPENCV                  = True
+ENABLE_PILLOW                  = True
+ENABLE_SKIMAGE                 = True
 
 # -------------------------- UI / I/O helpers --------------------------
 
@@ -239,12 +237,19 @@ def scipy_roundtrip(
 
 
 def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, float]:
+    """
+    splineops round-trip using a single preset string:
+
+      - "linear", "cubic"            → Standard interpolation
+      - "linear-antialiasing", ...   → Antialiasing (oblique projection)
+    """
     zoom_fwd = (z, z) if img.ndim == 2 else (z, z, 1.0)
     zoom_bwd = (1.0 / z, 1.0 / z) if img.ndim == 2 else (1.0 / z, 1.0 / z, 1.0)
     t0 = time.perf_counter()
     out = spl_resize(img, zoom_factors=zoom_fwd, method=method)
     rec = spl_resize(out, zoom_factors=zoom_bwd, method=method)
     dt = time.perf_counter() - t0
+    rec = np.clip(rec, 0.0, 1.0)
     return rec.astype(img.dtype, copy=False), dt
 
 
@@ -253,7 +258,7 @@ def torch_roundtrip(
 ) -> Tuple[np.ndarray, float]:
     """
     Round-trip using torch.nn.functional.interpolate with bilinear (linear)
-    or bicubic (cubic) + antialias=True. Runs on CPU.
+    or bicubic (cubic). Runs on CPU.
 
     Timing includes:
       - numpy -> torch conversion
@@ -408,8 +413,7 @@ def pillow_roundtrip(
 def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip with scikit-image.transform.resize using order=1 (linear) or
-    order=3 (cubic) + anti_aliasing=True.
-    Supports 2D (H,W) and 3D (H,W,C) arrays.
+    order=3 (cubic). Supports 2D (H,W) and 3D (H,W,C) arrays.
     """
     if not _HAS_SKIMAGE:
         raise RuntimeError("scikit-image not available")
@@ -471,7 +475,7 @@ def average_time(run, repeats: int = 10, warmup: bool = True):
     """
     Return (last_rec, mean_time, std_time) over 'repeats' runs.
 
-    If warmup=True, run one extra un-timed warmup call (like script_resize_comparison._avg_time).
+    If warmup=True, run one extra un-timed warmup call.
     """
     if warmup:
         # Warmup run (ignore timing + result)
@@ -635,20 +639,14 @@ def main():
     if ENABLE_SCIPY:
         METHODS[f"SciPy {degree_label}"] = ("scipy", degree)
 
-    # splineops: Standard / LS / Oblique
+    # splineops: Standard / Antialiasing
     if ENABLE_SPLINEOPS_STANDARD:
         METHODS[f"Standard {degree_label}"] = ("splineops", degree)
 
-    if ENABLE_SPLINEOPS_LS:
-        METHODS[f"Least-Squares (AA {degree_label})"] = (
+    if ENABLE_SPLINEOPS_ANTIALIASING:
+        METHODS[f"Antialiasing {degree_label}"] = (
             "splineops",
-            f"{degree}-best_antialiasing",
-        )
-
-    if ENABLE_SPLINEOPS_OBLIQUE:
-        METHODS[f"Oblique (fast AA {degree_label})"] = (
-            "splineops",
-            f"{degree}-fast_antialiasing",
+            f"{degree}-antialiasing",
         )
 
     # PyTorch
@@ -665,7 +663,7 @@ def main():
         else:
             print("[info] OpenCV not found; 'OpenCV' curve will be omitted.")
 
-    # Pillow: mirror script_resize_comparison
+    # Pillow
     if ENABLE_PILLOW:
         if degree == "linear":
             METHODS["Pillow BILINEAR (float)"] = ("pillow", "bilinear")
@@ -692,17 +690,17 @@ def main():
         print(f"[{idx:>3}/{len(z_list)}] z={z:.5f}", end="\r")
         for name, (kind, method) in METHODS.items():
             if kind == "scipy":
-                runner = lambda z=z, deg=method: scipy_roundtrip(img, z, deg)
+                runner = lambda z=z, deg=method: scipy_roundtrip(img, z, deg)  # type: ignore[arg-type]
             elif kind == "splineops":
-                runner = lambda z=z, m=method: spl_roundtrip(img, z, m)
+                runner = lambda z=z, m=method: spl_roundtrip(img, z, m)        # type: ignore[arg-type]
             elif kind == "torch":
-                runner = lambda z=z, deg=method: torch_roundtrip(img, z, deg)
+                runner = lambda z=z, deg=method: torch_roundtrip(img, z, deg)  # type: ignore[arg-type]
             elif kind == "opencv":
-                runner = lambda z=z, w=method: opencv_roundtrip(img, z, w)
+                runner = lambda z=z, w=method: opencv_roundtrip(img, z, w)     # type: ignore[arg-type]
             elif kind == "pillow":
-                runner = lambda z=z, w=method: pillow_roundtrip(img, z, w)
+                runner = lambda z=z, w=method: pillow_roundtrip(img, z, w)     # type: ignore[arg-type]
             elif kind == "skimage":
-                runner = lambda z=z, deg=method: skimage_roundtrip(img, z, deg)
+                runner = lambda z=z, deg=method: skimage_roundtrip(img, z, deg)  # type: ignore[arg-type]
             else:
                 continue
 
