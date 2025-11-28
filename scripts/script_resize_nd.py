@@ -14,8 +14,10 @@ For the 4D case, we fix a time index T and show a central Z-slice.
 
 You can tweak:
   - ZOOMS_3D / ZOOMS_4D for different per-axis zooms
-  - METHOD_3D / METHOD_4D to use "cubic", "cubic-fast_antialiasing",
-    "cubic-best_antialiasing", etc.
+  - METHOD_3D / METHOD_4D to use presets like:
+      * "cubic"                – Standard cubic interpolation
+      * "cubic-antialiasing"   – cubic with antialiasing (oblique projection)
+      * "linear", "linear-antialiasing", etc.
 """
 
 from __future__ import annotations
@@ -50,12 +52,12 @@ except Exception:
 # Configuration: methods & zooms
 # --------------------------------------------
 
-# Resize methods (see splineops.resize.METHOD_MAP)
-#   - "cubic"                    → interpolation, degree 3
-#   - "cubic-fast_antialiasing"  → oblique, degree 3
-#   - "cubic-best_antialiasing"  → least-squares, degree 3
-METHOD_3D = "cubic-best_antialiasing"
-METHOD_4D = "cubic-best_antialiasing"
+# Resize methods:
+#   - "cubic"               → Standard interpolation, degree 3
+#   - "cubic-antialiasing"  → Antialiasing (oblique projection), degree 3
+#   - "linear", "linear-antialiasing", etc. are also valid.
+METHOD_3D = "cubic-antialiasing"
+METHOD_4D = "cubic-antialiasing"
 
 # Per-axis zooms:
 # 3D: (Z, Y, X)
