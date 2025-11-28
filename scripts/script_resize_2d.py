@@ -9,14 +9,15 @@ Flow:
        - SciPy Linear / Quadratic / Cubic
        - Standard Linear / Quadratic / Cubic
        - Antialiasing Linear / Quadratic / Cubic
+       - Least-Squares Linear / Quadratic / Cubic
   3) Show ORIGINAL grayscale (no text)
   4) Show RESIZED grayscale (no text)
-  5) Show COMPARISON figure: the three families at the same degree with timing
+  5) Show COMPARISON figure: original + the four families at the same degree with timing
 
 Notes:
   - Displays use RGB uint8 (no colormap) to avoid large float RGBA buffers.
   - SciPy is optional; missing SciPy shows a friendly message in the comparison panel.
-  - On macOS we force Matplotlib to the native Qt-based backend so Tk isn't used by figures.
+  - On macOS we force Matplotlib to the Qt-based backend so Tk isn't used by figures.
 """
 
 from __future__ import annotations
@@ -39,7 +40,6 @@ except Exception:
     QtWidgets = None  # type: ignore[assignment]
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 
 import numpy as np
 from PIL import Image
@@ -58,13 +58,13 @@ from PyQt5 import QtWidgets  # type: ignore[assignment]
 
 # Import splineops (works when run directly or as module)
 try:
-    from splineops.resize import resize as sp_resize
+    from splineops.resize import resize as sp_resize, resize_degrees as sp_resize_degrees
 except Exception:
     repo_root = Path(__file__).resolve().parents[1]
     src_dir   = repo_root / "src"
     if src_dir.exists() and str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
-    from splineops.resize import resize as sp_resize
+    from splineops.resize import resize as sp_resize, resize_degrees as sp_resize_degrees
 
 # -------------------------------
 # Image I/O → grayscale [0,1]
@@ -129,6 +129,7 @@ FAMILIES = (
     ("scipy",   "SciPy"),
     ("standard","Standard"),
     ("aa",      "Antialiasing"),
+    ("ls",      "Least-Squares"),
 )
 METHOD_LABELS = [f"{fam_name} {deg.title()}" for fam_key, fam_name in FAMILIES for deg in DEGREES]
 LABEL_TO_KEY = {f"{fam_name} {deg.title()}": f"{fam_key}-{deg}"
@@ -163,12 +164,24 @@ def _splineops_resize_gray(data01: np.ndarray, z: float, family: str, degree: st
     if family == "standard":
         # Pure interpolation (no antialiasing)
         sp_method = degree
+        out = sp_resize(data01, zoom_factors=(z, z), method=sp_method)
     elif family == "aa":
         # Oblique antialiasing
         sp_method = f"{degree}-antialiasing"
+        out = sp_resize(data01, zoom_factors=(z, z), method=sp_method)
+    elif family == "ls":
+        # Equal-degree projection via explicit degrees
+        degree_map = {"linear": 1, "quadratic": 2, "cubic": 3}
+        n = degree_map[degree]
+        out = sp_resize_degrees(
+            data01,
+            zoom_factors=(z, z),
+            interp_degree=n,
+            analy_degree=n,
+            synthe_degree=n,
+        )
     else:
         raise ValueError(f"Unsupported family for splineops: {family}")
-    out = sp_resize(data01, zoom_factors=(z, z), method=sp_method)
     return np.clip(out, 0.0, 1.0)
 
 def _resize_gray(gray01: np.ndarray, method_key: str, zoom: float) -> np.ndarray:
@@ -190,7 +203,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self,
         parent: Optional[QtWidgets.QWidget] = None,
         default_zoom: float = 0.5,
-        default_method_key: str = "aa-cubic",
+        default_method_key: str = "ls-cubic",
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Resize Settings")
@@ -211,7 +224,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self.method_combo = QtWidgets.QComboBox()
         self.method_combo.addItems(METHOD_LABELS)
 
-        default_label = KEY_TO_LABEL.get(default_method_key, "Antialiasing Cubic")
+        default_label = KEY_TO_LABEL.get(default_method_key, "Least-Squares Cubic")
         idx = self.method_combo.findText(default_label)
         if idx >= 0:
             self.method_combo.setCurrentIndex(idx)
@@ -312,6 +325,7 @@ def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
         ("scipy",   "SciPy"),
         ("standard","Standard"),
         ("aa",      "Antialiasing"),
+        ("ls",      "Least-Squares"),
     ]
     results: List[Dict] = []
     for fam_key, fam_name in families:
@@ -330,11 +344,31 @@ def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
                         "img": img, "time": elapsed, "error": err})
     return results
 
-def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape: Tuple[int, int]):
+def _comparison_figure(orig_gray: np.ndarray,
+                       results: List[Dict],
+                       zoom: float,
+                       degree: str,
+                       base_shape: Tuple[int, int]):
+    """
+    Show a comparison figure with the original image plus the resized outputs.
+    """
+    panels: List[Dict] = []
+
+    # First panel: original image
+    panels.append({
+        "label": "Original",
+        "img": orig_gray,
+        "time": None,
+        "error": None,
+    })
+
+    # Then each family result
+    panels.extend(results)
+
     heights, widths = [], []
-    for r in results:
-        if r["img"] is not None:
-            h, w = r["img"].shape
+    for p in panels:
+        if p["img"] is not None:
+            h, w = p["img"].shape
         else:
             h = max(1, int(round(base_shape[0] * zoom)))
             w = max(1, int(round(base_shape[1] * zoom)))
@@ -347,26 +381,34 @@ def _comparison_figure(results: List[Dict], zoom: float, degree: str, base_shape
     fig_h_in = panel_h_in + 0.7
 
     fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=100, constrained_layout=True)
-    gs = fig.add_gridspec(1, len(results), width_ratios=panel_ws_in)
+    gs = fig.add_gridspec(1, len(panels), width_ratios=panel_ws_in)
 
-    for i, r in enumerate(results):
+    for i, p in enumerate(panels):
         ax = fig.add_subplot(gs[0, i])
         ax.set_axis_off()
-        title = f"{r['label']}\navg(10): {_fmt_time(r['time'])}"
-        if r["img"] is not None:
-            ax.imshow(_as_rgb_u8(r["img"]), interpolation="nearest", aspect="equal")
+
+        # Original panel: no timing, just a label
+        if i == 0:
+            ax.imshow(_as_rgb_u8(p["img"]), interpolation="nearest", aspect="equal")
+            ax.set_title("Original", fontsize=10)
+            continue
+
+        title = f"{p['label']}\navg(10): {_fmt_time(p['time'])}"
+        if p["img"] is not None:
+            ax.imshow(_as_rgb_u8(p["img"]), interpolation="nearest", aspect="equal")
             ax.set_title(title, fontsize=10)
         else:
             ax.set_facecolor("0.92")
-            ax.text(0.5, 0.55, r["label"], ha="center", va="center", fontsize=10)
-            msg = "Error" if r["error"] else "Unavailable"
-            detail = ("SciPy not installed" if (r["key"].startswith("scipy-") and r["error"])
-                      else (r["error"] or ""))
+            ax.text(0.5, 0.55, p["label"], ha="center", va="center", fontsize=10)
+            msg = "Error" if p["error"] else "Unavailable"
+            detail = p["error"] or ""
+            if p["label"].startswith("SciPy") and p["error"]:
+                msg = "SciPy error"
             ax.text(0.5, 0.40, f"{msg}", ha="center", va="center", fontsize=9)
             if detail:
                 ax.text(0.5, 0.28, detail[:48] + ("…" if len(detail) > 48 else ""),
                         ha="center", va="center", fontsize=8)
-            ax.set_title(f"{r['label']}\navg(10): {_fmt_time(None)}", fontsize=10)
+            ax.set_title(f"{p['label']}\navg(10): {_fmt_time(None)}", fontsize=10)
 
     fig.suptitle(f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}",
                  fontsize=12)
@@ -386,7 +428,7 @@ def main(argv=None) -> int:
     if img_path is None:
         return 0  # cancelled
 
-    dlg = SettingsDialog(parent=None, default_zoom=0.5, default_method_key="aa-cubic")
+    dlg = SettingsDialog(parent=None, default_zoom=0.5, default_method_key="ls-cubic")
     if dlg.exec_() != QtWidgets.QDialog.Accepted or dlg.result is None:
         return 0  # cancelled
     zoom, method_key = dlg.result
@@ -405,7 +447,7 @@ def main(argv=None) -> int:
     # 1) Original grayscale
     _show_gray_image(gray01)
 
-    # 2) Resized grayscale
+    # 2) Resized grayscale (selected method)
     try:
         out = _resize_gray(gray01, method_key, zoom)
     except Exception as e:
@@ -413,10 +455,10 @@ def main(argv=None) -> int:
         return 1
     _show_gray_image(out)
 
-    # 3) Degree-matched comparison
+    # 3) Degree-matched comparison: original + families
     _, degree = _parse_method_key(method_key)
     results = _measure_families_at_degree(gray01, zoom, degree)
-    _comparison_figure(results, zoom, degree, base_shape=gray01.shape)
+    _comparison_figure(gray01, results, zoom, degree, base_shape=gray01.shape)
 
     try:
         plt.close("all")
