@@ -1,27 +1,75 @@
 # splineops/tests/test_02_02_resize.py
 import numpy as np
 import pytest
-from splineops.resize import resize
+from splineops.resize import resize, resize_degrees
 
-# --- helper to map (method, degree) -> new method preset string ---
-def to_preset(method: str, degree: int) -> str:
-    name = {0: "fast", 1: "linear", 2: "quadratic", 3: "cubic"}[degree]
+# Map numeric degree -> preset name
+_DEGREE_TO_NAME = {0: "fast", 1: "linear", 2: "quadratic", 3: "cubic"}
+
+
+def _apply_resize(
+    data: np.ndarray,
+    *,
+    method: str,            # "least-squares" | "oblique" | "interpolation" | "standard"
+    degree: int,            # 0..3
+    zoom_factors=None,
+    output_size=None,
+) -> np.ndarray:
+    """
+    Dispatch into the new splineops API:
+
+      - interpolation / standard:
+          resize(..., method=name)
+      - oblique (antialiasing):
+          resize(..., method=f"{name}-antialiasing")
+      - least-squares (equal-degree projection):
+          resize_degrees(..., interp=analy=synthe=degree)
+    """
+    if (zoom_factors is None) == (output_size is None):
+        raise ValueError("Exactly one of zoom_factors or output_size must be provided.")
+
+    name = _DEGREE_TO_NAME[degree]
+
+    if method in {"interpolation", "standard"}:
+        preset = name
+        return resize(
+            data=data,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            method=preset,
+        )
+
+    if method == "oblique":
+        preset = f"{name}-antialiasing"
+        return resize(
+            data=data,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            method=preset,
+        )
+
     if method == "least-squares":
-        return f"{name}-best_antialiasing"
-    elif method == "oblique":
-        return f"{name}-fast_antialiasing"
-    elif method in {"interpolation", "standard"}:
-        return name
-    else:
-        raise ValueError(f"Unknown method '{method}'")
+        # Equal-degree projection (LS-style) via explicit degrees
+        return resize_degrees(
+            data,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            interp_degree=degree,
+            analy_degree=degree,
+            synthe_degree=degree,
+            inversable=False,
+        )
+
+    raise ValueError(f"Unknown method '{method}'")
+
 
 # --- analysis degree & shift to mirror the algorithm’s coordinate mapping ---
 def _analy_degree_of(method: str, degree: int) -> int:
     """
     Map the public method to the analysis degree used by the algorithm.
     - interpolation/standard: analy = -1
-    - least-squares:         analy = degree
-    - oblique:               analy = 0 for linear, 1 for quadratic/cubic
+    - least-squares-style projection: analy = degree
+    - oblique (antialiasing): analy = 0 for linear, 1 for quadratic/cubic
     """
     if method in {"interpolation", "standard"}:
         return -1
@@ -182,12 +230,22 @@ def generate_pattern(pattern_name, shape, zoom_factors, freqs=None, square_sizes
 # --- test driver ---
 def resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, method,
                                      freqs=None, square_sizes=None, dtype=np.float64):
-    preset = to_preset(method, degree)
-    # Generate pattern in float64, then cast once to the desired storage dtype
-    pattern = generate_pattern(pattern_name, shape, zoom_factors,
-                               freqs=freqs, square_sizes=square_sizes).astype(dtype)
-    resized_image = resize(pattern, zoom_factors=zoom_factors, method=preset)
-    # Compute error in float64
+    # Generate pattern in float64, then cast once
+    pattern = generate_pattern(
+        pattern_name,
+        shape,
+        zoom_factors,
+        freqs=freqs,
+        square_sizes=square_sizes,
+    ).astype(dtype)
+
+    resized_image = _apply_resize(
+        pattern,
+        method=method,
+        degree=degree,
+        zoom_factors=zoom_factors,
+    )
+
     mse = calculate_mse_with_expected(
         pattern_name,
         shape,
@@ -198,7 +256,7 @@ def resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, 
         degree=degree,
         method=method,
     )
-    psnr = 10 * np.log10(1 / mse) if mse != 0 else float('inf')
+    psnr = 10 * np.log10(1 / mse) if mse != 0 else float("inf")
     return mse, psnr
 
 # --- parametrized tests (patterns) ---
@@ -245,8 +303,8 @@ def test_standard_identity_zoom_one(shape, degree):
     rng = np.random.default_rng(0)
     x = rng.random(shape, dtype=np.float64)
     zf = tuple(1.0 for _ in shape)
-    method = to_preset("interpolation", degree)  # "fast/linear/quadratic/cubic"
-    y = resize(x, zoom_factors=zf, method=method)
+    name = _DEGREE_TO_NAME[degree]  # "fast"/"linear"/"quadratic"/"cubic"
+    y = resize(x, zoom_factors=zf, method=name)
     err = np.max(np.abs(y - x))
     assert err < 1e-10, f"Identity failed (deg={degree}, shape={shape}), L∞={err}"
 
@@ -324,8 +382,8 @@ def test_standard_polynomial_reproduction(shape, zf, deg_poly, deg_interp):
         if deg_poly >= 3:
             src += a3[i] * (xi ** 3)
 
-    method = to_preset("interpolation", deg_interp)
-    y = resize(src, zoom_factors=zf, method=method)
+    name = _DEGREE_TO_NAME[deg_interp]
+    y = resize(src, zoom_factors=zf, method=name)
     y_ref = _poly_expected(shape, zf, deg_poly)
 
     pads = _pads_for_crop(y.shape, deg_interp, "Polynomial", zf)
