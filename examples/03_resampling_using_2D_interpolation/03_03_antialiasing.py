@@ -35,7 +35,7 @@ from scipy.ndimage import zoom as _scipy_zoom  # only if you want extra comparis
 from splineops.resize import resize
 from splineops.utils.metrics import compute_snr_and_mse_region
 from splineops.utils.plotting import plot_difference_image, show_roi_zoom
-from splineops.utils.diagram import draw_standard_vs_leastsq_pipeline
+from splineops.utils.diagram import draw_two_method_comparisons
 
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
@@ -48,9 +48,13 @@ DTYPE = np.float32
 # Pipeline Diagram
 # ----------------
 
-_ = draw_standard_vs_leastsq_pipeline(
+_ = draw_two_method_comparisons(
+    "Standard Interpolation",
+    "Antialiasing",
+    include_downsample_labels=True,
     include_upsample_labels=True,
-    width=12.0
+    scale_factor=4,
+    width=12.0,
 )
 
 # %%
