@@ -39,8 +39,6 @@ __all__ = [
     "label",
     # ready-made diagrams
     "draw_standard_vs_scipy_pipeline",
-    "draw_standard_vs_leastsq_pipeline",
-    "draw_leastsq_vs_oblique_pipeline",
     "draw_two_method_comparisons",
 ]
 
@@ -328,38 +326,6 @@ def draw_standard_vs_scipy_pipeline(
     fig.tight_layout(pad=0.4)
     plt.show()
     return fig, ax
-
-def draw_standard_vs_leastsq_pipeline(
-    *, 
-    include_upsample_labels: bool = True, 
-    width: float = 12.0, 
-    ax: Optional[Axes] = None,
-) -> Tuple[Figure, Axes]:
-    return draw_two_method_comparisons(
-        "Standard Interpolation",
-        "Least-Squares Projection",
-        include_downsample_labels=True,
-        include_upsample_labels=include_upsample_labels,
-        scale_factor=4,
-        width=width,
-        ax=ax,
-    )
-
-def draw_leastsq_vs_oblique_pipeline(
-    *, 
-    include_upsample_labels: bool = True, 
-    width: float = 12.0, 
-    ax: Optional[Axes] = None,
-) -> Tuple[Figure, Axes]:
-    return draw_two_method_comparisons(
-        "Least-Squares Projection",
-        "Oblique Projection",
-        include_downsample_labels=True,
-        include_upsample_labels=include_upsample_labels,
-        scale_factor=4,
-        width=width,
-        ax=ax,
-    )
 
 def draw_two_method_comparisons(
     top_method: str,
