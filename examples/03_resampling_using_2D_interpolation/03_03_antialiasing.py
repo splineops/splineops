@@ -1,14 +1,22 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/03_03_least-squares_projection.py
+# splineops/examples/03_resampling_using_2d_interpolation/03_03_antialiasing.py
 # sphinx_gallery_end_ignore
 
 """
-Least-Squares Projection
-========================
+Antialiasing
+============
 
-Interpolate 2D images with least-squares projection.
-Compare them to standard interpolation. We compute SNR and MSE only on a
-central region to exclude boundary artifacts.
+Interpolate 2D images with an **antialiased** down-sampling step and compare
+the result to standard interpolation.
+
+We shrink the image with either:
+
+- plain cubic interpolation (no explicit low-pass),
+- cubic antialiasing (oblique projection low-pass) via ``"cubic-antialiasing"``,
+
+then up-sample both back to the original size using standard cubic
+interpolation. SNR and MSE are computed only on a central region to
+exclude boundary artifacts.
 """
 
 # %%
@@ -125,30 +133,30 @@ snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
 )
 
 # %%
-# Least-Squares Projection
-# ------------------------
+# Antialiasing
+# ------------
 
 t0 = time.perf_counter()
-resized_2d_ls = resize(
+resized_2d_aa = resize(
     input_image_normalized,
     zoom_factors=zoom_factors_2d,
-    method="cubic-best_antialiasing",
+    method="cubic-antialiasing",  # antialiased shrink
 )
 t1 = time.perf_counter()
-recovered_2d_ls = resize(
-    resized_2d_ls,
+recovered_2d_aa = resize(
+    resized_2d_aa,
     output_size=input_image_normalized.shape,
-    method="cubic-best_antialiasing",
+    method="cubic-antialiasing",  # standard cubic for upsampling
 )
 t2 = time.perf_counter()
 
-time_2d_ls_fwd   = t1 - t0
-time_2d_ls_back  = t2 - t1
-time_2d_ls       = t2 - t0
+time_2d_aa_fwd   = t1 - t0
+time_2d_aa_back  = t2 - t1
+time_2d_aa       = t2 - t0
 
-snr_2d_ls, mse_2d_ls = compute_snr_and_mse_region(
+snr_2d_aa, mse_2d_aa = compute_snr_and_mse_region(
     input_image_normalized,
-    recovered_2d_ls,
+    recovered_2d_aa,
     border_fraction=border_fraction,
 )
 
@@ -166,24 +174,24 @@ def _nearest_big(roi: np.ndarray, target_h: int) -> np.ndarray:
 
 roi_orig = input_image_normalized[row_top:row_top+ROI_SIZE_PX, col_left:col_left+ROI_SIZE_PX]
 roi_std  = recovered_2d_std[row_top:row_top+ROI_SIZE_PX, col_left:col_left+ROI_SIZE_PX]
-roi_ls   = recovered_2d_ls[row_top:row_top+ROI_SIZE_PX, col_left:col_left+ROI_SIZE_PX]
+roi_aa   = recovered_2d_aa[row_top:row_top+ROI_SIZE_PX, col_left:col_left+ROI_SIZE_PX]
 
 DISPLAY_H = 256
 roi_big_orig = _nearest_big(roi_orig, DISPLAY_H)
 roi_big_std  = _nearest_big(roi_std,  DISPLAY_H)
-roi_big_ls   = _nearest_big(roi_ls,   DISPLAY_H)
+roi_big_aa   = _nearest_big(roi_aa,   DISPLAY_H)
 
 fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.6))
 
 titles = [
     "Original ROI",
     f"Recovered (Standard, {fmt_ms(time_2d_std_back)})",
-    f"Recovered (Least-Squares, {fmt_ms(time_2d_ls_back)})",
+    f"Recovered (Antialiasing, {fmt_ms(time_2d_aa_back)})",
 ]
 
 for ax, im, title in zip(
     axes,
-    [roi_big_orig, roi_big_std, roi_big_ls],
+    [roi_big_orig, roi_big_std, roi_big_aa],
     titles,
 ):
     ax.imshow(im, cmap="gray", interpolation="nearest")
@@ -209,30 +217,30 @@ _ = show_roi_zoom(
 # --------------
 
 # %%
-# Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Antialiasing
+# ~~~~~~~~~~~~
 
-h_res_ls, w_res_ls = resized_2d_ls.shape
+h_res_aa, w_res_aa = resized_2d_aa.shape
 
-row_top_res_ls = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res_ls - roi_h_res))
-col_left_res_ls = int(np.clip(center_c_res - roi_w_res // 2, 0, w_res_ls - roi_w_res))
+row_top_res_aa = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res_aa - roi_h_res))
+col_left_res_aa = int(np.clip(center_c_res - roi_w_res // 2, 0, w_res_aa - roi_w_res))
 
-canvas_ls = np.ones((h_img, w_img), dtype=resized_2d_ls.dtype)  # white background in [0,1]
-canvas_ls[:h_res_ls, :w_res_ls] = resized_2d_ls
+canvas_aa = np.ones((h_img, w_img), dtype=resized_2d_aa.dtype)  # white background in [0,1]
+canvas_aa[:h_res_aa, :w_res_aa] = resized_2d_aa
 
-roi_kwargs_on_canvas_ls = dict(
+roi_kwargs_on_canvas_aa = dict(
     roi_height_frac=roi_h_res / h_img,
     grayscale=True,
-    roi_xy=(row_top_res_ls, col_left_res_ls),
+    roi_xy=(row_top_res_aa, col_left_res_aa),
 )
 
 _ = show_roi_zoom(
-    canvas_ls,
+    canvas_aa,
     ax_titles=(
-        f"Resized Image (least-squares, {fmt_ms(time_2d_ls_fwd)})",
+        f"Resized Image (antialiasing, {fmt_ms(time_2d_aa_fwd)})",
         None,
     ),
-    **roi_kwargs_on_canvas_ls
+    **roi_kwargs_on_canvas_aa
 )
 
 # %%
@@ -267,13 +275,13 @@ _ = show_roi_zoom(
 # ----------------
 
 # %%
-# Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Antialiasing Pipeline
+# ~~~~~~~~~~~~~~~~~~~~~
 
 _ = show_roi_zoom(
-    recovered_2d_ls,
+    recovered_2d_aa,
     ax_titles=(
-        f"Recovered Image (least-squares projection, {fmt_ms(time_2d_ls_back)})",
+        f"Recovered Image (antialiased, {fmt_ms(time_2d_aa_back)})",
         None,
     ),
     **roi_kwargs
@@ -297,19 +305,19 @@ _ = show_roi_zoom(
 # -----------------
 
 # %%
-# Least-Squares Projection
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Antialiasing
+# ~~~~~~~~~~~~
 #
 # Difference with original image on ROI (SNR/MSE numbers are from the
 # central-region metrics computed earlier).
 
 plot_difference_image(
     original=input_image_normalized,
-    recovered=recovered_2d_ls,
-    snr=snr_2d_ls,
-    mse=mse_2d_ls,
+    recovered=recovered_2d_aa,
+    snr=snr_2d_aa,
+    mse=mse_2d_aa,
     roi=roi_rect,
-    title_prefix="Difference (least-squares)",
+    title_prefix="Difference (antialiasing)",
 )
 
 # %%
@@ -337,20 +345,20 @@ plot_difference_image(
 # - total (forward + backward) timing of the interpolation pipeline.
 #
 # This lets you see the cost/benefit trade-off between
-# standard interpolation and least-squares projection.
+# standard interpolation and antialiased shrink/expand.
 
 methods = [
-    ("Standard Interpolation (cubic)", snr_2d_std, mse_2d_std, time_2d_std),
-    ("Least-Squares Projection",       snr_2d_ls,  mse_2d_ls,  time_2d_ls),
+    ("Standard Interpolation (cubic)",          snr_2d_std, mse_2d_std, time_2d_std),
+    ("Antialiasing (cubic shrink, cubic up)",   snr_2d_aa,  mse_2d_aa,  time_2d_aa),
 ]
 
-header_line = f"{'Method':<32} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
+header_line = f"{'Method':<40} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
 print(header_line)
 print("-" * len(header_line))
 
 for name, snr_val, mse_val, t in methods:
     print(
-        f"{name:<32} "
+        f"{name:<40} "
         f"{snr_val:>10.2f} "
         f"{mse_val:>16.2e} "
         f"{t:>12.4f}"
