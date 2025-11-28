@@ -23,7 +23,7 @@ def _load_resize_module(*, force_reload: bool = False):
     return importlib.import_module(name)
 
 
-def _time_and_run(
+def _time_and_run_preset(
     mode: str,
     arr: np.ndarray,
     zoom: tuple[float, ...],
@@ -32,11 +32,12 @@ def _time_and_run(
     repeats: int = 2,
 ):
     """
-    Set SPLINEOPS_ACCEL, reload module, warm up once, then time best-of-N.
+    C++ vs Python parity for preset-based API: resize(..., method=...).
     Returns (best_time_sec, output_array).
     """
     os.environ["SPLINEOPS_ACCEL"] = mode
     rz = _load_resize_module(force_reload=True)
+
     # Warmup to load code paths/caches
     out = rz.resize(arr, zoom_factors=zoom, method=method)
     best = float("inf")
@@ -49,48 +50,190 @@ def _time_and_run(
     return best, out
 
 
+def _time_and_run_ls(
+    mode: str,
+    arr: np.ndarray,
+    zoom: tuple[float, ...],
+    degree: int,
+    *,
+    repeats: int = 2,
+):
+    """
+    C++ vs Python parity for equal-degree projection (LS-style):
+
+        resize_degrees(..., interp_degree=degree,
+                           analy_degree=degree,
+                           synthe_degree=degree)
+    """
+    os.environ["SPLINEOPS_ACCEL"] = mode
+    rz = _load_resize_module(force_reload=True)
+
+    # Warmup
+    out = rz.resize_degrees(
+        arr,
+        zoom_factors=zoom,
+        interp_degree=degree,
+        analy_degree=degree,
+        synthe_degree=degree,
+        inversable=False,
+    )
+    best = float("inf")
+    for _ in range(repeats):
+        t0 = time.perf_counter()
+        out_tmp = rz.resize_degrees(
+            arr,
+            zoom_factors=zoom,
+            interp_degree=degree,
+            analy_degree=degree,
+            synthe_degree=degree,
+            inversable=False,
+        )
+        dt = time.perf_counter() - t0
+        if dt < best:
+            best, out = dt, out_tmp
+    return best, out
+
+
 @pytest.mark.skipif(
     not _has_cpp(),
     reason="Native extension not available: skipping C++ vs Python compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 @pytest.mark.parametrize(
-    "method_label,preset,shape,zoom,atol",
+    "method_label,kind,arg,shape,zoom,atol",
     [
-        # --- Core baselines ----------------------------------------------------
-        # Downsample: LS vs Python, reasonable tolerance for cross-platform FP
+        # ------------------------------------------------------------------ #
+        # Core LS-style (equal-degree projection) baselines                  #
+        # ------------------------------------------------------------------ #
+        # Downsample: LS cubic vs Python
         (
-            "Least-Squares (best AA)",
-            "cubic-best_antialiasing",
+            "Least-Squares projection (cubic) ↓",
+            "ls",
+            3,                     # degree
             (512, 512),
             (0.5, 0.5),
-            1e-5,  # was 6e-8; relaxed for macOS ARM/Numpy/SciPy variability
+            1e-5,                  # was 6e-8; relaxed for cross-platform FP
         ),
+        # Upsample: LS cubic – allow looser tol (zoom > 1)
         (
-            "Oblique (fast AA)",
-            "cubic-fast_antialiasing",
+            "Least-Squares projection (cubic) ↑",
+            "ls",
+            3,
+            (512, 512),
+            (2.5, 2.5),
+            5e-3,                  # was 6e-5; macOS max|Δ|≈1.8e-3 with margin
+        ),
+        # Non-uniform zoom (LS cubic)
+        (
+            "Least-Squares projection (cubic) non-uniform",
+            "ls",
+            3,
+            (384, 256),
+            (0.5, 2.0),
+            8e-5,
+        ),
+        # Quadratic LS ↓
+        (
+            "Least-Squares projection (quadratic) ↓",
+            "ls",
+            2,
+            (400, 400),
+            (0.5, 0.5),
+            3e-7,
+        ),
+        # Quadratic LS ↑
+        (
+            "Least-Squares projection (quadratic) ↑",
+            "ls",
+            2,
+            (400, 400),
+            (2.2, 2.2),
+            3e-5,
+        ),
+        # Extreme downscale
+        (
+            "Least-Squares projection (cubic) extreme ↓",
+            "ls",
+            3,
+            (513, 517),
+            (0.24, 0.24),
+            2e-6,
+        ),
+        # Identity (zoom=1) – LS cubic, should be a pure copy
+        (
+            "Least-Squares projection identity (cubic)",
+            "ls",
+            3,
+            (128, 257),
+            (1.0, 1.0),
+            2e-7,
+        ),
+        # Single-axis shrink
+        (
+            "Least-Squares projection single-axis shrink (cubic)",
+            "ls",
+            3,
+            (640, 360),
+            (0.5, 1.0),
+            8e-5,
+        ),
+
+        # ------------------------------------------------------------------ #
+        # Antialiasing (oblique) via preset-based API                        #
+        # ------------------------------------------------------------------ #
+        # Downsample: Antialiasing cubic
+        (
+            "Antialiasing (cubic) ↓",
+            "preset",
+            "cubic-antialiasing",
             (512, 512),
             (0.5, 0.5),
             2e-7,
         ),
-        # Upsample: LS can accumulate more rounding differences; allow a looser tol
+        # Upsample: Antialiasing cubic
         (
-            "Least-Squares (best AA)",
-            "cubic-best_antialiasing",
-            (512, 512),
-            (2.5, 2.5),
-            5e-3,  # was 6e-5; relaxed to cover macOS max|Δ|≈1.8e-3 with margin
-        ),
-        (
-            "Oblique (fast AA)",
-            "cubic-fast_antialiasing",
+            "Antialiasing (cubic) ↑",
+            "preset",
+            "cubic-antialiasing",
             (512, 512),
             (2.5, 2.5),
             5e-7,
         ),
-        # --- Interpolation presets (no projection) -----------------------------
+        # Non-uniform zoom (Antialiasing cubic)
+        (
+            "Antialiasing (cubic) non-uniform",
+            "preset",
+            "cubic-antialiasing",
+            (300, 200),
+            (2.0, 0.6),
+            2e-7,
+        ),
+
+        # Quadratic Antialiasing ↓
+        (
+            "Antialiasing (quadratic) ↓",
+            "preset",
+            "quadratic-antialiasing",
+            (400, 400),
+            (0.5, 0.5),
+            3e-7,
+        ),
+        # Quadratic Antialiasing ↑
+        (
+            "Antialiasing (quadratic) ↑",
+            "preset",
+            "quadratic-antialiasing",
+            (400, 400),
+            (2.2, 2.2),
+            3e-5,
+        ),
+
+        # ------------------------------------------------------------------ #
+        # Interpolation presets (no projection)                              #
+        # ------------------------------------------------------------------ #
         (
             "Interpolation (cubic)",
+            "preset",
             "cubic",
             (512, 512),
             (0.5, 0.5),
@@ -98,74 +241,27 @@ def _time_and_run(
         ),
         (
             "Interpolation (linear)",
+            "preset",
             "linear",
             (300, 500),
             (2.3, 2.3),
             5e-7,
         ),
-        # --- Non-uniform zoom (per-axis policy: shrink vs magnify) -------------
+
+        # ------------------------------------------------------------------ #
+        # Extra sanity / regression                                          #
+        # ------------------------------------------------------------------ #
         (
-            "Least-Squares (best AA) non-uniform",
-            "cubic-best_antialiasing",
-            (384, 256),
-            (0.5, 2.0),
-            8e-5,
-        ),
-        (
-            "Oblique (fast AA) non-uniform",
-            "cubic-fast_antialiasing",
-            (300, 200),
-            (2.0, 0.6),
-            2e-7,
-        ),
-        # --- Quadratic degree variants (now parity holds) ----------------------
-        (
-            "Least-Squares (best AA) quadratic ↓",
-            "quadratic-best_antialiasing",
-            (400, 400),
-            (0.5, 0.5),
-            3e-7,
-        ),
-        (
-            "Least-Squares (best AA) quadratic ↑",
-            "quadratic-best_antialiasing",
-            (400, 400),
-            (2.2, 2.2),
-            3e-5,
-        ),
-        # --- Edge/extreme downscale (regression for past OOB index) ------------
-        (
-            "Least-Squares (best AA) extreme ↓",
-            "cubic-best_antialiasing",
-            (513, 517),
-            (0.24, 0.24),
-            2e-6,
-        ),
-        # --- Identity (zoom=1) – pure copy ; tol=0 is fine ---------------------
-        (
-            "Identity (AA cubic)",
-            "cubic-best_antialiasing",
-            (128, 257),
-            (1.0, 1.0),
-            2e-7,
-        ),
-        # --- Extra quick sanity cases ------------------------------------------
-        (
-            "LS single-axis shrink",
-            "cubic-best_antialiasing",
-            (640, 360),
-            (0.5, 1.0),
-            8e-5,
-        ),
-        (
-            "Oblique single-axis up",
-            "cubic-fast_antialiasing",
+            "Antialiasing single-axis up (cubic)",
+            "preset",
+            "cubic-antialiasing",
             (640, 360),
             (1.0, 2.0),
             1e-7,
         ),
         (
             "Nearest mixed zoom",
+            "preset",
             "fast",
             (64, 1024),
             (3.0, 0.5),
@@ -174,7 +270,7 @@ def _time_and_run(
     ],
 )
 def test_cpp_vs_python_equality(
-    method_label, preset, shape, zoom, atol, dtype, monkeypatch
+    method_label, kind, arg, shape, zoom, atol, dtype, monkeypatch
 ):
     # Stabilize timings: single threads for OpenMP/BLAS stacks
     monkeypatch.setenv("OMP_NUM_THREADS", "1")
@@ -188,10 +284,16 @@ def test_cpp_vs_python_equality(
     rng = np.random.default_rng(0)
     arr = rng.random(shape, dtype=dtype)
 
-    # C++ path
-    t_cpp, y_cpp = _time_and_run("always", arr, zoom, preset, repeats=2)
-    # Python fallback
-    t_py, y_py = _time_and_run("never", arr, zoom, preset, repeats=2)
+    if kind == "preset":
+        preset = arg  # type: ignore[assignment]
+        t_cpp, y_cpp = _time_and_run_preset("always", arr, zoom, preset, repeats=2)
+        t_py,  y_py  = _time_and_run_preset("never",  arr, zoom, preset, repeats=2)
+    elif kind == "ls":
+        degree = int(arg)
+        t_cpp, y_cpp = _time_and_run_ls("always", arr, zoom, degree, repeats=2)
+        t_py,  y_py  = _time_and_run_ls("never",  arr, zoom, degree, repeats=2)
+    else:
+        raise ValueError(f"Unknown kind '{kind}'")
 
     # Dtype sanity: both implementations should preserve the input dtype
     assert y_cpp.dtype == dtype, f"C++ output dtype {y_cpp.dtype} != input dtype {dtype}"
@@ -212,4 +314,3 @@ def test_cpp_vs_python_equality(
             f"[perf] {method_label} {shape} zoom={zoom}, dtype={dtype}: "
             f"speedup={speedup:.2f}× (C++ {t_cpp:.4f}s vs Py {t_py:.4f}s)"
         )
-
