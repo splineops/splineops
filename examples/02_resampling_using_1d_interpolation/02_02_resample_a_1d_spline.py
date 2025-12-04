@@ -84,6 +84,83 @@ g = TensorSpline(data=g_samples, coordinates=x_g, bases=base, modes=mode)
 g_coords_full = f_coords
 g_data_full = g(coordinates=(g_coords_full,), grid=False)
 
+# Preview: same content as the top row of the final 2-row plot
+plt.figure(figsize=(12, 4))
+ax = plt.gca()
+ax.set_title("Interpolated f spline with coarse samples g[k]")
+ax.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
+ax.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
+
+# Vertical red lines from 0 to g[k] at x = T*k (now thick)
+ax.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
+
+# g[k] markers at x = T*k
+ax.plot(
+    x_g, g_samples, "rs",
+    mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
+)
+
+ax.axhline(0, color="black", linewidth=1, zorder=0)
+ax.set_xlim(0, f_support_length - 1)
+ax.set_xticks(np.arange(0, f_support_length, 1))  # show 0..26 on the axis
+ax.set_xlabel("x")
+ax.set_ylabel("f")
+ax.grid(True)
+ax.legend()
+
+# --- Annotate one interval of length T between two g[k] samples ---
+if g_support_length >= 2:
+    # Prefer a later interval if possible:
+    #  - third interval: between g[2] and g[3] if g_support_length >= 4
+    #  - else second: between g[1] and g[2] if g_support_length >= 3
+    #  - else first: between g[0] and g[1]
+    if g_support_length >= 4:
+        start_idx = 2  # interval between k=2 and k=3
+    elif g_support_length >= 3:
+        start_idx = 1  # interval between k=1 and k=2
+    else:
+        start_idx = 0  # only one interval available
+
+    x_T_start = x_g[start_idx]
+    x_T_end = x_g[start_idx + 1]
+
+    # Place the annotation slightly above the x-axis
+    ymin, ymax = ax.get_ylim()
+    y_T = ymin + 0.1 * (ymax - ymin)
+
+    # Red double arrow between the chosen g[k] samples
+    ax.annotate(
+        "",
+        xy=(x_T_start, y_T),
+        xytext=(x_T_end, y_T),
+        arrowprops=dict(arrowstyle="<->", color="red", linewidth=1.5),
+    )
+
+    # Label "T" at the midpoint of the interval, also in red
+    ax.text(
+        0.5 * (x_T_start + x_T_end),
+        y_T,
+        "T",
+        ha="center",
+        va="bottom",
+        fontsize=14,
+        color="red",
+    )
+
+    # Emphasize that these two vertical lines are the boundaries of the T interval
+    # by extending them across the full vertical range.
+    ax.vlines(
+        [x_T_start, x_T_end],
+        ymin,
+        ymax,
+        color="red",
+        linewidth=2.0,
+        zorder=2,
+    )
+
+plt.tight_layout()
+plt.show()
+
 # %%
 # Plotting
 # --------
@@ -102,16 +179,16 @@ ax_top.set_title("Interpolated f spline")
 ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
 ax_top.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 
-# NEW: thin red lines from 0 to g[k] at x = T*k
-ax_top.vlines(x=x_g, ymin=0, ymax=g_samples, color='red', linewidth=1)
+# Red lines from 0 to g[k] at x = T*k (match thickness used above)
+ax_top.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
 
 # g[k] markers at x = T*k
 ax_top.plot(
     x_g, g_samples, "rs",
-    mfc='none', markersize=12, markeredgewidth=2, label="g[k] samples"
+    mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
 )
 
-ax_top.axhline(0, color='black', linewidth=1, zorder=0)
+ax_top.axhline(0, color="black", linewidth=1, zorder=0)
 ax_top.set_xlim(0, f_support_length - 1)
 ax_top.set_xticks(np.arange(0, f_support_length, 1))  # show 0..26 on the top axis
 ax_top.set_xlabel("x")
@@ -121,14 +198,14 @@ ax_top.legend()
 
 # --- BOTTOM: g[k] + g(x) across full width; x-axis is uniform in k at multiples of T ---
 ax_bottom.set_title("Interpolated g spline")
-ax_bottom.vlines(x=x_g, ymin=0, ymax=g_samples, color='red', linewidth=1)
+ax_bottom.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
 ax_bottom.plot(
     x_g, g_samples, "rs",
-    mfc='none', markersize=12, markeredgewidth=2, label="g[k] samples"
+    mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
 )
 ax_bottom.plot(g_coords_full, g_data_full, color="purple", linewidth=2, label="g spline")
 
-ax_bottom.axhline(0, color='black', linewidth=1, zorder=0)
+ax_bottom.axhline(0, color="black", linewidth=1, zorder=0)
 ax_bottom.set_xlim(0, f_support_length - 1)
 ax_bottom.set_ylabel("g")
 ax_bottom.grid(True)
