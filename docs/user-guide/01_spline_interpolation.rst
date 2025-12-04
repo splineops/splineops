@@ -108,8 +108,24 @@ Now, we are going to do something bold. Let us sum together the functions of the
 We were able to create some combined function that seems to be kind of arbitrary. This combined function somehow retains the characteristics of B-splines, but 
 it is no more a B-spline (the letter B stands for Basis); instead it is called a *spline* (without the B).
 
+In one dimension, and for a fixed spline degree :math:`n`, such a spline can be written as
+
+..  math::
+
+    \begin{aligned}
+      f & : & \mathbb{R} &\rightarrow \mathbb{R}, \\
+        &   & x          &\mapsto f(x) = \sum_{k \in \mathbb{Z}} c[k]\,\beta^{n}(x - k),
+    \end{aligned}
+
+where :math:`\beta^{n}` is the degree-:math:`n` B-spline and :math:`c[k]` is an arbitrary
+sequence of real coefficients. Different choices of :math:`c[k]` produce different spline
+functions, all built from the same shifted B-spline basis.
+
 Interpolation
 -------------
+
+Introduction
+~~~~~~~~~~~~
 
 We are going to use splines to *interpolate* data, which is an operation whose purpose is to build a continuously defined function out of arbitrary discrete samples, 
 in such a way that the samples of the built function are identical to the provided ones. To make our life simple, from now on we are going to consider only 
@@ -142,7 +158,7 @@ not trivial; the center panel of the figure above illustrates the fact that the 
 clear case, do inspect abscissa at 2.
 
 1D Interpolation Example
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 The example
 :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_01_interpolate_1d_samples.py`
@@ -150,28 +166,66 @@ illustrates how a 1D sequence of samples :math:`f[k]` is interpolated by a
 cubic B-spline, and how this spline can be written as a sum of shifted and
 weighted basis functions.
 
-Below we reproduce two of the figures from that example.
+Given a discrete sequence :math:`\{f[k]\}` of samples, we seek a continuously defined
+spline :math:`f(x)` of the form
+
+.. math::
+
+    f(x) = \sum_{k \in \mathbb{Z}} c[k] \,\beta^{3}(x - k),
+
+such that the interpolation condition
+
+.. math::
+
+    f(k) = f[k]
+
+is satisfied for all integer :math:`k`. The key point is that the spline coefficients
+:math:`c[k]` are generally not equal to the samples :math:`f[k]`. Instead, they are
+obtained from :math:`\{f[k]\}` by a digital prefiltering step, implemented as a
+recursive IIR filter. This prefilter enforces the interpolation constraints while
+preserving the smoothness and locality properties of the cubic B-spline basis.
+
+Below we reproduce three of the figures from that example.
+
+The first figure shows the discrete samples :math:`f[k]` alone:
+
+.. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_001.png
+   :align: center
+   :width: 100%
+   :alt: f[k] samples.
+
+The second figure displays the shifted cubic B-splines :math:`\beta^{3}(x-k)`
+weighted by the corresponding coefficients :math:`c[k]`. Each thin curve is one term
+:math:`c[k]\beta^{3}(x-k)` in the spline expansion:
 
 .. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_002.png
    :align: center
    :width: 100%
    :alt: Cubic spline coefficient decomposition into shifted B-splines.
 
+The third figure shows the resulting interpolating spline :math:`f(x)` (smooth curve)
+overlaid with the original samples :math:`f[k]` (stems). One can see that the spline
+passes exactly through all sample points, while providing a smooth, continuously
+defined representation in between:
+
 .. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_003.png
    :align: center
    :width: 100%
    :alt: f[k] samples with their cubic spline interpolant.
 
-
-Multidimensional Splines
-------------------------
+In Multiple Dimensions
+----------------------
 
 The class ``TensorSpline`` solves the difficulties for you in an efficient way and in multiple dimensions, for many degrees of splines. Internally, 
 it considers the continuously defined :math:`d`-dimensional real function
 
 ..  math::
 
-    f:{\mathbb{R}}^{d}\rightarrow{\mathbb{R}},{\mathbf{x}}\mapsto f({\mathbf{x}})=\sum_{{\mathbf{k}}\in{\mathbb{Z}}^{d}}\,c[{\mathbf{k}}]\,\prod_{p=1}^{d}\,\beta^{n}(x_{p}-k_{p}),
+    \begin{aligned}
+      f & : & \mathbb{R}^{d} &\rightarrow \mathbb{R}, \\
+        &   & \mathbf{x}     &\mapsto f(\mathbf{x})
+                               = \sum_{\mathbf{k}\in\mathbb{Z}^{d}} c[\mathbf{k}] \prod_{p=1}^{d} \beta^{n}(x_{p} - k_{p}),
+    \end{aligned}
 
 where :math:`{\mathbf{x}}` is the function argument in :math:`d` dimensions and :math:`c` is an infinite list of real coefficients with indices in :math:`d` dimensions, 
 too. These coefficients are carefully tuned in such a way that
