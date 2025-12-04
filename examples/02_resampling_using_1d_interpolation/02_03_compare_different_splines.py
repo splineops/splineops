@@ -112,9 +112,10 @@ ax_top.plot(f_coords, f_data, color="green", linewidth=2, label="f spline")
 
 # Overplot discrete g[k] in red squares at x = k*val_T
 x_g = np.arange(g_support_length) * val_T
+ax_top.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
 ax_top.plot(
     x_g, g_samples,
-    "rs", mfc='none', markersize=12, markeredgewidth=2,
+    "rs", mfc="none", markersize=12, markeredgewidth=2,
     label="g[k] samples"
 )
 
@@ -139,8 +140,8 @@ ax_mid = fig2.add_subplot(gs2[1, :])  # span both columns now
 ax_mid.set_title("Interpolated g spline")
 
 # Discrete g[k] with red stems & markers at the true positions x = k·T
-ax_mid.vlines(x=x_g, ymin=0, ymax=g_samples, color='red', linewidth=1)
-ax_mid.plot(x_g, g_samples, "rs", mfc='none', markersize=12, markeredgewidth=2, label="g[k] samples")
+ax_mid.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
+ax_mid.plot(x_g, g_samples, "rs", mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples")
 
 # Continuous g(x) across 0..26
 ax_mid.plot(g_mid_coords, g_mid_data, color="purple", linewidth=2, label="g spline")
@@ -277,16 +278,17 @@ ax_top.plot(f_coords, f_lin_f, color="green", linewidth=2, label="f spline")
 
 # Overplot discrete g[k] as unfilled red squares at x = k * val_T
 x_g = np.arange(g_support_length) * val_T
+ax_top.vlines(x=x_g, ymin=0, ymax=g_lin_samps, color="red", linewidth=2.0)
 ax_top.plot(
     x_g, g_lin_samps,
     "rs",              # red squares
-    mfc='none',        # unfilled
+    mfc="none",        # unfilled
     markersize=12,
     markeredgewidth=2, 
     label="g[k] samples"
 )
 
-ax_top.axhline(0, color='black', linewidth=1, zorder=0)
+ax_top.axhline(0, color="black", linewidth=1, zorder=0)
 ax_top.set_xlim(0, f_support_length - 1)
 ax_top.set_xticks(np.arange(0, f_support_length, 1))
 ax_top.set_xlabel("x")
@@ -304,8 +306,8 @@ ax_mid = fig3.add_subplot(gs3[1, :])  # span both columns now
 ax_mid.set_title("Linear g spline")
 
 # Discrete g[k] with red stems & markers at x = k·T
-ax_mid.vlines(x=x_g, ymin=0, ymax=g_lin_samps, color='red', linewidth=1)
-ax_mid.plot(x_g, g_lin_samps, "rs", mfc='none', markersize=8, markeredgewidth=2, label="g[k]")
+ax_mid.vlines(x=x_g, ymin=0, ymax=g_lin_samps, color="red", linewidth=2.0)
+ax_mid.plot(x_g, g_lin_samps, "rs", mfc="none", markersize=12, markeredgewidth=2, label="g[k]")
 
 # Continuous linear g(x) across 0..26
 ax_mid.plot(g_lin_mid_coords, g_lin_mid_data, color="purple", linewidth=2, label="g")

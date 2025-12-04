@@ -21,6 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from splineops.spline_interpolation.tensorspline import TensorSpline
 from splineops.spline_interpolation.bases.utils import create_basis
+# sphinx_gallery_thumbnail_number = 2 # show second figure as thumbnail
 
 plt.rcParams.update({
     "font.size": 14,       # Base font size
@@ -135,17 +136,11 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Decomposition in Cubic Spline Basis
-# -----------------------------------
+# Cubic Spline Decomposition
+# --------------------------
 #
 # Visualize the shifted cubic B-spline basis functions β(x - k) that serve
 # as the building blocks of the interpolant.
-#
-# In a true spline interpolation scheme, the spline coefficients c[k] are
-# computed from the samples f[k] by a filtering operation, so in general
-# c[k] ≠ f[k]. Here, we simply reuse f[k] as illustrative weights to show
-# how a *linear combination* of shifted basis functions can form a smooth
-# curve.
 
 plot_basis_decomposition(
     f_support=f_support,
@@ -157,8 +152,8 @@ plot_basis_decomposition(
 )
 
 # %%
-# Interpolate the Samples with a Spline
-# -------------------------------------
+# Cubic Spline Interpolation
+# --------------------------
 #
 # We interpolate the 1D samples with a spline to obtain the continuously defined function
 #
@@ -249,16 +244,12 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Linear Spline Basis Decomposition
-# ---------------------------------
+# Linear Spline Decomposition
+# ---------------------------
 #
 # Repeat the same visualization, now using the linear B-spline basis
-# ("bspline1") instead of the cubic one. This highlights how a different
+# instead of the cubic one. This highlights how a different
 # choice of basis changes the local shape of the building blocks.
-#
-# As before, the true spline coefficients c[k] are obtained from f[k] by
-# a filtering operation, so c[k] ≠ f[k] in general. We again reuse f[k]
-# as illustrative weights.
 
 plot_basis_decomposition(
     f_support=f_support,
@@ -270,10 +261,10 @@ plot_basis_decomposition(
 )
 
 # %%
-# Interpolate the Samples with a Linear Spline
-# --------------------------------------------
+# Linear Spline Interpolation
+# ---------------------------
 #
-# We now build the interpolant using the linear B-spline basis ("bspline1")
+# We now build the interpolant using the linear B-spline basis
 # instead of the cubic one, and plot it together with the samples.
 
 base_lin = "bspline1"
