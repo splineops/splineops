@@ -5,8 +5,8 @@ Spline Interpolation
 
 .. currentmodule:: splineops
 
-Spline Processing
------------------
+Overview
+--------
 
 Splines are real functions that are *continuously* defined while being *parameterized* by discrete data. This gives access to many 
 interesting operations that would otherwise be illegitimate with purely discrete data since these operations are truly valid in the continuum only, for instance:
@@ -40,19 +40,27 @@ of data defined on a uniform Cartesian grid and offers highly successful tradeof
 * We then build a *spline* as an arbitrary combination of B-splines. At first, we do so with exuberance.
 * Finally, we rein in splines and limit ourselves to *regular* splines. They allow one to efficiently interpolate discrete data.
 
-B-Splines
----------
+Splines
+-------
 
-A one-dimensional polynomial B-spline is a member of a family of real functions :math:`\beta^{n}:{\mathbb{R}}\rightarrow{\mathbb{R}},x\mapsto\beta^{n}(x)` that are 
-characterized by their degree :math:`n\in{\mathbb{N}}` (*e.g.*, linear, cubic). There, the degree :math:`n` is a superscript---as opposed to a power. Several 
-equivalent explicit formulations of :math:`\beta^{n}` exist. One of them, valid for :math:`n\in{\mathbb{N}}_{>0}`, is
+B-Splines
+~~~~~~~~~
+
+A one-dimensional polynomial B-spline is a member of a family of real functions
+:math:`\beta^{n}:{\mathbb{R}}\rightarrow{\mathbb{R}}, x\mapsto\beta^{n}(x)` that are
+characterized by their degree :math:`n\in{\mathbb{N}}` (*e.g.*, linear, cubic). There,
+the degree :math:`n` is a superscript—as opposed to a power. Several equivalent
+explicit formulations of :math:`\beta^{n}` exist. One convenient closed-form expression,
+valid for :math:`n \in {\mathbb{N}}_{>0}`, is
 
 ..  math::
-    
-    \beta^{n}(x)=\frac{1}{n!}\,\sum_{k=0}^{n+1}\,\left(-1\right)^{k}\,{n\choose k}\,{\mathrm{ReLu}}^{n}(x+\frac{n+1}{2}-k),
 
-where :math:`x\in{\mathbb{R}}` is the argument of the B-spline and where one recognizes an interplay between signed binomial coefficients and the :math:`n`-th power 
-of the celebrated :math:`{\mathrm{ReLu}}` function of artificial-intelligence fame, with :math:`{\mathrm{ReLu}}(x)=\max(x,0)` for all :math:`x\in{\mathbb{R}}.`
+    \beta^{n}(x)
+    = \frac{1}{n!}\,\sum_{k=0}^{n+1} (-1)^{k} \binom{n+1}{k}
+      \bigl(x + \tfrac{n+1}{2} - k\bigr)_{+}^{\,n},
+
+where :math:`(t)_{+} = \max(t, 0)` denotes the positive part of :math:`t` and
+:math:`x\in{\mathbb{R}}` is the argument of the B-spline.
 
 Here is the plot of a cubic B-spline.
 
@@ -88,8 +96,8 @@ present case, all of them would be said to be cubic B-splines, up to their indiv
 B-splines have many relevant properties. Among them, the (technical) fact that they have an optimal *order of approximation* explains why these functions are so 
 good at representing discrete data. In nearly every case of relevance, their most important (practical) property is that their *support* is finite.
 
-Splines
--------
+Spline Formula
+~~~~~~~~~~~~~~
 
 Now, we are going to do something bold. Let us sum together the functions of the previous figure.
 
