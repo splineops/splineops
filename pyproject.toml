@@ -16,9 +16,13 @@ description = "Spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Dimitris Perdios" },
     { name = "Pablo Garcia-Amorena" },
     { name = "Philippe Thévenaz" },
+    { name = "Arrate Muñoz Barrutia" },
+    { name = "Daniel Sage" },
+    { name = "Dimitris Perdios" },
+    { name = "Thomas Debarre" },
+    { name = "Michael Unser" },
 ]
 requires-python = ">=3.10"
 dependencies = [
