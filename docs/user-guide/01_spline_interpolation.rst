@@ -216,8 +216,9 @@ defined representation in between:
 In Multiple Dimensions
 ----------------------
 
-The class ``TensorSpline`` solves the difficulties for you in an efficient way and in multiple dimensions, for many degrees of splines. Internally, 
-it considers the continuously defined :math:`d`-dimensional real function
+In multiple dimensions, a regular spline generalizes naturally to a tensor
+product of one-dimensional B-splines. For a fixed spline degree :math:`n`, we
+consider a :math:`d`-dimensional real function
 
 ..  math::
 
@@ -227,17 +228,137 @@ it considers the continuously defined :math:`d`-dimensional real function
                                = \sum_{\mathbf{k}\in\mathbb{Z}^{d}} c[\mathbf{k}] \prod_{p=1}^{d} \beta^{n}(x_{p} - k_{p}),
     \end{aligned}
 
-where :math:`{\mathbf{x}}` is the function argument in :math:`d` dimensions and :math:`c` is an infinite list of real coefficients with indices in :math:`d` dimensions, 
-too. These coefficients are carefully tuned in such a way that
+where :math:`\mathbf{x}` is the function argument in :math:`d` dimensions and
+:math:`c[\mathbf{k}]` is an infinite list of real coefficients with indices in
+:math:`d` dimensions too. These coefficients are tuned in such a way that
 
 ..  math::
 
-    \forall{\mathbf{q}}\in\Omega:f({\mathbf{q}})=s[{\mathbf{q}}],
+    \forall{\mathbf{q}}\in\Omega:\quad f({\mathbf{q}})=s[{\mathbf{q}}],
 
-where the function :math:`f` is the spline and where the list :math:`s` contains the samples that we want to interpolate, as provided over a 
-set :math:`\Omega\subset{\mathbb{N}}^{d}` of indices. Since this set is finite in practice while the coefficients :math:`c` must be defined for 
-infinitely many indices, one has to invent values for those coefficients that are far away from :math:`\Omega`. Arbitrary recipes are followed to 
-that effect. For instance, the argument ``modes`` of the class ``TensorSpline`` of this library allows one to choose from among a few recipes.
+where the function :math:`f` is the spline and where the list :math:`s`
+contains the samples that we want to interpolate, as provided over a finite set
+:math:`\Omega\subset{\mathbb{N}}^{d}` of indices. Since this set is finite in
+practice while the coefficients :math:`c[\mathbf{k}]` must be defined for
+infinitely many indices, one has to invent values for those coefficients that
+are far away from :math:`\Omega`. Arbitrary recipes are followed to that
+effect. For instance, the boundary “modes” used in this library (mirror,
+periodic, zero-padding, etc.) are different ways of controlling how the spline
+behaves outside the sampled domain.
+
+TensorSpline and Resize APIs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The mathematical model above is implemented in SplineOps by two complementary
+APIs:
+
+* :class:`splineops.spline_interpolation.tensorspline.TensorSpline`
+* :func:`splineops.resize.resize` and :func:`splineops.resize.resize_degrees`
+
+They share the same spline formulation but target slightly different use cases.
+
+Comparison
+~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 35 40
+
+   * - Feature
+     - ``TensorSpline``
+     - ``resize`` / ``resize_degrees``
+   * - Purpose
+     - Generic spline interpolant: evaluate :math:`f(\mathbf{x})` at arbitrary coordinates.
+     - High-level N-D resizing on uniform grids (images, volumes, time series).
+   * - Grid / coordinates
+     - Arbitrary coordinate arrays (not necessarily uniform).
+     - Uniform grids only; you specify zoom factors or output size.
+   * - Bases / degrees
+     - Many bases (B-splines 0–9, OMOMS, Keys, …), any supported degree of the chosen basis.
+     - Degrees 0–3 via presets (``"fast"``, ``"linear"``, ``"quadratic"``, ``"cubic"``) and their antialiasing variants.
+   * - Boundary handling
+     - Modes per axis (``"mirror"``, ``"zero"``, ``"periodic"``, …).
+     - Currently uses mirror-like handling, tailored for resizing.
+   * - Implementation / performance
+     - Pure Python (with optional CuPy for GPU); very flexible but slower.
+     - C++ backend when available, with Python fallback; much faster and more memory-friendly.
+   * - Typical use
+     - Custom interpolation at arbitrary points, nonuniform sampling, algorithm prototyping.
+     - Production resizing, antialiasing downsampling, and large N-D data processing.
+
+Equivalence for standard interpolation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the special case of a uniform grid, B-spline degrees 0–3 and mirror
+boundaries, standard interpolation via :class:`TensorSpline` matches the
+corresponding ``resize`` presets exactly:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - ``resize`` method
+     - Equivalent ``TensorSpline`` configuration
+   * - ``"fast"`` (degree 0 / nearest)
+     - ``TensorSpline(data, coordinates, bases="bspline0", modes="mirror")``
+   * - ``"linear"`` (degree 1)
+     - ``TensorSpline(data, coordinates, bases="bspline1", modes="mirror")``
+   * - ``"quadratic"`` (degree 2)
+     - ``TensorSpline(data, coordinates, bases="bspline2", modes="mirror")``
+   * - ``"cubic"`` (degree 3)
+     - ``TensorSpline(data, coordinates, bases="bspline3", modes="mirror")``
+
+In other words, for these settings:
+
+- the spline model is the same,
+- the interpolation values agree up to numerical precision,
+- but ``resize`` is usually much faster thanks to its C++ core and optimized
+  memory access patterns.
+
+Code Use
+~~~~~~~~
+
+Using :class:`TensorSpline` directly:
+
+.. code-block:: python
+
+   import numpy as np
+   from splineops.spline_interpolation.tensorspline import TensorSpline
+
+   # 2-D data on a uniform grid
+   data = np.random.randn(64, 64).astype(np.float32)
+   x = np.linspace(0, data.shape[0] - 1, data.shape[0], dtype=data.dtype)
+   y = np.linspace(0, data.shape[1] - 1, data.shape[1], dtype=data.dtype)
+   coords = (x, y)
+
+   ts = TensorSpline(
+       data=data,
+       coordinates=coords,
+       bases="bspline3",  # cubic spline
+       modes="mirror",    # boundary handling
+   )
+
+   # Evaluate on a finer grid (e.g. 2× upsample)
+   x_fine = np.linspace(0, data.shape[0] - 1, 2 * data.shape[0], dtype=data.dtype)
+   y_fine = np.linspace(0, data.shape[1] - 1, 2 * data.shape[1], dtype=data.dtype)
+   data_upsampled = ts(coordinates=(x_fine, y_fine))
+
+Using :func:`resize` for the same operation:
+
+.. code-block:: python
+
+   import numpy as np
+   from splineops.resize import resize
+
+   data = np.random.randn(64, 64).astype(np.float32)
+
+   # 2× zoom along both axes with cubic interpolation
+   zoom_factors = (2.0, 2.0)
+   data_upsampled = resize(
+       data,
+       zoom_factors=zoom_factors,
+       method="cubic",  # matches bspline3 + mirror in the TensorSpline call
+   )
 
 Interpolation Examples
 ----------------------
