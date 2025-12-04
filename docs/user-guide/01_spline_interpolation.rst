@@ -8,37 +8,37 @@ Spline Interpolation
 Overview
 --------
 
-Splines are real functions that are *continuously* defined while being *parameterized* by discrete data. This gives access to many 
-interesting operations that would otherwise be illegitimate with purely discrete data since these operations are truly valid in the continuum only, for instance:
+Splines are real functions that are *continuously* defined while being
+*parameterized* by discrete data. They provide a principled bridge between
+discrete samples and a continuous representation, which makes a number of
+operations possible (or at least much safer) than in a purely discrete setting:
 
-* Differentiation. Gradients are often relied upon to detect edges in images, or to minimize some cost function, or in the handling of 
-  the differential equations of physical models, while discrete data give access to finite differences, not to gradients;
-* Arbitrary geometric transformations. It is very much desirable to be able to evaluate a function at any desired coordinate, while 
-  discrete data can be evaluated at the samples only;
-* Specific geometric transformations such as resizing. The aliasing inherent with the downsizing of data can be handled much more 
-  safely in the continuous domain than it can with discrete data.
+* Differentiation: true gradients instead of finite differences, useful for
+  edge detection, variational methods, and differential models.
+* Arbitrary geometric transformations: evaluation at any real-valued
+  coordinate, not only at sample locations.
+* Resizing and other scale changes: downsampling with reduced aliasing thanks
+  to a continuous-domain model.
 
-There are many brands of splines. In the graphics world, one often relies on splines to represent curves, for instance with nonuniform 
-rational B-splines. The SplineOps library is not meant to be used for such applications; in return, it is well-suited to the handling 
-of data defined on a uniform Cartesian grid and offers highly successful tradeoffs between quality of representation and computational efficiency [1]_, [2]_, [3]_, [4]_, [5]_.
+There are many brands of splines. In the graphics world, one often relies on
+splines to represent curves, for instance with nonuniform rational B-splines.
+This library is not meant to be used for such applications; instead,
+it is well-suited to the handling of data defined on a uniform Cartesian grid
+and offers successful tradeoffs between quality of representation and
+computational efficiency [1]_, [2]_, [3]_, [4]_, [5]_.
 
 **Pros**
 
 * Bridge between the discrete world and the continuous world.
-* Tunable tradeoff between speed and quality.
+* Tunable trade-off between speed and quality.
 * Efficient continuously defined representation of uniform data in multiple dimensions.
 
 **Cons**
 
 * The spline may overshoot/undershoot the data samples.
 * Along a path, the spline may not be monotonous in regions where the data samples are.
-* The spline is nonlocal, by which we mean that the update of just one data sample requires the update of the whole spline.
-
-**Roadmap**
-
-* In what follows, we first introduce *B-splines* as convenient building blocks of splines. We give a productive formula that defines polynomial B-splines and illustrate them.
-* We then build a *spline* as an arbitrary combination of B-splines. At first, we do so with exuberance.
-* Finally, we rein in splines and limit ourselves to *regular* splines. They allow one to efficiently interpolate discrete data.
+* The spline is nonlocal, by which we mean that the update of just one data sample
+  requires the update of the whole spline.
 
 Splines
 -------
@@ -247,7 +247,7 @@ periodic, zero-padding, etc.) are different ways of controlling how the spline
 behaves outside the sampled domain.
 
 TensorSpline and Resize APIs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 The mathematical model above is implemented in SplineOps by two complementary
 APIs:
