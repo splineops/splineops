@@ -1,8 +1,6 @@
 # splineops/pyproject.toml
 # https://learn.scientific-python.org/development/guides/packaging-simple/
 
-# splineops/pyproject.toml
-
 [build-system]
 requires = [
     "scikit-build-core>=0.10",
