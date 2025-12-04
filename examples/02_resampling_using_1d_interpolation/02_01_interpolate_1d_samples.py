@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from splineops.spline_interpolation.tensorspline import TensorSpline
 from splineops.spline_interpolation.bases.utils import create_basis
-# sphinx_gallery_thumbnail_number = 2 # show second figure as thumbnail
+# sphinx_gallery_thumbnail_number = 2  # show second figure as thumbnail
 
 plt.rcParams.update({
     "font.size": 14,       # Base font size
@@ -44,21 +44,22 @@ plt.rcParams.update({
 
 def plot_basis_decomposition(
     f_support,
-    f_samples,
+    weights,
     basis_name: str,
     title: str,
     samples_per_unit: int = 32,
     x_margin: float = 2.0,
 ):
     """
-    Plot f[k] together with c_k * β(x - k) for a given spline basis.
+    Plot weights[k] together with weights[k] * β(x - k) for a given spline basis.
 
     Parameters
     ----------
     f_support : array-like
         Integer sample positions k.
-    f_samples : array-like
-        Sample values f[k], reused here as illustrative weights c_k.
+    weights : array-like
+        Weights w[k] used as coefficients in front of the shifted basis β(x - k).
+        In our case, these will typically be the true spline coefficients c[k].
     basis_name : str
         Name of the spline basis (e.g., "bspline3", "bspline1").
     title : str
@@ -81,12 +82,12 @@ def plot_basis_decomposition(
 
     plt.figure(figsize=(10, 4))
     plt.title(title)
-    plt.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
+    plt.stem(f_support, weights, basefmt=" ", label="w[k]")
     plt.axhline(y=0, color="black", linewidth=1, zorder=0)
 
-    # Plot each weighted, shifted basis function c_k * β(x - k)
-    for k, c_k in enumerate(f_samples):
-        y_basis = c_k * basis.eval(x_dense - k)
+    # Plot each weighted, shifted basis function w[k] * β(x - k)
+    for k, w_k in enumerate(weights):
+        y_basis = w_k * basis.eval(x_dense - k)
         plt.plot(x_dense, y_basis, linewidth=2, alpha=0.7)
 
     plt.xlabel("x")
@@ -140,13 +141,18 @@ plt.show()
 # --------------------------
 #
 # Visualize the shifted cubic B-spline basis functions β(x - k) that serve
-# as the building blocks of the interpolant.
+# as the building blocks of the interpolant. Here we use the true spline
+# coefficients c[k] computed internally by TensorSpline.
+
+# Build a TensorSpline to obtain the true cubic coefficients c[k]
+cubic_spline = TensorSpline(data=f_samples, coordinates=f_support, bases="bspline3", modes="mirror")
+cubic_coeffs = cubic_spline.coefficients
 
 plot_basis_decomposition(
     f_support=f_support,
-    f_samples=f_samples,
+    weights=cubic_coeffs,
     basis_name="bspline3",
-    title="f[k] samples with shifted cubic spline basis functions",
+    title="Cubic spline coefficients c[k] with shifted cubic spline basis functions",
     samples_per_unit=32,
     x_margin=2.0,
 )
@@ -248,14 +254,17 @@ plt.show()
 # ---------------------------
 #
 # Repeat the same visualization, now using the linear B-spline basis
-# instead of the cubic one. This highlights how a different
-# choice of basis changes the local shape of the building blocks.
+# instead of the cubic one, and the corresponding linear spline
+# coefficients c[k].
+
+linear_spline = TensorSpline(data=f_samples, coordinates=f_support, bases="bspline1", modes="mirror")
+linear_coeffs = linear_spline.coefficients
 
 plot_basis_decomposition(
     f_support=f_support,
-    f_samples=f_samples,
+    weights=linear_coeffs,
     basis_name="bspline1",
-    title="f[k] samples with shifted linear spline basis functions",
+    title="Linear spline coefficients c[k] with shifted linear spline basis functions",
     samples_per_unit=32,
     x_margin=2.0,
 )
