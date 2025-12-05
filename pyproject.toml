@@ -75,6 +75,12 @@ docs = [
     "sphinx-design >=0.6",
     "pydata-sphinx-theme >=0.15",
     "myst-parser >=3.0",
+
+    # Runtime deps needed for the benchmarking example(s)
+    "Pillow >=10.0",
+    "scikit-image >=0.25",
+    "opencv-python-headless >=4.8",
+    "torch >=2.0",
 ]
 
 # scikit-build-core configuration
