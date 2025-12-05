@@ -15,6 +15,7 @@ Shrink and re-expand a 2-D RGB image with splineops, then discuss aliasing.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import patches
 from urllib.request import urlopen
 from PIL import Image
 
@@ -194,7 +195,7 @@ plt.show()
 # Use float32 for storage / IO (resize still computes internally in float64).
 DTYPE = np.float32
 
-# Helper to resize RGB image
+
 def resize_rgb(
     img: np.ndarray,
     zoom: float,
@@ -221,8 +222,7 @@ def resize_rgb(
     if img.ndim != 3 or img.shape[2] != 3:
         raise ValueError("resize_rgb expects an H×W×3 RGB array")
 
-    # Normalize zoom to (z_h, z_w) for the 2-D resize calls
-    zoom_hw = (float(zoom), float(zoom))
+    zoom_hw = (float(zoom), float(zoom))  # (H, W) factors
 
     channels = []
     for c in range(img.shape[2]):
@@ -235,6 +235,159 @@ def resize_rgb(
 
     out = np.stack(channels, axis=-1)
     return np.clip(out, 0.0, 1.0)
+
+
+def _roi_rect_from_frac_color(shape, roi_size_px, center_frac):
+    """
+    Compute a square ROI inside a color image, centered at fractional coordinates.
+
+    Parameters
+    ----------
+    shape : tuple
+        (H, W, 3) shape of the color image.
+    roi_size_px : int
+        Target side length (clipped to fit inside the image).
+    center_frac : tuple of float
+        (row_frac, col_frac) in [0, 1] × [0, 1].
+
+    Returns
+    -------
+    (row_top, col_left, height, width)
+    """
+    H, W, _ = shape
+    row_frac, col_frac = center_frac
+
+    size = int(min(roi_size_px, H, W))
+    if size < 1:
+        size = min(H, W)
+
+    center_r = int(round(row_frac * H))
+    center_c = int(round(col_frac * W))
+
+    row_top = int(np.clip(center_r - size // 2, 0, H - size))
+    col_left = int(np.clip(center_c - size // 2, 0, W - size))
+
+    return row_top, col_left, size, size
+
+
+def _nearest_big_color(roi: np.ndarray, target_h: int = 256) -> np.ndarray:
+    """
+    Enlarge a small color ROI (H×W×3) with nearest-neighbour so that its
+    height is ~target_h pixels.
+    """
+    h, w, _ = roi.shape
+    mag = max(1, int(round(target_h / max(h, 1))))
+    return np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
+
+
+def show_intro_color(
+    original_uint8: np.ndarray,
+    shrunk_uint8: np.ndarray,
+    roi_rect,
+    zoom: float,
+    title_suffix: str,
+) -> None:
+    """
+    2×2 montage for a color image:
+
+      Row 1:
+        - Original image with red ROI box
+        - Magnified original ROI
+
+      Row 2:
+        - Shrunk image on a white canvas with mapped ROI box
+        - Magnified shrunk ROI
+    """
+    H, W, _ = original_uint8.shape
+    row0, col0, roi_h, roi_w = roi_rect
+
+    # Original ROI and its NN magnification
+    roi_orig = original_uint8[row0:row0 + roi_h, col0:col0 + roi_w, :]
+    roi_orig_big = _nearest_big_color(roi_orig, target_h=256)
+
+    # Shrunk image geometry
+    Hs, Ws, _ = shrunk_uint8.shape
+    center_r = row0 + roi_h / 2.0
+    center_c = col0 + roi_w / 2.0
+
+    roi_h_res = max(1, int(round(roi_h * zoom)))
+    roi_w_res = max(1, int(round(roi_w * zoom)))
+
+    if roi_h_res > Hs or roi_w_res > Ws:
+        # If the ROI would exceed the shrunk image, just take the whole shrunk image
+        roi_shrunk = shrunk_uint8
+        row_top_res = 0
+        col_left_res = 0
+        roi_h_res = Hs
+        roi_w_res = Ws
+    else:
+        center_r_res = int(round(center_r * zoom))
+        center_c_res = int(round(center_c * zoom))
+        row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, Hs - roi_h_res))
+        col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, Ws - roi_w_res))
+        roi_shrunk = shrunk_uint8[
+            row_top_res:row_top_res + roi_h_res,
+            col_left_res:col_left_res + roi_w_res,
+            :
+        ]
+
+    roi_shrunk_big = _nearest_big_color(roi_shrunk, target_h=256)
+
+    # Place shrunk image on a white canvas of the same size as original
+    canvas = np.full_like(original_uint8, 255)
+    h_copy = min(H, Hs)
+    w_copy = min(W, Ws)
+    canvas[:h_copy, :w_copy, :] = shrunk_uint8[:h_copy, :w_copy, :]
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+    # Row 1, left: original with ROI box
+    ax = axes[0, 0]
+    ax.imshow(original_uint8)
+    rect = patches.Rectangle(
+        (col0, row0),
+        roi_w,
+        roi_h,
+        linewidth=2,
+        edgecolor="red",
+        facecolor="none",
+    )
+    ax.add_patch(rect)
+    ax.set_title("Original image with ROI")
+    ax.axis("off")
+
+    # Row 1, right: magnified original ROI
+    ax = axes[0, 1]
+    ax.imshow(roi_orig_big)
+    ax.set_title("Original ROI (nearest-neighbour magnified)")
+    ax.axis("off")
+
+    # Row 2, left: shrunk canvas with mapped ROI box
+    ax = axes[1, 0]
+    ax.imshow(canvas)
+    if row_top_res < h_copy and col_left_res < w_copy:
+        box_h = min(roi_h_res, h_copy - row_top_res)
+        box_w = min(roi_w_res, w_copy - col_left_res)
+        rect2 = patches.Rectangle(
+            (col_left_res, row_top_res),
+            box_w,
+            box_h,
+            linewidth=2,
+            edgecolor="red",
+            facecolor="none",
+        )
+        ax.add_patch(rect2)
+    ax.set_title(f"{title_suffix} (zoom ×{zoom:g})")
+    ax.axis("off")
+
+    # Row 2, right: magnified shrunk ROI
+    ax = axes[1, 1]
+    ax.imshow(roi_shrunk_big)
+    ax.set_title("Resized ROI (nearest-neighbour magnified)")
+    ax.axis("off")
+
+    fig.tight_layout()
+    plt.show()
 
 
 # %%
@@ -255,108 +408,47 @@ shrink_factor = 0.3
 adjusted = adjust_size_for_zoom(data_small, shrink_factor).astype(DTYPE, copy=False)
 adjusted_uint8 = (np.clip(adjusted, 0.0, 1.0) * 255).astype(np.uint8)
 
-# 3) Shrink with splineops (channel-wise)
-shrunken_f = resize_rgb(
+# Define a central ROI on the adjusted image
+ROI_SIZE_PX = 128
+ROI_CENTER_FRAC = (0.5, 0.5)  # center of the image
+roi_rect = _roi_rect_from_frac_color(adjusted_uint8.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
+
+# 3) Shrink with splineops (channel-wise): standard cubic
+shrunken_cubic_f = resize_rgb(
     adjusted,
     shrink_factor,
     method="cubic",         # plain cubic interpolation (no anti-aliasing)
 )
+shrunken_cubic = (np.clip(shrunken_cubic_f, 0.0, 1.0) * 255).astype(np.uint8)
 
-# Convert to uint8 for display & composition
-shrunken = (np.clip(shrunken_f, 0.0, 1.0) * 255).astype(np.uint8)
-
-# Put the shrunken image on a white canvas the size of *adjusted*
-H_adj, W_adj, _ = adjusted_uint8.shape
-canvas = np.full_like(adjusted_uint8, 255)
-canvas[: shrunken.shape[0], : shrunken.shape[1]] = shrunken
-
-# 4) Re-expand to the original adjusted size (back to float [0, 1])
-expanded = resize_rgb(
-    shrunken.astype(DTYPE) / DTYPE(255.0),
-    1.0 / shrink_factor,
-    method="cubic",
-)
-expanded = np.clip(expanded, 0.0, 1.0)
-
-# %%
-# Expanded from Downsampled
-# -------------------------
-#
-# We first show the final expanded image at large scale. This helps Sphinx
-# generate a visually useful thumbnail and lets users preview the aliasing
-# artefacts up front.
-
-plt.figure(figsize=(10, 10))  # Tune size for thumbnail quality
-plt.imshow(expanded)
-plt.title(f"Expanded from Downsampled Image (×{1/shrink_factor:.1f})", fontsize=18)
-plt.axis("off")
-plt.tight_layout()
-plt.show()
-
-# %%
-# Aliasing
-# --------
-#
-# We go through the stages of shrinking the image and then expanding it.
-# Note the wave-like artefacts in the expanded image: classic **aliasing**.
-# When we shrink below the Nyquist limit, high-frequency detail folds back
-# into lower frequencies.  Upsampling cannot recover the lost detail, so
-# those aliased components become Moiré-style patterns.  A proper workflow
-# would low-pass filter before down-sampling, but here we purposely show the
-# artefacts to illustrate the point.
-
-fig, axes = plt.subplots(3, 1, figsize=(8, 18))
-
-axes[0].imshow(adjusted_uint8)
-axes[0].set_title("Adjusted Original")
-axes[0].axis("off")
-
-axes[1].imshow(canvas)
-axes[1].set_title(f"Shrunken (×{shrink_factor})")
-axes[1].axis("off")
-
-axes[2].imshow(expanded)
-axes[2].set_title(f"Expanded (×{1/shrink_factor:.1f})")
-axes[2].axis("off")
-
-plt.tight_layout()
-plt.show()
-
-# %%
-# Antialiasing shrink/expand
-# --------------------------
-#
-# Now we repeat the same shrink/expand pipeline, but this time we use the
-# **antialiasing** variant when shrinking:
-#
-#   * ``"cubic-antialiasing"`` applies an oblique-projection low-pass
-#     filter before down-sampling, which strongly reduces aliasing.
-#   * For the expansion step, plain cubic interpolation is enough; the
-#     important part is that the shrink was anti-aliased.
-
-aa_shrunken_f = resize_rgb(
+# 4) Shrink with splineops: cubic-antialiasing
+shrunken_aa_f = resize_rgb(
     adjusted,
     shrink_factor,
     method="cubic-antialiasing",  # antialiasing shrink, degree 3
 )
-aa_shrunken = (np.clip(aa_shrunken_f, 0.0, 1.0) * 255).astype(np.uint8)
+shrunken_aa = (np.clip(shrunken_aa_f, 0.0, 1.0) * 255).astype(np.uint8)
 
-aa_expanded = resize_rgb(
-    aa_shrunken.astype(DTYPE) / DTYPE(255.0),
-    1.0 / shrink_factor,
-    method="cubic",  # standard cubic interpolation for upsampling
+# %%
+# Cubic shrink: original vs standard interpolation
+# ------------------------------------------------
+
+show_intro_color(
+    original_uint8=adjusted_uint8,
+    shrunk_uint8=shrunken_cubic,
+    roi_rect=roi_rect,
+    zoom=shrink_factor,
+    title_suffix="Standard cubic shrink",
 )
-aa_expanded = np.clip(aa_expanded, 0.0, 1.0)
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 7))
+# %%
+# Cubic-antialiasing shrink: original vs antialiased interpolation
+# ----------------------------------------------------------------
 
-axes[0].imshow(expanded)
-axes[0].set_title("Expanded after plain cubic shrink", fontsize=16)
-axes[0].axis("off")
-
-axes[1].imshow(aa_expanded)
-axes[1].set_title("Expanded after antialiased shrink", fontsize=16)
-axes[1].axis("off")
-
-plt.tight_layout()
-plt.show()
+show_intro_color(
+    original_uint8=adjusted_uint8,
+    shrunk_uint8=shrunken_aa,
+    roi_rect=roi_rect,
+    zoom=shrink_factor,
+    title_suffix="Cubic-antialiasing shrink",
+)
