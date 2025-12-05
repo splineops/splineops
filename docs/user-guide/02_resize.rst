@@ -127,7 +127,14 @@ onto :math:`V_T` in :math:`L_2(\mathbb{R})`:
 
     g_T
     = \underset{g \in V_T}{\arg\min}
-      \int_{\mathbb{R}} \bigl|f(x) - g(x)\bigr|^2 \,\mathrm{d}x.
+      \,\|f - g\|_{L_2(\mathbb{R})}^2,
+
+where the :math:`L_2(\mathbb{R})` norm is given by
+
+.. math::
+
+    \|h\|_{L_2(\mathbb{R})}^2
+    = \int_{\mathbb{R}} \bigl|h(x)\bigr|^2 \,\mathrm{d}x.
 
 This is the **least-squares projection** point of view: among all splines that
 live in :math:`V_T` (on the grid :math:`\Gamma_T`), we pick the one that is as
