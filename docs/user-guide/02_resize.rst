@@ -206,52 +206,32 @@ the spline space :math:`V_T` [1]_.
 Oblique projection
 ------------------
 
-While the least-squares scheme uses the dual functions
-:math:`\tilde{\varphi}_{k,T}` that are uniquely determined by the
-synthesis basis :math:`\varphi_{k,T}`, their continuous-domain prefilters
-can become complicated and expensive to implement for higher spline
-degrees (e.g., cubic and above). To alleviate this, one can replace the
-orthogonal projection by an **oblique projection** [2]_.
+For higher spline orders, the continuous-domain prefilters associated with the
+dual functions :math:`\tilde{\varphi}_{k,T}` can become expensive to implement.
+A practical alternative is to replace the orthogonal (least-squares) projection
+by an **oblique projection** [2]_.
 
-The idea is to introduce a simpler **analysis family**
-:math:`\{\psi_{k,T}\}_{k\in\mathbb{Z}}` in a *different* spline space,
-typically of lower degree, and to define the approximation as
+The idea is to keep the **synthesis space** :math:`V_T` unchanged, i.e. the
+approximation is still written as
 
 .. math::
 
     g_T^{\mathrm{obl}}(x)
     = \sum_{k \in \mathbb{Z}} d[k]\,\varphi_{k,T}(x),
 
-where the coefficients :math:`d[k]` are obtained from inner products
-with the analysis functions :math:`\psi_{k,T}` followed by a discrete
-correction filter. In contrast to the least-squares case, the projection
-error is orthogonal to the analysis space spanned by :math:`\psi_{k,T}`,
-not to :math:`V_T` itself; this is why the operator is called "oblique."
+but to compute the coefficients :math:`d[k]` using a simpler **analysis family**
+:math:`\{\psi_{k,T}\}_{k\in\mathbb{Z}}` that typically belongs to a lower-degree
+spline space. In this case, the projection error is orthogonal to the analysis
+space spanned by :math:`\psi_{k,T}`, rather than to :math:`V_T` itself, hence
+the term “oblique” projection.
 
-A key point is that the **approximation space** :math:`V_T` (the space
-spanned by :math:`\varphi_{k,T}`) is kept the same as for the
-least-squares projection. Under this condition, Lee et al. show that:
-
-* the error of the oblique projection remains very close to that of the
-  least-squares (orthogonal) projection, with a provable worst-case
-  bound depending on the angle between the analysis and synthesis
-  spaces [2]_, their Table I and inequality (10);
-
-* both methods have the **same asymptotic approximation order** as the
-  sampling step tends to zero, provided the analysis functions satisfy a
-  partition-of-unity condition [2]_, equation (11);
-
-* in practice, oblique projection allows the use of **higher order
-  spline models** (e.g., cubic and above) with only a modest increase in
-  computation, while delivering almost the same quality as the optimal
-  least-squares solution.
-
-In SplineOps, the "antialiasing" presets of :func:`resize` follow this
-philosophy: they use a higher-degree spline space as synthesis model,
-but a lower-degree spline space for analysis (continuous prefiltering).
-This yields an efficient projection-based resize operator with strong
-antialiasing properties and quality close to the full least-squares
-approach, especially for downsampling by noninteger factors.
+When the analysis and synthesis spaces satisfy mild compatibility conditions,
+oblique projection retains the same approximation order as the least-squares
+projection and yields very similar quality in practice, while significantly
+reducing computational cost [2]_. In SplineOps, the antialiasing presets of
+:func:`resize` follow this pattern: they use a higher-degree spline model for
+the resized data, combined with a lower-degree analysis spline to implement an
+efficient projection-based (low-pass) prefilter.
 
 Resize Examples
 ---------------
