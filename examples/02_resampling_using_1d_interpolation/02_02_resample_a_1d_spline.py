@@ -25,6 +25,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from splineops.spline_interpolation.tensorspline import TensorSpline
+from splineops.spline_interpolation.bases.utils import create_basis
 
 plt.rcParams.update({
     "font.size": 14,     # Base font size
@@ -37,6 +38,9 @@ plt.rcParams.update({
 # %%
 # Initial 1D Samples
 # ------------------
+#
+# Define a 1D discrete signal :math:`f[k]` on a unit grid, which we will treat as
+# samples of an underlying spline.
 
 number_of_samples = 27
 
@@ -66,6 +70,9 @@ f_data = f(coordinates=(f_coords,), grid=False)
 # %%
 # Coarsening of f
 # ---------------
+#
+# Sample the fine spline :math:`f(x)` on a coarser grid to obtain the new
+# discrete sequence :math:`g[k] = f(Tk)`.
 
 val_T = np.pi
 
@@ -162,8 +169,62 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# Plotting
+# Coarse-Grid Basis Functions
+# ---------------------------
+#
+# We now visualize the resized shifted basis functions on a coarser grid.
+# Each coarse sample :math:`g[k]` weights a shifted basis function
+# :math:`\varphi(x/T - k)` on the coarse grid. In this example,
+# :math:`\varphi = \beta^{3}` is the cubic B-spline.
+
+# Retrieve the true spline coefficients for g (on the coarse grid)
+g_coeffs = g.coefficients
+
+# Basis function corresponding to `base` (e.g. "bspline3")
+basis = create_basis(base)
+
+# Dense x-grid over the same physical domain as the final g-plot (second row)
+x_dense = g_coords_full  # same as used for g_data_full
+
+plt.figure(figsize=(12, 4))
+ax = plt.gca()
+ax.set_title("g[k] samples with resized shifted basis functions")
+
+# Coarse samples g[k] at x = T*k
+ax.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
+ax.plot(
+    x_g, g_samples, "rs",
+    mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
+)
+
+# Overlay the coarse-grid basis functions: c_T[k] · ϕ(x/T − k)
+for k_idx, c_k in enumerate(g_coeffs):
+    y_basis = c_k * basis.eval(x_dense / val_T - k_idx)
+    ax.plot(x_dense, y_basis, linewidth=2, alpha=0.7)
+
+ax.axhline(0, color="black", linewidth=1, zorder=0)
+ax.set_xlim(0, f_support_length - 1)
+ax.set_ylabel("Amplitude")
+ax.grid(True)
+
+# Use the same coarse-grid ticks as in the final plot (second row)
+max_k_tick = int(np.floor((f_support_length - 1) / val_T))
+tick_ks = np.arange(max_k_tick + 1)           # coarse indices k = 0,1,...
+tick_positions = tick_ks * val_T              # physical positions x = kT
+ax.set_xticks(tick_positions)
+ax.set_xticklabels([str(k) for k in tick_ks])
+ax.set_xlabel("x")
+
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# %%
+# Spline g
 # --------
+#
+# Compare the original spline :math:`f` and the coarse spline g on the same
+# physical domain, using the coarse grid on the x-axis.
 
 fig = plt.figure(figsize=(12, 8))
 gs = GridSpec(nrows=2, ncols=1, height_ratios=[1, 1])
