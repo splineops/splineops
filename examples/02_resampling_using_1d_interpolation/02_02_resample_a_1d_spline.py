@@ -186,7 +186,7 @@ g_coeffs = g.coefficients
 basis = create_basis(base)
 
 # Dense x-grids: fine grid for f, coarse-domain grid for g
-x_dense_fine = f_coords      # dense sampling of f(x) on [0, K-1]
+x_dense_fine = f_coords        # dense sampling of f(x) on [0, K-1]
 x_dense_coarse = g_coords_full  # same physical domain, used for g(x)
 
 fig = plt.figure(figsize=(12, 8))
@@ -204,11 +204,6 @@ for k_idx, c_k in enumerate(f_coeffs):
     y_basis = c_k * basis.eval(x_dense_fine - k_idx)
     ax_top.plot(x_dense_fine, y_basis, linewidth=2, alpha=0.7)
 
-# Overlay fine-grid basis functions: c[k] · ϕ(x − k)
-for k_idx, c_k in enumerate(f_coeffs):
-    y_basis = c_k * basis.eval(x_dense_fine - k_idx)
-    ax_top.plot(x_dense_fine, y_basis, linewidth=2, alpha=0.7)
-
 ax_top.axhline(0, color="black", linewidth=1, zorder=0)
 ax_top.set_xlim(0, f_support_length - 1)
 ax_top.set_xticks(np.arange(0, f_support_length, 1))
@@ -217,7 +212,7 @@ ax_top.grid(True)
 ax_top.legend()
 
 # --- BOTTOM: coarse-grid basis functions (V_T) ---
-ax_bottom = fig.add_subplot(gs[1, 0], sharex=ax_top)
+ax_bottom = fig.add_subplot(gs[1, 0])
 ax_bottom.set_title("g[k] samples with resized shifted basis functions")
 
 # Coarse samples g[k] at x = T*k

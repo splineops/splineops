@@ -106,10 +106,13 @@ for some coefficient sequence :math:`(c_T[k])_{k \in \mathbb{Z}}` in
 
 As a visual example, the following figure from
 :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_02_resample_a_1d_spline.py`
-shows the coarse samples :math:`g[k]` together with their shifted basis
-functions :math:`\varphi(x/T - k)` on the grid :math:`\Gamma_T`. In that
-example, :math:`\varphi = \beta^{3}` is the cubic B-spline, and the basis
-functions are scaled by the spline coefficients :math:`c_T[k]` that
+has two rows. The top row shows the fine-grid samples :math:`f[k]` together
+with their shifted basis functions :math:`\varphi(x - k)` scaled by the
+coefficients :math:`c[k]`, illustrating the spline space :math:`V_1`. The
+bottom row shows the coarse samples :math:`g[k]` together with their shifted
+basis functions :math:`\varphi(x/T - k)` scaled by :math:`c_T[k]`, illustrating
+the spline space :math:`V_T`. In that example, :math:`\varphi = \beta^{3}` is
+the cubic B-spline, and the coefficients :math:`c[k]` and :math:`c_T[k]`
 implement the standard interpolation scheme described in
 :doc:`01_spline_interpolation`:
 
@@ -160,6 +163,95 @@ In this language:
 - and **resizing** is the operation :math:`V_1 \to V_T` that maps the
   coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
   :math:`g_T`.
+
+Least-squares projection and dual basis
+---------------------------------------
+
+To characterize the least-squares solution more explicitly, we introduce a
+family of **dual functions** :math:`\{\tilde{\varphi}_{k,T}\}_{k\in\mathbb{Z}}`
+in :math:`V_T` such that they are biorthonormal to the basis
+:math:`\{\varphi_{k,T}\}_{k\in\mathbb{Z}}`:
+
+.. math::
+
+    \bigl\langle \varphi_{k,T}, \tilde{\varphi}_{m,T} \bigr\rangle_{L_2(\mathbb{R})}
+    = \delta_{km},
+    \qquad k,m \in \mathbb{Z},
+
+where :math:`\delta_{km}` is the Kronecker delta. Under mild conditions on
+:math:`\varphi`, this dual family exists and is unique, and the orthogonal
+projection :math:`g_T` of :math:`f` onto :math:`V_T` admits the expansion
+
+.. math::
+
+    g_T(x)
+    = \sum_{k \in \mathbb{Z}}
+      \bigl\langle f, \tilde{\varphi}_{k,T} \bigr\rangle_{L_2(\mathbb{R})}
+      \,\varphi_{k,T}(x).
+
+In other words, the least-squares coefficients :math:`c_T[k]` are obtained
+by taking inner products of :math:`f` with the dual functions:
+
+.. math::
+
+    c_T[k]
+    = \bigl\langle f, \tilde{\varphi}_{k,T} \bigr\rangle_{L_2(\mathbb{R})},
+    \qquad k \in \mathbb{Z},
+
+and the resized spline :math:`g_T` is reconstructed by combining these
+coefficients with the shifted basis functions :math:`\varphi_{k,T}(x)`.
+This is precisely the **least-squares projection** of :math:`f` onto
+the spline space :math:`V_T` [1]_.
+
+Oblique projection
+------------------
+
+While the least-squares scheme uses the dual functions
+:math:`\tilde{\varphi}_{k,T}` that are uniquely determined by the
+synthesis basis :math:`\varphi_{k,T}`, their continuous-domain prefilters
+can become complicated and expensive to implement for higher spline
+degrees (e.g., cubic and above). To alleviate this, one can replace the
+orthogonal projection by an **oblique projection** [2]_.
+
+The idea is to introduce a simpler **analysis family**
+:math:`\{\psi_{k,T}\}_{k\in\mathbb{Z}}` in a *different* spline space,
+typically of lower degree, and to define the approximation as
+
+.. math::
+
+    g_T^{\mathrm{obl}}(x)
+    = \sum_{k \in \mathbb{Z}} d[k]\,\varphi_{k,T}(x),
+
+where the coefficients :math:`d[k]` are obtained from inner products
+with the analysis functions :math:`\psi_{k,T}` followed by a discrete
+correction filter. In contrast to the least-squares case, the projection
+error is orthogonal to the analysis space spanned by :math:`\psi_{k,T}`,
+not to :math:`V_T` itself; this is why the operator is called "oblique."
+
+A key point is that the **approximation space** :math:`V_T` (the space
+spanned by :math:`\varphi_{k,T}`) is kept the same as for the
+least-squares projection. Under this condition, Lee et al. show that:
+
+* the error of the oblique projection remains very close to that of the
+  least-squares (orthogonal) projection, with a provable worst-case
+  bound depending on the angle between the analysis and synthesis
+  spaces [2]_, their Table I and inequality (10);
+
+* both methods have the **same asymptotic approximation order** as the
+  sampling step tends to zero, provided the analysis functions satisfy a
+  partition-of-unity condition [2]_, equation (11);
+
+* in practice, oblique projection allows the use of **higher order
+  spline models** (e.g., cubic and above) with only a modest increase in
+  computation, while delivering almost the same quality as the optimal
+  least-squares solution.
+
+In SplineOps, the "antialiasing" presets of :func:`resize` follow this
+philosophy: they use a higher-degree spline space as synthesis model,
+but a lower-degree spline space for analysis (continuous prefiltering).
+This yields an efficient projection-based resize operator with strong
+antialiasing properties and quality close to the full least-squares
+approach, especially for downsampling by noninteger factors.
 
 Resize Examples
 ---------------
