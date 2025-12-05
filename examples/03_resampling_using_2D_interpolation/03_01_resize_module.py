@@ -44,10 +44,11 @@ plt.rcParams.update({
 # We use :class:`TensorSpline` both as the fine spline model and to evaluate
 # the coarse splines at the *same* continuous positions as :func:`resize`.
 
-# Original 1D samples f[k]
+# --- 1) Start from the original fine samples f[k] as in 02_02 ---
+
 number_of_samples = 27
 f_support = np.arange(number_of_samples, dtype=np.float64)
-f_samples_1d = np.array([
+f_samples = np.array([
     -0.657391, -0.641319, -0.613081, -0.518523, -0.453829, -0.385138,
     -0.270688, -0.179849, -0.11805, -0.0243016, 0.0130667, 0.0355389,
     0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
@@ -55,136 +56,87 @@ f_samples_1d = np.array([
     0.50695, 0.544767, 0.555373
 ], dtype=np.float64)
 
-# Fine spline f(x) on V₁ (unit grid)
-plot_points_per_unit_1d = 12
-base_1d = "bspline3"
-mode_1d = "mirror"
+plot_points_per_unit = 12
+base = "bspline3"
+mode = "mirror"
 
-f_1d = TensorSpline(
-    data=f_samples_1d,
-    coordinates=f_support,
-    bases=base_1d,
-    modes=mode_1d,
+# Fine spline f(x) on the unit grid V₁
+f_ts = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
+
+# --- 2) Build coarse samples g[k] on the physical grid x = T k (as in 02_02) ---
+
+T = np.pi
+g_support_length = round(number_of_samples // T)
+k = np.arange(g_support_length, dtype=np.float64)
+x_g_phys = k * T
+
+# Physical coarse samples g_phys[k] = f(T k)
+g_samples_phys = f_ts(coordinates=(x_g_phys,), grid=False)
+
+# Up to here this matches 02_02: g_samples_phys is what you plotted there.
+
+# --- 3) Now *re-interpret* g[k] on a unit grid and compare TensorSpline vs resize(cubic) ---
+
+# Treat g_samples_phys as samples on the unit grid j = 0..M-1
+g_support_idx = np.arange(g_support_length, dtype=np.float64)
+
+# TensorSpline on the index grid
+g_ts_idx = TensorSpline(
+    data=g_samples_phys,
+    coordinates=g_support_idx,
+    bases=base,
+    modes=mode,
 )
 
-# Fine evaluation grid (for reference)
-f_coords_1d = np.array([
-    q / plot_points_per_unit_1d
-    for q in range(plot_points_per_unit_1d * number_of_samples)
-])
-f_data_1d = f_1d(coordinates=(f_coords_1d,), grid=False)
+# Choose a finer index grid (e.g. upsample by a factor of 8 in index-domain)
+upsample_factor = 8
+M = g_support_length
+fine_len = upsample_factor * M
+coords_idx_fine = np.linspace(0, M - 1, fine_len, dtype=np.float64)
 
-# Choose a zoom factor for downsampling (e.g. similar to 27 // π ≈ 8)
-K = number_of_samples
-zoom_1d = K // np.pi / K  # coarse length ≈ 27//π, expressed as a zoom
-zoom_1d = float(zoom_1d)
+g_ts_idx_data = g_ts_idx(coordinates=(coords_idx_fine,), grid=False)
 
-# 1) Use resize to define the coarse length and coarse samples
-from splineops.resize import resize
-
-g_samples_cubic = resize(
-    f_samples_1d,
-    zoom_factors=(zoom_1d,),
+# Use resize(cubic) on the *same* g[k] sequence in index-domain
+g_resize_samples = resize(
+    g_samples_phys,
+    output_size=(fine_len,),
     method="cubic",
 ).astype(np.float64)
 
-g_samples_aa = resize(
-    f_samples_1d,
-    zoom_factors=(zoom_1d,),
-    method="cubic-antialiasing",
-).astype(np.float64)
+# By construction, resize's internal positions for these samples are
+# exactly coords_idx_fine = linspace(0, M-1, fine_len),
+# so we can compare directly:
 
-g_support_length = g_samples_cubic.shape[0]
+mse = np.mean((g_ts_idx_data - g_resize_samples) ** 2)
+print("MSE between TensorSpline (index-domain) and resize(cubic) on g[k] =", mse)
 
-# 2) Reconstruct the continuous positions that resize uses internally
-#    for pure interpolation:
-#
-#       step = (N - 1) / (outN - 1)
-#       x_l  = step * l
-#
-#    (see make_plan_1d in the C++ core for the pure interpolation case).
-step = (K - 1) / (g_support_length - 1) if g_support_length > 1 else 0.0
-g_support_x = step * np.arange(g_support_length, dtype=np.float64)
+# --- 4) Plot to visually confirm ---
 
-# 3) Build TensorSplines on those coarse grids and evaluate them on a dense grid
-g_cubic_ts = TensorSpline(
-    data=g_samples_cubic,
-    coordinates=g_support_x,
-    bases=base_1d,
-    modes=mode_1d,
-)
-g_aa_ts = TensorSpline(
-    data=g_samples_aa,
-    coordinates=g_support_x,
-    bases=base_1d,
-    modes=mode_1d,
-)
-
-# Dense grid over the same physical domain as f
-g_coords_dense = f_coords_1d
-g_cubic_data = g_cubic_ts(coordinates=(g_coords_dense,), grid=False)
-g_aa_data    = g_aa_ts(coordinates=(g_coords_dense,), grid=False)
-
-# (Optional) sanity check at the coarse sample positions:
-# evaluate the fine spline at x_l and compare to resize("cubic")
-f_at_xg = f_1d(coordinates=(g_support_x,), grid=False)
-print("max |resize(cubic) - f(x_l)| =", np.max(np.abs(g_samples_cubic - f_at_xg)))
-
-# Plot comparison
 plt.figure(figsize=(10, 4))
-plt.title("1D warm-up: cubic vs cubic-antialiasing on a coarse grid")
+plt.title("TensorSpline vs resize(cubic) on the same coarse samples g[k] (index domain)")
 
-# Fine samples f[k] as stems (original signal on V₁)
-plt.stem(f_support, f_samples_1d, basefmt=" ", label="f[k] samples")
+# Coarse samples g[k] on the index grid
+plt.stem(g_support_idx, g_samples_phys, basefmt=" ", label="g[k] samples (index grid)")
 plt.axhline(0, color="black", linewidth=1, zorder=0)
 
-# Fine spline f(x) for reference
+# TensorSpline curve
 plt.plot(
-    f_coords_1d,
-    f_data_1d,
-    color="gray",
+    coords_idx_fine,
+    g_ts_idx_data,
     linewidth=2,
-    alpha=0.5,
-    label="fine f(x) (reference)",
+    label="TensorSpline from g[k]",
 )
 
-# Standard cubic coarse spline (from resize)
+# resize(cubic) curve
 plt.plot(
-    g_coords_dense,
-    g_cubic_data,
-    color="purple",
+    coords_idx_fine,
+    g_resize_samples,
+    linestyle="--",
     linewidth=2,
-    label="coarse spline (cubic)",
-)
-plt.plot(
-    g_support_x,
-    g_samples_cubic,
-    "p",
-    color="purple",
-    mfc="none",
-    markersize=10,
-    markeredgewidth=2,
+    label='resize(g[k], method="cubic")',
 )
 
-# Cubic-antialiasing coarse spline
-plt.plot(
-    g_coords_dense,
-    g_aa_data,
-    color="orange",
-    linewidth=2,
-    label="coarse spline (cubic-antialiasing)",
-)
-plt.plot(
-    g_support_x,
-    g_samples_aa,
-    "o",
-    color="orange",
-    mfc="none",
-    markersize=8,
-    markeredgewidth=2,
-)
-
-plt.xlabel("x (continuous coordinate)")
+plt.xlabel("index-domain coordinate (0 .. M-1)")
 plt.ylabel("Amplitude")
 plt.grid(True)
 plt.legend()
