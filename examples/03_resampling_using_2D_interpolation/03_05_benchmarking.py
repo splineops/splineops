@@ -617,13 +617,12 @@ def _avg_time(rt_fn, repeats: int = N_TRIALS, warmup: bool = True):
 BENCH_METHODS: List[Tuple[str, str]] = [
     ("Splineops Standard cubic",     "spl_standard"),
     ("Splineops Antialiasing cubic", "spl_aa"),
-    ("SciPy cubic",                  "scipy"),
     ("OpenCV INTER_CUBIC",           "opencv"),
+    ("SciPy cubic",                  "scipy"),
     ("Pillow BICUBIC",               "pillow"),
     ("scikit-image cubic",           "skimage"),
     ("PyTorch bicubic (CPU)",        "torch"),
 ]
-
 
 def process_image(
     img_name: str,
@@ -760,7 +759,7 @@ def process_image(
         tile = _nearest_big(first_roi, ROI_MAG_TARGET)
         roi_tiles.append((label, tile))
 
-    # Introductory 2×2 figure using Antialiasing first-pass
+        # Introductory 2×2 figure using Antialiasing first-pass
     if aa_first_for_plot is not None:
         _show_initial_original_vs_aa(
             gray=gray,
@@ -772,7 +771,7 @@ def process_image(
 
     # ROI montage: Original + each method (3×3 grid, no global title)
     if roi_tiles:
-        rows, cols = 3, 3  # fixed grid
+        rows, cols = 3, 3  # fixed 3×3 grid
         fig_width = 3.2 * cols
         fig_height = 3.2 * rows
 
@@ -795,7 +794,6 @@ def process_image(
 
         fig.tight_layout()
         plt.show()
-
 
 # %%
 # Load all images and print runtime context
