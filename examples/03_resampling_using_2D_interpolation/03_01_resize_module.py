@@ -411,9 +411,7 @@ def show_intro_color(
 #
 # 1. Pick a zoom factor.
 # 2. Pick a single ROI.
-# 3. Compare the first-pass shrink for:
-#    - standard cubic interpolation,
-#    - cubic antialiasing (projection-based low-pass).
+# 3. Compare the first-pass shrink for standard cubic interpolation and antialiasing.
 #
 # Aliasing appears when we shrink below the Nyquist limit without proper
 # low-pass filtering: fine details fold back into lower frequencies and
@@ -454,11 +452,11 @@ shrunken_aa_f = resize_rgb(
 shrunken_aa = (np.clip(shrunken_aa_f, 0.0, 1.0) * 255).astype(np.uint8)
 
 # %%
-# Standard cubic shrink: original vs standard interpolation
-# --------------------------------------------------------
+# Standard Cubic Shrink
+# ---------------------
 #
 # Standard cubic interpolation gives a smooth-looking small image, but it
-# does *not* apply an explicit low-pass before decimation. High-frequency
+# does not apply an explicit low-pass before decimation. High-frequency
 # content from the original folds back (aliases) into lower frequencies,
 # which can be spotted as spurious ripples or Moiré patterns in the ROI.
 
@@ -472,10 +470,10 @@ show_intro_color(
 )
 
 # %%
-# Cubic-antialiasing shrink: original vs antialiased interpolation
-# ----------------------------------------------------------------
+# Cubic-Antialiasing Shrink
+# -------------------------
 #
-# The ``\"cubic-antialiasing\"`` preset inserts a projection-based low-pass
+# The "cubic-antialiasing" preset inserts a projection-based low-pass
 # filter before shrinking. The zoomed ROI shows that most of the Moiré
 # pattern is removed, while larger-scale edges and contrast are preserved.
 

@@ -14,9 +14,9 @@ introduced in :doc:`01_spline_interpolation`.
 
 Conceptually, resizing means:
 
-- starting from a spline :math:`f` defined on an **input grid** 
+- starting from a spline :math:`f` defined on an input grid
   (typically the integers),
-- choosing a new **output grid**, obtained by scaling the grid by a factor
+- choosing a new output grid, obtained by scaling the grid by a factor
   :math:`T` (e.g., :math:`0, T, 2T, 3T, \dots`),
 - and constructing a new spline :math:`g` that “lives” on that new grid and
   best represents the same underlying continuous function.
@@ -66,10 +66,10 @@ The set of all such splines then forms a spline space, which we denote by
         \ (c[k])_{k \in \mathbb{Z}} \in \ell_2(\mathbb{Z})
       \Bigr\}.
 
-We call this space :math:`V_1` because it corresponds to a **unit** sampling
+We call this space :math:`V_1` because it corresponds to a unit sampling
 step along the integer grid :math:`\{0, 1, 2, \dots\}`.
 
-Now fix a scale factor :math:`T > 0` and consider the **scaled grid**
+Now fix a scale factor :math:`T > 0` and consider the scaled grid
 
 .. math::
 
@@ -141,7 +141,7 @@ Resizing
 --------
 
 Suppose that the original signal :math:`f` belongs to :math:`V_1`. For a given
-scale factor :math:`T`, we can form **new samples** on the scaled grid
+scale factor :math:`T`, we can form new samples on the scaled grid
 :math:`\Gamma_T`:
 
 .. math::
@@ -169,7 +169,7 @@ where the :math:`L_2(\mathbb{R})` norm is given by
     \|h\|_{L_2(\mathbb{R})}^2
     = \int_{\mathbb{R}} \bigl|h(x)\bigr|^2 \,\mathrm{d}x.
 
-This is the **least-squares projection** point of view: among all splines that
+This is the least-squares projection point of view: among all splines that
 live in :math:`V_T` (on the grid :math:`\Gamma_T`), we pick the one that is as
 close as possible to :math:`f` in the :math:`L_2` sense.
 
@@ -177,7 +177,7 @@ In this language:
 
 - :math:`V_1` is the input spline space (grid step 1),
 - :math:`V_T` is the output spline space (grid step :math:`T`),
-- and **resizing** is the operation :math:`V_1 \to V_T` that maps the
+- and resizing is the operation :math:`V_1 \to V_T` that maps the
   coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
   :math:`g_T`.
 
@@ -191,14 +191,14 @@ the shifted basis functions :math:`\varphi_{k,T}`:
 
     g_T(x) = \sum_{k \in \mathbb{Z}} c_T[k]\,\varphi_{k,T}(x).
 
-These functions :math:`\varphi_{k,T}` play a **synthesis** role: they tell us
+These functions :math:`\varphi_{k,T}` play a synthesis role: they tell us
 how to reconstruct :math:`g_T` once the coefficients :math:`c_T[k]` are known.
 What remains is to explain how these coefficients are obtained from the input
 signal :math:`f`.
 
 In the least-squares setting, this is done using a second family of functions
 :math:`\{\tilde{\varphi}_{k,T}\}_{k\in\mathbb{Z}}`, often called the
-**analysis** functions. They are chosen to be dual to the synthesis functions,
+analysis functions. They are chosen to be dual to the synthesis functions,
 in the sense of the biorthonormality relation
 
 .. math::
@@ -219,8 +219,8 @@ projection :math:`g_T` of :math:`f` onto :math:`V_T` can then be written as
       \,\varphi_{k,T}(x).
 
 In other words, the least-squares coefficients :math:`c_T[k]` are obtained
-by first **analyzing** :math:`f` with the functions :math:`\tilde{\varphi}_{k,T}`
-and then **synthesizing** with :math:`\varphi_{k,T}`:
+by first analyzing :math:`f` with the functions :math:`\tilde{\varphi}_{k,T}`
+and then synthesizing with :math:`\varphi_{k,T}`:
 
 .. math::
 
@@ -237,9 +237,9 @@ Oblique projection
 For higher spline orders, the continuous-domain prefilters associated with the
 dual functions :math:`\tilde{\varphi}_{k,T}` can become expensive to implement.
 A practical alternative is to replace the orthogonal (least-squares) projection
-by an **oblique projection** [2]_.
+by an oblique projection [2]_.
 
-The idea is to keep the **synthesis space** :math:`V_T` unchanged, i.e. the
+The idea is to keep the synthesis space :math:`V_T` unchanged, i.e. the
 approximation is still written as
 
 .. math::
@@ -247,7 +247,7 @@ approximation is still written as
     g_T^{\mathrm{obl}}(x)
     = \sum_{k \in \mathbb{Z}} d[k]\,\varphi_{k,T}(x),
 
-but to compute the coefficients :math:`d[k]` using a simpler **analysis family**
+but to compute the coefficients :math:`d[k]` using a simpler analysis family
 :math:`\{\psi_{k,T}\}_{k\in\mathbb{Z}}` that typically belongs to a lower-degree
 spline space. In this case, the projection error is orthogonal to the analysis
 space spanned by :math:`\psi_{k,T}`, rather than to :math:`V_T` itself, hence
@@ -256,7 +256,7 @@ the term “oblique” projection.
 When the analysis and synthesis spaces satisfy mild compatibility conditions,
 oblique projection retains the same approximation order as the least-squares
 projection and yields very similar quality in practice, while significantly
-reducing computational cost [2]_. 
+reducing computational cost. 
 
 Implementation
 --------------
@@ -291,7 +291,7 @@ Concretely, the presets correspond to the following degree triples
 Here, the synthesis degree matches the interpolation degree, defining the spline
 model used for the resized data, while the analysis degree is chosen lower to
 simplify the continuous prefilter and make the oblique projection more efficient,
-with only a small loss compared to the full least-squares projection [2]_.
+with only a small loss compared to the full least-squares projection.
 
 Resize Examples
 ---------------
