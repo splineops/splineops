@@ -33,8 +33,8 @@ which starts from a spline :math:`f` and samples it more coarsely at positions
 The red stems and markers correspond to the new samples :math:`f(Tk)` on the
 coarser grid.
 
-A 1D spline-space view
-----------------------
+Scaled grids and basis functions
+--------------------------------
 
 In the interpolation chapter we introduced a 1D spline model of the form
 
@@ -120,8 +120,8 @@ implement the standard interpolation scheme described in
    :align: center
    :width: 100%
 
-From samples to a new spline
-----------------------------
+Resizing
+--------
 
 Suppose that the original signal :math:`f` belongs to :math:`V_1`. For a given
 scale factor :math:`T`, we can form **new samples** on the scaled grid
@@ -164,8 +164,8 @@ In this language:
   coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
   :math:`g_T`.
 
-Least-squares projection and analysis/synthesis functions
----------------------------------------------------------
+Least-squares projection
+------------------------
 
 So far we have described elements of :math:`V_T` by expanding them in terms of
 the shifted basis functions :math:`\varphi_{k,T}`:
