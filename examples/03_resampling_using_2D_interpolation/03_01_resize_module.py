@@ -285,18 +285,19 @@ def show_intro_color(
     shrunk_uint8: np.ndarray,
     roi_rect,
     zoom: float,
-    title_suffix: str,
+    label: str,
+    degree_label: str,
 ) -> None:
     """
-    2×2 montage for a color image:
+    2×2 figure with the same wording style as the benchmarking intro:
 
-      Row 1:
-        - Original image with red ROI box
-        - Magnified original ROI
+    Row 1:
+      - Original image with ROI (H×W px)
+      - Original ROI (h×w px, NN magnified)
 
-      Row 2:
-        - Shrunk image on a white canvas with mapped ROI box
-        - Magnified shrunk ROI
+    Row 2:
+      - First-pass resized image on a white canvas, with mapped ROI box
+      - First-pass ROI (h'×w' px, NN magnified)
     """
     H, W, _ = original_uint8.shape
     row0, col0, roi_h, roi_w = roi_rect
@@ -314,7 +315,6 @@ def show_intro_color(
     roi_w_res = max(1, int(round(roi_w * zoom)))
 
     if roi_h_res > Hs or roi_w_res > Ws:
-        # If the ROI would exceed the shrunk image, just take the whole shrunk image
         roi_shrunk = shrunk_uint8
         row_top_res = 0
         col_left_res = 0
@@ -353,16 +353,22 @@ def show_intro_color(
         facecolor="none",
     )
     ax.add_patch(rect)
-    ax.set_title("Original image with ROI")
+    ax.set_title(
+        f"Original image with ROI ({H}×{W} px)",
+        fontsize=12,
+    )
     ax.axis("off")
 
     # Row 1, right: magnified original ROI
     ax = axes[0, 1]
     ax.imshow(roi_orig_big)
-    ax.set_title("Original ROI (nearest-neighbour magnified)")
+    ax.set_title(
+        f"Original ROI ({roi_h}×{roi_w} px, NN magnified)",
+        fontsize=12,
+    )
     ax.axis("off")
 
-    # Row 2, left: shrunk canvas with mapped ROI box
+    # Row 2, left: first-pass resized image on canvas with mapped ROI box
     ax = axes[1, 0]
     ax.imshow(canvas)
     if row_top_res < h_copy and col_left_res < w_copy:
@@ -377,13 +383,19 @@ def show_intro_color(
             facecolor="none",
         )
         ax.add_patch(rect2)
-    ax.set_title(f"{title_suffix} (zoom ×{zoom:g})")
+    ax.set_title(
+        f"{label} ({degree_label}, zoom ×{zoom:g}, {Hs}×{Ws} px)",
+        fontsize=12,
+    )
     ax.axis("off")
 
-    # Row 2, right: magnified shrunk ROI
+    # Row 2, right: magnified resized ROI
     ax = axes[1, 1]
     ax.imshow(roi_shrunk_big)
-    ax.set_title("Resized ROI (nearest-neighbour magnified)")
+    ax.set_title(
+        f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+        fontsize=12,
+    )
     ax.axis("off")
 
     fig.tight_layout()
@@ -408,9 +420,9 @@ shrink_factor = 0.3
 adjusted = adjust_size_for_zoom(data_small, shrink_factor).astype(DTYPE, copy=False)
 adjusted_uint8 = (np.clip(adjusted, 0.0, 1.0) * 255).astype(np.uint8)
 
-# Define a central ROI on the adjusted image
-ROI_SIZE_PX = 128
-ROI_CENTER_FRAC = (0.5, 0.5)  # center of the image
+# Use the same ROI position as in the benchmarking example for kodim19
+ROI_SIZE_PX = 256
+ROI_CENTER_FRAC = (0.65, 0.35)
 roi_rect = _roi_rect_from_frac_color(adjusted_uint8.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
 
 # 3) Shrink with splineops (channel-wise): standard cubic
@@ -430,15 +442,16 @@ shrunken_aa_f = resize_rgb(
 shrunken_aa = (np.clip(shrunken_aa_f, 0.0, 1.0) * 255).astype(np.uint8)
 
 # %%
-# Cubic shrink: original vs standard interpolation
-# ------------------------------------------------
+# Standard cubic shrink: original vs standard interpolation
+# --------------------------------------------------------
 
 show_intro_color(
     original_uint8=adjusted_uint8,
     shrunk_uint8=shrunken_cubic,
     roi_rect=roi_rect,
     zoom=shrink_factor,
-    title_suffix="Standard cubic shrink",
+    label="Standard cubic",
+    degree_label="Cubic",
 )
 
 # %%
@@ -450,5 +463,6 @@ show_intro_color(
     shrunk_uint8=shrunken_aa,
     roi_rect=roi_rect,
     zoom=shrink_factor,
-    title_suffix="Cubic-antialiasing shrink",
+    label="Antialiasing",
+    degree_label="Cubic",
 )
