@@ -36,14 +36,25 @@ coarser grid.
 A 1D spline-space view
 ----------------------
 
-In the interpolation chapter we introduced a 1D spline of degree :math:`n` as
+In the interpolation chapter we introduced a 1D spline model of the form
 
 .. math::
 
-    f(x) = \sum_{k \in \mathbb{Z}} c[k]\,\beta^{n}(x - k),
+    f(x) = \sum_{k \in \mathbb{Z}} c[k]\,\varphi(x - k),
 
-where :math:`\beta^{n}` is the degree-:math:`n` B-spline and :math:`c[k]`
-are the spline coefficients. The set of all such splines forms a spline space, which we denote by
+where :math:`\varphi` is a fixed basis function (typically a B-spline of some
+degree :math:`n`, e.g. :math:`\varphi = \beta^{n}`) and :math:`c[k]` are the
+spline coefficients.
+
+We will work with coefficient sequences that are square-summable:
+
+.. math::
+
+    \ell_2(\mathbb{Z})
+    = \Bigl\{ (c[k])_{k \in \mathbb{Z}} \;\Big|\;
+               \sum_{k \in \mathbb{Z}} |c[k]|^2 < \infty \Bigr\}.
+
+The set of all such splines then forms a spline space, which we denote by
 
 .. math::
 
@@ -51,7 +62,7 @@ are the spline coefficients. The set of all such splines forms a spline space, w
     = \Bigl\{
         f : \mathbb{R} \to \mathbb{R}
         \;\Big|\;
-        f(x) = \sum_{k \in \mathbb{Z}} c[k]\,\beta^{n}(x - k),
+        f(x) = \sum_{k \in \mathbb{Z}} c[k]\,\varphi(x - k),
         \ (c[k])_{k \in \mathbb{Z}} \in \ell_2(\mathbb{Z})
       \Bigr\}.
 
@@ -69,7 +80,7 @@ basis functions
 
 .. math::
 
-    \varphi_{T,k}(x) = \beta^{n}\!\left(\frac{x}{T} - k\right),
+    \varphi_{k,T}(x) = \varphi\!\left(\frac{x}{T} - k\right),
 
 and setting
 
@@ -77,10 +88,10 @@ and setting
 
     V_T
     = \Bigl\{
-        g : \mathbb{R} \to \mathbb{R}
+        g_T : \mathbb{R} \to \mathbb{R}
         \;\Big|\;
-        g(x) = \sum_{k \in \mathbb{Z}} d[k]\,\varphi_{T,k}(x),
-        \ (d[k])_{k \in \mathbb{Z}} \in \ell_2(\mathbb{Z})
+        g_T(x) = \sum_{k \in \mathbb{Z}} c_T[k]\,\varphi_{k,T}(x),
+        \ (c_T[k])_{k \in \mathbb{Z}} \in \ell_2(\mathbb{Z})
       \Bigr\}.
 
 In other words, :math:`V_T` is the spline space associated with the grid
@@ -88,9 +99,10 @@ In other words, :math:`V_T` is the spline space associated with the grid
 
 .. math::
 
-    g(x) = \sum_{k \in \mathbb{Z}} d[k] \,\beta^{n}\!\left(\frac{x}{T} - k\right),
+    g_T(x) = \sum_{k \in \mathbb{Z}} c_T[k] \,\varphi\!\left(\frac{x}{T} - k\right),
 
-for some coefficient sequence :math:`\{d[k]\}` in :math:`\ell_2(\mathbb{Z})`.
+for some coefficient sequence :math:`(c_T[k])_{k \in \mathbb{Z}}` in
+:math:`\ell_2(\mathbb{Z})`.
 
 From samples to a new spline
 ----------------------------
@@ -126,20 +138,8 @@ In this language:
 - :math:`V_1` is the input spline space (grid step 1),
 - :math:`V_T` is the output spline space (grid step :math:`T`),
 - and **resizing** is the operation :math:`V_1 \to V_T` that maps the
-  coefficients (or samples) of :math:`f` to the coefficients of :math:`g_T`.
-
-The different resize modes in :mod:`splineops` correspond to different ways of
-implementing this mapping :
-
-- **Standard interpolation**: uses a spline model but does not enforce a full
-  least-squares projection (fast, float32-friendly).
-- **Least-squares projection**: realizes the orthogonal projection
-  :math:`V_1 \to V_T` as above (highest fidelity, float64-oriented).
-- **Oblique projection**: uses a carefully chosen analysis/synthesis pair to
-  approximate the least-squares projection at much lower computational cost.
-
-The rest of this section explains these three modes in more detail and shows
-how they relate to the spline spaces :math:`V_1` and :math:`V_T`.
+  coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
+  :math:`g_T`.
 
 Resize Examples
 ---------------
