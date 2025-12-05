@@ -104,6 +104,19 @@ In other words, :math:`V_T` is the spline space associated with the grid
 for some coefficient sequence :math:`(c_T[k])_{k \in \mathbb{Z}}` in
 :math:`\ell_2(\mathbb{Z})`.
 
+As a visual example, the following figure from
+:ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_02_resample_a_1d_spline.py`
+shows the coarse samples :math:`g[k]` together with their shifted basis
+functions :math:`\varphi(x/T - k)` on the grid :math:`\Gamma_T`. In that
+example, :math:`\varphi = \beta^{3}` is the cubic B-spline, and the basis
+functions are scaled by the spline coefficients :math:`c_T[k]` that
+implement the standard interpolation scheme described in
+:doc:`01_spline_interpolation`:
+
+.. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_02_resample_a_1d_spline_002.png
+   :align: center
+   :width: 100%
+
 From samples to a new spline
 ----------------------------
 
@@ -160,15 +173,15 @@ Resize Examples
 References
 ----------
 
-.. [1] C. Lee, M. Eden, M. Unser,
-   `High-Quality Image Resizing Using Oblique Projection Operators <https://doi.org/10.1109/83.668025>`_,
-   IEEE Transactions on Image Processing, vol. 7, no. 5,
-   pp. 679–692, May 1998.
-
-.. [2] A. Muñoz Barrutia, T. Blu, M. Unser, 
+.. [1] A. Muñoz Barrutia, T. Blu, M. Unser, 
    `Least-Squares Image Resizing Using Finite Differences <https://doi.org/10.1109/83.941860>`_,
    IEEE Transactions on Image Processing, vol. 10, no. 9, pp. 1365-1378,
    September 2001.
+
+.. [2] C. Lee, M. Eden, M. Unser,
+   `High-Quality Image Resizing Using Oblique Projection Operators <https://doi.org/10.1109/83.668025>`_,
+   IEEE Transactions on Image Processing, vol. 7, no. 5,
+   pp. 679–692, May 1998.
 
 .. [3] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
    IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
