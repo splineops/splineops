@@ -62,13 +62,15 @@ try:
 except Exception:
     _HAS_CV2 = False
 
-# Optional scikit-image (for comparison)
+# Optional scikit-image (for comparison + SSIM)
 try:
     from skimage.transform import resize as sk_resize
+    from skimage.metrics import structural_similarity as sk_ssim  # NEW: SSIM
 
     _HAS_SKIMAGE = True
 except Exception:
     _HAS_SKIMAGE = False
+    sk_ssim = None  # type: ignore[assignment]
 
 # PyQt5 dialogs for interactive selection
 from PyQt5 import QtWidgets
@@ -336,6 +338,7 @@ def torch_roundtrip(
     dt = time.perf_counter() - t0
     return rec, dt
 
+
 def opencv_roundtrip(
     img: np.ndarray, z: float, which: str
 ) -> Tuple[np.ndarray, float]:
@@ -410,6 +413,7 @@ def pillow_roundtrip(
     dt = time.perf_counter() - t0
     return rec_arr, dt
 
+
 def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip with scikit-image.transform.resize using order=1 (linear) or
@@ -471,6 +475,7 @@ def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarra
     rec = np.clip(rec, 0.0, 1.0)
     return rec.astype(img.dtype, copy=False), dt
 
+
 def average_time(run, repeats: int = 10, warmup: bool = True):
     """
     Return (last_rec, mean_time, std_time) over 'repeats' runs.
@@ -506,7 +511,7 @@ def main():
     ap.add_argument(
         "--samples",
         type=int,
-        default=50,
+        default=100,
         help="Base number of zoom samples per side if --samples-down/--samples-up are not given.",
     )
     ap.add_argument(
@@ -524,7 +529,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="down",
+        default="both",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
@@ -695,7 +700,9 @@ def main():
             )
 
     results: Dict[str, Dict[str, List[float]]] = {
-        name: {"z": [], "time": [], "time_sd": [], "snr": []} for name in METHODS
+        # NEW: add "ssim" channel
+        name: {"z": [], "time": [], "time_sd": [], "snr": [], "ssim": []}
+        for name in METHODS
     }
 
     #
@@ -728,10 +735,20 @@ def main():
 
             s = snr_db(img, rec)
 
+            # NEW: SSIM (full image)
+            if _HAS_SKIMAGE and sk_ssim is not None:
+                try:
+                    ssim_val = float(sk_ssim(img, rec, data_range=1.0))
+                except Exception:
+                    ssim_val = float("nan")
+            else:
+                ssim_val = float("nan")
+
             results[name]["z"].append(z)
             results[name]["time"].append(t_mean)
             results[name]["time_sd"].append(t_sd)
             results[name]["snr"].append(s)
+            results[name]["ssim"].append(ssim_val)  # NEW
     print("\nDone. Plotting...")
 
     #
@@ -837,6 +854,42 @@ def main():
             plt.grid(True, alpha=0.35)
             plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
             plt.tight_layout()
+
+        # ---------------- SSIM plot (NEW) ----------------
+        if _HAS_SKIMAGE and sk_ssim is not None:
+            plt.figure(figsize=PLOT_FIGSIZE)
+            any_curve = False
+            for name, data in results.items():
+                if not data["z"]:
+                    continue
+                z_arr = np.array(data["z"], dtype=float)
+                q_arr = np.array(data["ssim"], dtype=float)
+                mask = mask_fn(z_arr)
+                if not mask.any():
+                    continue
+                any_curve = True
+                q_plot = np.where(np.isfinite(q_arr[mask]), q_arr[mask], np.nan)
+                plt.plot(
+                    z_arr[mask],
+                    q_plot,
+                    marker=marker_for.get(name, "o"),
+                    markersize=MARKER_SIZE,
+                    linewidth=LINEWIDTH,
+                    label=name,
+                )
+            if any_curve:
+                plt.xlabel("Zoom factor", fontsize=PLOT_LABEL_FONTSIZE)
+                plt.ylabel("SSIM  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
+                plt.title(
+                    f"Round-Trip SSIM vs Zoom{title_suffix}  "
+                    f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
+                    fontsize=PLOT_TITLE_FONTSIZE,
+                )
+                plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
+                plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
+                plt.grid(True, alpha=0.35)
+                plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
+                plt.tight_layout()
 
     #
     # Plot selected regions
