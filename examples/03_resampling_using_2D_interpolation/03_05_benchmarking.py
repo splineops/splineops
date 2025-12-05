@@ -3,8 +3,8 @@
 # sphinx_gallery_end_ignore
 
 """
-Benchmarking over multiple images
-=================================
+Benchmarking
+============
 
 This example benchmarks several 2D downsampling methods over a *set* of test
 images. For each image we:
@@ -14,7 +14,7 @@ images. For each image we:
 3. Compute SNR / MSE / SSIM on a local ROI.
 4. Visualise the results with ROI-aware zooms:
 
-   - A 2×2 introductory figure:
+   - A 2x2 introductory figure:
        row 1: original image + magnified ROI
        row 2: Splineops Antialiasing first-pass image on white canvas
               + magnified mapped ROI
@@ -62,7 +62,7 @@ DTYPE = np.float32
 # ROI / detail-window configuration
 ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
 ROI_TILE_TITLE_FONTSIZE = 12
-ROI_SUPTITLE_FONTSIZE = 14
+ROI_SUPTITLE_FONTSIZE = 14  # currently unused, kept for consistency
 
 # Plot appearance for slide-friendly export
 PLOT_FIGSIZE = (14, 7)      # same 2:1 ratio as (10, 5), just larger
@@ -465,6 +465,7 @@ def _rt_opencv(
     except Exception as e:
         return gray, gray, str(e)
 
+
 def _rt_pillow(
     gray: np.ndarray, z: float
 ) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
@@ -624,20 +625,27 @@ BENCH_METHODS: List[Tuple[str, str]] = [
     ("PyTorch bicubic (CPU)",        "torch"),
 ]
 
-def process_image(
+
+# %%
+# Benchmarking helpers
+# --------------------
+
+def benchmark_image(
     img_name: str,
     gray: np.ndarray,
     zoom: float,
     roi_size_px: int,
     roi_center_frac: Tuple[float, float],
     degree_label: str = "Cubic",
-) -> None:
+) -> Dict[str, object]:
     """
-    For a single image:
-      - run all methods (round-trip),
-      - print timing + SNR/MSE/SSIM per method,
-      - show 2×2 intro figure (original + Antialiasing),
-      - show ROI montage (Original + first-pass ROIs).
+    Run the full round-trip benchmark on one image.
+
+    Returns a dictionary with:
+      - gray, z, roi_rect, roi, degree_label
+      - aa_first (for intro plot)
+      - roi_tiles (list of (name, tile) for ROI montage)
+      - rows (per-method metrics)
     """
     H, W = gray.shape
     z = zoom
@@ -705,7 +713,7 @@ def process_image(
             )
             continue
 
-        # Capture Antialiasing first-pass for the initial figure
+        # Capture Antialiasing first-pass for the introductory figure
         if backend == "spl_aa":
             aa_first_for_plot = first.copy()
 
@@ -759,45 +767,67 @@ def process_image(
         tile = _nearest_big(first_roi, ROI_MAG_TARGET)
         roi_tiles.append((label, tile))
 
-        # Introductory 2×2 figure using Antialiasing first-pass
-    if aa_first_for_plot is not None:
-        _show_initial_original_vs_aa(
-            gray=gray,
-            roi_rect=roi_rect,
-            aa_first=aa_first_for_plot,
-            z=z,
-            degree_label=degree_label,
-        )
+    return {
+        "img_name": img_name,
+        "gray": gray,
+        "z": z,
+        "roi_rect": roi_rect,
+        "roi": roi,
+        "degree_label": degree_label,
+        "aa_first": aa_first_for_plot,
+        "roi_tiles": roi_tiles,
+        "rows": rows,
+    }
 
-    # ROI montage: Original + each method (3×3 grid, no global title)
-    if roi_tiles:
-        rows, cols = 3, 3  # fixed 3×3 grid
-        fig_width = 3.2 * cols
-        fig_height = 3.2 * rows
 
-        fig, axes = plt.subplots(rows, cols, figsize=(fig_width, fig_height))
-        axes = np.asarray(axes).reshape(rows, cols)
+def show_intro_from_bench(bench: Dict[str, object]) -> None:
+    """Show the 2×2 introductory figure for a benchmarked image."""
+    aa_first = bench["aa_first"]
+    if aa_first is None:
+        return
+    _show_initial_original_vs_aa(
+        gray=bench["gray"],              # type: ignore[arg-type]
+        roi_rect=bench["roi_rect"],      # type: ignore[arg-type]
+        aa_first=bench["aa_first"],      # type: ignore[arg-type]
+        z=bench["z"],                    # type: ignore[arg-type]
+        degree_label=bench["degree_label"],  # type: ignore[arg-type]
+    )
 
-        # Turn off all axes initially
-        for ax in axes.ravel():
-            ax.axis("off")
 
-        # Fill tiles row by row
-        for idx, (name, tile) in enumerate(roi_tiles):
-            if idx >= rows * cols:
-                break  # safety if we ever have >9 tiles
-            r, c = divmod(idx, cols)
-            ax = axes[r, c]
-            ax.imshow(tile, cmap="gray", interpolation="nearest")
-            ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
-            ax.axis("off")
+def show_roi_montage_from_bench(bench: Dict[str, object]) -> None:
+    """Show the 3×3 ROI montage (original + all methods) for a benchmarked image."""
+    roi_tiles: List[Tuple[str, np.ndarray]] = bench["roi_tiles"]  # type: ignore[assignment]
+    if not roi_tiles:
+        return
 
-        fig.tight_layout()
-        plt.show()
+    rows, cols = 3, 3  # fixed 3×3 grid
+    fig_width = 3.2 * cols
+    fig_height = 3.2 * rows
+
+    fig, axes = plt.subplots(rows, cols, figsize=(fig_width, fig_height))
+    axes = np.asarray(axes).reshape(rows, cols)
+
+    # Turn off all axes initially
+    for ax in axes.ravel():
+        ax.axis("off")
+
+    # Fill tiles row by row
+    for idx, (name, tile) in enumerate(roi_tiles):
+        if idx >= rows * cols:
+            break  # safety if we ever have >9 tiles
+        r, c = divmod(idx, cols)
+        ax = axes[r, c]
+        ax.imshow(tile, cmap="gray", interpolation="nearest")
+        ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
+        ax.axis("off")
+
+    fig.tight_layout()
+    plt.show()
+
 
 # %%
-# Load all images and print runtime context
-# -----------------------------------------
+# Load all images
+# ---------------
 
 orig_images: Dict[str, np.ndarray] = {}
 
@@ -815,7 +845,7 @@ if _HAS_SPECS and print_runtime_context is not None:
 
 
 # %%
-# IMAGE: kodim05
+# Image: kodim05
 # --------------
 
 img_name = "kodim05"
@@ -825,7 +855,7 @@ zoom = float(cfg["zoom"])
 roi_size_px = int(cfg["roi_size_px"])
 roi_center_frac = tuple(map(float, cfg["roi_center_frac"]))  # type: ignore[arg-type]
 
-process_image(
+bench_kodim05 = benchmark_image(
     img_name=img_name,
     gray=img_orig,
     zoom=zoom,
@@ -834,9 +864,18 @@ process_image(
     degree_label="Cubic",
 )
 
+show_intro_from_bench(bench_kodim05)
+
 
 # %%
-# IMAGE: kodim07
+# ROI comparison
+# ~~~~~~~~~~~~~~
+
+show_roi_montage_from_bench(bench_kodim05)
+
+
+# %%
+# Image: kodim07 
 # --------------
 
 img_name = "kodim07"
@@ -846,7 +885,7 @@ zoom = float(cfg["zoom"])
 roi_size_px = int(cfg["roi_size_px"])
 roi_center_frac = tuple(map(float, cfg["roi_center_frac"]))  # type: ignore[arg-type]
 
-process_image(
+bench_kodim07 = benchmark_image(
     img_name=img_name,
     gray=img_orig,
     zoom=zoom,
@@ -855,9 +894,18 @@ process_image(
     degree_label="Cubic",
 )
 
+show_intro_from_bench(bench_kodim07)
+
 
 # %%
-# IMAGE: kodim14
+# ROI comparison
+# ~~~~~~~~~~~~~~
+
+show_roi_montage_from_bench(bench_kodim07)
+
+
+# %%
+# Image: kodim14
 # --------------
 
 img_name = "kodim14"
@@ -867,7 +915,7 @@ zoom = float(cfg["zoom"])
 roi_size_px = int(cfg["roi_size_px"])
 roi_center_frac = tuple(map(float, cfg["roi_center_frac"]))  # type: ignore[arg-type]
 
-process_image(
+bench_kodim14 = benchmark_image(
     img_name=img_name,
     gray=img_orig,
     zoom=zoom,
@@ -876,9 +924,18 @@ process_image(
     degree_label="Cubic",
 )
 
+show_intro_from_bench(bench_kodim14)
+
 
 # %%
-# IMAGE: kodim15
+# ROI comparison
+# ~~~~~~~~~~~~~~
+
+show_roi_montage_from_bench(bench_kodim14)
+
+
+# %%
+# Image: kodim15
 # --------------
 
 img_name = "kodim15"
@@ -888,7 +945,7 @@ zoom = float(cfg["zoom"])
 roi_size_px = int(cfg["roi_size_px"])
 roi_center_frac = tuple(map(float, cfg["roi_center_frac"]))  # type: ignore[arg-type]
 
-process_image(
+bench_kodim15 = benchmark_image(
     img_name=img_name,
     gray=img_orig,
     zoom=zoom,
@@ -897,9 +954,18 @@ process_image(
     degree_label="Cubic",
 )
 
+show_intro_from_bench(bench_kodim15)
+
 
 # %%
-# IMAGE: kodim19
+# ROI comparison
+# ~~~~~~~~~~~~~~
+
+show_roi_montage_from_bench(bench_kodim15)
+
+
+# %%
+# Image: kodim19
 # --------------
 
 img_name = "kodim19"
@@ -909,7 +975,7 @@ zoom = float(cfg["zoom"])
 roi_size_px = int(cfg["roi_size_px"])
 roi_center_frac = tuple(map(float, cfg["roi_center_frac"]))  # type: ignore[arg-type]
 
-process_image(
+bench_kodim19 = benchmark_image(
     img_name=img_name,
     gray=img_orig,
     zoom=zoom,
@@ -918,9 +984,18 @@ process_image(
     degree_label="Cubic",
 )
 
+show_intro_from_bench(bench_kodim19)
+
 
 # %%
-# IMAGE: kodim23
+# ROI comparison
+# ~~~~~~~~~~~~~~
+
+show_roi_montage_from_bench(bench_kodim19)
+
+
+# %%
+# Image: kodim23
 # --------------
 
 img_name = "kodim23"
@@ -930,7 +1005,7 @@ zoom = float(cfg["zoom"])
 roi_size_px = int(cfg["roi_size_px"])
 roi_center_frac = tuple(map(float, cfg["roi_center_frac"]))  # type: ignore[arg-type]
 
-process_image(
+bench_kodim23 = benchmark_image(
     img_name=img_name,
     gray=img_orig,
     zoom=zoom,
@@ -938,3 +1013,12 @@ process_image(
     roi_center_frac=roi_center_frac,
     degree_label="Cubic",
 )
+
+show_intro_from_bench(bench_kodim23)
+
+
+# %%
+# ROI comparison
+# ~~~~~~~~~~~~~~
+
+show_roi_montage_from_bench(bench_kodim23)
