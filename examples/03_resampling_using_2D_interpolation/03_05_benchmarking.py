@@ -12,14 +12,10 @@ images. For each image we:
 1. Downsample by an image-specific zoom factor, then upsample back (round-trip).
 2. Measure the runtime of the round-trip (forward + backward).
 3. Compute SNR / MSE / SSIM on a local ROI.
-4. Visualise the results with ROI-aware zooms:
-
-   - A 2x2 introductory figure:
-       row 1: original image + magnified ROI
-       row 2: Splineops Antialiasing first-pass image on white canvas
-              + magnified mapped ROI
-   - A ROI montage with ORIGINAL ROI + each method's *first-pass* ROI
-     (nearest-neighbour magnified at the mapped location).
+4. Visualise the results with ROI-aware zooms: first a 2x2 figure showing the
+   original image with its magnified ROI and the Splineops Antialiasing
+   first-pass image with the mapped ROI, then a ROI montage of the original
+   ROI and each method's first-pass ROI, all magnified with nearest-neighbour.
 
 We compare:
 
