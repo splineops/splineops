@@ -164,13 +164,25 @@ In this language:
   coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
   :math:`g_T`.
 
-Least-squares projection and dual basis
----------------------------------------
+Least-squares projection and analysis/synthesis functions
+---------------------------------------------------------
 
-To characterize the least-squares solution more explicitly, we introduce a
-family of **dual functions** :math:`\{\tilde{\varphi}_{k,T}\}_{k\in\mathbb{Z}}`
-in :math:`V_T` such that they are biorthonormal to the basis
-:math:`\{\varphi_{k,T}\}_{k\in\mathbb{Z}}`:
+So far we have described elements of :math:`V_T` by expanding them in terms of
+the shifted basis functions :math:`\varphi_{k,T}`:
+
+.. math::
+
+    g_T(x) = \sum_{k \in \mathbb{Z}} c_T[k]\,\varphi_{k,T}(x).
+
+These functions :math:`\varphi_{k,T}` play a **synthesis** role: they tell us
+how to reconstruct :math:`g_T` once the coefficients :math:`c_T[k]` are known.
+What remains is to explain how these coefficients are obtained from the input
+signal :math:`f`.
+
+In the least-squares setting, this is done using a second family of functions
+:math:`\{\tilde{\varphi}_{k,T}\}_{k\in\mathbb{Z}}`, often called the
+**analysis** functions. They are chosen to be dual to the synthesis functions,
+in the sense of the biorthonormality relation
 
 .. math::
 
@@ -179,8 +191,8 @@ in :math:`V_T` such that they are biorthonormal to the basis
     \qquad k,m \in \mathbb{Z},
 
 where :math:`\delta_{km}` is the Kronecker delta. Under mild conditions on
-:math:`\varphi`, this dual family exists and is unique, and the orthogonal
-projection :math:`g_T` of :math:`f` onto :math:`V_T` admits the expansion
+:math:`\varphi`, this dual family exists and is unique. The least-squares
+projection :math:`g_T` of :math:`f` onto :math:`V_T` can then be written as
 
 .. math::
 
@@ -190,18 +202,17 @@ projection :math:`g_T` of :math:`f` onto :math:`V_T` admits the expansion
       \,\varphi_{k,T}(x).
 
 In other words, the least-squares coefficients :math:`c_T[k]` are obtained
-by taking inner products of :math:`f` with the dual functions:
+by first **analyzing** :math:`f` with the functions :math:`\tilde{\varphi}_{k,T}`
+and then **synthesizing** with :math:`\varphi_{k,T}`:
 
 .. math::
 
     c_T[k]
     = \bigl\langle f, \tilde{\varphi}_{k,T} \bigr\rangle_{L_2(\mathbb{R})},
-    \qquad k \in \mathbb{Z},
+    \qquad k \in \mathbb{Z}.
 
-and the resized spline :math:`g_T` is reconstructed by combining these
-coefficients with the shifted basis functions :math:`\varphi_{k,T}(x)`.
-This is precisely the **least-squares projection** of :math:`f` onto
-the spline space :math:`V_T` [1]_.
+The resized spline :math:`g_T` is thus the least-squares (orthogonal)
+projection of :math:`f` onto the spline space :math:`V_T` [1]_.
 
 Oblique projection
 ------------------
