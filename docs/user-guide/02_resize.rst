@@ -239,10 +239,42 @@ the term “oblique” projection.
 When the analysis and synthesis spaces satisfy mild compatibility conditions,
 oblique projection retains the same approximation order as the least-squares
 projection and yields very similar quality in practice, while significantly
-reducing computational cost [2]_. In SplineOps, the antialiasing presets of
-:func:`resize` follow this pattern: they use a higher-degree spline model for
-the resized data, combined with a lower-degree analysis spline to implement an
-efficient projection-based (low-pass) prefilter.
+reducing computational cost [2]_. 
+
+Implementation
+--------------
+
+In SplineOps, the antialiasing presets of :func:`resize` follow this pattern: they
+use a higher-degree spline model for the resized data, combined with a lower-degree
+analysis spline to implement an efficient projection-based (low-pass) prefilter.
+
+Concretely, the presets correspond to the following degree triples
+(interpolation, analysis, synthesis):
+
+.. list-table:: Spline degree configuration for oblique projection in ``resize``
+   :header-rows: 1
+
+   * - Method
+     - Interpolation degree
+     - Analysis degree
+     - Synthesis degree
+   * - ``"linear-antialiasing"``
+     - 1
+     - 0
+     - 1
+   * - ``"quadratic-antialiasing"``
+     - 2
+     - 1
+     - 2
+   * - ``"cubic-antialiasing"``
+     - 3
+     - 1
+     - 3
+
+Here, the synthesis degree matches the interpolation degree, defining the spline
+model used for the resized data, while the analysis degree is chosen lower to
+simplify the continuous prefilter and make the oblique projection more efficient,
+with only a small loss compared to the full least-squares projection [2]_.
 
 Resize Examples
 ---------------
