@@ -506,7 +506,7 @@ def main():
     ap.add_argument(
         "--samples",
         type=int,
-        default=100,
+        default=50,
         help="Base number of zoom samples per side if --samples-down/--samples-up are not given.",
     )
     ap.add_argument(
