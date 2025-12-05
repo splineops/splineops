@@ -29,9 +29,11 @@ We compare:
 
 Notes
 -----
-- All ops run on grayscale images normalized to [0, 1].
+- All ops run on grayscale images normalized to [0, 1] for metrics.
 - Methods with missing deps are marked "unavailable" in the console and skipped
   from the ROI montage.
+- If ``USE_COLOR_VIS`` is True, we additionally show a color intro figure for
+  each image, while still computing all metrics on grayscale.
 """
 
 # %%
@@ -73,6 +75,9 @@ def fmt_ms(seconds: float) -> str:
 
 # Benchmark configuration
 N_TRIALS = 10
+
+# Global flag: whether to show color intros in addition to grayscale metrics.
+USE_COLOR_VIS = True
 
 # Optional deps
 try:
@@ -194,6 +199,17 @@ def _load_kodak_gray(url: str) -> np.ndarray:
         gray = arr / vmax
 
     return np.clip(gray, 0.0, 1.0).astype(DTYPE)
+
+
+def _load_kodak_rgb(url: str) -> np.ndarray:
+    """
+    Download a Kodak image as RGB [0, 1] in DTYPE (float32).
+    Used only for color visualizations; metrics remain on grayscale.
+    """
+    with urlopen(url, timeout=10) as resp:
+        img = Image.open(resp).convert("RGB")
+    arr = np.asarray(img, dtype=np.float64) / 255.0  # H×W×3 in [0,1]
+    return np.clip(arr, 0.0, 1.0).astype(DTYPE, copy=False)
 
 
 # %%
@@ -354,6 +370,138 @@ def _show_initial_original_vs_aa(
     ax.imshow(aa_roi_big, cmap="gray", interpolation="nearest", aspect="equal")
     ax.set_title(
         f"Antialiasing ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+        fontsize=ROI_TILE_TITLE_FONTSIZE,
+    )
+    ax.axis("off")
+
+    fig.tight_layout()
+    plt.show()
+
+
+def _nearest_big_color(roi: np.ndarray, target_h: int = ROI_MAG_TARGET) -> np.ndarray:
+    """
+    Enlarge a small color ROI (H×W×3) with nearest-neighbour so its height
+    is ~target_h pixels.
+    """
+    h, w, _ = roi.shape
+    mag = max(1, int(round(target_h / max(h, 1))))
+    return np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
+
+
+def show_intro_color(
+    original_rgb: np.ndarray,
+    shrunk_rgb: np.ndarray,
+    roi_rect: Tuple[int, int, int, int],
+    zoom: float,
+    label: str,
+    degree_label: str,
+) -> None:
+    """
+    2×2 figure mirroring the benchmarking intro style, but in color:
+
+    Row 1:
+      - Original image with ROI (H×W px)
+      - Original ROI (h×w px, NN magnified)
+
+    Row 2:
+      - First-pass resized image on a white canvas, with mapped ROI box
+      - First-pass ROI (h'×w' px, NN magnified)
+    """
+    H, W, _ = original_rgb.shape
+    row0, col0, roi_h, roi_w = roi_rect
+
+    # Original ROI and its NN magnification
+    roi_orig = original_rgb[row0:row0 + roi_h, col0:col0 + roi_w, :]
+    roi_orig_big = _nearest_big_color(roi_orig, target_h=ROI_MAG_TARGET)
+
+    # Shrunk image geometry
+    Hs, Ws, _ = shrunk_rgb.shape
+    center_r = row0 + roi_h / 2.0
+    center_c = col0 + roi_w / 2.0
+
+    roi_h_res = max(1, int(round(roi_h * zoom)))
+    roi_w_res = max(1, int(round(roi_w * zoom)))
+
+    if roi_h_res > Hs or roi_w_res > Ws:
+        roi_shrunk = shrunk_rgb
+        row_top_res = 0
+        col_left_res = 0
+        roi_h_res = Hs
+        roi_w_res = Ws
+    else:
+        center_r_res = int(round(center_r * zoom))
+        center_c_res = int(round(center_c * zoom))
+        row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, Hs - roi_h_res))
+        col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, Ws - roi_w_res))
+        roi_shrunk = shrunk_rgb[
+            row_top_res:row_top_res + roi_h_res,
+            col_left_res:col_left_res + roi_w_res,
+            :
+        ]
+
+    roi_shrunk_big = _nearest_big_color(roi_shrunk, target_h=ROI_MAG_TARGET)
+
+    # Place shrunk image on a white canvas of the same size as original
+    canvas = np.ones_like(original_rgb)
+    h_copy = min(H, Hs)
+    w_copy = min(W, Ws)
+    canvas[:h_copy, :w_copy, :] = shrunk_rgb[:h_copy, :w_copy, :]
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+    # Row 1, left: original with ROI box
+    ax = axes[0, 0]
+    ax.imshow(np.clip(original_rgb, 0.0, 1.0))
+    rect = patches.Rectangle(
+        (col0, row0),
+        roi_w,
+        roi_h,
+        linewidth=2,
+        edgecolor="red",
+        facecolor="none",
+    )
+    ax.add_patch(rect)
+    ax.set_title(
+        f"Original image with ROI ({H}×{W} px)",
+        fontsize=ROI_TILE_TITLE_FONTSIZE,
+    )
+    ax.axis("off")
+
+    # Row 1, right: magnified original ROI
+    ax = axes[0, 1]
+    ax.imshow(np.clip(roi_orig_big, 0.0, 1.0))
+    ax.set_title(
+        f"Original ROI ({roi_h}×{roi_w} px, NN magnified)",
+        fontsize=ROI_TILE_TITLE_FONTSIZE,
+    )
+    ax.axis("off")
+
+    # Row 2, left: resized image on canvas with mapped ROI box
+    ax = axes[1, 0]
+    ax.imshow(np.clip(canvas, 0.0, 1.0))
+    if row_top_res < h_copy and col_left_res < w_copy:
+        box_h = min(roi_h_res, h_copy - row_top_res)
+        box_w = min(roi_w_res, w_copy - col_left_res)
+        rect2 = patches.Rectangle(
+            (col_left_res, row_top_res),
+            box_w,
+            box_h,
+            linewidth=2,
+            edgecolor="red",
+            facecolor="none",
+        )
+        ax.add_patch(rect2)
+    ax.set_title(
+        f"{label} ({degree_label}, zoom ×{zoom:g}, {Hs}×{Ws} px)",
+        fontsize=ROI_TILE_TITLE_FONTSIZE,
+    )
+    ax.axis("off")
+
+    # Row 2, right: magnified resized ROI
+    ax = axes[1, 1]
+    ax.imshow(np.clip(roi_shrunk_big, 0.0, 1.0))
+    ax.set_title(
+        f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
         fontsize=ROI_TILE_TITLE_FONTSIZE,
     )
     ax.axis("off")
@@ -777,7 +925,7 @@ def benchmark_image(
 
 
 def show_intro_from_bench(bench: Dict[str, object]) -> None:
-    """Show the 2×2 introductory figure for a benchmarked image."""
+    """Show the 2×2 introductory figure for a benchmarked image (grayscale)."""
     aa_first = bench["aa_first"]
     if aa_first is None:
         return
@@ -826,11 +974,18 @@ def show_roi_montage_from_bench(bench: Dict[str, object]) -> None:
 # ---------------
 
 orig_images: Dict[str, np.ndarray] = {}
+orig_images_rgb: Dict[str, np.ndarray] = {}
 
 for name, url in KODAK_IMAGES:
     gray = _load_kodak_gray(url)
     orig_images[name] = gray
-    print(f"Loaded {name} from {url}  |  shape={gray.shape}")
+
+    if USE_COLOR_VIS:
+        rgb = _load_kodak_rgb(url)
+        orig_images_rgb[name] = rgb
+        print(f"Loaded {name} from {url}  |  gray shape={gray.shape}, rgb shape={rgb.shape}")
+    else:
+        print(f"Loaded {name} from {url}  |  gray shape={gray.shape}")
 
 print("\nTimings averaged over "
       f"{N_TRIALS} runs per method (1 warm-up run not counted).\n")
@@ -838,6 +993,44 @@ print("\nTimings averaged over "
 if _HAS_SPECS and print_runtime_context is not None:
     print_runtime_context(include_threadpools=True)
     print()
+
+
+# Small helper for color intro using SplineOps antialiasing
+def _color_intro_for_image(
+    img_name: str,
+    bench: Dict[str, object],
+) -> None:
+    if not USE_COLOR_VIS:
+        show_intro_from_bench(bench)
+        return
+    if not _HAS_SPLINEOPS:
+        show_intro_from_bench(bench)
+        return
+
+    rgb = orig_images_rgb[img_name]  # H×W×3, [0,1]
+    roi_rect = bench["roi_rect"]     # same pixel ROI as grayscale
+    z = float(bench["z"])            # zoom factor
+
+    # First-pass antialiasing in color (channel-wise)
+    zoom_hw = (z, z)
+    aa_channels = []
+    for c in range(rgb.shape[2]):
+        ch = sp_resize(
+            rgb[..., c],
+            zoom_factors=zoom_hw,
+            method="cubic-antialiasing",
+        )
+        aa_channels.append(ch)
+    aa_rgb = np.stack(aa_channels, axis=-1)
+
+    show_intro_color(
+        original_rgb=rgb,
+        shrunk_rgb=aa_rgb,
+        roi_rect=roi_rect,
+        zoom=z,
+        label="Antialiasing",
+        degree_label=bench["degree_label"],  # e.g. "Cubic"
+    )
 
 
 # %%
@@ -860,8 +1053,7 @@ bench_kodim05 = benchmark_image(
     degree_label="Cubic",
 )
 
-show_intro_from_bench(bench_kodim05)
-
+_color_intro_for_image(img_name, bench_kodim05)
 
 # %%
 # ROI Comparison
@@ -871,7 +1063,7 @@ show_roi_montage_from_bench(bench_kodim05)
 
 
 # %%
-# Image: kodim07 
+# Image: kodim07
 # --------------
 
 img_name = "kodim07"
@@ -890,8 +1082,7 @@ bench_kodim07 = benchmark_image(
     degree_label="Cubic",
 )
 
-show_intro_from_bench(bench_kodim07)
-
+_color_intro_for_image(img_name, bench_kodim07)
 
 # %%
 # ROI Comparison
@@ -920,8 +1111,7 @@ bench_kodim14 = benchmark_image(
     degree_label="Cubic",
 )
 
-show_intro_from_bench(bench_kodim14)
-
+_color_intro_for_image(img_name, bench_kodim14)
 
 # %%
 # ROI Comparison
@@ -950,8 +1140,7 @@ bench_kodim15 = benchmark_image(
     degree_label="Cubic",
 )
 
-show_intro_from_bench(bench_kodim15)
-
+_color_intro_for_image(img_name, bench_kodim15)
 
 # %%
 # ROI Comparison
@@ -980,8 +1169,7 @@ bench_kodim19 = benchmark_image(
     degree_label="Cubic",
 )
 
-show_intro_from_bench(bench_kodim19)
-
+_color_intro_for_image(img_name, bench_kodim19)
 
 # %%
 # ROI Comparison
@@ -1010,8 +1198,7 @@ bench_kodim23 = benchmark_image(
     degree_label="Cubic",
 )
 
-show_intro_from_bench(bench_kodim23)
-
+_color_intro_for_image(img_name, bench_kodim23)
 
 # %%
 # ROI Comparison
