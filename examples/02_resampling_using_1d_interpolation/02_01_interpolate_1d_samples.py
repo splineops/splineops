@@ -44,22 +44,25 @@ plt.rcParams.update({
 
 def plot_basis_decomposition(
     f_support,
-    weights,
+    samples,
+    coeffs,
     basis_name: str,
     title: str,
     samples_per_unit: int = 32,
     x_margin: float = 2.0,
 ):
     """
-    Plot weights[k] together with weights[k] * β(x - k) for a given spline basis.
+    Plot the original samples f[k] together with the shifted basis functions
+    scaled by the true spline coefficients c[k].
 
     Parameters
     ----------
     f_support : array-like
         Integer sample positions k.
-    weights : array-like
-        Weights w[k] used as coefficients in front of the shifted basis β(x - k).
-        In our case, these will typically be the true spline coefficients c[k].
+    samples : array-like
+        Original samples f[k], shown as stems on the integer grid.
+    coeffs : array-like
+        Spline coefficients c[k] used to scale the shifted basis functions.
     basis_name : str
         Name of the spline basis (e.g., "bspline3", "bspline1").
     title : str
@@ -82,12 +85,12 @@ def plot_basis_decomposition(
 
     plt.figure(figsize=(10, 4))
     plt.title(title)
-    plt.stem(f_support, weights, basefmt=" ", label="w[k]")
+    plt.stem(f_support, samples, basefmt=" ", label="f[k] samples")
     plt.axhline(y=0, color="black", linewidth=1, zorder=0)
 
-    # Plot each weighted, shifted basis function w[k] * β(x - k)
-    for k, w_k in enumerate(weights):
-        y_basis = w_k * basis.eval(x_dense - k)
+    # Plot each shifted basis function scaled by c[k]: c[k] · β(x − k)
+    for k, c_k in enumerate(coeffs):
+        y_basis = c_k * basis.eval(x_dense - k)
         plt.plot(x_dense, y_basis, linewidth=2, alpha=0.7)
 
     plt.xlabel("x")
@@ -95,7 +98,6 @@ def plot_basis_decomposition(
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
 
 # %%
 # Initial 1D Samples
@@ -150,7 +152,8 @@ cubic_coeffs = cubic_spline.coefficients
 
 plot_basis_decomposition(
     f_support=f_support,
-    weights=cubic_coeffs,
+    samples=f_samples,
+    coeffs=cubic_coeffs,
     basis_name="bspline3",
     title="f[k] samples with shifted cubic spline basis functions",
     samples_per_unit=32,
@@ -262,7 +265,8 @@ linear_coeffs = linear_spline.coefficients
 
 plot_basis_decomposition(
     f_support=f_support,
-    weights=linear_coeffs,
+    samples=f_samples,
+    coeffs=linear_coeffs,
     basis_name="bspline1",
     title="f[k] samples with shifted linear spline basis functions",
     samples_per_unit=32,
