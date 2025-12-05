@@ -126,7 +126,7 @@ except Exception:
 
 
 # %%
-# Kodak test set configuration
+# Kodak Test Set Configuration
 # ----------------------------
 
 KODAK_BASE = "https://r0k.us/graphics/kodak/kodak"
@@ -197,7 +197,7 @@ def _load_kodak_gray(url: str) -> np.ndarray:
 
 
 # %%
-# Utilities (metrics, ROI, plotting)
+# Utilities (Metrics, ROI, Plotting)
 # ----------------------------------
 
 def _snr_db(x: np.ndarray, y: np.ndarray) -> float:
@@ -363,7 +363,7 @@ def _show_initial_original_vs_aa(
 
 
 # %%
-# Round-trip backends & timing
+# Round-Trip Backends & Timing
 # ----------------------------
 
 def _rt_splineops(
@@ -623,7 +623,7 @@ BENCH_METHODS: List[Tuple[str, str]] = [
 
 
 # %%
-# Benchmarking helpers
+# Benchmarking Helpers
 # --------------------
 
 def benchmark_image(
@@ -822,7 +822,7 @@ def show_roi_montage_from_bench(bench: Dict[str, object]) -> None:
 
 
 # %%
-# Load all images
+# Load All Images
 # ---------------
 
 orig_images: Dict[str, np.ndarray] = {}
@@ -864,7 +864,7 @@ show_intro_from_bench(bench_kodim05)
 
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 show_roi_montage_from_bench(bench_kodim05)
@@ -894,7 +894,7 @@ show_intro_from_bench(bench_kodim07)
 
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 show_roi_montage_from_bench(bench_kodim07)
@@ -924,7 +924,7 @@ show_intro_from_bench(bench_kodim14)
 
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 show_roi_montage_from_bench(bench_kodim14)
@@ -954,7 +954,7 @@ show_intro_from_bench(bench_kodim15)
 
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 show_roi_montage_from_bench(bench_kodim15)
@@ -984,7 +984,7 @@ show_intro_from_bench(bench_kodim19)
 
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 show_roi_montage_from_bench(bench_kodim19)
@@ -1014,7 +1014,7 @@ show_intro_from_bench(bench_kodim23)
 
 
 # %%
-# ROI comparison
+# ROI Comparison
 # ~~~~~~~~~~~~~~
 
 show_roi_montage_from_bench(bench_kodim23)
