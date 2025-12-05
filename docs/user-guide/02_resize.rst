@@ -43,12 +43,17 @@ In the interpolation chapter we introduced a 1D spline of degree :math:`n` as
     f(x) = \sum_{k \in \mathbb{Z}} c[k]\,\beta^{n}(x - k),
 
 where :math:`\beta^{n}` is the degree-:math:`n` B-spline and :math:`c[k]`
-are the spline coefficients. The set of all such splines forms a spline
-space, which we denote by
+are the spline coefficients. The set of all such splines forms a spline space, which we denote by
 
 .. math::
 
-    V_1 = \mathrm{span}\{\beta^{n}(x-k)\}_{k \in \mathbb{Z}}.
+    V_1
+    = \Bigl\{
+        f : \mathbb{R} \to \mathbb{R}
+        \;\Big|\;
+        f(x) = \sum_{k \in \mathbb{Z}} c[k]\,\beta^{n}(x - k),
+        \ (c[k])_{k \in \mathbb{Z}} \in \ell_2(\mathbb{Z})
+      \Bigr\}.
 
 We call this space :math:`V_1` because it corresponds to a **unit** sampling
 step along the integer grid :math:`\{0, 1, 2, \dots\}`.
@@ -70,8 +75,14 @@ and setting
 
 .. math::
 
-    V_T = \mathrm{span}\{\varphi_{T,k}(x)\}_{k \in \mathbb{Z}}.
-    
+    V_T
+    = \Bigl\{
+        g : \mathbb{R} \to \mathbb{R}
+        \;\Big|\;
+        g(x) = \sum_{k \in \mathbb{Z}} d[k]\,\varphi_{T,k}(x),
+        \ (d[k])_{k \in \mathbb{Z}} \in \ell_2(\mathbb{Z})
+      \Bigr\}.
+
 In other words, :math:`V_T` is the spline space associated with the grid
 :math:`\Gamma_T`. A generic element :math:`g \in V_T` can be written as
 
@@ -79,7 +90,7 @@ In other words, :math:`V_T` is the spline space associated with the grid
 
     g(x) = \sum_{k \in \mathbb{Z}} d[k] \,\beta^{n}\!\left(\frac{x}{T} - k\right),
 
-for some new coefficient sequence :math:`\{d[k]\}`.
+for some coefficient sequence :math:`\{d[k]\}` in :math:`\ell_2(\mathbb{Z})`.
 
 From samples to a new spline
 ----------------------------
