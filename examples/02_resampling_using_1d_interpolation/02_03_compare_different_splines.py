@@ -3,7 +3,7 @@
 # sphinx_gallery_end_ignore
 
 """
-Compare different splines
+Compare Different Splines
 =========================
 
 Obtain a spline through different methods and compare the results.

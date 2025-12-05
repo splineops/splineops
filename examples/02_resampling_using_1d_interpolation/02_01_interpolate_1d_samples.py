@@ -3,7 +3,7 @@
 # sphinx_gallery_end_ignore
 
 """
-Interpolate 1D samples
+Interpolate 1D Samples
 ======================
 
 Interpolate 1D samples with standard interpolation.

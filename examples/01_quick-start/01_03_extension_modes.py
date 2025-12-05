@@ -3,7 +3,7 @@
 # sphinx_gallery_end_ignore
 
 """
-Extension modes
+Extension Modes
 ===============
 
 Plotting different extension modes of signals.
