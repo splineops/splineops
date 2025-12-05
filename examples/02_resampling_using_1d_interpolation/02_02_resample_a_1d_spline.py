@@ -197,7 +197,12 @@ ax_top = fig.add_subplot(gs[0, 0])
 ax_top.set_title("f[k] samples with shifted basis functions")
 
 # Plot f[k] samples as stems on the integer grid
-ax_top.stem(f_support, f_coeffs, basefmt=" ", label="f[k] samples")
+ax_top.stem(f_support, f_samples, basefmt=" ", label="f[k] samples")
+
+# Overlay fine-grid basis functions: c[k] · ϕ(x − k)
+for k_idx, c_k in enumerate(f_coeffs):
+    y_basis = c_k * basis.eval(x_dense_fine - k_idx)
+    ax_top.plot(x_dense_fine, y_basis, linewidth=2, alpha=0.7)
 
 # Overlay fine-grid basis functions: c[k] · ϕ(x − k)
 for k_idx, c_k in enumerate(f_coeffs):
