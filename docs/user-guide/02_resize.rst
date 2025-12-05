@@ -8,167 +8,127 @@ Resize
 Overview
 --------
 
-The *resize* function in the *splineops* library delivers high-performance, high-fidelity resizing for N-dimensional data arrays using advanced spline-based methods [1]_, [2]_, [3]_, [4]_.
+The :func:`resize` family in :mod:`splineops` provides high-performance,
+high-fidelity resizing for N-dimensional arrays built on the spline model
+introduced in :doc:`01_spline_interpolation`.
 
-It offers three distinct modes, each designed for a different balance of speed, accuracy and control:
+Conceptually, resizing means:
 
-- **Standard Interpolation**: *fast and smooth*. Ideal for real-time and general-purpose applications. Efficient in memory and compatible with float32 precision.
-- **Least-Squares Projection**: *highest quality*. Designed for applications where fidelity matters most (e.g. medical imaging, scientific computing). Optimized for float64 precision.
-- **Oblique Projection**: *the sweet spot*. Balances quality and performance, using smart approximations to deliver nearly least-squares quality at interpolation-level speed.
+- starting from a spline :math:`f` defined on an **input grid** 
+  (typically the integers),
+- choosing a new **output grid**, obtained by scaling the grid by a factor
+  :math:`T` (e.g., :math:`0, T, 2T, 3T, \dots`),
+- and constructing a new spline :math:`g` that “lives” on that new grid and
+  best represents the same underlying continuous function.
 
-..  image:: resizefig01.png
-    :width: 288pt
-    :align: center
+We illustrate this with the 1D example
+:ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_02_resample_a_1d_spline.py`,
+which starts from a spline :math:`f` and samples it more coarsely at positions
+:math:`x = T k`:
 
-Each method is built on solid spline theory and engineered for performance in real-world applications. Whether you're building fast visualizations or precision-critical 
-pipelines, *resize* adapts to your needs with consistent, artifact-resistant output and a clean API.
+.. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_02_resample_a_1d_spline_001.png
+   :align: center
+   :width: 100%
 
-Standard Interpolation
+The red stems and markers correspond to the new samples :math:`f(Tk)` on the
+coarser grid.
+
+A 1D spline-space view
 ----------------------
 
-*Fast and efficient spline-based interpolation, suitable for most applications.*
-
-B-spline interpolation reconstructs a smooth function from samples using a B-spline as basis function.  
-The interpolation function is defined as
+In the interpolation chapter we introduced a 1D spline of degree :math:`n` as
 
 .. math::
 
-    s(x) = \sum_k c_k \beta^{n}(x - k),
+    f(x) = \sum_{k \in \mathbb{Z}} c[k]\,\beta^{n}(x - k),
 
-where:
-
-- the B-spline of degree :math:`n` is :math:`\beta^{n}(x)`;
-- the interpolation coefficients :math:`c_k` are obtained by the application of a prefilter to the samples.
-
-The key property of B-splines is their compact support, which ensures efficient computation while maintaining high smoothness. 
-Given a discrete sequence :math:`\{f_k\}` of samples, the interpolation requirement
+where :math:`\beta^{n}` is the degree-:math:`n` B-spline and :math:`c[k]`
+are the spline coefficients. The set of all such splines forms a spline
+space, which we denote by
 
 .. math::
 
-    s(k) = f_k
+    V_1 = \mathrm{span}\{\beta^{n}(x-k)\}_{k \in \mathbb{Z}}.
 
-is satisfied by a proper choice of the coefficients :math:`c_k`. We establish them through a digital prefiltering step that involves the application 
-of a recursive IIR filter to the sequence :math:`\{f_k\}`.
+We call this space :math:`V_1` because it corresponds to a **unit** sampling
+step along the integer grid :math:`\{0, 1, 2, \dots\}`.
 
-Least-Squares Projection
-------------------------
-
-*For applications where quality is paramount. Produces optimal approximations in a spline space, minimizing aliasing and reconstruction error.*
-
-Least-squares projection aims to reconstruct a signal by projecting it onto a spline space in a way that minimizes the :math:`L_2`
-error between the original signal and its resized version.
-
-This approach uses two spline families:
-
-- Synthesis spline: defines the space onto which the resized image is reconstructed (e.g., cubic B-spline basis).
-- Analysis spline: used to analyze the input image before projection, typically chosen to be biorthogonal to the synthesis spline to ensure a true orthogonal projection.
-
-Both the analysis and synthesis functions are typically B-splines of the same degree (e.g., degree 3 for cubic splines), 
-ensuring that the projection is orthogonal and optimal in the least-squares sense. The interpolation spline is also of the same degree, providing a consistent model throughout.
-
-The goal is to find the spline function :math:`s(x)` in the synthesis space :math:`V_n` that best approximates a given input :math:`f(x)` by minimizing the squared error:
+Now fix a scale factor :math:`T > 0` and consider the **scaled grid**
 
 .. math::
 
-    \min_{s \in V_n} \int |f(x) - s(x)|^2 \mathrm{d}x.
-
-This leads to a projection of the form:
-
-.. math::
-
-    s(x) = \sum_k \langle f, \tilde{\varphi}_k \rangle \varphi_k(x),
-
-where:
-
-- :math:`\varphi_k(x)` are the integer-shifted synthesis splines (e.g., cubic B-splines),
-- :math:`\tilde{\varphi}_k(x)` are the corresponding analysis functions (their duals),
-- :math:`\langle f, \tilde{\varphi}_k \rangle` are the analysis coefficients (inner products of :math:`f` with the dual functions).
-
-The biorthonormality condition
+    \Gamma_T = \{ T k \mid k \in \mathbb{Z} \}.
+    
+We can build a similar spline space adapted to this new grid by defining
+basis functions
 
 .. math::
 
-    \langle \tilde{\varphi}_k, \varphi_\ell \rangle = \delta_{k\ell}
+    \varphi_{T,k}(x) = \beta^{n}\!\left(\frac{x}{T} - k\right),
 
-ensures that this projection minimizes energy loss. The use of matching spline degrees for both analysis and synthesis (e.g., cubic–cubic) 
-ensures an orthogonal projection and yields the best possible approximation in terms of signal-to-noise ratio (SNR).
-
-This method is especially powerful for:
-
-- downsampling, where aliasing suppression is critical,
-- interpolating scientific or medical data, where signal fidelity matters most,
-- use in invertible pipelines, as the projection preserves information structure well.
-
-While least-squares projection is computationally more intensive and designed for float64 precision, it offers the gold standard in quality 
-among the available resizing methods in `splineops`.
-
-Oblique Projection
-------------------
-
-*A near-optimal, performance-friendly alternative to least-squares projection. Achieves high-quality resizing with significantly lower computational cost.*
-
-Oblique projection is a generalization of least-squares projection where the synthesis and analysis spline spaces are allowed to differ. 
-Instead of computing an orthogonal projection (where the same basis is used for both approximation and analysis), the method employs an auxiliary 
-analysis function :math:`\psi(x)` distinct from the synthesis function :math:`\varphi(x)`. The resulting approximation is given by:
+and setting
 
 .. math::
 
-    s(x) = \sum_k \langle f, \psi_k \rangle \varphi_k(x),
+    V_T = \mathrm{span}\{\varphi_{T,k}(x)\}_{k \in \mathbb{Z}}.
+    
+In other words, :math:`V_T` is the spline space associated with the grid
+:math:`\Gamma_T`. A generic element :math:`g \in V_T` can be written as
 
-where:
+.. math::
 
-- :math:`\varphi_k(x)` are the synthesis basis functions (typically B-splines of degree :math:`n`);
-- :math:`\psi_k(x)` are the translated analysis functions, often chosen to be simpler or more localized.
+    g(x) = \sum_{k \in \mathbb{Z}} d[k] \,\beta^{n}\!\left(\frac{x}{T} - k\right),
 
-In the exact least-squares setting, the analysis functions are the biorthonormal duals :math:`\tilde{\varphi}_k` of the synthesis basis :math:`\varphi_k`.
-Oblique projection replaces these exact duals by a simpler analysis family :math:`\psi_k` (typically lower-degree splines), which is no longer strictly 
-biorthonormal but is much cheaper to implement. This yields a near-least-squares projection at a fraction of the cost.
+for some new coefficient sequence :math:`\{d[k]\}`.
 
-This formulation leads to an *oblique* rather than orthogonal projection. It trades off a small loss in optimality for improved speed and numerical stability. 
-Empirical results show that the signal-to-noise ratio (SNR) degrades only slightly (e.g., 0.1-0.4 dB) compared to the exact least-squares projection [2]_.
+From samples to a new spline
+----------------------------
 
-Spline Degrees
-~~~~~~~~~~~~~~
+Suppose that the original signal :math:`f` belongs to :math:`V_1`. For a given
+scale factor :math:`T`, we can form **new samples** on the scaled grid
+:math:`\Gamma_T`:
 
-In the `splineops.resize` implementation, the oblique projection is configured to use:
+.. math::
 
-- Interpolation degree: determines the input model and spline interpolation order.
-- Synthesis spline: matches the interpolation degree (used to reconstruct the resized image).
-- Analysis spline: set to a lower degree, typically *interpolation degree - 1*.
+    f_T[k] = f(Tk), \qquad k \in \mathbb{Z}.
 
-For example:
+These samples tell us how the original continuous spline :math:`f` behaves at
+the new grid locations. The goal of resizing is to construct a new spline
+:math:`g_T \in V_T` that is consistent with these samples and remains a good
+approximation of :math:`f` in the continuous domain.
 
-.. list-table:: Spline degree configuration in oblique projection
-   :header-rows: 1
+A natural way to define :math:`g_T` is as an orthogonal projection of :math:`f`
+onto :math:`V_T` in :math:`L_2(\mathbb{R})`:
 
-   * - Method
-     - Interpolation Degree
-     - Synthesis Spline Degree
-     - Analysis Spline Degree
-   * - ``linear-fast_antialiasing``
-     - 1
-     - 1
-     - 0
-   * - ``quadratic-fast_antialiasing``
-     - 2
-     - 2
-     - 1
-   * - ``cubic-fast_antialiasing``
-     - 3
-     - 3
-     - 1
+.. math::
 
-The synthesis spline determines the space onto which the image is projected. The analysis spline is used to compute inner products with the scaled signal, 
-effectively acting as a prefilter. Choosing a lower-degree analysis spline (e.g., linear) simplifies the filter computation and enables efficient recursive implementations 
-using finite differences.
+    g_T
+    = \underset{g \in V_T}{\arg\min}
+      \int_{\mathbb{R}} \bigl|f(x) - g(x)\bigr|^2 \,\mathrm{d}x.
 
-**Computational and Practical Implications**
+This is the **least-squares projection** point of view: among all splines that
+live in :math:`V_T` (on the grid :math:`\Gamma_T`), we pick the one that is as
+close as possible to :math:`f` in the :math:`L_2` sense.
 
-- The oblique method retains much of the quality of least-squares projection, especially for moderate downsampling factors.
-- It operates correctly in float32 precision and requires less memory and fewer computations than its least-squares counterpart.
-- Because the projection is not orthogonal, there may be small residual aliasing or reconstruction errors, especially for high-frequency content or very aggressive downsampling.
+In this language:
 
-This makes oblique projection a compelling compromise: faster and more stable than least-squares, but still significantly more accurate than naive interpolation.
+- :math:`V_1` is the input spline space (grid step 1),
+- :math:`V_T` is the output spline space (grid step :math:`T`),
+- and **resizing** is the operation :math:`V_1 \to V_T` that maps the
+  coefficients (or samples) of :math:`f` to the coefficients of :math:`g_T`.
+
+The different resize modes in :mod:`splineops` correspond to different ways of
+implementing this mapping :
+
+- **Standard interpolation**: uses a spline model but does not enforce a full
+  least-squares projection (fast, float32-friendly).
+- **Least-squares projection**: realizes the orthogonal projection
+  :math:`V_1 \to V_T` as above (highest fidelity, float64-oriented).
+- **Oblique projection**: uses a carefully chosen analysis/synthesis pair to
+  approximate the least-squares projection at much lower computational cost.
+
+The rest of this section explains these three modes in more detail and shows
+how they relate to the spline spaces :math:`V_1` and :math:`V_T`.
 
 Resize Examples
 ---------------
@@ -187,14 +147,14 @@ References
    IEEE Transactions on Image Processing, vol. 7, no. 5,
    pp. 679–692, May 1998.
 
-.. [2] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
-   IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
-   vol. 16, no. 6, pp. 22-38, November 1999.
-
-.. [3] A. Muñoz Barrutia, T. Blu, M. Unser, 
+.. [2] A. Muñoz Barrutia, T. Blu, M. Unser, 
    `Least-Squares Image Resizing Using Finite Differences <https://doi.org/10.1109/83.941860>`_,
    IEEE Transactions on Image Processing, vol. 10, no. 9, pp. 1365-1378,
    September 2001.
+
+.. [3] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
+   IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
+   vol. 16, no. 6, pp. 22-38, November 1999.
 
 .. [4] P. Thévenaz, T. Blu, M. Unser,
    `Interpolation Revisited <https://doi.org/10.1109/42.875199>`_,
