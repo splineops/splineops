@@ -104,7 +104,11 @@ def spline_term(k, x):
 
 
 # %%
-# Figure 1 – β(x, 3)
+# Single cubic B-spline
+# ---------------------
+#
+# We start from the centered cubic B-spline β(x, 3), which is the basic
+# building block for all the subsequent figures.
 
 plt.figure(figsize=(8, 4))
 plt.plot(x_values, beta3(x_values))
@@ -112,13 +116,17 @@ plt.xlim(-3, 3)
 plt.ylim(-0.2, 0.7)
 plt.grid(True)
 plt.xlabel("x")
+plt.ylabel("y")
 plt.title("Cubic B-spline β(x, 3)")
-plt.legend()
 plt.show()
 
 
 # %%
-# Figure 2 – Shifted β(x - 1/3, 3)
+# Shifted cubic B-spline
+# ----------------------
+#
+# We now shift the cubic B-spline horizontally by one third. This only
+# affects the argument of β, not its shape.
 
 shift = 1.0 / 3.0
 
@@ -131,15 +139,20 @@ plt.xlim(-3, 3)
 plt.ylim(-0.2, 0.7)
 plt.grid(True)
 plt.xlabel("x")
+plt.ylabel("y")
 plt.title("Shifted cubic B-spline β(x - 1/3, 3)")
-plt.legend()
 plt.show()
 
+
 # %%
-# Figure 3 – Horizontally scaled β((x - 1/3)/0.5, 3)
+# Shrunk cubic B-spline
+# ---------------------
+#
+# Next, we shrink the spline horizontally by 60%. This is done by scaling
+# the argument of β, which changes the effective width of its support.
 
 shift = 1.0 / 3.0
-scale = 0.5   # same as "/ 0.5" in Mathematica
+scale = 0.5   # same as "/ 0.5" in the text
 
 plt.figure(figsize=(8, 4))
 plt.plot(
@@ -150,12 +163,17 @@ plt.xlim(-3, 3)
 plt.ylim(-0.2, 0.7)
 plt.grid(True)
 plt.xlabel("x")
+plt.ylabel("y")
 plt.title("Horizontally scaled β((x - 1/3)/0.5, 3)")
-plt.legend()
 plt.show()
 
+
 # %%
-# Figure 4 – Vertically scaled 0.25 * β((x - 1/3)/0.5, 3)
+# Weighted cubic B-spline
+# -----------------------
+#
+# Finally, we multiply the shrunk and shifted spline by a constant factor.
+# This operation is called weighting.
 
 shift = 1.0 / 3.0
 scale = 0.5
@@ -170,18 +188,23 @@ plt.xlim(-3, 3)
 plt.ylim(-0.2, 0.7)
 plt.grid(True)
 plt.xlabel("x")
+plt.ylabel("y")
 plt.title("Vertically scaled 0.25 · β((x - 1/3)/0.5, 3)")
-plt.legend()
 plt.show()
 
+
 # %%
-# Figure 5 – Combination of four weighted cubic B-splines
+# A zoo of shifted, shrunk, and weighted cubic B-splines
+# ------------------------------------------------------
+#
+# We now play with several combinations of (shift, shrink, weight) to obtain
+# a collection of different functions, all of which are still cubic B-splines
+# up to their individual parameters.
 
 def beta3_shift_scale(x, shift, scale, amp=1.0):
     return amp * beta3((x + shift) / scale)
 
-# Note: Mathematica uses (x - 1/3)/0.5 etc.
-# I keep the same algebra but write shifts explicitly:
+# Note: these parameters mirror those used in the original notebook.
 curves = [
     ("0.25 β((x - 1/3)/0.5, 3)",
      lambda x: 0.25 * beta3((x - 1.0/3.0) / 0.5)),
@@ -201,13 +224,19 @@ plt.xlim(-3, 3)
 plt.ylim(-0.2, 0.7)
 plt.grid(True)
 plt.xlabel("x")
-plt.ylabel("Weighted β")
+plt.ylabel("y")
 plt.title("Four weighted & shifted cubic B-splines")
 plt.legend()
 plt.show()
 
+
 # %%
-# Figure 6 – Sum of the four weighted cubic B-splines
+# Sum of several cubic B-splines: a spline
+# ----------------------------------------
+#
+# If we sum these functions together, we obtain a new combined function. It
+# is built from cubic B-splines but is itself no longer a basis function:
+# it is a spline.
 
 def combined_spline(x):
     return sum(f(x) for _, f in curves)
@@ -218,13 +247,21 @@ plt.xlim(-3, 3)
 plt.ylim(-0.2, 0.7)
 plt.grid(True)
 plt.xlabel("x")
-plt.ylabel("Sum")
+plt.ylabel("y")
 plt.title("Sum of weighted cubic B-splines")
-plt.legend()
 plt.show()
 
+
 # %%
-# Figure 7 – Uniform spline (thick) and its additive cubic B-spline constituents
+# Uniform spline as a sum of shifted cubic B-splines
+# --------------------------------------------------
+#
+# We now build a regular (uniform) spline as
+#
+#   f(x) = Σ_k c[k] β³(x - k),
+#
+# using integer shifts and fixed coefficients c[k]. The thick curve is the
+# full spline; the thin curves are the individual terms c[k] β³(x - k).
 
 x_plot = np.linspace(-3.1, 3.1, 2000)
 
@@ -235,7 +272,6 @@ plt.plot(
     x_plot,
     spline_from_coeffs(x_plot),
     linewidth=5,
-    label="spline f(x)",
 )
 
 # Thin constituent terms c[k] β³(x - k)
@@ -250,17 +286,23 @@ for k in k_vals:
 plt.xlim(-3.1, 3.1)
 plt.grid(True)
 plt.xlabel("x")
-plt.ylabel("f(x)")
+plt.ylabel("y")
 plt.title("Uniform spline and constituent cubic B-splines")
 plt.legend(loc="upper left", ncol=2)
 plt.tight_layout()
 plt.show()
 
+
 # %%
-# Figure 8 – Spline with its samples at integer positions
+# Sampling the spline at integer positions
+# ----------------------------------------
+#
+# We sample the spline at integer locations x = k. These samples define
+# a discrete sequence f[k] that we will later try to reconstruct from a
+# spline interpolant.
 
 x_plot = np.linspace(-3.1, 3.1, 2000)
-x_samples = np.arange(-3, 4)             # q = -3, ..., 3
+x_samples = np.arange(-3, 4)             # k = -3, ..., 3
 y_samples = spline_from_coeffs(x_samples)
 
 plt.figure(figsize=(8, 4))
@@ -281,13 +323,21 @@ plt.setp(baseline, linewidth=1.0)
 plt.xlim(-3.1, 3.1)
 plt.grid(True)
 plt.xlabel("x")
-plt.ylabel("f(x)")
+plt.ylabel("y")
 plt.title("Uniform spline with samples at integer positions")
 plt.tight_layout()
 plt.show()
 
+
 # %%
-# Figure 9 – Samples → spline coefficients → interpolating spline
+# From discrete samples to a cubic B-spline interpolant
+# -----------------------------------------------------
+#
+# Finally, we illustrate the relationship between:
+#
+# - the discrete samples f[k] (left panel),
+# - the shifted and weighted basis functions c[k] β³(x - k) (middle),
+# - and the resulting spline f(x) that interpolates the samples (right).
 
 x_plot = np.linspace(-3.1, 3.1, 2000)
 x_samples = np.arange(-3, 4)
@@ -305,7 +355,7 @@ plt.setp(baseline, linewidth=1.0)
 ax.set_xlim(-3.1, 3.1)
 ax.grid(True)
 ax.set_xlabel("x")
-ax.set_ylabel("value")
+ax.set_ylabel("y")
 ax.set_title("Samples f[k]")
 
 # --- Middle panel: basis terms + samples ----------------------------------
