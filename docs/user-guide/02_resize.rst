@@ -75,6 +75,23 @@ Now fix a scale factor :math:`T > 0` and consider the **scaled grid**
 
     \Gamma_T = \{ T k \mid k \in \mathbb{Z} \}.
     
+We can picture the two grids schematically as
+
+.. math::
+
+    \begin{aligned}
+      \Gamma_1 \text{ (input grid)} &: \quad
+      \begin{array}{cccccc}
+        \cdots & \bullet & \bullet & \bullet & \bullet & \cdots \\
+               & 0       & 1       & 2       & 3       &
+      \end{array} \\[0.75em]
+      \Gamma_T \text{ (scaled grid)} &: \quad
+      \begin{array}{cccccccccc}
+        \cdots & \bullet &        & \bullet &        & \bullet &        & \bullet &        & \cdots \\
+               & 0       &        & T       &        & 2T      &        & 3T      &        &
+      \end{array}
+    \end{aligned}
+
 We can build a similar spline space adapted to this new grid by defining
 basis functions
 
