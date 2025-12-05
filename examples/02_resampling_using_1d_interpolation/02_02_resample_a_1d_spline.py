@@ -172,50 +172,75 @@ plt.show()
 # Coarse-Grid Basis Functions
 # ---------------------------
 #
-# We now visualize the resized shifted basis functions on a coarser grid.
-# Each coarse sample :math:`g[k]` weights a shifted basis function
-# :math:`\varphi(x/T - k)` on the coarse grid. In this example,
+# Compare the shifted basis functions on the fine grid :math:`V_1` and on the
+# coarse grid :math:`V_T`. On the fine grid, the coefficients :math:`c[k]`
+# weight :math:`\varphi(x - k)`. On the coarse grid, the coefficients
+# :math:`c_T[k]` weight :math:`\varphi(x/T - k)`. In this example,
 # :math:`\varphi = \beta^{3}` is the cubic B-spline.
 
-# Retrieve the true spline coefficients for g (on the coarse grid)
+# Retrieve the true spline coefficients for f (fine grid) and g (coarse grid)
+f_coeffs = f.coefficients
 g_coeffs = g.coefficients
 
 # Basis function corresponding to `base` (e.g. "bspline3")
 basis = create_basis(base)
 
-# Dense x-grid over the same physical domain as the final g-plot (second row)
-x_dense = g_coords_full  # same as used for g_data_full
+# Dense x-grids: fine grid for f, coarse-domain grid for g
+x_dense_fine = f_coords      # dense sampling of f(x) on [0, K-1]
+x_dense_coarse = g_coords_full  # same physical domain, used for g(x)
 
-plt.figure(figsize=(12, 4))
-ax = plt.gca()
-ax.set_title("g[k] samples with resized shifted basis functions")
+fig = plt.figure(figsize=(12, 8))
+gs = GridSpec(nrows=2, ncols=1, height_ratios=[1, 1])
+
+# --- TOP: fine-grid basis functions (V1) ---
+ax_top = fig.add_subplot(gs[0, 0])
+ax_top.set_title("f[k] samples with shifted basis functions")
+
+# Plot f[k] samples as stems on the integer grid
+ax_top.stem(f_support, f_coeffs, basefmt=" ", label="f[k] samples")
+
+# Overlay fine-grid basis functions: c[k] · ϕ(x − k)
+for k_idx, c_k in enumerate(f_coeffs):
+    y_basis = c_k * basis.eval(x_dense_fine - k_idx)
+    ax_top.plot(x_dense_fine, y_basis, linewidth=2, alpha=0.7)
+
+ax_top.axhline(0, color="black", linewidth=1, zorder=0)
+ax_top.set_xlim(0, f_support_length - 1)
+ax_top.set_xticks(np.arange(0, f_support_length, 1))
+ax_top.set_ylabel("Amplitude")
+ax_top.grid(True)
+ax_top.legend()
+
+# --- BOTTOM: coarse-grid basis functions (V_T) ---
+ax_bottom = fig.add_subplot(gs[1, 0], sharex=ax_top)
+ax_bottom.set_title("g[k] samples with resized shifted basis functions")
 
 # Coarse samples g[k] at x = T*k
-ax.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
-ax.plot(
+ax_bottom.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
+ax_bottom.plot(
     x_g, g_samples, "rs",
     mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
 )
 
-# Overlay the coarse-grid basis functions: c_T[k] · ϕ(x/T − k)
+# Overlay coarse-grid basis functions: c_T[k] · ϕ(x/T − k)
 for k_idx, c_k in enumerate(g_coeffs):
-    y_basis = c_k * basis.eval(x_dense / val_T - k_idx)
-    ax.plot(x_dense, y_basis, linewidth=2, alpha=0.7)
+    y_basis = c_k * basis.eval(x_dense_coarse / val_T - k_idx)
+    ax_bottom.plot(x_dense_coarse, y_basis, linewidth=2, alpha=0.7)
 
-ax.axhline(0, color="black", linewidth=1, zorder=0)
-ax.set_xlim(0, f_support_length - 1)
-ax.set_ylabel("Amplitude")
-ax.grid(True)
+ax_bottom.axhline(0, color="black", linewidth=1, zorder=0)
+ax_bottom.set_xlim(0, f_support_length - 1)
+ax_bottom.set_ylabel("Amplitude")
+ax_bottom.grid(True)
 
-# Use the same coarse-grid ticks as in the final plot (second row)
+# Use coarse-grid ticks (x = kT) with labels k on the bottom axis
 max_k_tick = int(np.floor((f_support_length - 1) / val_T))
-tick_ks = np.arange(max_k_tick + 1)           # coarse indices k = 0,1,...
-tick_positions = tick_ks * val_T              # physical positions x = kT
-ax.set_xticks(tick_positions)
-ax.set_xticklabels([str(k) for k in tick_ks])
-ax.set_xlabel("x")
+tick_ks = np.arange(max_k_tick + 1)          # coarse indices k = 0,1,...
+tick_positions = tick_ks * val_T            # physical positions x = kT
+ax_bottom.set_xticks(tick_positions)
+ax_bottom.set_xticklabels([str(k) for k in tick_ks])
+ax_bottom.set_xlabel("x")
 
-ax.legend()
+ax_bottom.legend()
 plt.tight_layout()
 plt.show()
 

@@ -152,7 +152,7 @@ plot_basis_decomposition(
     f_support=f_support,
     weights=cubic_coeffs,
     basis_name="bspline3",
-    title="Cubic spline coefficients c[k] with shifted cubic spline basis functions",
+    title="f[k] samples with shifted cubic spline basis functions",
     samples_per_unit=32,
     x_margin=2.0,
 )
@@ -264,7 +264,7 @@ plot_basis_decomposition(
     f_support=f_support,
     weights=linear_coeffs,
     basis_name="bspline1",
-    title="Linear spline coefficients c[k] with shifted linear spline basis functions",
+    title="f[k] samples with shifted linear spline basis functions",
     samples_per_unit=32,
     x_margin=2.0,
 )
