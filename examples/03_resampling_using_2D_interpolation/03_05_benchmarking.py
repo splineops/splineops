@@ -657,7 +657,7 @@ def benchmark_image(
 
     print(
         f"\n=== {img_name} | zoom={z:.3f} | shape={H}×{W} "
-        f"| ROI size≈{roi_size_px} px at center_frac={roi_center_frac} ==="
+        f"| ROI size≈{roi_size_px} px at center_frac={roi_center_frac} ===\n"
     )
 
     rows: List[Dict[str, object]] = []
