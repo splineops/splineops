@@ -30,25 +30,20 @@ plt.rcParams.update({
 })
 
 # %%
-# 1D Warm-Up: Standard vs Antialiasing
-# ------------------------------------
+# 1D Resize-Based Coarsening
+# --------------------------
 #
-# Before working with 2D images, we revisit the 1D spline setting. We start
-# from the same samples :math:`f[k]` on a unit grid as in
-# :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_02_resample_a_1d_spline.py`.
-# We then build two coarse versions:
+# Starting again from a 1D signal f[k] on a unit grid, we perform a 1D resize
+# directly on the samples. We then compare:
 #
-# - one with plain cubic interpolation (no projection),
-# - one with cubic projection-based antialiasing.
-#
-# We use :class:`TensorSpline` both as the fine spline model and to evaluate
-# the coarse splines at the *same* continuous positions as :func:`resize`.
+# - a coarse spline built from `resize(..., method="cubic")`,
+# - a coarse spline built from `resize(..., method="cubic-antialiasing")`,
+# - the interpolating spline f(x) of the original samples for reference.
 
-# --- 1) Start from the original fine samples f[k] as in 02_02 ---
-
+# 1) Original 1D samples f[k] (same as in 02_01 / 02_02)
 number_of_samples = 27
-f_support = np.arange(number_of_samples, dtype=np.float64)
-f_samples = np.array([
+f_support_1d = np.arange(number_of_samples, dtype=np.float64)
+f_samples_1d = np.array([
     -0.657391, -0.641319, -0.613081, -0.518523, -0.453829, -0.385138,
     -0.270688, -0.179849, -0.11805, -0.0243016, 0.0130667, 0.0355389,
     0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
@@ -56,92 +51,141 @@ f_samples = np.array([
     0.50695, 0.544767, 0.555373
 ], dtype=np.float64)
 
-plot_points_per_unit = 12
-base = "bspline3"
-mode = "mirror"
+# Fine spline f(x) on V₁ (unit grid)
+plot_points_per_unit_1d = 12
+base_1d = "bspline3"
+mode_1d = "mirror"
 
-# Fine spline f(x) on the unit grid V₁
-f_ts = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
-
-# --- 2) Build coarse samples g[k] on the physical grid x = T k (as in 02_02) ---
-
-T = np.pi
-g_support_length = round(number_of_samples // T)
-k = np.arange(g_support_length, dtype=np.float64)
-x_g_phys = k * T
-
-# Physical coarse samples g_phys[k] = f(T k)
-g_samples_phys = f_ts(coordinates=(x_g_phys,), grid=False)
-
-# Up to here this matches 02_02: g_samples_phys is what you plotted there.
-
-# --- 3) Now *re-interpret* g[k] on a unit grid and compare TensorSpline vs resize(cubic) ---
-
-# Treat g_samples_phys as samples on the unit grid j = 0..M-1
-g_support_idx = np.arange(g_support_length, dtype=np.float64)
-
-# TensorSpline on the index grid
-g_ts_idx = TensorSpline(
-    data=g_samples_phys,
-    coordinates=g_support_idx,
-    bases=base,
-    modes=mode,
+f_1d = TensorSpline(
+    data=f_samples_1d,
+    coordinates=f_support_1d,
+    bases=base_1d,
+    modes=mode_1d,
 )
 
-# Choose a finer index grid (e.g. upsample by a factor of 8 in index-domain)
-upsample_factor = 8
-M = g_support_length
-fine_len = upsample_factor * M
-coords_idx_fine = np.linspace(0, M - 1, fine_len, dtype=np.float64)
+# Dense evaluation grid for the fine spline
+f_coords_1d = np.array([
+    q / plot_points_per_unit_1d
+    for q in range(plot_points_per_unit_1d * number_of_samples)
+])
+f_data_1d = f_1d(coordinates=(f_coords_1d,), grid=False)
 
-g_ts_idx_data = g_ts_idx(coordinates=(coords_idx_fine,), grid=False)
+# 2) Choose a coarse length: round(27 // π)
+val_T = np.pi
+K = number_of_samples
+g_support_length = round(K // val_T)   # e.g., 27 // π ≈ 8
 
-# Use resize(cubic) on the *same* g[k] sequence in index-domain
-g_resize_samples = resize(
-    g_samples_phys,
-    output_size=(fine_len,),
+# Express this as a zoom factor for resize
+zoom_1d = g_support_length / K        # e.g., 8 / 27
+
+# 3) Coarse samples via resize: cubic and cubic-antialiasing
+g_samples_cubic = resize(
+    f_samples_1d,
+    zoom_factors=(zoom_1d,),
     method="cubic",
 ).astype(np.float64)
 
-# By construction, resize's internal positions for these samples are
-# exactly coords_idx_fine = linspace(0, M-1, fine_len),
-# so we can compare directly:
+g_samples_aa = resize(
+    f_samples_1d,
+    zoom_factors=(zoom_1d,),
+    method="cubic-antialiasing",
+).astype(np.float64)
 
-mse = np.mean((g_ts_idx_data - g_resize_samples) ** 2)
-print("MSE between TensorSpline (index-domain) and resize(cubic) on g[k] =", mse)
+L = g_samples_cubic.shape[0]
 
-# --- 4) Plot to visually confirm ---
+# 4) Reconstruct the continuous coarse grid used by resize for pure interpolation:
+#
+#       step = (K - 1) / (L - 1)
+#       x_l  = step * l
+#
+step = (K - 1) / (L - 1) if L > 1 else 0.0
+g_support_x = step * np.arange(L, dtype=np.float64)
 
+# Build TensorSplines on that coarse grid
+g_cubic_ts = TensorSpline(
+    data=g_samples_cubic,
+    coordinates=g_support_x,
+    bases=base_1d,
+    modes=mode_1d,
+)
+g_aa_ts = TensorSpline(
+    data=g_samples_aa,
+    coordinates=g_support_x,
+    bases=base_1d,
+    modes=mode_1d,
+)
+
+# Evaluate both coarse splines on the same dense grid as f(x)
+g_coords_dense = f_coords_1d
+g_cubic_data = g_cubic_ts(coordinates=(g_coords_dense,), grid=False)
+g_aa_data    = g_aa_ts(coordinates=(g_coords_dense,), grid=False)
+
+# 5) Optional sanity check at the coarse nodes: resize(cubic) vs fine spline sampled at x_l
+f_at_xg = f_1d(coordinates=(g_support_x,), grid=False)
+mse_cubic_nodes = np.mean((g_samples_cubic - f_at_xg) ** 2)
+print(f"MSE at coarse nodes: resize(cubic) vs f(x_l) = {mse_cubic_nodes:.6e}")
+
+# 6) Plot comparison
 plt.figure(figsize=(10, 4))
-plt.title("TensorSpline vs resize(cubic) on the same coarse samples g[k] (index domain)")
+plt.title("1D resize on f[k]: cubic vs cubic-antialiasing")
 
-# Coarse samples g[k] on the index grid
-plt.stem(g_support_idx, g_samples_phys, basefmt=" ", label="g[k] samples (index grid)")
+# Original samples f[k]
+plt.stem(f_support_1d, f_samples_1d, basefmt=" ", label="f[k] samples")
 plt.axhline(0, color="black", linewidth=1, zorder=0)
 
-# TensorSpline curve
+# Fine spline f(x) for reference
 plt.plot(
-    coords_idx_fine,
-    g_ts_idx_data,
+    f_coords_1d,
+    f_data_1d,
+    color="gray",
     linewidth=2,
-    label="TensorSpline from g[k]",
+    alpha=0.5,
+    label="fine f(x) (reference)",
 )
 
-# resize(cubic) curve
+# Coarse spline from resize(..., "cubic")
 plt.plot(
-    coords_idx_fine,
-    g_resize_samples,
-    linestyle="--",
+    g_coords_dense,
+    g_cubic_data,
+    color="purple",
     linewidth=2,
-    label='resize(g[k], method="cubic")',
+    label="coarse spline (cubic)",
+)
+plt.plot(
+    g_support_x,
+    g_samples_cubic,
+    "p",
+    color="purple",
+    mfc="none",
+    markersize=10,
+    markeredgewidth=2,
 )
 
-plt.xlabel("index-domain coordinate (0 .. M-1)")
+# Coarse spline from resize(..., "cubic-antialiasing")
+plt.plot(
+    g_coords_dense,
+    g_aa_data,
+    color="orange",
+    linewidth=2,
+    label="coarse spline (cubic-antialiasing)",
+)
+plt.plot(
+    g_support_x,
+    g_samples_aa,
+    "o",
+    color="orange",
+    mfc="none",
+    markersize=8,
+    markeredgewidth=2,
+)
+
+plt.xlabel("x")
 plt.ylabel("Amplitude")
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
 plt.show()
+
 
 # %%
 # Helpers for 2D Processing
