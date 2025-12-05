@@ -547,6 +547,21 @@ def main():
         choices=("linear", "cubic"),
         help="Degree / interpolation mode (linear or cubic) for splineops/SciPy.",
     )
+    ap.add_argument(
+        "--time-scale",
+        type=str,
+        default="linear",
+        choices=("linear", "log"),
+        help="Y-axis scale for the timing plot (linear or log).",
+    )
+    ap.add_argument(
+        "--snr-scale",
+        type=str,
+        default="linear",
+        choices=("linear", "log"),
+        help="Y-axis scale for the SNR plot (linear or log). "
+             "Note: SNR is already in dB, so log scale is usually not necessary.",
+    )
     args = brush_args(ap.parse_args())
 
     degree = args.degree
@@ -729,6 +744,11 @@ def main():
         elif region == "up":
             title_suffix = " (upsampling, 1 < z < 2)"
             mask_fn = lambda z: z > 1.0
+        elif region == "both":
+            title_suffix = " (0 < z < 2, excluding 1)"
+            # z_list is already filtered to (0,2) and |z-1|>NEAR_ONE_EPS,
+            # but this keeps the logic explicit:
+            mask_fn = lambda z: (z > 0.0) & (z < 2.0)
         else:
             return  # no-op
 
@@ -771,6 +791,10 @@ def main():
             )
             plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
             plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
+
+            if args.time_scale == "log":
+                plt.yscale("log")
+
             plt.grid(True, alpha=0.35)
             plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
             plt.tight_layout()
@@ -806,6 +830,10 @@ def main():
             )
             plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
             plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
+
+            if args.snr_scale == "log":
+                plt.yscale("log")
+
             plt.grid(True, alpha=0.35)
             plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
             plt.tight_layout()
@@ -813,10 +841,12 @@ def main():
     #
     # Plot selected regions
     #
-    if args.which in ("both", "down"):
+    if args.which == "down":
         plot_region("down")
-    if args.which in ("both", "up"):
+    elif args.which == "up":
         plot_region("up")
+    else:  # "both"
+        plot_region("both")
 
     plt.show()
 
