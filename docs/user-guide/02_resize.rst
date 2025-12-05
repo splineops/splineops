@@ -314,12 +314,3 @@ References
    `High-Quality Image Resizing Using Oblique Projection Operators <https://doi.org/10.1109/83.668025>`_,
    IEEE Transactions on Image Processing, vol. 7, no. 5,
    pp. 679–692, May 1998.
-
-.. [3] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
-   IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
-   vol. 16, no. 6, pp. 22-38, November 1999.
-
-.. [4] P. Thévenaz, T. Blu, M. Unser,
-   `Interpolation Revisited <https://doi.org/10.1109/42.875199>`_,
-   IEEE Transactions on Medical Imaging, vol. 19, no. 7, pp. 739-758,
-   July 2000.

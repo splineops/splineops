@@ -25,7 +25,7 @@ splines to represent curves, for instance with nonuniform rational B-splines.
 This library is not meant to be used for such applications; instead,
 it is well-suited to the handling of data defined on a uniform Cartesian grid
 and offers successful tradeoffs between quality of representation and
-computational efficiency [1]_, [2]_, [3]_, [4]_, [5]_.
+computational efficiency [1]_, [2]_, [3]_, [4]_, [5]_, [6]_.
 
 **Pros**
 
@@ -64,45 +64,45 @@ where :math:`(t)_{+} = \max(t, 0)` denotes the positive part of :math:`t` and
 
 Here is the plot of a cubic B-spline.
 
-..  image:: interpolatefig01.png
-    :width: 288pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_004.png
+    :width: 100%
     :align: center
 
 Now, let us shift this B-spline horizontally by one third.
 
-..  image:: interpolatefig02.png
-    :width: 288pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_005.png
+    :width: 100%
     :align: center
 
 Moreover, let us shrink it by 60%.
 
-..  image:: interpolatefig03.png
-    :width: 288pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_006.png
+    :width: 100%
     :align: center
 
 Finally, let us multiply it by one fourth. This multiplicative step is called a *weighting* of the B-spline.
 
-..  image:: interpolatefig04.png
-    :width: 288pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_007.png
+    :width: 100%
     :align: center
 
 Likewise, we could play with any other combination of (shift, shrink, weight) to obtain a zoo of other functions, including some with negative weight. In the 
 present case, all of them would be said to be cubic B-splines, up to their individual (shift, shrink, weight). Here are some.
 
-..  image:: interpolatefig05.png
-    :width: 288pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_008.png
+    :width: 100%
     :align: center
 
 B-splines have many relevant properties. Among them, the (technical) fact that they have an optimal *order of approximation* explains why these functions are so 
 good at representing discrete data. In nearly every case of relevance, their most important (practical) property is that their *support* is finite.
 
-Spline Formula
-~~~~~~~~~~~~~~
+Spline Definition
+~~~~~~~~~~~~~~~~~
 
 Now, we are going to do something bold. Let us sum together the functions of the previous figure.
 
-..  image:: interpolatefig06.png
-    :width: 288pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_009.png
+    :width: 100%
     :align: center
 
 We were able to create some combined function that seems to be kind of arbitrary. This combined function somehow retains the characteristics of B-splines, but 
@@ -135,22 +135,22 @@ sufficient freedom to build splines that can be shaped any way we want.
 
 Here is some uniform spline (thick curve), along with its additive constituents (arbitrarily weighted and integer-shifted B-splines of same degree, thin curves).
 
-..  image:: interpolatefig07.png
-    :width: 288pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_010.png
+    :width: 100%
     :align: center
 
 We now mark with dots the samples at the integers of this particular spline.
 
-..  image:: interpolatefig08.png
-    :width: 288pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_011.png
+    :width: 100%
     :align: center
 
 These samples make for a discrete list of values (*i.e.*, the data samples). Since we want to interpolate these data, a natural question that arises is as 
 follows: is there a way to reverse the process and to first impose a list of arbitrary sample values, then only to determine which B-spline weights are 
 appropriate to build the uniform spline that happens to go through these samples? Here is the succession of operations we have in mind.
 
-..  image:: interpolatefig09.png
-    :width: 928pt
+..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_012.png
+    :width: 100%
     :align: center
 
 The answer is yes, we can go from discrete samples to continuously defined curve, but one needs to do it right. For instance, the weighting process is 
@@ -192,7 +192,6 @@ The first figure shows the discrete samples :math:`f[k]` alone:
 .. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_001.png
    :align: center
    :width: 100%
-   :alt: f[k] samples.
 
 The second figure displays the shifted cubic B-splines :math:`\beta^{3}(x-k)`
 weighted by the corresponding coefficients :math:`c[k]`. Each thin curve is one term
@@ -201,7 +200,6 @@ weighted by the corresponding coefficients :math:`c[k]`. Each thin curve is one 
 .. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_002.png
    :align: center
    :width: 100%
-   :alt: Cubic spline coefficient decomposition into shifted B-splines.
 
 The third figure shows the resulting interpolating spline :math:`f(x)` (smooth curve)
 overlaid with the original samples :math:`f[k]` (stems). One can see that the spline
@@ -211,7 +209,6 @@ defined representation in between:
 .. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_003.png
    :align: center
    :width: 100%
-   :alt: f[k] samples with their cubic spline interpolant.
 
 In Multiple Dimensions
 ----------------------
@@ -383,14 +380,19 @@ References
    IEEE Transactions 
    on Signal Processing, vol. 41, no. 2, pp. 834-848, February 1993.
 
-.. [3] M. Unser, J. Zerubia, 
+.. [3] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
+   IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
+   vol. 16, no. 6, pp. 22-38, November 1999.
+
+.. [4] P. Thévenaz, T. Blu, M. Unser,
+   `Interpolation Revisited <https://doi.org/10.1109/42.875199>`_,
+   IEEE Transactions on Medical Imaging, vol. 19, no. 7, pp. 739-758,
+   July 2000.
+
+.. [5] M. Unser, J. Zerubia, 
    `A Generalized Sampling Theory Without Band-Limiting Constraints <https://doi.org/10.1109/82.718806>`_, 
    IEEE Transactions on Circuits and 
    Systems—II: Analog and Digital Signal Processing, vol. 45, no. 8, pp. 959-969, August 1998.
 
-.. [4] M. Unser, `Splines: A Perfect Fit for Signal and Image Processing <https://doi.org/10.1109/79.799930>`_, 
-   IEEE-SPS best paper award, IEEE Signal Processing Magazine, 
-   vol. 16, no. 6, pp. 22–38, November 1999.
-
-.. [5] M. Unser, `Sampling—50 Years After Shannon <https://doi.org/10.1109/5.843002>`_, 
+.. [6] M. Unser, `Sampling—50 Years After Shannon <https://doi.org/10.1109/5.843002>`_, 
    Proceedings of the IEEE, vol. 88, no. 4, pp. 569-587, April 2000.
