@@ -13,14 +13,14 @@ Shrink and re-expand a 2-D RGB image with splineops, then discuss aliasing.
 # Imports and Helpers
 # -------------------
 
+# sphinx_gallery_thumbnail_number = 3 # show third figure as thumbnail
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
 from urllib.request import urlopen
 from PIL import Image
 
-from scipy.ndimage import zoom as ndi_zoom          # only for the *first* quick shrink
-from splineops.utils.image import adjust_size_for_zoom    # makes dimensions compatible with the zoom factor
+from scipy.ndimage import zoom as ndi_zoom          # kept for reference, not used in 2D plots
 from splineops.resize import resize                 # core N-D spline resizer
 from splineops.spline_interpolation.tensorspline import TensorSpline
 
@@ -405,37 +405,49 @@ def show_intro_color(
 # %%
 # Load and Normalize an Image
 # ---------------------------
+#
+# We now move to a real 2D example using a Kodak color image. We follow the
+# same spirit as the benchmarking intro:
+#
+# 1. Pick a zoom factor.
+# 2. Pick a single ROI.
+# 3. Compare the first-pass shrink for:
+#    - standard cubic interpolation,
+#    - cubic antialiasing (projection-based low-pass).
+#
+# Aliasing appears when we shrink below the Nyquist limit without proper
+# low-pass filtering: fine details fold back into lower frequencies and
+# show up as Moiré or ripple patterns. The antialiasing preset adds a
+# matched low-pass step to suppress these artefacts.
 
 url = "https://r0k.us/graphics/kodak/kodak/kodim19.png"
 with urlopen(url, timeout=10) as resp:
     img = Image.open(resp)
 data = np.asarray(img, dtype=DTYPE) / DTYPE(255.0)          # H × W × 3, range [0, 1]
+data_uint8 = (np.clip(data, 0.0, 1.0) * 255).astype(np.uint8)
 
-# 1) Quick down-size so the notebook images aren't huge
-initial_shrink = 0.8
-data_small = ndi_zoom(data, (initial_shrink, initial_shrink, 1), order=1)
-
-# 2) Choose the demo shrink factor and make dimensions "zoom-friendly"
-shrink_factor = 0.3
-adjusted = adjust_size_for_zoom(data_small, shrink_factor).astype(DTYPE, copy=False)
-adjusted_uint8 = (np.clip(adjusted, 0.0, 1.0) * 255).astype(np.uint8)
+H0, W0, _ = data_uint8.shape
+print(f"Loaded kodim19: shape={H0}×{W0} px")
 
 # Use the same ROI position as in the benchmarking example for kodim19
 ROI_SIZE_PX = 256
 ROI_CENTER_FRAC = (0.65, 0.35)
-roi_rect = _roi_rect_from_frac_color(adjusted_uint8.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
+roi_rect = _roi_rect_from_frac_color(data_uint8.shape, ROI_SIZE_PX, ROI_CENTER_FRAC)
+
+# Shrink factor (same spirit as in other 2D examples)
+shrink_factor = 0.3
 
 # 3) Shrink with splineops (channel-wise): standard cubic
 shrunken_cubic_f = resize_rgb(
-    adjusted,
+    data,
     shrink_factor,
-    method="cubic",         # plain cubic interpolation (no anti-aliasing)
+    method="cubic",         # plain cubic interpolation (no explicit anti-aliasing)
 )
 shrunken_cubic = (np.clip(shrunken_cubic_f, 0.0, 1.0) * 255).astype(np.uint8)
 
 # 4) Shrink with splineops: cubic-antialiasing
 shrunken_aa_f = resize_rgb(
-    adjusted,
+    data,
     shrink_factor,
     method="cubic-antialiasing",  # antialiasing shrink, degree 3
 )
@@ -444,9 +456,14 @@ shrunken_aa = (np.clip(shrunken_aa_f, 0.0, 1.0) * 255).astype(np.uint8)
 # %%
 # Standard cubic shrink: original vs standard interpolation
 # --------------------------------------------------------
+#
+# Standard cubic interpolation gives a smooth-looking small image, but it
+# does *not* apply an explicit low-pass before decimation. High-frequency
+# content from the original folds back (aliases) into lower frequencies,
+# which can be spotted as spurious ripples or Moiré patterns in the ROI.
 
 show_intro_color(
-    original_uint8=adjusted_uint8,
+    original_uint8=data_uint8,
     shrunk_uint8=shrunken_cubic,
     roi_rect=roi_rect,
     zoom=shrink_factor,
@@ -457,9 +474,13 @@ show_intro_color(
 # %%
 # Cubic-antialiasing shrink: original vs antialiased interpolation
 # ----------------------------------------------------------------
+#
+# The ``\"cubic-antialiasing\"`` preset inserts a projection-based low-pass
+# filter before shrinking. The zoomed ROI shows that most of the Moiré
+# pattern is removed, while larger-scale edges and contrast are preserved.
 
 show_intro_color(
-    original_uint8=adjusted_uint8,
+    original_uint8=data_uint8,
     shrunk_uint8=shrunken_aa,
     roi_rect=roi_rect,
     zoom=shrink_factor,
