@@ -3,7 +3,7 @@
 # sphinx_gallery_end_ignore
 
 """
-Resample a 1D spline
+Resample a 1D Spline
 ====================
 
 Resample a 1D spline with different sampling rate.
