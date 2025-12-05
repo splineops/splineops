@@ -296,13 +296,17 @@ corresponding ``resize`` presets exactly:
 
    * - ``resize`` method
      - Equivalent ``TensorSpline`` configuration
-   * - ``"fast"`` (degree 0 / nearest)
+   * - ``resize(data, zoom_factors=zoom_factors, method="fast")``  
+       (degree 0 / nearest)
      - ``TensorSpline(data, coordinates, bases="bspline0", modes="mirror")``
-   * - ``"linear"`` (degree 1)
+   * - ``resize(data, zoom_factors=zoom_factors, method="linear")``  
+       (degree 1)
      - ``TensorSpline(data, coordinates, bases="bspline1", modes="mirror")``
-   * - ``"quadratic"`` (degree 2)
+   * - ``resize(data, zoom_factors=zoom_factors, method="quadratic")``  
+       (degree 2)
      - ``TensorSpline(data, coordinates, bases="bspline2", modes="mirror")``
-   * - ``"cubic"`` (degree 3)
+   * - ``resize(data, zoom_factors=zoom_factors, method="cubic")``  
+       (degree 3)
      - ``TensorSpline(data, coordinates, bases="bspline3", modes="mirror")``
 
 In other words, for these settings:
