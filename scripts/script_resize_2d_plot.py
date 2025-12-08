@@ -539,7 +539,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="both",
+        default="down",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
@@ -730,10 +730,37 @@ def main():
 
             s = snr_db(img, rec)
 
-            # NEW: SSIM (full image)
+            # NEW: SSIM (global, full image)
             if _HAS_SKIMAGE and sk_ssim is not None:
                 try:
-                    ssim_val = float(sk_ssim(img, rec, data_range=1.0))
+                    # Work in grayscale for SSIM, like in the benchmark.
+                    # If img is 2D, use it directly; if it's RGB, convert to luma.
+                    if img.ndim == 2:
+                        ref = img
+                        rec_ = rec
+                    elif img.ndim == 3 and img.shape[2] >= 3:
+                        # Convert to luma (same weights as load_image_any)
+                        ref = (
+                            0.2989 * img[..., 0]
+                            + 0.5870 * img[..., 1]
+                            + 0.1140 * img[..., 2]
+                        )
+                        rec_ = (
+                            0.2989 * rec[..., 0]
+                            + 0.5870 * rec[..., 1]
+                            + 0.1140 * rec[..., 2]
+                        )
+                    else:
+                        # Fallback: treat as scalar field
+                        ref = img
+                        rec_ = rec
+
+                    # Global data range, analogous to the ROI code.
+                    dr = float(ref.max() - ref.min())
+                    if dr <= 0.0:
+                        dr = 1.0  # flat image; arbitrary but safe
+
+                    ssim_val = float(sk_ssim(ref, rec_, data_range=dr))
                 except Exception:
                     ssim_val = float("nan")
             else:
@@ -757,7 +784,7 @@ def main():
             title_suffix = " (upsampling, 1 < z < 2)"
             mask_fn = lambda z: z > 1.0
         elif region == "both":
-            title_suffix = " (0 < z < 2, excluding 1)"
+            title_suffix = " (0 < z < 2)"
             # z_list is already filtered to (0,2) and |z-1|>NEAR_ONE_EPS,
             # but this keeps the logic explicit:
             mask_fn = lambda z: (z > 0.0) & (z < 2.0)
