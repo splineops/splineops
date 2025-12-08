@@ -552,7 +552,7 @@ def main():
     ap.add_argument(
         "--repeats",
         type=int,
-        default=5,
+        default=10,
         help="Average this many runs per (method, z).",
     )
     ap.add_argument(
