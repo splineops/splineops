@@ -1,7 +1,7 @@
 # splineops/scripts/script_resize_2d_plot.py
 # -*- coding: utf-8 -*-
 """
-Interactive timing & SNR sweep (splineops vs SciPy vs others) over zoom factors.
+Interactive timing, SNR & SSIM sweep (splineops vs SciPy vs others) over zoom factors.
 
 Compares:
 
@@ -16,6 +16,11 @@ Compares:
 Zoom sweep:
   • 0 < z < 2, excluding 1.0
   • Only round-trip-size-preserving zooms are kept.
+
+Plots:
+  • Timing vs zoom
+  • SNR vs zoom
+  • SSIM vs zoom
 """
 
 from __future__ import annotations
@@ -115,8 +120,8 @@ def choose_image_dialog() -> str | None:
     file_filter = (
         "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff);;"
         "PNG (*.png);;"
-        "JPEG (*.jpg *.jpeg);"
-        "TIFF (*.tif *.tiff);"
+        "JPEG (*.jpg *.jpeg);;"
+        "TIFF (*.tif *.tiff);;"
         "All files (*)"
     )
 
@@ -505,7 +510,7 @@ def average_time(run, repeats: int = 10, warmup: bool = True):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Timing & SNR sweep with interactive image selection (averaged runs)."
+        description="Timing, SNR & SSIM sweep with interactive image selection (averaged runs)."
     )
     ap.add_argument(
         "--image",
@@ -534,7 +539,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="down",
+        default="both",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
@@ -547,7 +552,7 @@ def main():
     ap.add_argument(
         "--repeats",
         type=int,
-        default=10,
+        default=5,
         help="Average this many runs per (method, z).",
     )
     ap.add_argument(
@@ -556,21 +561,6 @@ def main():
         default="cubic",
         choices=("linear", "cubic"),
         help="Degree / interpolation mode (linear or cubic) for splineops/SciPy.",
-    )
-    ap.add_argument(
-        "--time-scale",
-        type=str,
-        default="linear",
-        choices=("linear", "log"),
-        help="Y-axis scale for the timing plot (linear or log).",
-    )
-    ap.add_argument(
-        "--snr-scale",
-        type=str,
-        default="linear",
-        choices=("linear", "log"),
-        help="Y-axis scale for the SNR plot (linear or log). "
-             "Note: SNR is already in dB, so log scale is usually not necessary.",
     )
     args = brush_args(ap.parse_args())
 
@@ -820,9 +810,6 @@ def main():
             plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
             plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
 
-            if args.time_scale == "log":
-                plt.yscale("log")
-
             plt.grid(True, alpha=0.35)
             plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
             plt.tight_layout()
@@ -859,9 +846,6 @@ def main():
             )
             plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
             plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
-
-            if args.snr_scale == "log":
-                plt.yscale("log")
 
             plt.grid(True, alpha=0.35)
             plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
@@ -904,276 +888,15 @@ def main():
                 plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
                 plt.tight_layout()
 
-    def plot_relative_to_antialiasing(region: str):
-        """
-        Plot other methods relative to Splineops Antialiasing:
-
-          - Time ratio: t_other / t_AA
-          - ΔSNR:       SNR_other - SNR_AA  (dB)
-          - ΔSSIM:      SSIM_other - SSIM_AA
-        """
-        baseline_name = f"Antialiasing {degree_label}"
-        if baseline_name not in results:
-            print(f"[info] Baseline '{baseline_name}' not available; skipping relative plots.")
-            return
-
-        if region == "down":
-            title_suffix = " (downsampling, 0 < z < 1)"
-            mask_fn = lambda z: z < 1.0
-        elif region == "up":
-            title_suffix = " (upsampling, 1 < z < 2)"
-            mask_fn = lambda z: z > 1.0
-        elif region == "both":
-            title_suffix = " (0 < z < 2, excluding 1)"
-            mask_fn = lambda z: (z > 0.0) & (z < 2.0)
-        else:
-            return
-
-        # Baseline data
-        base = results[baseline_name]
-        z_b = np.asarray(base["z"], dtype=float)
-        t_b = np.asarray(base["time"], dtype=float)
-        s_b = np.asarray(base["snr"], dtype=float)
-        q_b = np.asarray(base["ssim"], dtype=float)
-
-        base_mask = mask_fn(z_b) & np.isfinite(t_b) & np.isfinite(s_b)
-        z_b = z_b[base_mask]
-        t_b = t_b[base_mask]
-        s_b = s_b[base_mask]
-        q_b = q_b[base_mask]
-
-        if z_b.size == 0:
-            print(f"[info] Baseline '{baseline_name}' has no valid points in region '{region}'.")
-            return
-
-        baseline_by_z = {
-            float(z): (t, s, q)
-            for z, t, s, q in zip(z_b, t_b, s_b, q_b)
-        }
-
-        # Marker shapes as before, plus staggered marker positions
-        marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
-        marker_for: Dict[str, str] = {}
-        markevery_for: Dict[str, Tuple[int, int]] = {}
-        for idx_name, name in enumerate(results.keys()):
-            marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
-            offset = idx_name % MARK_EVERY_BASE
-            markevery_for[name] = (offset, MARK_EVERY_BASE)
-
-        # -------- Time ratio vs zoom --------
-        plt.figure(figsize=PLOT_FIGSIZE)
-        any_curve = False
-        for name, data in results.items():
-            if name == baseline_name or not data["z"]:
-                continue
-
-            z_m = np.asarray(data["z"], dtype=float)
-            t_m = np.asarray(data["time"], dtype=float)
-
-            mask = mask_fn(z_m) & np.isfinite(t_m)
-            z_m = z_m[mask]
-            t_m = t_m[mask]
-            if z_m.size == 0:
-                continue
-
-            z_vals = []
-            tr_vals = []
-
-            for z, t in zip(z_m, t_m):
-                key = float(z)
-                if key not in baseline_by_z:
-                    continue
-                t0, _, _ = baseline_by_z[key]
-                if not np.isfinite(t0) or t0 == 0.0:
-                    continue
-                z_vals.append(z)
-                tr_vals.append(t / t0)
-
-            if not z_vals:
-                continue
-
-            z_vals = np.asarray(z_vals, dtype=float)
-            tr_vals = np.asarray(tr_vals, dtype=float)
-            order = np.argsort(z_vals)
-            z_vals = z_vals[order]
-            tr_vals = tr_vals[order]
-
-            plt.plot(
-                z_vals,
-                tr_vals,
-                marker=marker_for.get(name, "o"),
-                markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
-                markersize=MARKER_SIZE,
-                linewidth=LINEWIDTH,
-                label=name,
-            )
-            any_curve = True
-
-        if any_curve:
-            plt.xlabel("Zoom factor", fontsize=PLOT_LABEL_FONTSIZE)
-            plt.ylabel(
-                f"Time ratio vs {baseline_name}\n(t_other / t_antialiasing)",
-                fontsize=PLOT_LABEL_FONTSIZE,
-            )
-            plt.title(
-                f"Relative Time vs {baseline_name}{title_suffix}  "
-                f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
-                fontsize=PLOT_TITLE_FONTSIZE,
-            )
-            plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
-            plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
-            plt.axhline(1.0, color="0.5", linestyle="--", linewidth=1.5)
-            plt.grid(True, alpha=0.35)
-            plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
-            plt.tight_layout()
-
-        # -------- ΔSNR vs zoom --------
-        plt.figure(figsize=PLOT_FIGSIZE)
-        any_curve = False
-        for name, data in results.items():
-            if name == baseline_name or not data["z"]:
-                continue
-
-            z_m = np.asarray(data["z"], dtype=float)
-            s_m = np.asarray(data["snr"], dtype=float)
-
-            mask = mask_fn(z_m) & np.isfinite(s_m)
-            z_m = z_m[mask]
-            s_m = s_m[mask]
-            if z_m.size == 0:
-                continue
-
-            z_vals = []
-            dsnr_vals = []
-
-            for z, s in zip(z_m, s_m):
-                key = float(z)
-                if key not in baseline_by_z:
-                    continue
-                _, s0, _ = baseline_by_z[key]
-                if not np.isfinite(s0):
-                    continue
-                z_vals.append(z)
-                dsnr_vals.append(s - s0)
-
-            if not z_vals:
-                continue
-
-            z_vals = np.asarray(z_vals, dtype=float)
-            dsnr_vals = np.asarray(dsnr_vals, dtype=float)
-            order = np.argsort(z_vals)
-            z_vals = z_vals[order]
-            dsnr_vals = dsnr_vals[order]
-
-            plt.plot(
-                z_vals,
-                dsnr_vals,
-                marker=marker_for.get(name, "o"),
-                markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
-                markersize=MARKER_SIZE,
-                linewidth=LINEWIDTH,
-                label=name,
-            )
-            any_curve = True
-
-        if any_curve:
-            plt.xlabel("Zoom factor", fontsize=PLOT_LABEL_FONTSIZE)
-            plt.ylabel(
-                f"ΔSNR vs {baseline_name} (dB)\n(SNR_other - SNR_antialiasing)",
-                fontsize=PLOT_LABEL_FONTSIZE,
-            )
-            plt.title(
-                f"Relative SNR vs {baseline_name}{title_suffix}  "
-                f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
-                fontsize=PLOT_TITLE_FONTSIZE,
-            )
-            plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
-            plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
-            plt.axhline(0.0, color="0.5", linestyle="--", linewidth=1.5)
-            plt.grid(True, alpha=0.35)
-            plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
-            plt.tight_layout()
-
-        # -------- ΔSSIM vs zoom --------
-        if _HAS_SKIMAGE and sk_ssim is not None:
-            plt.figure(figsize=PLOT_FIGSIZE)
-            any_curve = False
-            for name, data in results.items():
-                if name == baseline_name or not data["z"]:
-                    continue
-
-                z_m = np.asarray(data["z"], dtype=float)
-                q_m = np.asarray(data["ssim"], dtype=float)
-
-                mask = mask_fn(z_m) & np.isfinite(q_m)
-                z_m = z_m[mask]
-                q_m = q_m[mask]
-                if z_m.size == 0:
-                    continue
-
-                z_vals = []
-                dq_vals = []
-
-                for z, q in zip(z_m, q_m):
-                    key = float(z)
-                    if key not in baseline_by_z:
-                        continue
-                    _, _, q0 = baseline_by_z[key]
-                    if not (np.isfinite(q0) and np.isfinite(q)):
-                        continue
-                    z_vals.append(z)
-                    dq_vals.append(q - q0)
-
-                if not z_vals:
-                    continue
-
-                z_vals = np.asarray(z_vals, dtype=float)
-                dq_vals = np.asarray(dq_vals, dtype=float)
-                order = np.argsort(z_vals)
-                z_vals = z_vals[order]
-                dq_vals = dq_vals[order]
-
-                plt.plot(
-                    z_vals,
-                    dq_vals,
-                    marker=marker_for.get(name, "o"),
-                    markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
-                    markersize=MARKER_SIZE,
-                    linewidth=LINEWIDTH,
-                    label=name,
-                )
-                any_curve = True
-
-            if any_curve:
-                plt.xlabel("Zoom factor", fontsize=PLOT_LABEL_FONTSIZE)
-                plt.ylabel(
-                    f"ΔSSIM vs {baseline_name}\n(SSIM_other - SSIM_antialiasing)",
-                    fontsize=PLOT_LABEL_FONTSIZE,
-                )
-                plt.title(
-                    f"Relative SSIM vs {baseline_name}{title_suffix}  "
-                    f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
-                    fontsize=PLOT_TITLE_FONTSIZE,
-                )
-                plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
-                plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
-                plt.axhline(0.0, color="0.5", linestyle="--", linewidth=1.5)
-                plt.grid(True, alpha=0.35)
-                plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
-                plt.tight_layout()
-
     #
     # Plot selected regions
     #
     if args.which == "down":
         plot_region("down")
-        plot_relative_to_antialiasing("down")
     elif args.which == "up":
         plot_region("up")
-        plot_relative_to_antialiasing("up")
     else:  # "both"
         plot_region("both")
-        plot_relative_to_antialiasing("both")
 
     plt.show()
 
