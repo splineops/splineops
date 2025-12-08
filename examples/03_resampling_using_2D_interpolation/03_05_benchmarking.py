@@ -890,7 +890,10 @@ def benchmark_image(
 
         if _HAS_SKIMAGE and _ssim is not None:
             try:
-                ssim_val = float(_ssim(roi, rec_roi, data_range=1.0))
+                dr = float(roi.max() - roi.min())
+                if dr <= 0:
+                    dr = 1.0  # flat ROI, arbitrary but safe
+                ssim_val = float(_ssim(roi, rec_roi, data_range=dr))
             except Exception:
                 ssim_val = float("nan")
         else:
@@ -1052,7 +1055,7 @@ def show_error_montage_from_bench(bench: Dict[str, object]) -> None:
     # Add textual labels in axes coordinates
     ax_leg.text(
         1.05, 0.05,
-        "rec < orig",
+        "-1",
         transform=ax_leg.transAxes,
         fontsize=8,
         va="bottom",
@@ -1060,7 +1063,7 @@ def show_error_montage_from_bench(bench: Dict[str, object]) -> None:
     )
     ax_leg.text(
         1.05, 0.50,
-        "no diff",
+        "0 (no diff)",
         transform=ax_leg.transAxes,
         fontsize=8,
         va="center",
@@ -1068,7 +1071,7 @@ def show_error_montage_from_bench(bench: Dict[str, object]) -> None:
     )
     ax_leg.text(
         1.05, 0.95,
-        "rec > orig",
+        "+1",
         transform=ax_leg.transAxes,
         fontsize=8,
         va="top",
@@ -1076,7 +1079,7 @@ def show_error_montage_from_bench(bench: Dict[str, object]) -> None:
     )
 
     fig.suptitle(
-        "Normalized signed difference in ROI (rec - original; 0.5 = no error)",
+        "Normalized signed difference in ROI",
         fontsize=ROI_SUPTITLE_FONTSIZE,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.95])
