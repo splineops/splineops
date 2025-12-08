@@ -32,8 +32,8 @@ Notes
 - All ops run on grayscale images normalized to [0, 1] for metrics.
 - Methods with missing deps are marked "unavailable" in the console and skipped
   from the ROI montage.
-- If ``USE_COLOR_VIS`` is True, all *visualisations* (intro figure and ROI
-  montage) are done in color, while metrics still use grayscale.
+- If ``USE_COLOR_VIS`` is True, we additionally show color intros and a color
+  ROI montage for each image, while still computing all metrics on grayscale.
 """
 
 # %%
@@ -69,17 +69,15 @@ PLOT_LABEL_FONTSIZE = 18
 PLOT_TICK_FONTSIZE = 18
 PLOT_LEGEND_FONTSIZE = 18
 
-
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
 
-
 # Benchmark configuration
 N_TRIALS = 10
 
-# Global flag: whether to show color visualisations (intro + ROI montage)
-# instead of grayscale. Metrics always use grayscale.
+# Global flag: whether to show color intros / color ROI montage in addition
+# to grayscale metrics and grayscale ROI montage.
 USE_COLOR_VIS = True
 
 # Optional deps
@@ -207,7 +205,7 @@ def _load_kodak_gray(url: str) -> np.ndarray:
 def _load_kodak_rgb(url: str) -> np.ndarray:
     """
     Download a Kodak image as RGB [0, 1] in DTYPE (float32).
-    Used only for color visualisations; metrics remain on grayscale.
+    Used only for color visualizations; metrics remain on grayscale.
     """
     with urlopen(url, timeout=10) as resp:
         img = Image.open(resp).convert("RGB")
@@ -271,7 +269,7 @@ def _show_initial_original_vs_aa(
     degree_label: str,
 ) -> None:
     """
-    Plot a 2x2 figure (grayscale):
+    Plot a 2x2 figure:
 
     Row 1:
       - Original image with red ROI box
@@ -719,7 +717,6 @@ def _rt_torch(
 
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
         rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
-
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
@@ -894,7 +891,7 @@ def benchmark_image(
             }
         )
 
-        # First-pass ROI patch mapped to resized coordinates (grayscale)
+        # First-pass ROI patch mapped to resized coordinates
         H1, W1 = first.shape
         roi_h_res = max(1, int(round(roi_h * z)))
         roi_w_res = max(1, int(round(roi_w * z)))
@@ -942,7 +939,7 @@ def show_intro_from_bench(bench: Dict[str, object]) -> None:
 
 
 def show_roi_montage_from_bench(bench: Dict[str, object]) -> None:
-    """Show the 3×3 ROI montage (original + all methods) for a benchmarked image, grayscale."""
+    """Show the 3×3 ROI montage (original + all methods) for a benchmarked image."""
     roi_tiles: List[Tuple[str, np.ndarray]] = bench["roi_tiles"]  # type: ignore[assignment]
     if not roi_tiles:
         return
@@ -973,124 +970,94 @@ def show_roi_montage_from_bench(bench: Dict[str, object]) -> None:
 
 
 # %%
-# Color ROI helpers
-# -----------------
+# Color ROI Montage Helpers
+# -------------------------
 
-def _color_first_for_backend(
+def _first_pass_color_for_backend(
+    backend: str,
     rgb: np.ndarray,
     z: float,
-    backend: str,
-) -> Tuple[Optional[np.ndarray], Optional[str]]:
+) -> Optional[np.ndarray]:
     """
-    Compute the *first-pass* resized COLOR image for a given backend.
-
-    Parameters
-    ----------
-    rgb : ndarray, shape (H, W, 3), in [0, 1]
-    z : float
-        Isotropic zoom factor.
-    backend : str
-        One of the BENCH_METHODS backend keys ("spl_standard", "scipy", ...).
-
-    Returns
-    -------
-    first_rgb : ndarray or None
-        Resized color image in [0, 1] (DTYPE), or None on error.
-    err : str or None
-        Error message if unavailable.
+    Compute a first-pass color resized image for a given backend and RGB input.
+    This is used only for color ROI visualizations; metrics still run on gray.
     """
     H, W, C = rgb.shape
-    assert C == 3
+    H1 = int(round(H * z))
+    W1 = int(round(W * z))
+    if H1 < 1 or W1 < 1:
+        return None
 
     try:
-        if backend == "spl_standard":
+        if backend in ("spl_standard", "spl_aa"):
             if not _HAS_SPLINEOPS:
-                return None, "splineops unavailable"
+                return None
+            method = "cubic" if backend == "spl_standard" else "cubic-antialiasing"
             zoom_hw = (z, z)
-            chans = []
+            channels = []
             for c in range(C):
                 ch = sp_resize(
                     rgb[..., c],
                     zoom_factors=zoom_hw,
-                    method="cubic",
+                    method=method,
                 )
-                chans.append(ch)
-            first_rgb = np.stack(chans, axis=-1)
-
-        elif backend == "spl_aa":
-            if not _HAS_SPLINEOPS:
-                return None, "splineops unavailable"
-            zoom_hw = (z, z)
-            chans = []
-            for c in range(C):
-                ch = sp_resize(
-                    rgb[..., c],
-                    zoom_factors=zoom_hw,
-                    method="cubic-antialiasing",
-                )
-                chans.append(ch)
-            first_rgb = np.stack(chans, axis=-1)
+                channels.append(ch)
+            first = np.stack(channels, axis=-1)
 
         elif backend == "scipy":
             if not _HAS_SCIPY:
-                return None, "SciPy not installed"
-            # zoom only H and W, keep channels
-            first_rgb = _ndi_zoom(
-                rgb,
-                (z, z, 1.0),
-                order=3,
-                prefilter=True,
-                mode="reflect",
-                grid_mode=False,
-            )
+                return None
+            # Per-channel ndimage.zoom
+            channels = []
+            for c in range(C):
+                ch = _ndi_zoom(
+                    rgb[..., c],
+                    (z, z),
+                    order=3,
+                    prefilter=True,
+                    mode="reflect",
+                    grid_mode=False,
+                )
+                channels.append(ch)
+            first = np.stack(channels, axis=-1)
 
         elif backend == "opencv":
             if not _HAS_CV2:
-                return None, "OpenCV not installed"
-            # OpenCV expects H×W×C, we can feed RGB float32 in [0,1].
-            H1 = int(round(H * z))
-            W1 = int(round(W * z))
-            first_rgb = cv2.resize(
-                rgb, (W1, H1), interpolation=cv2.INTER_CUBIC
-            )
+                return None
+            arr = rgb.astype(np.float32, copy=False)
+            first = cv2.resize(arr, (W1, H1), interpolation=cv2.INTER_CUBIC)
 
         elif backend == "pillow":
-            # Use Pillow BICUBIC on RGB
-            try:
-                from PIL import Image as _Image
-            except Exception as e:
-                return None, f"Pillow unavailable: {e}"
+            from PIL import Image as _Image
 
-            H1 = int(round(H * z))
-            W1 = int(round(W * z))
-
-            img = (np.clip(rgb, 0.0, 1.0) * 255.0).astype(np.uint8)
-            pil_im = _Image.fromarray(img, mode="RGB")
-            first_im = pil_im.resize((W1, H1), resample=_Image.Resampling.BICUBIC)
-            arr = np.asarray(first_im, dtype=np.float64) / 255.0
-            first_rgb = arr
+            arr_uint8 = (np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)
+            im = _Image.fromarray(arr_uint8, mode="RGB")
+            first_im = im.resize((W1, H1), resample=_Image.Resampling.BICUBIC)
+            first = np.asarray(first_im, dtype=np.float32) / 255.0
 
         elif backend == "skimage":
             if not _HAS_SKIMAGE:
-                return None, "scikit-image not installed"
-            H1 = int(round(H * z))
-            W1 = int(round(W * z))
-            first_rgb = _sk_resize(
+                return None
+            first = _sk_resize(
                 rgb,
                 (H1, W1, C),
                 order=3,
                 anti_aliasing=False,
                 preserve_range=True,
                 mode="reflect",
-            )
+            ).astype(np.float32)
 
         elif backend == "torch":
             if not _HAS_TORCH:
-                return None, "PyTorch not installed"
-            arr = rgb.astype(np.float32, copy=False)
-            t_dtype = torch.float32
-            H1 = int(round(H * z))
-            W1 = int(round(W * z))
+                return None
+            arr = rgb
+            if arr.dtype == np.float32:
+                t_dtype = torch.float32
+            elif arr.dtype == np.float64:
+                t_dtype = torch.float64
+            else:
+                t_dtype = torch.float32
+                arr = arr.astype(np.float32, copy=False)
 
             x = torch.from_numpy(arr).to(t_dtype).permute(2, 0, 1).unsqueeze(0)
             first_t = F.interpolate(
@@ -1100,75 +1067,63 @@ def _color_first_for_backend(
                 align_corners=False,
                 antialias=False,
             )
-            first_rgb = first_t[0].permute(1, 2, 0).detach().cpu().numpy()
+            first = first_t[0].permute(1, 2, 0).detach().cpu().numpy()
 
         else:
-            return None, "Unknown backend"
+            return None
 
-        first_rgb = np.clip(first_rgb, 0.0, 1.0).astype(DTYPE, copy=False)
-        return first_rgb, None
-    except Exception as e:
-        return None, str(e)
+        return np.clip(first, 0.0, 1.0).astype(DTYPE, copy=False)
+    except Exception:
+        return None
 
 
 def show_roi_montage_color(
     img_name: str,
     bench: Dict[str, object],
+    orig_rgb: np.ndarray,
 ) -> None:
     """
-    Show a 3×3 ROI montage (original + all methods) in color.
-
-    Metrics are still computed on grayscale; here we recompute the first-pass
-    resized *color* images for each method and extract a color ROI.
+    Show a 3×3 montage of color ROIs:
+      - Original color ROI
+      - First-pass color ROI for each backend (first-pass resize only)
     """
     if not USE_COLOR_VIS:
-        # Fall back to grayscale montage
-        show_roi_montage_from_bench(bench)
         return
 
-    if img_name not in orig_images_rgb:
-        # No color loaded for this image; fall back to grayscale montage
-        show_roi_montage_from_bench(bench)
-        return
-
-    rgb = orig_images_rgb[img_name]      # H×W×3 in [0,1]
-    roi_rect = bench["roi_rect"]        # same pixel ROI as grayscale
-    z = float(bench["z"])               # zoom factor
-
-    H, W, C = rgb.shape
+    roi_rect = bench["roi_rect"]      # (row_top, col_left, h, w)
+    z = float(bench["z"])
     row0, col0, roi_h, roi_w = roi_rect
+    H, W, _ = orig_rgb.shape
 
-    # Original ROI tile (color)
-    roi_orig = rgb[row0:row0 + roi_h, col0:col0 + roi_w, :]
+    # Original color ROI tile
+    roi_orig = orig_rgb[row0:row0 + roi_h, col0:col0 + roi_w, :]
     orig_tile = _nearest_big_color(roi_orig, ROI_MAG_TARGET)
 
-    roi_tiles_color: List[Tuple[str, np.ndarray]] = [("Original", orig_tile)]
+    # Collect tiles
+    roi_tiles_color: List[Tuple[str, np.ndarray]] = [("Original (color)", orig_tile)]
 
-    # Center of ROI in original coordinates (for mapping)
     center_r = row0 + roi_h / 2.0
     center_c = col0 + roi_w / 2.0
 
-    # Per-method color first-pass ROI tiles
     for label, backend in BENCH_METHODS:
-        first_rgb, err = _color_first_for_backend(rgb, z, backend)
-        if first_rgb is None or err is not None:
-            # Skip unavailable or failed methods in the montage
+        first_color = _first_pass_color_for_backend(backend, orig_rgb, z)
+        if first_color is None:
             continue
 
-        H1, W1, _ = first_rgb.shape
+        H1, W1, _ = first_color.shape
         roi_h_res = max(1, int(round(roi_h * z)))
         roi_w_res = max(1, int(round(roi_w * z)))
 
         if roi_h_res > H1 or roi_w_res > W1:
-            roi_first = first_rgb
+            roi_first = first_color
         else:
             center_r_res = int(round(center_r * z))
             center_c_res = int(round(center_c * z))
             row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res))
             col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res))
-            roi_first = first_rgb[
-                row_top_res : row_top_res + roi_h_res,
-                col_left_res : col_left_res + roi_w_res,
+            roi_first = first_color[
+                row_top_res:row_top_res + roi_h_res,
+                col_left_res:col_left_res + roi_w_res,
                 :
             ]
 
@@ -1178,7 +1133,7 @@ def show_roi_montage_color(
     if not roi_tiles_color:
         return
 
-    # 3×3 color montage
+    # 3×3 grid (same layout style as grayscale montage)
     rows, cols = 3, 3
     fig_width = 3.2 * cols
     fig_height = 3.2 * rows
@@ -1228,25 +1183,15 @@ if _HAS_SPECS and print_runtime_context is not None:
     print()
 
 
-# %%
-# Intro helpers (color vs grayscale)
-# ----------------------------------
-
-def _intro_for_image(
+# Small helper for color intro using SplineOps antialiasing
+def _color_intro_for_image(
     img_name: str,
     bench: Dict[str, object],
 ) -> None:
-    """
-    Show either a grayscale or color intro for a given image, depending on
-    USE_COLOR_VIS and SplineOps availability.
-    """
     if not USE_COLOR_VIS:
         show_intro_from_bench(bench)
         return
-
-    # Color intro: use SplineOps Antialiasing in RGB
-    if not _HAS_SPLINEOPS or img_name not in orig_images_rgb:
-        # Fallback to grayscale intro
+    if not _HAS_SPLINEOPS:
         show_intro_from_bench(bench)
         return
 
@@ -1256,15 +1201,15 @@ def _intro_for_image(
 
     # First-pass antialiasing in color (channel-wise)
     zoom_hw = (z, z)
-    aa_channels = []
+    channels = []
     for c in range(rgb.shape[2]):
         ch = sp_resize(
             rgb[..., c],
             zoom_factors=zoom_hw,
             method="cubic-antialiasing",
         )
-        aa_channels.append(ch)
-    aa_rgb = np.stack(aa_channels, axis=-1)
+        channels.append(ch)
+    aa_rgb = np.stack(channels, axis=-1)
 
     show_intro_color(
         original_rgb=rgb,
@@ -1296,12 +1241,14 @@ bench_kodim05 = benchmark_image(
     degree_label="Cubic",
 )
 
-_intro_for_image(img_name, bench_kodim05)
+_color_intro_for_image(img_name, bench_kodim05)
 
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
-show_roi_montage_color(img_name, bench_kodim05)
+# ROI Comparison (grayscale)
+show_roi_montage_from_bench(bench_kodim05)
+
+# ROI Comparison (color)
+if USE_COLOR_VIS:
+    show_roi_montage_color(img_name, bench_kodim05, orig_images_rgb[img_name])
 
 
 # %%
@@ -1324,12 +1271,14 @@ bench_kodim07 = benchmark_image(
     degree_label="Cubic",
 )
 
-_intro_for_image(img_name, bench_kodim07)
+_color_intro_for_image(img_name, bench_kodim07)
 
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
-show_roi_montage_color(img_name, bench_kodim07)
+# ROI Comparison (grayscale)
+show_roi_montage_from_bench(bench_kodim07)
+
+# ROI Comparison (color)
+if USE_COLOR_VIS:
+    show_roi_montage_color(img_name, bench_kodim07, orig_images_rgb[img_name])
 
 
 # %%
@@ -1352,12 +1301,14 @@ bench_kodim14 = benchmark_image(
     degree_label="Cubic",
 )
 
-_intro_for_image(img_name, bench_kodim14)
+_color_intro_for_image(img_name, bench_kodim14)
 
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
-show_roi_montage_color(img_name, bench_kodim14)
+# ROI Comparison (grayscale)
+show_roi_montage_from_bench(bench_kodim14)
+
+# ROI Comparison (color)
+if USE_COLOR_VIS:
+    show_roi_montage_color(img_name, bench_kodim14, orig_images_rgb[img_name])
 
 
 # %%
@@ -1380,12 +1331,14 @@ bench_kodim15 = benchmark_image(
     degree_label="Cubic",
 )
 
-_intro_for_image(img_name, bench_kodim15)
+_color_intro_for_image(img_name, bench_kodim15)
 
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
-show_roi_montage_color(img_name, bench_kodim15)
+# ROI Comparison (grayscale)
+show_roi_montage_from_bench(bench_kodim15)
+
+# ROI Comparison (color)
+if USE_COLOR_VIS:
+    show_roi_montage_color(img_name, bench_kodim15, orig_images_rgb[img_name])
 
 
 # %%
@@ -1408,12 +1361,14 @@ bench_kodim19 = benchmark_image(
     degree_label="Cubic",
 )
 
-_intro_for_image(img_name, bench_kodim19)
+_color_intro_for_image(img_name, bench_kodim19)
 
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
-show_roi_montage_color(img_name, bench_kodim19)
+# ROI Comparison (grayscale)
+show_roi_montage_from_bench(bench_kodim19)
+
+# ROI Comparison (color)
+if USE_COLOR_VIS:
+    show_roi_montage_color(img_name, bench_kodim19, orig_images_rgb[img_name])
 
 
 # %%
@@ -1436,9 +1391,11 @@ bench_kodim23 = benchmark_image(
     degree_label="Cubic",
 )
 
-_intro_for_image(img_name, bench_kodim23)
+_color_intro_for_image(img_name, bench_kodim23)
 
-# %%
-# ROI Comparison
-# ~~~~~~~~~~~~~~
-show_roi_montage_color(img_name, bench_kodim23)
+# ROI Comparison (grayscale)
+show_roi_montage_from_bench(bench_kodim23)
+
+# ROI Comparison (color)
+if USE_COLOR_VIS:
+    show_roi_montage_color(img_name, bench_kodim23, orig_images_rgb[img_name])
