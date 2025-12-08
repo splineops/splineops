@@ -92,6 +92,11 @@ PLOT_LEGEND_FONTSIZE = 18
 MARKER_SIZE = 6             # bigger markers
 LINEWIDTH = 2.0             # thicker lines
 
+# Show markers only on every N-th point (sparser markers).
+# All methods share the same stride but use different phase offsets
+# so their markers don't sit on top of each other.
+MARK_EVERY_BASE = 8
+
 # ---------------- Method toggles ----------------
 # Set any of these to False to skip computing/plotting that method.
 ENABLE_SCIPY                   = True
@@ -110,8 +115,8 @@ def choose_image_dialog() -> str | None:
     file_filter = (
         "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff);;"
         "PNG (*.png);;"
-        "JPEG (*.jpg *.jpeg);;"
-        "TIFF (*.tif *.tiff);;"
+        "JPEG (*.jpg *.jpeg);"
+        "TIFF (*.tif *.tiff);"
         "All files (*)"
     )
 
@@ -529,7 +534,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="both",
+        default="down",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
@@ -542,7 +547,7 @@ def main():
     ap.add_argument(
         "--repeats",
         type=int,
-        default=5,
+        default=10,
         help="Average this many runs per (method, z).",
     )
     ap.add_argument(
@@ -770,10 +775,15 @@ def main():
             return  # no-op
 
         # Prepare per-method markers for accessibility (B/W friendly)
+        # and stagger marker positions so they don't overlap too much.
         marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
         marker_for: Dict[str, str] = {}
+        markevery_for: Dict[str, Tuple[int, int]] = {}
         for idx_name, name in enumerate(results.keys()):
             marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
+            # Each method uses the same stride but a different phase offset
+            offset = idx_name % MARK_EVERY_BASE
+            markevery_for[name] = (offset, MARK_EVERY_BASE)
 
         # ---------------- Timing plot ----------------
         plt.figure(figsize=PLOT_FIGSIZE)
@@ -791,6 +801,7 @@ def main():
                 z_arr[mask],
                 t_arr[mask],
                 marker=marker_for.get(name, "o"),
+                markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
                 markersize=MARKER_SIZE,
                 linewidth=LINEWIDTH,
                 label=name,
@@ -833,6 +844,7 @@ def main():
                 z_arr[mask],
                 s_plot,
                 marker=marker_for.get(name, "o"),
+                markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
                 markersize=MARKER_SIZE,
                 linewidth=LINEWIDTH,
                 label=name,
@@ -873,6 +885,7 @@ def main():
                     z_arr[mask],
                     q_plot,
                     marker=marker_for.get(name, "o"),
+                    markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
                     markersize=MARKER_SIZE,
                     linewidth=LINEWIDTH,
                     label=name,
@@ -938,11 +951,14 @@ def main():
             for z, t, s, q in zip(z_b, t_b, s_b, q_b)
         }
 
-        # Marker shapes as before
+        # Marker shapes as before, plus staggered marker positions
         marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
         marker_for: Dict[str, str] = {}
+        markevery_for: Dict[str, Tuple[int, int]] = {}
         for idx_name, name in enumerate(results.keys()):
             marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
+            offset = idx_name % MARK_EVERY_BASE
+            markevery_for[name] = (offset, MARK_EVERY_BASE)
 
         # -------- Time ratio vs zoom --------
         plt.figure(figsize=PLOT_FIGSIZE)
@@ -986,6 +1002,7 @@ def main():
                 z_vals,
                 tr_vals,
                 marker=marker_for.get(name, "o"),
+                markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
                 markersize=MARKER_SIZE,
                 linewidth=LINEWIDTH,
                 label=name,
@@ -1052,6 +1069,7 @@ def main():
                 z_vals,
                 dsnr_vals,
                 marker=marker_for.get(name, "o"),
+                markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
                 markersize=MARKER_SIZE,
                 linewidth=LINEWIDTH,
                 label=name,
@@ -1119,6 +1137,7 @@ def main():
                     z_vals,
                     dq_vals,
                     marker=marker_for.get(name, "o"),
+                    markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
                     markersize=MARKER_SIZE,
                     linewidth=LINEWIDTH,
                     label=name,
