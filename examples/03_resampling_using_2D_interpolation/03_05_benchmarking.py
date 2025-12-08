@@ -913,7 +913,7 @@ def benchmark_image(
             }
         )
 
-        # First-pass ROI (for ROI montage)
+        # First-pass ROI patch mapped to resized coordinates
         H1, W1 = first.shape
         roi_h_res = max(1, int(round(roi_h * z)))
         roi_w_res = max(1, int(round(roi_w * z)))
@@ -930,10 +930,11 @@ def benchmark_image(
                 col_left_res : col_left_res + roi_w_res,
             ]
 
-        roi_tile = _nearest_big(first_roi, ROI_MAG_TARGET)
-        roi_tiles.append((label, roi_tile))
+        # ROI tiles (grayscale)
+        tile = _nearest_big(first_roi, ROI_MAG_TARGET)
+        roi_tiles.append((label, tile))
 
-        # Difference ROI (rec - original), normalized to [0,1]
+        # Diff tiles (normalized signed difference)
         diff_roi = _diff_normalized(roi, rec_roi)
         diff_tile = _nearest_big(diff_roi, ROI_MAG_TARGET)
         diff_tiles.append((label, diff_tile))
@@ -979,14 +980,12 @@ def show_roi_montage_from_bench(bench: Dict[str, object]) -> None:
     fig, axes = plt.subplots(rows, cols, figsize=(fig_width, fig_height))
     axes = np.asarray(axes).reshape(rows, cols)
 
-    # Turn off all axes initially
     for ax in axes.ravel():
         ax.axis("off")
 
-    # Fill tiles row by row
     for idx, (name, tile) in enumerate(roi_tiles):
         if idx >= rows * cols:
-            break  # safety if we ever have >9 tiles
+            break
         r, c = divmod(idx, cols)
         ax = axes[r, c]
         ax.imshow(tile, cmap="gray", interpolation="nearest")
@@ -998,7 +997,15 @@ def show_roi_montage_from_bench(bench: Dict[str, object]) -> None:
 
 
 def show_error_montage_from_bench(bench: Dict[str, object]) -> None:
-    """Show a 3×3 ROI error montage (normalized rec - original) for each method."""
+    """
+    Show a 3×3 montage of normalized signed differences in the ROI:
+
+    - Tiles: (rec - original) normalized to [0,1], where
+        0.5 = no difference,
+        <0.5 = rec < original,
+        >0.5 = rec > original.
+    - Bottom-right slot: a small legend explaining the gray levels.
+    """
     diff_tiles: List[Tuple[str, np.ndarray]] = bench.get("diff_tiles", [])  # type: ignore[assignment]
     if not diff_tiles:
         return
@@ -1013,33 +1020,86 @@ def show_error_montage_from_bench(bench: Dict[str, object]) -> None:
     for ax in axes.ravel():
         ax.axis("off")
 
-    for idx, (name, tile) in enumerate(diff_tiles):
-        if idx >= rows * cols:
-            break
+    # Reserve bottom-right for legend
+    max_tile_slots = rows * cols - 1  # 8
+    num_tiles = min(len(diff_tiles), max_tile_slots)
+
+    # All diff tiles are in [0,1] by construction
+    vmin, vmax = 0.0, 1.0
+
+    for idx in range(num_tiles):
+        name, tile = diff_tiles[idx]
         r, c = divmod(idx, cols)
         ax = axes[r, c]
-        ax.imshow(tile, cmap="gray", interpolation="nearest", vmin=0.0, vmax=1.0)
+        ax.imshow(tile, cmap="gray", interpolation="nearest", vmin=vmin, vmax=vmax)
         ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
         ax.axis("off")
 
+    # Legend in bottom-right
+    ax_leg = axes[-1, -1]
+    ax_leg.axis("off")
+
+    # Vertical gradient from dark (0) -> mid (0.5) -> bright (1)
+    H_leg = ROI_MAG_TARGET
+    W_leg = 32
+    y = np.linspace(1.0, 0.0, H_leg, dtype=np.float32)  # 1 at top, 0 at bottom
+    legend_col = y[:, None]  # shape H×1
+    legend_img = np.repeat(legend_col, W_leg, axis=1)
+
+    ax_leg.imshow(legend_img, cmap="gray", vmin=0.0, vmax=1.0, aspect="auto")
+    ax_leg.set_title("Diff legend", fontsize=ROI_TILE_TITLE_FONTSIZE, pad=4)
+
+    # Add textual labels in axes coordinates
+    ax_leg.text(
+        1.05, 0.05,
+        "rec < orig",
+        transform=ax_leg.transAxes,
+        fontsize=8,
+        va="bottom",
+        ha="left",
+    )
+    ax_leg.text(
+        1.05, 0.50,
+        "no diff",
+        transform=ax_leg.transAxes,
+        fontsize=8,
+        va="center",
+        ha="left",
+    )
+    ax_leg.text(
+        1.05, 0.95,
+        "rec > orig",
+        transform=ax_leg.transAxes,
+        fontsize=8,
+        va="top",
+        ha="left",
+    )
+
     fig.suptitle(
-        "ROI error comparison (normalized rec - original; 0.5 ≈ no error)",
+        "Normalized signed difference in ROI (rec - original; 0.5 = no error)",
         fontsize=ROI_SUPTITLE_FONTSIZE,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
 
-def show_timing_bar_from_bench(bench: Dict[str, object]) -> None:
-    """Show a horizontal bar chart of round-trip time per method."""
+def show_timing_plot_from_bench(bench: Dict[str, object]) -> None:
+    """Show a horizontal bar chart of round-trip timing per method."""
     rows: List[Dict[str, object]] = bench["rows"]  # type: ignore[assignment]
+    if not rows:
+        return
+
+    H, W = bench["gray"].shape  # type: ignore[index]
+    z = float(bench["z"])
+    degree_label = str(bench["degree_label"])
+
     valid = [r for r in rows if np.isfinite(r.get("time", np.nan))]
     if not valid:
         return
 
     names = [r["name"] for r in valid]
     times = np.array([r["time"] for r in valid], dtype=np.float64)
-    sds = np.array([r.get("sd", 0.0) for r in valid], dtype=np.float64)
+    sds = np.array([r["sd"] for r in valid], dtype=np.float64)
 
     order = np.argsort(times)
     names = [names[i] for i in order]
@@ -1055,11 +1115,8 @@ def show_timing_bar_from_bench(bench: Dict[str, object]) -> None:
         f"Round-trip time (s) mean ± sd over {N_TRIALS} runs",
         fontsize=PLOT_LABEL_FONTSIZE,
     )
-    gray = bench["gray"]  # type: ignore[assignment]
-    H, W = gray.shape
-    z = float(bench["z"])
     plt.title(
-        f"Timing vs Method (H×W = {H}×{W}, zoom ×{z:g})",
+        f"Timing vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
         fontsize=PLOT_TITLE_FONTSIZE,
     )
     plt.grid(axis="x", alpha=0.3)
@@ -1067,15 +1124,21 @@ def show_timing_bar_from_bench(bench: Dict[str, object]) -> None:
     plt.show()
 
 
-def show_snr_ssim_bar_from_bench(bench: Dict[str, object]) -> None:
-    """Show a combined SNR/SSIM bar chart for the ROI round-trip per method."""
+def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
+    """Show a combined SNR/SSIM bar chart per method."""
     if not (_HAS_SKIMAGE and _ssim is not None):
         return
 
     rows: List[Dict[str, object]] = bench["rows"]  # type: ignore[assignment]
+    if not rows:
+        return
+
+    H, W = bench["gray"].shape  # type: ignore[index]
+    z = float(bench["z"])
+    degree_label = str(bench["degree_label"])
+
     valid = [
-        r
-        for r in rows
+        r for r in rows
         if np.isfinite(r.get("snr", np.nan)) and np.isfinite(r.get("ssim", np.nan))
     ]
     if not valid:
@@ -1132,16 +1195,13 @@ def show_snr_ssim_bar_from_bench(bench: Dict[str, object]) -> None:
     ax2.set_ylabel("SSIM", color=ssim_color, fontsize=PLOT_LABEL_FONTSIZE)
     ax2.tick_params(axis="y", labelcolor=ssim_color, labelsize=PLOT_TICK_FONTSIZE)
 
-    gray = bench["gray"]  # type: ignore[assignment]
-    H, W = gray.shape
-    z = float(bench["z"])
     ax1.set_title(
-        f"SNR / SSIM vs Method (H×W = {H}×{W}, zoom ×{z:g})",
+        f"SNR / SSIM vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
         fontsize=PLOT_TITLE_FONTSIZE,
     )
 
-    # Combined legend
-    handles = [snr_bars.patches[0], ssim_bars.patches[0]]
+    # Combine legends from both axes
+    handles = [snr_bars[0], ssim_bars[0]]
     labels = ["SNR (dB)", "SSIM"]
     fig.legend(
         handles,
@@ -1214,6 +1274,7 @@ def _first_pass_color_for_backend(
 
         elif backend == "pillow":
             from PIL import Image as _Image
+
             arr_uint8 = (np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)
             im = _Image.fromarray(arr_uint8, mode="RGB")
             first_im = im.resize((W1, H1), resample=_Image.Resampling.BICUBIC)
@@ -1428,18 +1489,16 @@ _color_intro_for_image(img_name, bench_kodim05)
 # ROI Comparison (grayscale)
 show_roi_montage_from_bench(bench_kodim05)
 
+# ROI Error (grayscale)
+show_error_montage_from_bench(bench_kodim05)
+
 # ROI Comparison (color)
 if USE_COLOR_VIS:
     show_roi_montage_color(img_name, bench_kodim05, orig_images_rgb[img_name])
 
-# ROI Error Comparison
-show_error_montage_from_bench(bench_kodim05)
-
-# Timing Comparison
-show_timing_bar_from_bench(bench_kodim05)
-
-# SNR / SSIM Comparison
-show_snr_ssim_bar_from_bench(bench_kodim05)
+# Timing and SNR/SSIM plots
+show_timing_plot_from_bench(bench_kodim05)
+show_snr_ssim_plot_from_bench(bench_kodim05)
 
 
 # %%
@@ -1467,18 +1526,16 @@ _color_intro_for_image(img_name, bench_kodim07)
 # ROI Comparison (grayscale)
 show_roi_montage_from_bench(bench_kodim07)
 
+# ROI Error (grayscale)
+show_error_montage_from_bench(bench_kodim07)
+
 # ROI Comparison (color)
 if USE_COLOR_VIS:
     show_roi_montage_color(img_name, bench_kodim07, orig_images_rgb[img_name])
 
-# ROI Error Comparison
-show_error_montage_from_bench(bench_kodim07)
-
-# Timing Comparison
-show_timing_bar_from_bench(bench_kodim07)
-
-# SNR / SSIM Comparison
-show_snr_ssim_bar_from_bench(bench_kodim07)
+# Timing and SNR/SSIM plots
+show_timing_plot_from_bench(bench_kodim07)
+show_snr_ssim_plot_from_bench(bench_kodim07)
 
 
 # %%
@@ -1506,18 +1563,16 @@ _color_intro_for_image(img_name, bench_kodim14)
 # ROI Comparison (grayscale)
 show_roi_montage_from_bench(bench_kodim14)
 
+# ROI Error (grayscale)
+show_error_montage_from_bench(bench_kodim14)
+
 # ROI Comparison (color)
 if USE_COLOR_VIS:
     show_roi_montage_color(img_name, bench_kodim14, orig_images_rgb[img_name])
 
-# ROI Error Comparison
-show_error_montage_from_bench(bench_kodim14)
-
-# Timing Comparison
-show_timing_bar_from_bench(bench_kodim14)
-
-# SNR / SSIM Comparison
-show_snr_ssim_bar_from_bench(bench_kodim14)
+# Timing and SNR/SSIM plots
+show_timing_plot_from_bench(bench_kodim14)
+show_snr_ssim_plot_from_bench(bench_kodim14)
 
 
 # %%
@@ -1545,18 +1600,16 @@ _color_intro_for_image(img_name, bench_kodim15)
 # ROI Comparison (grayscale)
 show_roi_montage_from_bench(bench_kodim15)
 
+# ROI Error (grayscale)
+show_error_montage_from_bench(bench_kodim15)
+
 # ROI Comparison (color)
 if USE_COLOR_VIS:
     show_roi_montage_color(img_name, bench_kodim15, orig_images_rgb[img_name])
 
-# ROI Error Comparison
-show_error_montage_from_bench(bench_kodim15)
-
-# Timing Comparison
-show_timing_bar_from_bench(bench_kodim15)
-
-# SNR / SSIM Comparison
-show_snr_ssim_bar_from_bench(bench_kodim15)
+# Timing and SNR/SSIM plots
+show_timing_plot_from_bench(bench_kodim15)
+show_snr_ssim_plot_from_bench(bench_kodim15)
 
 
 # %%
@@ -1584,18 +1637,16 @@ _color_intro_for_image(img_name, bench_kodim19)
 # ROI Comparison (grayscale)
 show_roi_montage_from_bench(bench_kodim19)
 
+# ROI Error (grayscale)
+show_error_montage_from_bench(bench_kodim19)
+
 # ROI Comparison (color)
 if USE_COLOR_VIS:
     show_roi_montage_color(img_name, bench_kodim19, orig_images_rgb[img_name])
 
-# ROI Error Comparison
-show_error_montage_from_bench(bench_kodim19)
-
-# Timing Comparison
-show_timing_bar_from_bench(bench_kodim19)
-
-# SNR / SSIM Comparison
-show_snr_ssim_bar_from_bench(bench_kodim19)
+# Timing and SNR/SSIM plots
+show_timing_plot_from_bench(bench_kodim19)
+show_snr_ssim_plot_from_bench(bench_kodim19)
 
 
 # %%
@@ -1623,15 +1674,13 @@ _color_intro_for_image(img_name, bench_kodim23)
 # ROI Comparison (grayscale)
 show_roi_montage_from_bench(bench_kodim23)
 
+# ROI Error (grayscale)
+show_error_montage_from_bench(bench_kodim23)
+
 # ROI Comparison (color)
 if USE_COLOR_VIS:
     show_roi_montage_color(img_name, bench_kodim23, orig_images_rgb[img_name])
 
-# ROI Error Comparison
-show_error_montage_from_bench(bench_kodim23)
-
-# Timing Comparison
-show_timing_bar_from_bench(bench_kodim23)
-
-# SNR / SSIM Comparison
-show_snr_ssim_bar_from_bench(bench_kodim23)
+# Timing and SNR/SSIM plots
+show_timing_plot_from_bench(bench_kodim23)
+show_snr_ssim_plot_from_bench(bench_kodim23)
