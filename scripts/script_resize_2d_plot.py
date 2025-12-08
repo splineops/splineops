@@ -529,7 +529,7 @@ def main():
     ap.add_argument(
         "--which",
         type=str,
-        default="down",
+        default="both",
         choices=("both", "down", "up"),
         help="Which zoom regime to plot: 'down' (0<z<1), 'up' (1<z<2), or 'both'.",
     )
@@ -542,7 +542,7 @@ def main():
     ap.add_argument(
         "--repeats",
         type=int,
-        default=10,
+        default=5,
         help="Average this many runs per (method, z).",
     )
     ap.add_argument(
