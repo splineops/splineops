@@ -19,7 +19,7 @@ On Windows,
 
 ```shell
 python -m venv splineops-env
-.splineops-env/Scripts/Activate
+./splineops-env/Scripts/Activate
 ```
 
 To deactivate the environment use
