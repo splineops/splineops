@@ -35,5 +35,5 @@ This exposes the underlying Muñoz/Unser projection framework directly
 See also
 --------
 
-:class:`~splineops.interpolate.tensorspline.TensorSpline`
+:class:`~splineops.interpolate.tensor_spline.TensorSpline`
    The base class used internally for spline interpolation.

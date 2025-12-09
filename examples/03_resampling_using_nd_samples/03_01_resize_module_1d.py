@@ -1,5 +1,5 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/03_01_resize_module_1d.py
+# splineops/examples/03_resampling_using_nd_samples/03_01_resize_module_1d.py
 # sphinx_gallery_end_ignore
 
 """

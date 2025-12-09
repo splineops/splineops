@@ -1,5 +1,5 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/03_07_benchmarking_plot.py
+# splineops/examples/03_resampling_using_nd_samples/03_07_benchmarking_plot.py
 # sphinx_gallery_end_ignore
 
 """

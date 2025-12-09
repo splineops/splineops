@@ -249,7 +249,7 @@ TensorSpline and Resize APIs
 The mathematical model above is implemented in SplineOps by two complementary
 APIs:
 
-* :class:`splineops.spline_interpolation.tensorspline.TensorSpline`
+* :class:`splineops.spline_interpolation.tensor_spline.TensorSpline`
 * :func:`splineops.resize.resize` and :func:`splineops.resize.resize_degrees`
 
 They share the same spline formulation but target slightly different use cases.
@@ -324,7 +324,7 @@ Using :class:`TensorSpline` directly:
 .. code-block:: python
 
    import numpy as np
-   from splineops.spline_interpolation.tensorspline import TensorSpline
+   from splineops.spline_interpolation.tensor_spline import TensorSpline
 
    # 2-D data on a uniform grid
    data = np.random.randn(64, 64).astype(np.float32)
@@ -367,9 +367,9 @@ Interpolation Examples
 * :ref:`sphx_glr_auto_examples_01_quick-start_01_01_tensorspline_class.py`
 * :ref:`sphx_glr_auto_examples_01_quick-start_01_02_spline_bases.py`
 * :ref:`sphx_glr_auto_examples_01_quick-start_01_03_extension_modes.py`
-* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_01_interpolate_1d_samples.py`
-* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_02_resample_a_1d_spline.py`
-* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_03_compare_different_splines.py`
+* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_01_interpolate_1d_samples.py`
+* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_02_resample_a_1d_spline.py`
+* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_03_compare_different_splines.py`
 
 References
 ----------

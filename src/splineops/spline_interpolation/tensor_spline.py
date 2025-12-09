@@ -59,7 +59,7 @@ class TensorSpline:
     Here's an example to illustrate 1-dimensional interpolation using the TensorSpline class.
 
     >>> import numpy as np
-    >>> from splineops.interpolate.tensorspline import TensorSpline
+    >>> from splineops.interpolate.tensor_spline import TensorSpline
     >>> data = np.array([1.0, 2.0, 3.0, 4.0])
     >>> coordinates = np.linspace(0, data.size - 1, data.size)
     >>> bases = "linear"  # Linear interpolation
