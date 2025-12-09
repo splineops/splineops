@@ -248,7 +248,7 @@ plt.show()
 # preset, which inserts a low-pass step before decimation.
 
 plt.figure(figsize=(10, 4))
-plt.title("Coarse antialiasing cubic spline")
+plt.title("Coarse cubic antialiasing spline")
 plt.stem(f_support_1d, f_samples_1d, basefmt=" ", label="f[k] samples")
 plt.axhline(0, color="black", linewidth=1, zorder=0)
 

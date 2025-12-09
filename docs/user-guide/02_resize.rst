@@ -180,9 +180,17 @@ In this language:
   coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
   :math:`g_T`.
 
+The next figure shows this operation in **1D**: a fine spline :math:`f` on
+:math:`V_1` and its coarse counterpart :math:`g_T` on the scaled grid
+:math:`\Gamma_T`, obtained by standard cubic interpolation.
+
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_01_resize_module_1d_003.png
    :align: center
    :width: 100%
+
+The following figure shows the same idea in **2D**: an image is resampled
+from the fine grid to a coarser grid using standard cubic interpolation,
+illustrating how :math:`V_1 \to V_T` looks in practice on real data.
 
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_02_resize_module_2d_002.png
    :align: center
@@ -265,9 +273,18 @@ oblique projection retains the same approximation order as the least-squares
 projection and yields very similar quality in practice, while significantly
 reducing computational cost. 
 
+The 1D example below shows how the **cubic-antialiasing** preset implements
+this oblique projection: compared to plain cubic, the coarse spline is
+slightly smoother, but tracks the underlying fine spline more faithfully
+when downsampling.
+
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_01_resize_module_1d_004.png
    :align: center
    :width: 100%
+
+The 2D example then shows the same effect on an image: the antialiasing
+preset suppresses Moiré and high-frequency artefacts in the downsampled
+ROI, while preserving the main structures and contrasts.
 
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_02_resize_module_2d_003.png
    :align: center
