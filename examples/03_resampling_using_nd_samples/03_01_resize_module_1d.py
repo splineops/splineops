@@ -207,19 +207,30 @@ plt.plot(
     linewidth=2,
     label="coarse spline (cubic)",
 )
+
+# vertical red stems from coarse samples
+plt.vlines(
+    x=g_support_x,
+    ymin=0,
+    ymax=g_samples_cubic,
+    color="red",
+    linewidth=2.0,
+)
+
+# (optionally change "s" -> "rs" to make markers red squares)
 plt.plot(
     g_support_x,
     g_samples_cubic,
-    "s",
+    "rs",
     mfc="none",
     markersize=10,
     markeredgewidth=2,
     label="coarse samples (cubic)",
 )
 
-# --- coarse-grid x-axis ---
-coarse_indices = np.arange(L, dtype=int)   # 0, 1, ..., L-1
-plt.xlim(0, K - 1)                         # same physical domain as f[k]
+# --- coarse-grid x-axis, like in 02_02 ---
+coarse_indices = np.arange(L, dtype=int)
+plt.xlim(0, K - 1)
 plt.xticks(g_support_x, [str(k) for k in coarse_indices])
 
 plt.xlabel("x")
@@ -254,10 +265,20 @@ plt.plot(
     linewidth=2,
     label="coarse spline (cubic-antialiasing)",
 )
+
+# vertical red stems from coarse AA samples
+plt.vlines(
+    x=g_support_x,
+    ymin=0,
+    ymax=g_samples_aa,
+    color="red",
+    linewidth=2.0,
+)
+
 plt.plot(
     g_support_x,
     g_samples_aa,
-    "o",
+    "ro",   # red circles, hollow
     mfc="none",
     markersize=8,
     markeredgewidth=2,
@@ -306,10 +327,20 @@ plt.plot(
     linewidth=2,
     label="coarse spline (cubic)",
 )
+
+# red stems for cubic coarse samples
+plt.vlines(
+    x=g_support_x,
+    ymin=0,
+    ymax=g_samples_cubic,
+    color="red",
+    linewidth=2.0,
+)
+
 plt.plot(
     g_support_x,
     g_samples_cubic,
-    "s",                 # square markers
+    "rs",
     mfc="none",
     markersize=10,
     markeredgewidth=2,
@@ -323,17 +354,27 @@ plt.plot(
     linewidth=2,
     label="coarse spline (cubic-antialiasing)",
 )
+
+# red stems for AA coarse samples
+plt.vlines(
+    x=g_support_x,
+    ymin=0,
+    ymax=g_samples_aa,
+    color="red",
+    linewidth=2.0,
+)
+
 plt.plot(
     g_support_x,
     g_samples_aa,
-    "o",
+    "ro",
     mfc="none",
     markersize=8,
     markeredgewidth=2,
     label="coarse samples (cubic-antialiasing)",
 )
 
-# --- coarse-grid x-axis, like in 02_02 ---
+# --- coarse-grid x-axis ---
 coarse_indices = np.arange(L, dtype=int)
 plt.xlim(0, K - 1)
 plt.xticks(g_support_x, [str(k) for k in coarse_indices])
