@@ -1,4 +1,4 @@
-# splineops/src/splineops/smoothing_splines/fBmper.py
+# splineops/src/splineops/smoothing_splines/fBm_per.py
 
 from typing import Tuple
 import numpy as np

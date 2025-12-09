@@ -1,4 +1,4 @@
-# splineops/src/splineops/resize/_pycore/plan1d.py
+# splineops/src/splineops/resize/_pycore/plan_1d.py
 from __future__ import annotations
 import numpy as np
 from .params import LSParams, Plan1D

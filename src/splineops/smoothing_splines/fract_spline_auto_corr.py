@@ -1,4 +1,4 @@
-# splineops/src/splineops/smoothing_splines/fractsplineautocorr.py
+# splineops/src/splineops/smoothing_splines/fract_spline_auto_corr.py
 
 from typing import Union
 import numpy as np
