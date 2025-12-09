@@ -48,7 +48,7 @@ import sys
 import time
 from typing import Dict, List, Tuple, Optional
 
-# sphinx_gallery_thumbnail_number = 15  # Show the 15th figure as the gallery thumbnail
+# sphinx_gallery_thumbnail_number = 16  # Show the 15th figure as the gallery thumbnail
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -1108,7 +1108,11 @@ def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
         if lbl in tile_map:
             names.append(lbl)
 
-    rows, cols = 3, 3
+    # Dynamically choose rows so we don't end up with a completely empty row
+    cols = 3
+    n_tiles = len(names)
+    rows = max(1, (n_tiles + cols - 1) // cols)
+
     fig, axes = plt.subplots(rows, cols, figsize=(3.2 * cols, 3.2 * rows))
     axes = np.asarray(axes).reshape(rows, cols)
 
@@ -1127,7 +1131,6 @@ def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
 
     fig.tight_layout()
     plt.show()
-
 
 def show_error_montage_main_from_bench(bench: Dict[str, object]) -> None:
     """
@@ -1644,7 +1647,11 @@ def show_roi_montage_color_aa_from_bench(
         tile = _nearest_big_color(roi_first, ROI_MAG_TARGET)
         tiles.append((label, tile))
 
-    rows, cols = 3, 3
+    # Dynamically choose rows for the number of tiles we actually have
+    cols = 3
+    n_tiles = len(tiles)
+    rows = max(1, (n_tiles + cols - 1) // cols)
+
     fig, axes = plt.subplots(rows, cols, figsize=(3.2 * cols, 3.2 * rows))
     axes = np.asarray(axes).reshape(rows, cols)
 
