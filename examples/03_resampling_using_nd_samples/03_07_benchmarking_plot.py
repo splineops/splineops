@@ -482,13 +482,15 @@ SAMPLES_DOWN = 80        # zoom samples in (0, 1)
 SAMPLES_UP   = 80        # zoom samples in (1, 2)
 REPEATS      = 10        # timing repetitions per (method, zoom)
 NEAR_ONE_EPS = 1e-2      # exclude zoom factors with |z - 1| < NEAR_ONE_EPS
+NEAR_MAX_EPS = 1e-2      # keep z at least this far from 2.0
 
 eps = 1e-6
 z_down = np.linspace(0.001, 1.0 - eps, SAMPLES_DOWN, endpoint=True, dtype=np.float64)
-z_up   = np.linspace(1.0 + eps, 2.0 - eps, SAMPLES_UP,   endpoint=True, dtype=np.float64)
+z_up   = np.linspace(1.0 + eps, 2.0 - NEAR_MAX_EPS, SAMPLES_UP,
+                     endpoint=True, dtype=np.float64)
 
 z_candidates = np.concatenate([z_down, z_up])
-z_candidates = z_candidates[(z_candidates > 0.0) & (z_candidates < 2.0)]
+z_candidates = z_candidates[(z_candidates > 0.0) & (z_candidates < 2.0 - NEAR_MAX_EPS)]
 z_candidates = z_candidates[np.abs(z_candidates - 1.0) > NEAR_ONE_EPS]
 
 z_list = [float(z) for z in z_candidates if roundtrip_size_ok(img_gray.shape, float(z))]
@@ -663,7 +665,7 @@ def _plot_timing(results: Dict[str, Dict[str, List[float]]], degree_label: str):
         any_curve = True
 
     if any_curve:
-        plt.xlabel("Zoom factor (0 < z < 2,  z≈1 excluded)", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.xlabel("Zoom factor (0 < z < 2)", fontsize=PLOT_LABEL_FONTSIZE)
         plt.ylabel(
             f"Time (s)  [avg of {REPEATS} runs, forward + backward]",
             fontsize=PLOT_LABEL_FONTSIZE,
@@ -711,7 +713,7 @@ def _plot_snr(results: Dict[str, Dict[str, List[float]]], degree_label: str):
         any_curve = True
 
     if any_curve:
-        plt.xlabel("Zoom factor (0 < z < 2,  z≈1 excluded)", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.xlabel("Zoom factor (0 < z < 2)", fontsize=PLOT_LABEL_FONTSIZE)
         plt.ylabel("SNR (dB)  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
         plt.title(
             f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
@@ -760,7 +762,7 @@ def _plot_ssim(results: Dict[str, Dict[str, List[float]]], degree_label: str):
         any_curve = True
 
     if any_curve:
-        plt.xlabel("Zoom factor (0 < z < 2,  z≈1 excluded)", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.xlabel("Zoom factor (0 < z < 2)", fontsize=PLOT_LABEL_FONTSIZE)
         plt.ylabel("SSIM  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
         plt.title(
             f"Round-Trip SSIM vs Zoom  (H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
