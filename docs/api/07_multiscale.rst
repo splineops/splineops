@@ -61,14 +61,14 @@ The :mod:`splineops.multiscale.wavelets` subpackage provides various wavelet tra
 
 Submodules:
 
-- :mod:`splineops.multiscale.wavelets.abstractwavelets` - Base `AbstractWavelets` class
+- :mod:`splineops.multiscale.wavelets.abstract_wavelets` - Base `AbstractWavelets` class
 - :mod:`splineops.multiscale.wavelets.haar` - Pure 2D Haar wavelets (`HaarWavelets`)
-- :mod:`splineops.multiscale.wavelets.splinewavelets` - Spline wavelets, e.g. `Spline1Wavelets`, `Spline3Wavelets`, etc.
-- :mod:`splineops.multiscale.wavelets.splinewaveletstool` - Low-level “splitMirror” & “mergeMirror” routines, plus `SplineWaveletsTool` class
+- :mod:`splineops.multiscale.wavelets.spline_wavelets` - Spline wavelets, e.g. `Spline1Wavelets`, `Spline3Wavelets`, etc.
+- :mod:`splineops.multiscale.wavelets.spline_wavelets_tool` - Low-level “splitMirror” & “mergeMirror” routines, plus `SplineWaveletsTool` class
 
 API Reference: Wavelets
 -----------------------
-.. automodule:: splineops.multiscale.wavelets.abstractwavelets
+.. automodule:: splineops.multiscale.wavelets.abstract_wavelets
    :members:
    :undoc-members:
    :show-inheritance:
@@ -78,12 +78,12 @@ API Reference: Wavelets
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: splineops.multiscale.wavelets.splinewavelets
+.. automodule:: splineops.multiscale.wavelets.spline_wavelets
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: splineops.multiscale.wavelets.splinewaveletstool
+.. automodule:: splineops.multiscale.wavelets.spline_wavelets_tool
    :members:
    :undoc-members:
    :show-inheritance:

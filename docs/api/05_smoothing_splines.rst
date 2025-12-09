@@ -7,7 +7,7 @@ Smoothing Splines
 
 Functions to smooth data.
 
-.. automodule:: splineops.smoothing_splines.smoothingspline
+.. automodule:: splineops.smoothing_splines.smoothing_spline
    :members:
    :undoc-members:
    :show-inheritance:

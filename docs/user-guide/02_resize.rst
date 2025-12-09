@@ -22,11 +22,11 @@ Conceptually, resizing means:
   best represents the same underlying continuous function.
 
 We illustrate this with the 1D example
-:ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_02_resample_a_1d_spline.py`,
+:ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_02_resample_a_1d_spline.py`,
 which starts from a spline :math:`f` and samples it more coarsely at positions
 :math:`x = T k`:
 
-.. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_02_resample_a_1d_spline_001.png
+.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_02_resample_a_1d_spline_001.png
    :align: center
    :width: 100%
 
@@ -122,7 +122,7 @@ for some coefficient sequence :math:`(c_T[k])_{k \in \mathbb{Z}}` in
 :math:`\ell_2(\mathbb{Z})`.
 
 As a visual example, the following figure from
-:ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_02_resample_a_1d_spline.py`
+:ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_02_resample_a_1d_spline.py`
 has two rows. The top row shows the fine-grid samples :math:`f[k]` together
 with their shifted basis functions :math:`\varphi(x - k)` scaled by the
 coefficients :math:`c[k]`, illustrating the spline space :math:`V_1`. The
@@ -133,7 +133,7 @@ the cubic B-spline, and the coefficients :math:`c[k]` and :math:`c_T[k]`
 implement the standard interpolation scheme described in
 :doc:`01_spline_interpolation`:
 
-.. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_02_resample_a_1d_spline_002.png
+.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_02_resample_a_1d_spline_002.png
    :align: center
    :width: 100%
 
