@@ -302,7 +302,7 @@ ax_bottom.grid(True)
 ax_bottom.legend()
 ax_bottom.set_ylim(ax_top.get_ylim())  # optional: match vertical scale
 
-# Bottom ticks at every multiple of T that fits (0..8 for T=pi with width 0..26)
+# Bottom ticks at every multiple of T that fits (e.g., k = 0..8 for length 27)
 max_k_tick = int(np.floor((f_support_length - 1) / val_T))
 tick_ks = np.arange(max_k_tick + 1)  # e.g., 0..8
 tick_positions = tick_ks * val_T
