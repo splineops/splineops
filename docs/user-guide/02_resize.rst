@@ -331,7 +331,7 @@ Conceptually, :ref:`resize <api-resize>` is configured by three spline degrees:
 * and the **synthesis degree**, which sets the spline model on the resized
   grid.
 
-The built-in antialiasing presets use oblique projection with a lower analysis
+**The built-in antialiasing presets use oblique projection** with a lower analysis
 degree and a higher synthesis degree:
 
 .. list-table:: Spline degree configuration for oblique projection in :ref:`resize <api-resize>`
@@ -360,15 +360,18 @@ prefilter short, robust, and efficient, yet still very close to the ideal
 least-squares solution in [1]_ and [2]_.
 
 .. warning::
-   Exact least-squares configurations, where the analysis and synthesis
+   **Exact least-squares configurations**, where the analysis and synthesis
    degrees are equal (for example, a cubic–cubic combination), require
-   high-order discrete integration in this framework. In double precision
-   this is numerically fragile: over long lines it can accumulate round-off
-   error and produce visible drift or artefacts. For this reason such
-   configurations are not exposed as presets and are not recommended in
-   routine use. The oblique antialiasing presets above avoid the problematic
-   high-order integration while remaining very close in quality to the ideal
-   least-squares projection.
+   high-order discrete integration in this framework. For cubic splines,
+   the theory calls for fourth-order integration: a running-sum operator
+   applied four times in a row to implement the continuous prefilter. Each
+   pass is stable in exact arithmetic, but in double precision they amplify
+   tiny rounding errors, especially on long lines, which can lead to slow
+   drift in the mean level and other visible artefacts. For this reason such
+   configurations are **not exposed as presets and are not recommended**
+   in routine use. **The oblique antialiasing presets above avoid the
+   problematic high-order integration while remaining very close in quality**
+   to the ideal least-squares projection.
 
 Resize Examples
 ---------------

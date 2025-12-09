@@ -1689,11 +1689,6 @@ for name, url in KODAK_IMAGES:
 print("\nTimings averaged over "
       f"{N_TRIALS} runs per method (1 warm-up run not counted).\n")
 
-if _HAS_SPECS and print_runtime_context is not None:
-    print_runtime_context(include_threadpools=True)
-    print()
-
-
 # Small helper for color intro using SplineOps antialiasing
 def _color_intro_for_image(
     img_name: str,
@@ -2246,3 +2241,14 @@ show_timing_plot_from_bench(bench_kodim23)
 # ~~~~~~~~~~~~~~~~~~~
 
 show_snr_ssim_plot_from_bench(bench_kodim23)
+
+# %%
+# Runtime Context
+# ---------------
+#
+# Finally, we print a short summary of the runtime environment and the storage
+# dtype used for the benchmark.
+
+if _HAS_SPECS and print_runtime_context is not None:
+    print_runtime_context(include_threadpools=True)
+print(f"Benchmark storage dtype: {np.dtype(DTYPE).name}")

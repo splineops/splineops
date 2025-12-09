@@ -5,10 +5,11 @@
 Multiscale
 ==========
 
-The :mod:`splineops.multiscale` package provides functionality for **pyramid decomposition** (downsampling/up-sampling) and **wavelet transforms** (analysis and synthesis) based on spline models.
+This module provides functionality for **pyramid decomposition** (downsampling/up-sampling) and **wavelet transforms** (analysis and synthesis) based on spline models.
 
 Pyramid Module
 --------------
+
 The :mod:`splineops.multiscale.pyramid` module implements 1D and 2D REDUCE/EXPAND operations with mirror boundary handling. These form the foundation for many wavelet constructions.
 
 Key functionalities:
@@ -24,6 +25,7 @@ Key functionalities:
 
 Example (pyramid usage)
 -----------------------
+
 .. code-block:: python
 
     from splineops.multiscale.pyramid import get_pyramid_filter, reduce_1d, expand_1d
@@ -48,12 +50,14 @@ Example (pyramid usage)
 
 API Reference: Pyramid
 ----------------------
+
 .. automodule:: splineops.multiscale.pyramid
    :members:
    :member-order: bysource
 
 Wavelet Modules
 ---------------
+
 The :mod:`splineops.multiscale.wavelets` subpackage provides various wavelet transforms (Haar, spline-based) using row-column (or column-row) passes. Classes typically define:
 
 - **analysis** (multi-scale forward transform)

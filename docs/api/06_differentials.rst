@@ -5,7 +5,7 @@
 Differentials
 =============
 
-The :class:`splineops.differentials.differentials` class implements a suite of functions to compute image differentials using cubic B-spline interpolation, including:
+The :class:`~splineops.differentials.differentials` class implements a suite of functions to compute image differentials using cubic B-spline interpolation, including:
 
 - **Gradient Magnitude** - the rate of intensity change.
 - **Gradient Direction** - the orientation of maximum change.
