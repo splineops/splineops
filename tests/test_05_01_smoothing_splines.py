@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from splineops.smoothing_splines.smoothingspline import smoothing_spline, smoothing_spline_nd, recursive_smoothing_spline
+from splineops.smoothing_splines.smoothing_spline import smoothing_spline, smoothing_spline_nd, recursive_smoothing_spline
 
 @pytest.mark.parametrize("lambda_, gamma, tol", [
     (0.0005, 0.6, 1e-5),

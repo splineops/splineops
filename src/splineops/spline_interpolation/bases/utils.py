@@ -2,26 +2,26 @@
 
 from typing import Union, Mapping, Type
 
-from .splinebasis import SplineBasis
-from .bspline0basis import BSpline0Basis, BSpline0SymBasis
-from .bspline1basis import BSpline1Basis
-from .bspline2basis import BSpline2Basis
-from .bspline3basis import BSpline3Basis
-from .bspline4basis import BSpline4Basis
-from .bspline5basis import BSpline5Basis
-from .bspline6basis import BSpline6Basis
-from .bspline7basis import BSpline7Basis
-from .bspline8basis import BSpline8Basis
-from .bspline9basis import BSpline9Basis
-from .omoms0basis import OMOMS0Basis, OMOMS0SymBasis
-from .omoms1basis import OMOMS1Basis
-from .omoms2basis import OMOMS2Basis, OMOMS2SymBasis
-from .omoms3basis import OMOMS3Basis
-from .omoms4basis import OMOMS4Basis, OMOMS4SymBasis
-from .omoms5basis import OMOMS5Basis
-from .nearestneighborbasis import NearestNeighborBasis, NearestNeighborSymBasis
-from .linearbasis import LinearBasis
-from .keysbasis import KeysBasis
+from .spline_basis import SplineBasis
+from .bspline0_basis import BSpline0Basis, BSpline0SymBasis
+from .bspline1_basis import BSpline1Basis
+from .bspline2_basis import BSpline2Basis
+from .bspline3_basis import BSpline3Basis
+from .bspline4_basis import BSpline4Basis
+from .bspline5_basis import BSpline5Basis
+from .bspline6_basis import BSpline6Basis
+from .bspline7_basis import BSpline7Basis
+from .bspline8_basis import BSpline8Basis
+from .bspline9_basis import BSpline9Basis
+from .omoms0_basis import OMOMS0Basis, OMOMS0SymBasis
+from .omoms1_basis import OMOMS1Basis
+from .omoms2_basis import OMOMS2Basis, OMOMS2SymBasis
+from .omoms3_basis import OMOMS3Basis
+from .omoms4_basis import OMOMS4Basis, OMOMS4SymBasis
+from .omoms5_basis import OMOMS5Basis
+from .nearest_neighbor_basis import NearestNeighborBasis, NearestNeighborSymBasis
+from .linear_basis import LinearBasis
+from .keys_basis import KeysBasis
 
 basis_map: Mapping[str, Type[SplineBasis]] = {
     "bspline0": BSpline0Basis,

@@ -1,11 +1,11 @@
-# splineops/src/splineops/spline_interpolation/modes/finitesupportcoefficients.py
+# splineops/src/splineops/spline_interpolation/modes/finite_support_coefficients.py
 
 import numpy as np
 from typing import Tuple
 import numpy.typing as npt
 
-from ..bases.splinebasis import SplineBasis
-from ..modes.extensionmode import ExtensionMode
+from ..bases.spline_basis import SplineBasis
+from .extension_mode import ExtensionMode
 from ..utils import _compute_ck_zero_matrix_banded_v1
 from ..utils import is_cupy_type
 

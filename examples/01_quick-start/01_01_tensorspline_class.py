@@ -15,7 +15,7 @@ Showcase TensorSpline class basic functionality.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.spline_interpolation.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensor_spline import TensorSpline
 
 # %%
 # Data Preparation

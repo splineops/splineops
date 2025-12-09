@@ -31,7 +31,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from splineops.resize import resize                 # core 1-D spline resizer
-from splineops.spline_interpolation.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensor_spline import TensorSpline
 
 plt.rcParams.update({
     "font.size": 14,

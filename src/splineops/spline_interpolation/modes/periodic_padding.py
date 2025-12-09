@@ -1,4 +1,4 @@
-# splineops/src/splineops/spline_interpolation/modes/periodicpadding.py
+# splineops/src/splineops/spline_interpolation/modes/periodic_padding.py
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 
-from ..bases.splinebasis import SplineBasis
-from ..modes.extensionmode import ExtensionMode
+from ..bases.spline_basis import SplineBasis
+from .extension_mode import ExtensionMode
 from ..utils import is_cupy_type
 
 class PeriodicPadding(ExtensionMode):

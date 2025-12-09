@@ -3,7 +3,7 @@
 import numpy as np
 import numpy.typing as npt
 from typing import Optional, Tuple
-from splineops.spline_interpolation.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensor_spline import TensorSpline
 
 def rotate(
     data: npt.NDArray,

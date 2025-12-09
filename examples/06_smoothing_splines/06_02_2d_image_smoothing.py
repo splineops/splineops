@@ -16,7 +16,7 @@ with strong visible noise.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.smoothing_splines.smoothingspline import smoothing_spline_nd
+from splineops.smoothing_splines.smoothing_spline import smoothing_spline_nd
 
 # %%
 # 2D Image Smoothing
