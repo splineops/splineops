@@ -74,10 +74,14 @@ f_data = f(coordinates=(f_coords,), grid=False)
 # Sample the fine spline :math:`f(x)` on a coarser grid to obtain the new
 # discrete sequence :math:`g[k] = f(Tk)`.
 
-val_T = np.pi
+# Choose the number of coarse samples in the same way as the resize example
+# (e.g., 8 for 27 // pi)
+g_support_length = round(f_support_length // np.pi)
 
-# Number of g samples (e.g., 8 for 27 // pi)
-g_support_length = round(f_support_length // val_T)
+# Effective coarse spacing so that the first and last coarse nodes
+# align with x = 0 and x = f_support_length - 1 (i.e., 0 and 26)
+val_T = (f_support_length - 1) / (g_support_length - 1)
+
 k = np.arange(g_support_length, dtype=np.float64)
 
 # Physical positions where g is sampled from f: x = T * k
