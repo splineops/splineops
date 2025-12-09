@@ -1,19 +1,33 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/03_01_resize_module.py
+# splineops/examples/03_resampling_using_2d_interpolation/03_02_resize_module_2d.py
 # sphinx_gallery_end_ignore
 
 """
-Resize Module
-=============
+Resize Module (2D)
+==================
 
 Shrink and re-expand a 2-D RGB image with splineops, then discuss aliasing.
+
+We start with a minimal example that calls :func:`splineops.resize.resize`
+directly on a single channel of the image, then move on to an RGB example
+with ROIs:
+
+1. Simple grayscale resize with ``resize`` on one channel.
+2. Pick a zoom factor and a single ROI.
+3. Compare the first-pass shrink for standard cubic interpolation and
+   ``cubic-antialiasing``.
+
+Aliasing appears when we shrink below the Nyquist limit without proper
+low-pass filtering: fine details fold back into lower frequencies and
+show up as Moiré or ripple patterns. The antialiasing preset adds a
+matched low-pass step to suppress these artefacts.
 """
 
 # %%
 # Imports and Helpers
 # -------------------
 
-# sphinx_gallery_thumbnail_number = 3 # show third figure as thumbnail
+# sphinx_gallery_thumbnail_number = 1
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
@@ -22,175 +36,12 @@ from PIL import Image
 
 from scipy.ndimage import zoom as ndi_zoom          # kept for reference, not used in 2D plots
 from splineops.resize import resize                 # core N-D spline resizer
-from splineops.spline_interpolation.tensorspline import TensorSpline
 
 plt.rcParams.update({
     "font.size": 14,
     "axes.titlesize": 18,
     "axes.labelsize": 16,
 })
-
-# %%
-# 1D Resize-Based Coarsening
-# --------------------------
-#
-# Starting again from a 1D signal f[k] on a unit grid, we perform a 1D resize
-# directly on the samples. We then compare:
-#
-# - a coarse spline built from `resize(..., method="cubic")`,
-# - a coarse spline built from `resize(..., method="cubic-antialiasing")`,
-# - the interpolating spline f(x) of the original samples for reference.
-
-# 1) Original 1D samples f[k] (same as in 02_01 / 02_02)
-number_of_samples = 27
-f_support_1d = np.arange(number_of_samples, dtype=np.float64)
-f_samples_1d = np.array([
-    -0.657391, -0.641319, -0.613081, -0.518523, -0.453829, -0.385138,
-    -0.270688, -0.179849, -0.11805, -0.0243016, 0.0130667, 0.0355389,
-    0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
-    -0.00811776, 0.0153119, 0.106126, 0.21688, 0.347629, 0.419532,
-    0.50695, 0.544767, 0.555373
-], dtype=np.float64)
-
-# Fine spline f(x) on V₁ (unit grid)
-plot_points_per_unit_1d = 12
-base_1d = "bspline3"
-mode_1d = "mirror"
-
-f_1d = TensorSpline(
-    data=f_samples_1d,
-    coordinates=f_support_1d,
-    bases=base_1d,
-    modes=mode_1d,
-)
-
-# Dense evaluation grid for the fine spline
-f_coords_1d = np.array([
-    q / plot_points_per_unit_1d
-    for q in range(plot_points_per_unit_1d * number_of_samples)
-])
-f_data_1d = f_1d(coordinates=(f_coords_1d,), grid=False)
-
-# 2) Choose a coarse length: round(27 // π)
-val_T = np.pi
-K = number_of_samples
-g_support_length = round(K // val_T)   # e.g., 27 // π ≈ 8
-
-# Express this as a zoom factor for resize
-zoom_1d = g_support_length / K        # e.g., 8 / 27
-
-# 3) Coarse samples via resize: cubic and cubic-antialiasing
-g_samples_cubic = resize(
-    f_samples_1d,
-    zoom_factors=(zoom_1d,),
-    method="cubic",
-).astype(np.float64)
-
-g_samples_aa = resize(
-    f_samples_1d,
-    zoom_factors=(zoom_1d,),
-    method="cubic-antialiasing",
-).astype(np.float64)
-
-L = g_samples_cubic.shape[0]
-
-# 4) Reconstruct the continuous coarse grid used by resize for pure interpolation:
-#
-#       step = (K - 1) / (L - 1)
-#       x_l  = step * l
-#
-step = (K - 1) / (L - 1) if L > 1 else 0.0
-g_support_x = step * np.arange(L, dtype=np.float64)
-
-# Build TensorSplines on that coarse grid
-g_cubic_ts = TensorSpline(
-    data=g_samples_cubic,
-    coordinates=g_support_x,
-    bases=base_1d,
-    modes=mode_1d,
-)
-g_aa_ts = TensorSpline(
-    data=g_samples_aa,
-    coordinates=g_support_x,
-    bases=base_1d,
-    modes=mode_1d,
-)
-
-# Evaluate both coarse splines on the same dense grid as f(x)
-g_coords_dense = f_coords_1d
-g_cubic_data = g_cubic_ts(coordinates=(g_coords_dense,), grid=False)
-g_aa_data    = g_aa_ts(coordinates=(g_coords_dense,), grid=False)
-
-# 5) Optional sanity check at the coarse nodes: resize(cubic) vs fine spline sampled at x_l
-f_at_xg = f_1d(coordinates=(g_support_x,), grid=False)
-mse_cubic_nodes = np.mean((g_samples_cubic - f_at_xg) ** 2)
-print(f"MSE at coarse nodes: resize(cubic) vs f(x_l) = {mse_cubic_nodes:.6e}")
-
-# 6) Plot comparison
-plt.figure(figsize=(10, 4))
-plt.title("1D resize on f[k]: cubic vs cubic-antialiasing")
-
-# Original samples f[k]
-plt.stem(f_support_1d, f_samples_1d, basefmt=" ", label="f[k] samples")
-plt.axhline(0, color="black", linewidth=1, zorder=0)
-
-# Fine spline f(x) for reference
-plt.plot(
-    f_coords_1d,
-    f_data_1d,
-    color="gray",
-    linewidth=2,
-    alpha=0.5,
-    label="fine f(x) (reference)",
-)
-
-# Coarse spline from resize(..., "cubic")
-plt.plot(
-    g_coords_dense,
-    g_cubic_data,
-    color="purple",
-    linewidth=2,
-    label="coarse spline (cubic)",
-)
-plt.plot(
-    g_support_x,
-    g_samples_cubic,
-    "p",
-    color="purple",
-    mfc="none",
-    markersize=10,
-    markeredgewidth=2,
-)
-
-# Coarse spline from resize(..., "cubic-antialiasing")
-plt.plot(
-    g_coords_dense,
-    g_aa_data,
-    color="orange",
-    linewidth=2,
-    label="coarse spline (cubic-antialiasing)",
-)
-plt.plot(
-    g_support_x,
-    g_samples_aa,
-    "o",
-    color="orange",
-    mfc="none",
-    markersize=8,
-    markeredgewidth=2,
-)
-
-plt.xlabel("x")
-plt.ylabel("Amplitude")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-
-# %%
-# Helpers for 2D Processing
-# -------------------------
 
 # Use float32 for storage / IO (resize still computes internally in float64).
 DTYPE = np.float32
@@ -406,17 +257,8 @@ def show_intro_color(
 # Load and Normalize an Image
 # ---------------------------
 #
-# We now move to a real 2D example using a Kodak color image. We follow the
-# same spirit as the benchmarking intro:
-#
-# 1. Pick a zoom factor.
-# 2. Pick a single ROI.
-# 3. Compare the first-pass shrink for standard cubic interpolation and antialiasing.
-#
-# Aliasing appears when we shrink below the Nyquist limit without proper
-# low-pass filtering: fine details fold back into lower frequencies and
-# show up as Moiré or ripple patterns. The antialiasing preset adds a
-# matched low-pass step to suppress these artefacts.
+# We now move to a real 2D example using a Kodak color image. The data is
+# stored as float32 in [0, 1] for splineops.
 
 url = "https://r0k.us/graphics/kodak/kodak/kodim19.png"
 with urlopen(url, timeout=10) as resp:
@@ -426,6 +268,55 @@ data_uint8 = (np.clip(data, 0.0, 1.0) * 255).astype(np.uint8)
 
 H0, W0, _ = data_uint8.shape
 print(f"Loaded kodim19: shape={H0}×{W0} px")
+
+# %%
+# Simple 2D Resize Call
+# ---------------------
+#
+# Before using helpers and ROIs, we start with a minimal example that calls
+# :func:`splineops.resize.resize` directly on a single (grayscale) channel.
+# This highlights the basic API: you provide an array, per-axis zoom factors,
+# and a method string.
+
+# Take a single channel (e.g., red) to keep things simple
+gray = data[..., 0]  # shape H×W, values in [0, 1]
+
+simple_zoom = 0.3  # shrink by a factor of 0.3 in each direction
+
+gray_cubic = resize(
+    gray,
+    zoom_factors=(simple_zoom, simple_zoom),
+    method="cubic",
+)
+
+gray_aa = resize(
+    gray,
+    zoom_factors=(simple_zoom, simple_zoom),
+    method="cubic-antialiasing",
+)
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+axes[0].imshow(gray, cmap="gray", vmin=0.0, vmax=1.0)
+axes[0].set_title("Original (single channel)")
+axes[1].imshow(gray_cubic, cmap="gray", vmin=0.0, vmax=1.0)
+axes[1].set_title("resize(..., 'cubic')")
+axes[2].imshow(gray_aa, cmap="gray", vmin=0.0, vmax=1.0)
+axes[2].set_title("resize(..., 'cubic-antialiasing')")
+for ax in axes:
+    ax.axis("off")
+fig.tight_layout()
+plt.show()
+
+# %%
+# ROI and RGB Shrink With Antialiasing
+# ------------------------------------
+#
+# We now follow the same spirit as the benchmarking intro:
+#
+# 1. Pick a zoom factor.
+# 2. Pick a single ROI.
+# 3. Compare the first-pass shrink for standard cubic interpolation
+#    and antialiasing on the full RGB image.
 
 # Use the same ROI position as in the benchmarking example for kodim19
 ROI_SIZE_PX = 256

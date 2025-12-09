@@ -1,5 +1,5 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/03_06_benchmarking_plot.py
+# splineops/examples/03_resampling_using_2d_interpolation/03_07_benchmarking_plot.py
 # sphinx_gallery_end_ignore
 
 """
@@ -44,7 +44,7 @@ from typing import Dict, List, Tuple, Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
-# sphinx_gallery_thumbnail_number = 2  # show the SNR plot as the gallery thumbnail
+# sphinx_gallery_thumbnail_number = 15  # show the 15th plot (kodim07 comparison) as the gallery thumbnail
 from urllib.request import urlopen
 from PIL import Image
 
