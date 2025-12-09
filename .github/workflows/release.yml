@@ -33,7 +33,7 @@ jobs:
         run: python -m cibuildwheel --output-dir dist
         env:
           # CPython only, for versions we support
-          CIBW_BUILD: "cp310-* cp311-* cp312-*"
+          CIBW_BUILD: "cp311-* cp312-*"
 
           # Avoid unsupported/undesired targets
           # - don't build musllinux wheels

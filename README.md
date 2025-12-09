@@ -6,7 +6,7 @@
 
 ## Installation
 
-You need at least `Python 3.10` to install `splineops` (ideally `Python 3.12`). `Python 3.11` is also compatible.
+You need at least `Python 3.11` to install `splineops`.
 
 Create and activate your Python virtual environment (on Unix or MacOS)
 
