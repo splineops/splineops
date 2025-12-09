@@ -8,7 +8,11 @@
 
 namespace lsresize {
 
-inline int border(int size, int degree, double tol = 1e-10) {
+inline int border(
+  int size, 
+  int degree, 
+  double tol = 1e-10) 
+{
   if (degree <= 1) return 0;
   double z;
   switch (degree) {
@@ -24,7 +28,13 @@ inline int border(int size, int degree, double tol = 1e-10) {
   return std::min(horiz, size);
 }
 
-inline void calculate_final_size_1d(bool inversable, int input, double zoom, int& working, int& final_) {
+inline void calculate_final_size_1d(
+  bool inversable, 
+  int input, 
+  double zoom, 
+  int& working, 
+  int& final_) 
+{
   if (!inversable) { working = input; final_ = (int)std::llround(working * zoom); return; }
   working = input;
   int s = (int)std::llround(std::llround((working - 1) * zoom) / zoom);
@@ -37,7 +47,11 @@ inline void calculate_final_size_1d(bool inversable, int input, double zoom, int
 
 // periodic mirror mapping with sign for antisymmetric boundaries
 struct MirrorIndex { int idx; int sign; };
-inline MirrorIndex mirror_index(int k, int N, bool symmetric) {
+inline MirrorIndex mirror_index(
+  int k, 
+  int N, 
+  bool symmetric) 
+{
   if (N == 1) return {0, 1};
   const int period_sym  = 2*N - 2;
   const int period_asym = 2*N - 3;

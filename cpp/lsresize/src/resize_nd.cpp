@@ -15,7 +15,9 @@
 
 namespace lsresize {
 
-static std::vector<int64_t> strides_from_shape(const std::vector<int64_t>& shape) {
+static std::vector<int64_t> strides_from_shape(
+  const std::vector<int64_t>& shape) 
+{
   std::vector<int64_t> s(shape.size(), 1);
   if (shape.empty()) return s;
   for (int i = static_cast<int>(shape.size()) - 2; i >= 0; --i) {
@@ -25,7 +27,9 @@ static std::vector<int64_t> strides_from_shape(const std::vector<int64_t>& shape
   return s;
 }
 
-static inline int64_t prod_elems(const std::vector<int64_t>& shape) {
+static inline int64_t prod_elems(
+  const std::vector<int64_t>& shape) 
+{
   int64_t p = 1;
   for (int64_t v : shape) p *= v;
   return p;
@@ -36,12 +40,13 @@ static inline int64_t prod_elems(const std::vector<int64_t>& shape) {
 // All internal computation (Plan1D, Work1D, filters) remains in double.
 // -----------------------------------------------------------------------------
 template <typename Scalar>
-static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
-                                Scalar* LS_RESTRICT out,
-                                const std::vector<int64_t>& in_shape,
-                                const std::vector<int64_t>& out_shape,
-                                int axis,
-                                const LSParams& p)
+static void resize_along_axis_t(
+  const Scalar* LS_RESTRICT in,
+  Scalar* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  int axis,
+  const LSParams& p)
 {
   const int D = static_cast<int>(in_shape.size());
   const auto in_strides  = strides_from_shape(in_shape);
@@ -85,14 +90,14 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
 
   // Worker that processes a range of 1-D lines [start, end)
   auto worker = [&](int64_t start, int64_t end) {
-    Work1D ws; // per-thread reusable workspace (double internal)
+    Work1D workspace; // per-thread reusable workspace (double internal)
     std::vector<int64_t> idx(D, 0);
     std::vector<double>  line_out;
-    ws.coeff.reserve(static_cast<size_t>(N_line));
-    ws.ext_full.reserve(static_cast<size_t>(plan.left_pad +
+    workspace.line.reserve(static_cast<size_t>(N_line));
+    workspace.ext_full.reserve(static_cast<size_t>(plan.left_pad +
                                             plan.length_total +
                                             plan.right_pad));
-    ws.y.reserve(static_cast<size_t>(plan.out_total));
+    workspace.y.reserve(static_cast<size_t>(plan.out_total));
     line_out.reserve(static_cast<size_t>(plan.outN));
 
     const bool axis_contig_in  =
@@ -128,29 +133,27 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
       if constexpr (std::is_same_v<Scalar, double>) {
         if (axis_contig_in && axis_contig_out) {
           // Direct 1-D resize on raw buffers, no gather/scatter via vectors.
-          resize_1d_ws_raw(in + in_off,
-                           out + out_off,
-                           p, plan, ws);
+          resize_1d_line_contiguous(in + in_off, out + out_off, p, plan, workspace);
           continue;
         }
       }
 
-      // --- Fallback: gather into ws.coeff (double), run 1-D core from coeff ---
+      // --- Fallback: gather into workspace.line (double), run 1-D core from line ---
 
-      ws.coeff.resize(static_cast<size_t>(N_line));
+      workspace.line.resize(static_cast<size_t>(N_line));
 
       if (axis_contig_in) {
         // contiguous axis: simple block copy with cast
         const Scalar* in_line = in + in_off;
         for (int i = 0; i < N_line; ++i) {
-          ws.coeff[static_cast<size_t>(i)] =
-              static_cast<double>(in_line[static_cast<size_t>(i)]);
+          workspace.line[static_cast<size_t>(i)] =
+            static_cast<double>(in_line[static_cast<size_t>(i)]);
         }
       } else {
         // non-contiguous axis: strided gather with cast
         const int64_t stride = in_strides[static_cast<size_t>(axis)];
         for (int i = 0; i < N_line; ++i) {
-          ws.coeff[static_cast<size_t>(i)] =
+          workspace.line[static_cast<size_t>(i)] =
               static_cast<double>(
                   in[in_off +
                      static_cast<int64_t>(i) * stride]);
@@ -158,7 +161,7 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
       }
 
       // Fast planned path with workspace reuse (double internal)
-      resize_1d_ws_from_coeff(ws.coeff, line_out, p, plan, ws);
+      resize_1d_line_buffered(workspace.line, line_out, p, plan, workspace);
 
       // Scatter to output (Scalar storage)
       const bool contig_out = axis_contig_out;
@@ -195,22 +198,24 @@ static void resize_along_axis_t(const Scalar* LS_RESTRICT in,
 // Public entry points
 // -----------------------------------------------------------------------------
 
-void resize_along_axis(const double* LS_RESTRICT in,
-                       double* LS_RESTRICT out,
-                       const std::vector<int64_t>& in_shape,
-                       const std::vector<int64_t>& out_shape,
-                       int axis,
-                       const LSParams& p)
+void resize_along_axis(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  int axis,
+  const LSParams& p)
 {
   resize_along_axis_t<double>(in, out, in_shape, out_shape, axis, p);
 }
 
-void resize_along_axis_f32(const float* LS_RESTRICT in,
-                           float* LS_RESTRICT out,
-                           const std::vector<int64_t>& in_shape,
-                           const std::vector<int64_t>& out_shape,
-                           int axis,
-                           const LSParams& p)
+void resize_along_axis_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  int axis,
+  const LSParams& p)
 {
   resize_along_axis_t<float>(in, out, in_shape, out_shape, axis, p);
 }

@@ -3,6 +3,10 @@
 #include <vector>
 #include <cstdint>
 
+// All 1-D entry points take a Work1D& workspace argument,
+// which holds reusable scratch buffers to avoid per-line allocations.
+// You must create one Work1D per thread and reuse it across calls.
+
 namespace lsresize {
 
 struct LSParams {
@@ -36,20 +40,20 @@ struct Plan1D {
   int left_pad  = 0;               // max(0, -min_kmin across rows)
   int right_pad = 0;               // max(0,  max_kmax - (length_total-1))
 
-  // Precomputed left-pad mapping for negative indices: -t -> sign * coeff[src]
+  // Precomputed left-pad mapping for negative indices: -t -> sign * line[src]
   // (size == left_pad). This removes per-line mirror math.
-  std::vector<int>  pad_src_idx;   // source index in coeff (clamped later to [0, N-1])
+  std::vector<int>  pad_src_idx;   // source index in line (clamped later to [0, N-1])
   std::vector<char> pad_src_sgn;   // +1 / -1
 
-  // Precomputed right-tail mapping: ext[N + i] = rp_sign * coeff[rp_src[i]]
+  // Precomputed right-tail mapping: ext[N + i] = rp_sign * line[rp_src[i]]
   std::vector<int>  rp_src;        // size == max(0, length_total - N)
   char              rp_sign = 1;
 };
 
 // Per-thread reusable workspace to avoid per-line allocations
 struct Work1D {
-  std::vector<double> coeff;     // interpolation coefficients / input line
-  std::vector<double> ext_full;  // [left_pad | ext | right_pad] single buffer
+  std::vector<double> line;      // input samples / spline coefficients
+  std::vector<double> ext_full;  // [left_pad | ext | right_pad]
   std::vector<double> y;         // accumulator / tail buffer
 };
 
@@ -57,26 +61,29 @@ struct Work1D {
 Plan1D make_plan_1d(int N, const LSParams& p);
 
 // Allocation-free fast path: reuse the provided workspace (vector in/out).
-void resize_1d_ws(const std::vector<double>& in,
-                  std::vector<double>& out,
-                  const LSParams& p,
-                  const Plan1D& plan,
-                  Work1D& ws);
+void resize_1d_workspace(
+  const std::vector<double>& in,
+  std::vector<double>& out,
+  const LSParams& p,
+  const Plan1D& plan,
+  Work1D& workspace);
 
 // Allocation-free fast path for contiguous raw buffers.
-void resize_1d_ws_raw(const double* in,
-                      double* out,
-                      const LSParams& p,
-                      const Plan1D& plan,
-                      Work1D& ws);
+void resize_1d_line_contiguous(
+  const double* in,
+  double* out,
+  const LSParams& p,
+  const Plan1D& plan,
+  Work1D& workspace);
 
-// Allocation-free fast path when the caller has already filled `coeff`
+// Allocation-free fast path when the caller has already filled `line`
 // with N samples (plan.N). This avoids the extra copy from `in` into
-// `ws.coeff` and is used by the ND kernel fallback.
-void resize_1d_ws_from_coeff(std::vector<double>& coeff,
-                             std::vector<double>& out,
-                             const LSParams& p,
-                             const Plan1D& plan,
-                             Work1D& ws);
+// `workspace.line` and is used by the ND kernel fallback.
+void resize_1d_line_buffered(
+  std::vector<double>& line,
+  std::vector<double>& out,
+  const LSParams& p,
+  const Plan1D& plan,
+  Work1D& workspace);
 
 } // namespace lsresize

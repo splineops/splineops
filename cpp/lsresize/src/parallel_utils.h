@@ -13,7 +13,9 @@
 namespace lsresize {
 
 // Heuristic: decide when it's worth parallelizing.
-inline bool use_parallel(std::int64_t nlines, const lsresize::Plan1D& plan)
+inline bool use_parallel(
+  std::int64_t nlines, 
+  const lsresize::Plan1D& plan)
 {
   const double L   = static_cast<double>(plan.out_total);
   const double nnz = plan.row_ptr.empty()
@@ -44,9 +46,10 @@ inline bool use_parallel(std::int64_t nlines, const lsresize::Plan1D& plan)
 //    void operator()(std::int64_t start, std::int64_t end);
 // where [start, end) is a range of 1-D "lines" to process.
 template <typename Worker>
-inline void run_parallel_or_serial(std::int64_t nlines,
-                                   const lsresize::Plan1D& plan,
-                                   Worker&& worker)
+inline void run_parallel_or_serial(
+  std::int64_t nlines,
+  const lsresize::Plan1D& plan,
+  Worker&& worker)
 {
   if (nlines <= 0) {
     return;

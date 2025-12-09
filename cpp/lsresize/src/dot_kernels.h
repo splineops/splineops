@@ -44,7 +44,11 @@ inline double hsum512(__m512d v) {
 
 // Small-M unrolled dot for very short kernels (M <= 8)
 // This is hit all the time for spline degrees 1..3.
-inline double dot_small_unrolled(const double* w, const double* v, int M) {
+inline double dot_small_unrolled(
+  const double* w, 
+  const double* v, 
+  int M) 
+{
   switch (M) {
     case 0:
       return 0.0;
@@ -106,7 +110,11 @@ inline double dot_small_unrolled(const double* w, const double* v, int M) {
 
 // General dot product with optional AVX/NEON acceleration.
 // Uses unrolled scalar path for M <= 8.
-inline double dot_small(const double* w, const double* v, int M) {
+inline double dot_small(
+  const double* w, 
+  const double* v, 
+  int M) 
+{
   // Fast path for the common small-kernel cases (cubic/LS/oblique)
   if (M <= 8) {
     return dot_small_unrolled(w, v, M);

@@ -14,16 +14,20 @@ namespace lsresize {
 #  endif
 #endif
 
-void resize_along_axis(const double* LS_RESTRICT in, double* LS_RESTRICT out,
-                       const std::vector<int64_t>& in_shape,
-                       const std::vector<int64_t>& out_shape,
-                       int axis,
-                       const LSParams& p);
+void resize_along_axis(
+    const double* LS_RESTRICT in, 
+    double* LS_RESTRICT out,
+    const std::vector<int64_t>& in_shape,
+    const std::vector<int64_t>& out_shape,
+    int axis,
+    const LSParams& p);
 
-void resize_along_axis_f32(const float* LS_RESTRICT in, float* LS_RESTRICT out,
-                           const std::vector<int64_t>& in_shape,
-                           const std::vector<int64_t>& out_shape,
-                           int axis,
-                           const LSParams& p);
+void resize_along_axis_f32(
+    const float* LS_RESTRICT in, 
+    float* LS_RESTRICT out,
+    const std::vector<int64_t>& in_shape,
+    const std::vector<int64_t>& out_shape,
+    int axis,
+    const LSParams& p);
 
 } // namespace lsresize

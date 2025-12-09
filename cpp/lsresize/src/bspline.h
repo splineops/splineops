@@ -7,7 +7,10 @@
 namespace lsresize {
 
 // Centered cardinal B-spline of integer degree n (0..7)
-inline double beta(double x, int n) {
+inline double beta(
+  double x, 
+  int n) 
+{
   if (n < 0 || n > 7) throw std::invalid_argument("beta: degree must be in [0..7]");
 
   if (n == 0) { const double ax = std::abs(x); return (ax < 0.5 || x == -0.5) ? 1.0 : 0.0; }
