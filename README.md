@@ -61,7 +61,6 @@ The tests can also be launched for a specific Python version (must match the one
 installed in the active environment)
 
 ```shell
-tox -e py310
 tox -e py311
 tox -e py312
 ```

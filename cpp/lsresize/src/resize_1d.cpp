@@ -9,6 +9,26 @@
 #include <cmath>
 #include <vector>
 
+// 1D resizing pipeline layout
+//
+//   Public entry points (see resize_1d.h):
+//
+//     - resize_1d_workspace(in_vec, out_vec, params, plan, workspace)
+//     - resize_1d_line_contiguous(in_ptr, out_ptr, params, plan, workspace)
+//     - resize_1d_line_buffered(line_buf, out_vec, params, plan, workspace)
+//
+// All three delegate to a single internal pipeline:
+//
+//   run_pipeline_from_line(out_ptr, params, plan,
+//                          line_buffer, ext_full, y)
+//
+// The only difference between the public entry points is how the input
+// samples are fed into the line buffer:
+//
+//   - resize_1d_line_contiguous: copies from a raw contiguous double* line
+//   - resize_1d_workspace:       copies from a std::vector<double>
+//   - resize_1d_line_buffered:   caller has already filled the line buffer
+
 namespace lsresize {
 
 // Build the reusable 1-D plan (window metadata + contiguous weights + pad map)
@@ -111,17 +131,17 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   plan.left_pad  = std::max(0, -min_kmin);
   plan.right_pad = std::max(0,  max_kmax - (plan.length_total - 1));
 
-  // Precompute left-pad mapping for negative indices: -t -> sign * coeff[src]
+  // Precompute left-pad mapping for negative indices: -t -> sign * line[src]
   plan.pad_src_idx.resize(static_cast<size_t>(plan.left_pad));
   plan.pad_src_sgn.resize(static_cast<size_t>(plan.left_pad), 1);
   for (int t = 1; t <= plan.left_pad; ++t) {
     const int pos = plan.left_pad - t; // 0 .. left_pad-1
     if (plan.symmetric_ext) {
-      // symmetric: -t -> +coeff[t]
+      // symmetric: -t -> +line[t]
       plan.pad_src_idx[static_cast<size_t>(pos)] = t;   // clamped later to [0, N-1]
       plan.pad_src_sgn[static_cast<size_t>(pos)] =  1;
     } else {
-      // antisymmetric: -t -> -coeff[t-1]
+      // antisymmetric: -t -> -line[t-1]
       plan.pad_src_idx[static_cast<size_t>(pos)] = t - 1;
       plan.pad_src_sgn[static_cast<size_t>(pos)] = -1;
     }
@@ -184,14 +204,15 @@ Plan1D make_plan_1d(int N, const LSParams& p)
 // Internal 1-D cores
 // -----------------------------------------------------------------------------
 
-// Core that assumes `coeff[0..N-1]` is already filled with input samples.
-// This lets callers (like the ND kernel) avoid an extra copy into coeff.
-static inline void resize_1d_core_from_coeff(double* out,
-                                             const LSParams& p,
-                                             const Plan1D& plan,
-                                             std::vector<double>& coeff,
-                                             std::vector<double>& ext_full,
-                                             std::vector<double>& y)
+// Core that assumes `line[0..N-1]` is already filled with input samples.
+// This lets callers (like the ND kernel) avoid an extra copy into line.
+static inline void run_pipeline_from_line(
+  double* out,
+  const LSParams& p,
+  const Plan1D& plan,
+  std::vector<double>& line,
+  std::vector<double>& ext_full,
+  std::vector<double>& y)
 {
   const int N = plan.N;
   if (N == 0) {
@@ -203,15 +224,15 @@ static inline void resize_1d_core_from_coeff(double* out,
                         : (p.analy_degree + p.synthe_degree + 1);
 
   // 1) Interpolation coefficients (causal/anti-causal IIR on input), in-place.
-  get_interpolation_coefficients(coeff, p.interp_degree);
+  get_interpolation_coefficients(line, p.interp_degree);
 
   // 2) Optional projection integration
   double average = 0.0;
   if (p.analy_degree >= 0) {
-    average = do_integ(coeff, p.analy_degree + 1);
+    average = do_integ(line, p.analy_degree + 1);
   }
 
-  // 3) Single padded buffer [LP | ext | RP], built directly from coeff
+  // 3) Single padded buffer [LP | ext | RP], built directly from line
   const int LP     = plan.left_pad;
   const int length = plan.length_total;
   const int RP     = plan.right_pad;
@@ -226,12 +247,12 @@ static inline void resize_1d_core_from_coeff(double* out,
           std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0),
           std::max(0, N - 1));
       const int sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(i)]);
-      dst[static_cast<size_t>(i)] = sgn * coeff[static_cast<size_t>(src)];
+      dst[static_cast<size_t>(i)] = sgn * line[static_cast<size_t>(src)];
     }
   }
 
   // 3b) Main input samples
-  std::copy(coeff.begin(), coeff.end(), dst + LP);
+  std::copy(line.begin(), line.end(), dst + LP);
 
   // 3c) Right extension into the middle block
   const int rem = length - N;
@@ -240,7 +261,7 @@ static inline void resize_1d_core_from_coeff(double* out,
     double* tail = dst + LP + N;
     for (int i = 0; i < rem; ++i) {
       const int src = plan.rp_src[static_cast<size_t>(i)];
-      tail[static_cast<size_t>(i)] = sgn * coeff[static_cast<size_t>(src)];
+      tail[static_cast<size_t>(i)] = sgn * line[static_cast<size_t>(src)];
     }
   }
 
@@ -285,33 +306,36 @@ static inline void resize_1d_core_from_coeff(double* out,
 }
 
 // Raw-pointer core: operates directly on in/out buffers using workspace vectors.
-// This version still accepts `in` and copies it into `coeff` once, then
-// delegates to resize_1d_core_from_coeff.
-static inline void resize_1d_core_raw(const double* in,
-                                      double* out,
-                                      const LSParams& p,
-                                      const Plan1D& plan,
-                                      std::vector<double>& coeff,
-                                      std::vector<double>& ext_full,
-                                      std::vector<double>& y)
+// This version still accepts `in` and copies it into `line` once, then
+// delegates to run_pipeline_from_line.
+static inline void run_pipeline_from_raw(
+  const double* in_samples,
+  double* out_samples,
+  const LSParams& p,
+  const Plan1D& plan,
+  std::vector<double>& line,
+  std::vector<double>& ext_full,
+  std::vector<double>& y)
 {
   const int N = plan.N;
   if (N == 0) return;
 
-  coeff.resize(static_cast<size_t>(N));
-  std::copy(in, in + N, coeff.begin());
+  line.resize(static_cast<size_t>(N));
+  std::copy(in_samples, in_samples + N, line.begin());
 
-  resize_1d_core_from_coeff(out, p, plan, coeff, ext_full, y);
+  run_pipeline_from_line(out_samples, p, plan,
+                         line, ext_full, y);
 }
 
 // Old vector API now just wraps the raw core.
-static inline void resize_1d_core(const std::vector<double>& in,
-                                  std::vector<double>& out,
-                                  const LSParams& p,
-                                  const Plan1D& plan,
-                                  std::vector<double>& coeff,
-                                  std::vector<double>& ext_full,
-                                  std::vector<double>& y)
+static inline void resize_1d_core(
+  const std::vector<double>& in,
+  std::vector<double>& out,
+  const LSParams& p,
+  const Plan1D& plan,
+  std::vector<double>& line,
+  std::vector<double>& ext_full,
+  std::vector<double>& y)
 {
   const int N = plan.N;
   if (N == 0) {
@@ -319,39 +343,42 @@ static inline void resize_1d_core(const std::vector<double>& in,
     return;
   }
   out.resize(static_cast<size_t>(plan.outN));
-  resize_1d_core_raw(in.data(), out.data(), p, plan, coeff, ext_full, y);
+  run_pipeline_from_raw(in.data(), out.data(), p, plan, line, ext_full, y);
 }
 
 // -----------------------------------------------------------------------------
 // Public, allocation-free wrappers
 // -----------------------------------------------------------------------------
 
-void resize_1d_ws(const std::vector<double>& in,
-                  std::vector<double>& out,
-                  const LSParams& p,
-                  const Plan1D& plan,
-                  Work1D& ws)
+void resize_1d_workspace(
+  const std::vector<double>& in,
+  std::vector<double>& out,
+  const LSParams& p,
+  const Plan1D& plan,
+  Work1D& workspace)
 {
-  resize_1d_core(in, out, p, plan, ws.coeff, ws.ext_full, ws.y);
+  resize_1d_core(in, out, p, plan, workspace.line, workspace.ext_full, workspace.y);
 }
 
 // Raw-pointer wrapper for contiguous lines (no std::vector in/out).
-void resize_1d_ws_raw(const double* in,
-                      double* out,
-                      const LSParams& p,
-                      const Plan1D& plan,
-                      Work1D& ws)
+void resize_1d_line_contiguous(
+  const double* in,
+  double* out,
+  const LSParams& p,
+  const Plan1D& plan,
+  Work1D& workspace)
 {
-  resize_1d_core_raw(in, out, p, plan, ws.coeff, ws.ext_full, ws.y);
+  run_pipeline_from_raw(in, out, p, plan, workspace.line, workspace.ext_full, workspace.y);
 }
 
-// Wrapper used by the ND kernel when it has already filled `coeff`.
-// Avoids an extra copy from a temporary into ws.coeff.
-void resize_1d_ws_from_coeff(std::vector<double>& coeff,
-                             std::vector<double>& out,
-                             const LSParams& p,
-                             const Plan1D& plan,
-                             Work1D& ws)
+// Wrapper used by the ND kernel when it has already filled `line`.
+// Avoids an extra copy from a temporary into workspace.line.
+void resize_1d_line_buffered(
+  std::vector<double>& line,
+  std::vector<double>& out,
+  const LSParams& p,
+  const Plan1D& plan,
+  Work1D& workspace)
 {
   const int N = plan.N;
   if (N == 0) {
@@ -359,8 +386,7 @@ void resize_1d_ws_from_coeff(std::vector<double>& coeff,
     return;
   }
   out.resize(static_cast<size_t>(plan.outN));
-  resize_1d_core_from_coeff(out.data(), p, plan,
-                            coeff, ws.ext_full, ws.y);
+  run_pipeline_from_line(out.data(), p, plan, line, workspace.ext_full, workspace.y);
 }
 
 } // namespace lsresize

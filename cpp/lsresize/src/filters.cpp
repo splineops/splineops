@@ -6,7 +6,11 @@
 
 namespace lsresize {
 
-double initial_causal(const std::vector<double>& c, double z, double tol) {
+double initial_causal(
+  const std::vector<double>& c, 
+  double z, 
+  double tol) 
+{
   const size_t N = c.size();
   if (N == 0) return 0.0;
 
@@ -30,12 +34,19 @@ double initial_causal(const std::vector<double>& c, double z, double tol) {
   return sum / denom;
 }
 
-double initial_anti_causal(const std::vector<double>& c, double z) {
+double initial_anti_causal(
+  const std::vector<double>& c, 
+  double z) 
+{
   if (c.size() < 2) return 0.0;
   return (z * c[c.size()-2] + c.back()) * z / (z*z - 1.0);
 }
 
-void symmetric_fir(const std::vector<double>& h, const std::vector<double>& c, std::vector<double>& s) {
+void symmetric_fir(
+  const std::vector<double>& h, 
+  const std::vector<double>& c, 
+  std::vector<double>& s) 
+{
   const size_t N = c.size();
   if (s.size() != N) s.assign(N, 0.0);
   const size_t L = h.size();
@@ -110,7 +121,10 @@ void symmetric_fir(const std::vector<double>& h, const std::vector<double>& c, s
   throw std::invalid_argument("Invalid filter half-length (should be 2..4)");
 }
 
-double do_integ(std::vector<double>& c, int nb) {
+double do_integ(
+  std::vector<double>& c, 
+  int nb) 
+{
   const size_t N = c.size();
   if (N <= 1 || nb <= 0) {
     return 0.0;  // nothing to integrate; no average to restore
@@ -141,12 +155,18 @@ double do_integ(std::vector<double>& c, int nb) {
   return average;
 }
 
-void integ_sa(std::vector<double>& c, double m) {
+void integ_sa(
+  std::vector<double>& c, 
+  double m) 
+{
   c[0] -= m; c[0] *= 0.5;
   for (size_t i = 1; i < c.size(); ++i) { c[i] -= m; c[i] += c[i-1]; }
 }
 
-void integ_as(const std::vector<double>& c, std::vector<double>& y) {
+void integ_as(
+  const std::vector<double>& c, 
+  std::vector<double>& y) 
+{
   const size_t N = c.size();
   y.resize(N);
   if (N == 0) return;
@@ -177,7 +197,10 @@ void integ_as(const std::vector<double>& c, std::vector<double>& y) {
   }
 }
 
-void do_diff(std::vector<double>& c, int nb) {
+void do_diff(
+  std::vector<double>& c, 
+  int nb) 
+{
   const size_t N = c.size();
   if (N == 0 || nb <= 0) return;
   if (nb == 1) { diff_as(c); return; }
@@ -186,14 +209,16 @@ void do_diff(std::vector<double>& c, int nb) {
   if (nb >= 4) { diff_sa(c); diff_as(c); diff_sa(c); diff_as(c); return; }
 }
 
-void diff_sa(std::vector<double>& c) {
+void diff_sa(std::vector<double>& c) 
+{
   if (c.size() < 2) return;
   double old = c[c.size()-2];
   for (size_t i = 0; i + 1 < c.size(); ++i) c[i] = c[i] - c[i+1];
   c.back() -= old;
 }
 
-void diff_as(std::vector<double>& c) {
+void diff_as(std::vector<double>& c) 
+{
   if (c.size() < 2) { if (!c.empty()) c[0] *= 2.0; return; }
   for (size_t i = c.size()-1; i > 0; --i) c[i] = c[i] - c[i-1];
   c[0] *= 2.0;
