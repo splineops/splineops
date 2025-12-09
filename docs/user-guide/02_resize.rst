@@ -306,12 +306,36 @@ precomputed plan per axis and zoom configuration.
 Implementation
 --------------
 
-In SplineOps, the antialiasing presets of :func:`resize` follow this pattern: they
-use a higher-degree spline model for the resized data, combined with a lower-degree
-analysis spline to implement an efficient projection-based (low-pass) prefilter.
+Internally, :func:`resize` and :func:`resize_degrees` use two cooperating
+backends:
 
-Concretely, the presets correspond to the following degree triples
-(interpolation, analysis, synthesis):
+* A compiled C++ core, wrapped as a small extension module. For each axis, it
+  builds a reusable 1D plan that encodes the mapping from output samples back
+  to the input grid (support window, spline weights, boundary handling). The
+  actual evaluation is done in double precision in a tight inner loop and
+  parallelized over independent 1D lines when the workload is large enough.
+
+* A pure-NumPy fallback that mirrors the same 1D scheme. It reshapes the data
+  so that each line along the resized axis is contiguous, processes lines in
+  batches, and uses vectorized gathers and reductions to apply the same
+  precomputed weights. Plans are cached and reused when the same configuration
+  is requested again.
+
+Both backends perform all spline computations in 64-bit floating point; input
+and output arrays keep their original dtype (or a user-specified dtype), with
+casting only at the boundary of each axis pass.
+
+The behaviour of :func:`resize` is driven by a triple of spline degrees
+
+.. math::
+
+    (\text{interpolation degree},\ \text{analysis degree},\ \text{synthesis degree}).
+
+The interpolation degree controls the underlying spline model, the analysis
+degree controls the projection-based prefilter (for antialiasing), and the
+synthesis degree controls the spline model used on the resized grid. The
+built-in antialiasing presets use oblique projection with a lower analysis
+degree and a higher synthesis degree:
 
 .. list-table:: Spline degree configuration for oblique projection in ``resize``
    :header-rows: 1
@@ -333,10 +357,26 @@ Concretely, the presets correspond to the following degree triples
      - 1
      - 3
 
-Here, the synthesis degree matches the interpolation degree, defining the spline
-model used for the resized data, while the analysis degree is chosen lower to
-simplify the continuous prefilter and make the oblique projection more efficient,
-with only a small loss compared to the full least-squares projection.
+Here, the synthesis degree matches the interpolation degree, defining the
+output spline model, while the analysis degree is chosen lower to keep the
+projection prefilter short, robust, and fast, yet still very close to the
+ideal least-squares solution in [1]_ and [2]_.
+
+.. warning::
+   Strict least-squares configurations, where the analysis and synthesis
+   degrees are equal (for example, a cubic–cubic combination), require high-order
+   discrete integration in this framework (fourth order in the cubic case).
+   These repeated running sums are numerically delicate in double precision:
+   for long lines they accumulate round-off error, can slowly drift in mean
+   level, and the corresponding difference operators do not fully cancel this
+   drift. In practice this leads to visible numerical artefacts on realistic
+   image sizes. For that reason, exact high-order least-squares presets are
+   not exposed and are not recommended in routine use. The oblique
+   antialiasing presets above avoid the problematic high-order integration,
+   remain stable in double precision, and stay very close in quality to the
+   ideal least-squares projection; truly exact high-order least-squares
+   schemes are better left to future hardware with wider floating-point
+   formats.
 
 Resize Examples
 ---------------
