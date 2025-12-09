@@ -296,13 +296,13 @@ with only a small loss compared to the full least-squares projection.
 Resize Examples
 ---------------
 
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_01_resize_module_1d.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_02_resize_module_2d.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_03_standard_interpolation.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_04_antialiasing.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_05_how_bad_aliasing_can_be.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_06_benchmarking.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_07_benchmarking_plot.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_01_resize_module_1d.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_02_resize_module_2d.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_03_standard_interpolation.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_04_antialiasing.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_05_how_bad_aliasing_can_be.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_06_benchmarking.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_07_benchmarking_plot.py`
 
 References
 ----------

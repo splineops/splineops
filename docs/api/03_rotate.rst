@@ -14,5 +14,5 @@ Functions for rotating 2D or 3D data around a specified axis/center using spline
 
 See also
 --------
-:class:`~splineops.interpolate.tensorspline.TensorSpline`
+:class:`~splineops.interpolate.tensor_spline.TensorSpline`
    The base class used internally for spline interpolation.
