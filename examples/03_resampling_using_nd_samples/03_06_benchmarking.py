@@ -48,6 +48,7 @@ import sys
 import time
 from typing import Dict, List, Tuple, Optional
 
+# sphinx_gallery_thumbnail_number = 15  # Show the 15th figure as the gallery thumbnail
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
