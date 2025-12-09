@@ -355,15 +355,6 @@ plt.plot(
     label="coarse spline (cubic-antialiasing)",
 )
 
-# red stems for AA coarse samples
-plt.vlines(
-    x=g_support_x,
-    ymin=0,
-    ymax=g_samples_aa,
-    color="red",
-    linewidth=2.0,
-)
-
 plt.plot(
     g_support_x,
     g_samples_aa,
