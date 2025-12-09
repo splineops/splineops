@@ -1,8 +1,8 @@
-# splineops/src/splineops/multiscale/wavelets/abstractwavelets.py
+# splineops/src/splineops/multiscale/wavelets/abstract_wavelets.py
 
 """
-abstractwavelets.py
--------------------
+abstract_wavelets.py
+--------------------
 Defines a base class for wavelet analysis & synthesis on 2D (or 3D) signals.
 """
 

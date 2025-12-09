@@ -1,14 +1,14 @@
-# splineops/src/splineops/multiscale/wavelets/splinewaveletstool.py
+# splineops/src/splineops/multiscale/wavelets/spline_wavelets_tool.py
 
 """
-splinewaveletstool.py
----------------------
+spline_wavelets_tool.py
+-----------------------
 Uses a SplineFilter to get h[] and g[], then does 'splitMirror' and 
 'mergeMirror' passes on rows, then columns.
 """
 
 import numpy as np
-from .splinefilter import SplineFilter
+from .spline_filter import SplineFilter
 
 def split_mirror_1d(vin: np.ndarray, h: np.ndarray, g: np.ndarray) -> np.ndarray:
     """

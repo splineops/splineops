@@ -1,8 +1,8 @@
 # splineops/src/splineops/multiscale/wavelets/splinefilter.py
 
 """
-splinefilter.py
-----------
+spline_filter.py
+----------------
 Holds numeric arrays for various spline filters used in wavelets transformations,
 mirroring your Java SplineFilter code for orders 1, 3, 5.
 """

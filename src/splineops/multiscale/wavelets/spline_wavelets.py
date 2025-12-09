@@ -1,14 +1,14 @@
-# splineops/src/splineops/multiscale/wavelets/splinewavelets.py
+# splineops/src/splineops/multiscale/wavelets/spline_wavelets.py
 
 """
-splinewavelets.py
------------------
+spline_wavelets.py
+------------------
 Implements Spline wavelet transforms of orders 1, 3, 5.
 """
 
 import numpy as np
-from .abstractwavelets import AbstractWavelets
-from .splinefilter import SplineFilter
+from .abstract_wavelets import AbstractWavelets
+from .spline_filter import SplineFilter
 
 class SplineWavelets(AbstractWavelets):
     """

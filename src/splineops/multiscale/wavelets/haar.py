@@ -8,7 +8,7 @@ Implements a 2D Haar wavelet transform via row->column decomposition
 """
 
 import numpy as np
-from .abstractwavelets import AbstractWavelets
+from .abstract_wavelets import AbstractWavelets
 
 class HaarWavelets(AbstractWavelets):
     """
