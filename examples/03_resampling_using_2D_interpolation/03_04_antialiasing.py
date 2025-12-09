@@ -1,5 +1,5 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_resampling_using_2d_interpolation/03_03_antialiasing.py
+# splineops/examples/03_resampling_using_2d_interpolation/03_04_antialiasing.py
 # sphinx_gallery_end_ignore
 
 """
