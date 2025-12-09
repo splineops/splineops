@@ -10,8 +10,8 @@ This example performs a 1D sweep of zoom factors and evaluates how different
 2D interpolation / downsampling methods behave in terms of
 
 * **round-trip runtime** (downsample then upsample back to the original size),
-* **round-trip SNR** between the original and recovered image,
-* **round-trip SSIM** between the original and recovered image.
+* **round-trip SNR** between the original and the recovered image,
+* **round-trip SSIM** between the original and the recovered image.
 
 For each zoom factor :math:`z`, we run two resizes:
 
@@ -234,12 +234,10 @@ plt.show()
 # Each method is evaluated by a round-trip
 # (forward + backward resize, back to the original shape).
 #
-# We consider a single interpolation degree (linear or cubic) for all methods.
-# You can change the degree via the DEGREE constant below.
-
-DEGREE = "cubic"  # "linear" or "cubic"
-assert DEGREE in ("linear", "cubic")
-
+# We will run the full benchmark twice:
+#
+# - once for **cubic** interpolation,
+# - once for **linear** interpolation.
 
 def scipy_roundtrip(
     img: np.ndarray, z: float, degree: str
@@ -453,7 +451,7 @@ def skimage_roundtrip(
 
     # Backward: from down.shape to original shape
     H2, W2 = down.shape
-    use_aa_back = (H2 > H) or (W2 > W)  # this is usually upsampling, so AA=false
+    use_aa_back = (H2 > H) or (W2 > W)  # this is usually upsampling, so AA=False
     rec = sk_resize(
         down,
         (H, W),
@@ -470,8 +468,8 @@ def skimage_roundtrip(
 
 
 # %%
-# Zoom Sweep and Methods
-# ----------------------
+# Zoom Sweep (degree-independent)
+# -------------------------------
 #
 # We sweep zoom factors and keep only those that preserve the original image
 # size after a forward/backward round-trip (using simple rounding).
@@ -500,229 +498,240 @@ print(
     f"(down: {SAMPLES_DOWN}, up: {SAMPLES_UP}, |z-1|>{NEAR_ONE_EPS}, 2.0 excluded)."
 )
 
-# Define methods: {name: (kind, parameter)}
-#   kind:
-#     "scipy"     → SciPy ndimage.zoom
-#     "splineops" → splineops.resize
-#     "torch"     → torch.nn.functional.interpolate
-#     "opencv"    → OpenCV resize
-#     "pillow"    → Pillow resize
-#     "skimage"   → skimage.transform.resize
-METHODS: Dict[str, Tuple[str, str | None]] = {}
-
-degree_label = DEGREE.title()
-
-# SciPy
-if ENABLE_SCIPY and _HAS_SCIPY:
-    METHODS[f"SciPy {degree_label}"] = ("scipy", DEGREE)
-elif ENABLE_SCIPY:
-    print("[info] SciPy not found; 'SciPy' curve will be omitted.")
-
-# splineops: Standard / Antialiasing
-if ENABLE_SPLINEOPS_STANDARD:
-    METHODS[f"Standard {degree_label}"] = ("splineops", DEGREE)
-
-if ENABLE_SPLINEOPS_ANTIALIASING:
-    METHODS[f"Antialiasing {degree_label}"] = ("splineops", f"{DEGREE}-antialiasing")
-
-# PyTorch
-if ENABLE_TORCH:
-    if _HAS_TORCH:
-        METHODS[f"PyTorch {degree_label} (AA)"] = ("torch", DEGREE)
-    else:
-        print("[info] PyTorch not found; 'PyTorch' curve will be omitted.")
-
-# OpenCV
-if ENABLE_OPENCV:
-    if _HAS_CV2:
-        METHODS[f"OpenCV INTER_{degree_label.upper()}"] = ("opencv", DEGREE)
-    else:
-        print("[info] OpenCV not found; 'OpenCV' curve will be omitted.")
-
-# Pillow
-if ENABLE_PILLOW:
-    if DEGREE == "linear":
-        METHODS["Pillow BILINEAR (float)"] = ("pillow", "bilinear")
-    else:
-        METHODS["Pillow BICUBIC (float)"] = ("pillow", "bicubic")
-
-# scikit-image
-if ENABLE_SKIMAGE:
-    if _HAS_SKIMAGE:
-        METHODS[f"scikit-image ({degree_label}, AA)"] = ("skimage", DEGREE)
-    else:
-        print("[info] scikit-image not found; 'scikit-image' curve will be omitted.")
-
-# Storage for results
-results: Dict[str, Dict[str, List[float]]] = {
-    name: {"z": [], "time": [], "time_sd": [], "snr": [], "ssim": []}
-    for name in METHODS
-}
-
 # %%
-# Run the Sweep
-# -------------
-#
-# For each zoom and each method we:
-#
-# - perform a forward + backward resize,
-# - average the runtime over a number of runs,
-# - compute the SNR between the original and recovered image,
-# - compute the global SSIM (if scikit-image is available),
-# - store the results for plotting.
+# Method construction and sweep per degree
+# ----------------------------------------
 
-for idx, z in enumerate(z_list, 1):
-    print(f"[{idx:>3}/{len(z_list)}] z={z:.5f}", end="\r")
-    for name, (kind, param) in METHODS.items():
-        if kind == "scipy":
-            runner = lambda z=z, deg=param: scipy_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
-        elif kind == "splineops":
-            runner = lambda z=z, m=param: spl_roundtrip(img_gray, z, m)        # type: ignore[arg-type]
-        elif kind == "torch":
-            runner = lambda z=z, deg=param: torch_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
-        elif kind == "opencv":
-            runner = lambda z=z, deg=param: opencv_roundtrip(img_gray, z, deg) # type: ignore[arg-type]
-        elif kind == "pillow":
-            runner = lambda z=z, w=param: pillow_roundtrip(img_gray, z, w)     # type: ignore[arg-type]
-        elif kind == "skimage":
-            runner = lambda z=z, deg=param: skimage_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
+def build_methods_for_degree(degree: str) -> Tuple[Dict[str, Tuple[str, str | None]], str]:
+    """
+    Build the METHODS dictionary for a given degree ('linear' or 'cubic').
+
+    Returns (METHODS, degree_label).
+    """
+    assert degree in ("linear", "cubic")
+    degree_label = degree.title()
+
+    METHODS: Dict[str, Tuple[str, str | None]] = {}
+
+    # SciPy
+    if ENABLE_SCIPY and _HAS_SCIPY:
+        METHODS[f"SciPy {degree_label}"] = ("scipy", degree)
+    elif ENABLE_SCIPY:
+        print("[info] SciPy not found; 'SciPy' curve will be omitted.")
+
+    # splineops: Standard / Antialiasing
+    if ENABLE_SPLINEOPS_STANDARD:
+        METHODS[f"Standard {degree_label}"] = ("splineops", degree)
+
+    if ENABLE_SPLINEOPS_ANTIALIASING:
+        METHODS[f"Antialiasing {degree_label}"] = ("splineops", f"{degree}-antialiasing")
+
+    # PyTorch
+    if ENABLE_TORCH:
+        if _HAS_TORCH:
+            METHODS[f"PyTorch {degree_label} (AA)"] = ("torch", degree)
         else:
-            continue
+            print("[info] PyTorch not found; 'PyTorch' curve will be omitted.")
 
-        try:
-            rec, t_mean, t_sd = average_time(runner, repeats=REPEATS)
-        except Exception as e:
-            # If any method fails at a particular zoom, skip that sample
-            print(f"\n[warn] {name} failed at z={z:.5f}: {e}")
-            continue
+    # OpenCV
+    if ENABLE_OPENCV:
+        if _HAS_CV2:
+            METHODS[f"OpenCV INTER_{degree_label.upper()}"] = ("opencv", degree)
+        else:
+            print("[info] OpenCV not found; 'OpenCV' curve will be omitted.")
 
-        s = snr_db(img_gray, rec)
+    # Pillow
+    if ENABLE_PILLOW:
+        if degree == "linear":
+            METHODS["Pillow BILINEAR (float)"] = ("pillow", "bilinear")
+        else:
+            METHODS["Pillow BICUBIC (float)"] = ("pillow", "bicubic")
 
-        # Global SSIM (grayscale)
-        if _HAS_SKIMAGE and sk_ssim is not None:
+    # scikit-image
+    if ENABLE_SKIMAGE:
+        if _HAS_SKIMAGE:
+            METHODS[f"scikit-image ({degree_label}, AA)"] = ("skimage", degree)
+        else:
+            print("[info] scikit-image not found; 'scikit-image' curve will be omitted.")
+
+    return METHODS, degree_label
+
+
+def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]], str]:
+    """
+    Run the full zoom sweep for a given degree ("linear" or "cubic") and
+    return (results, degree_label).
+    """
+    METHODS, degree_label = build_methods_for_degree(degree)
+
+    # Storage for results
+    results: Dict[str, Dict[str, List[float]]] = {
+        name: {"z": [], "time": [], "time_sd": [], "snr": [], "ssim": []}
+        for name in METHODS
+    }
+
+    for idx, z in enumerate(z_list, 1):
+        print(f"[{degree_label:>6}] [{idx:>3}/{len(z_list)}] z={z:.5f}", end="\r")
+        for name, (kind, param) in METHODS.items():
+            if kind == "scipy":
+                runner = lambda z=z, deg=param: scipy_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
+            elif kind == "splineops":
+                runner = lambda z=z, m=param: spl_roundtrip(img_gray, z, m)        # type: ignore[arg-type]
+            elif kind == "torch":
+                runner = lambda z=z, deg=param: torch_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
+            elif kind == "opencv":
+                runner = lambda z=z, deg=param: opencv_roundtrip(img_gray, z, deg) # type: ignore[arg-type]
+            elif kind == "pillow":
+                runner = lambda z=z, w=param: pillow_roundtrip(img_gray, z, w)     # type: ignore[arg-type]
+            elif kind == "skimage":
+                runner = lambda z=z, deg=param: skimage_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
+            else:
+                continue
+
             try:
-                dr = float(img_gray.max() - img_gray.min())
-                if dr <= 0.0:
-                    dr = 1.0  # flat image; arbitrary but safe
-                ssim_val = float(sk_ssim(img_gray, rec, data_range=dr))
-            except Exception:
+                rec, t_mean, t_sd = average_time(runner, repeats=REPEATS)
+            except Exception as e:
+                # If any method fails at a particular zoom, skip that sample
+                print(f"\n[warn] {degree_label}: {name} failed at z={z:.5f}: {e}")
+                continue
+
+            s = snr_db(img_gray, rec)
+
+            # Global SSIM (grayscale)
+            if _HAS_SKIMAGE and sk_ssim is not None:
+                try:
+                    dr = float(img_gray.max() - img_gray.min())
+                    if dr <= 0.0:
+                        dr = 1.0  # flat image; arbitrary but safe
+                    ssim_val = float(sk_ssim(img_gray, rec, data_range=dr))
+                except Exception:
+                    ssim_val = float("nan")
+            else:
                 ssim_val = float("nan")
-        else:
-            ssim_val = float("nan")
 
-        results[name]["z"].append(z)
-        results[name]["time"].append(t_mean)
-        results[name]["time_sd"].append(t_sd)
-        results[name]["snr"].append(s)
-        results[name]["ssim"].append(ssim_val)
+            results[name]["z"].append(z)
+            results[name]["time"].append(t_mean)
+            results[name]["time_sd"].append(t_sd)
+            results[name]["snr"].append(s)
+            results[name]["ssim"].append(ssim_val)
 
-print("\nDone. Plotting...")
-
-# %%
-# Timing vs Zoom
-# --------------
-#
-# We plot the average round-trip runtime (forward + backward) as a function
-# of the zoom factor. Note that timing curves are averaged over several runs.
-
-plt.figure(figsize=PLOT_FIGSIZE)
-
-# Prepare per-method markers for accessibility (B/W friendly) and staggered markers
-marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
-marker_for: Dict[str, str] = {}
-markevery_for: Dict[str, Tuple[int, int]] = {}
-for idx_name, name in enumerate(results.keys()):
-    marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
-    offset = idx_name % MARK_EVERY_BASE
-    markevery_for[name] = (offset, MARK_EVERY_BASE)
-
-any_curve = False
-for name, data in results.items():
-    if not data["z"]:
-        continue
-    z_arr = np.asarray(data["z"], dtype=np.float64)
-    t_arr = np.asarray(data["time"], dtype=np.float64)
-    plt.plot(
-        z_arr,
-        t_arr,
-        marker=marker_for.get(name, "o"),
-        markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
-        markersize=MARKER_SIZE,
-        linewidth=LINEWIDTH,
-        label=name,
-    )
-    any_curve = True
-
-if any_curve:
-    plt.xlabel("Zoom factor (0 < z < 2,  z≈1 excluded)", fontsize=PLOT_LABEL_FONTSIZE)
-    plt.ylabel(
-        f"Time (s)  [avg of {REPEATS} runs, forward + backward]",
-        fontsize=PLOT_LABEL_FONTSIZE,
-    )
-    plt.title(
-        f"Round-Trip Timing vs Zoom  (H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
-        fontsize=PLOT_TITLE_FONTSIZE,
-    )
-    plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
-    plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
-    plt.grid(True, alpha=0.35)
-    plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
-    plt.tight_layout()
-plt.show()
+    print(f"\nDone for degree={degree_label}.")
+    return results, degree_label
 
 # %%
-# SNR vs Zoom
-# -----------
-#
-# Next, we look at the round-trip SNR for each method as a function of zoom.
-# Points with infinite SNR (exact round-trip) are hidden to keep the scale
-# readable; in practice they indicate numerically perfect reconstruction.
+# Plotting helpers
+# ----------------
 
-plt.figure(figsize=PLOT_FIGSIZE)
-any_curve = False
-
-for name, data in results.items():
-    if not data["z"]:
-        continue
-    z_arr = np.asarray(data["z"], dtype=np.float64)
-    s_arr = np.asarray(data["snr"], dtype=np.float64)
-    s_plot = np.where(np.isfinite(s_arr), s_arr, np.nan)
-    plt.plot(
-        z_arr,
-        s_plot,
-        marker=marker_for.get(name, "o"),
-        markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
-        markersize=MARKER_SIZE,
-        linewidth=LINEWIDTH,
-        label=name,
-    )
-    any_curve = True
-
-if any_curve:
-    plt.xlabel("Zoom factor (0 < z < 2,  z≈1 excluded)", fontsize=PLOT_LABEL_FONTSIZE)
-    plt.ylabel("SNR (dB)  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
-    plt.title(
-        f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
-        fontsize=PLOT_TITLE_FONTSIZE,
-    )
-    plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
-    plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
-    plt.grid(True, alpha=0.35)
-    plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
-    plt.tight_layout()
-plt.show()
-
-# %%
-# SSIM vs Zoom
-# ------------
-#
-# Finally, we look at the global SSIM between the original and recovered image.
-# This requires scikit-image; if it is not available, this section is skipped.
-
-if _HAS_SKIMAGE and sk_ssim is not None:
+def _plot_timing(results: Dict[str, Dict[str, List[float]]], degree_label: str):
+    """Timing vs zoom plot for a given degree."""
     plt.figure(figsize=PLOT_FIGSIZE)
-    any_curve = False
 
+    # Prepare per-method markers for accessibility (B/W friendly) and staggered markers
+    marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
+    marker_for: Dict[str, str] = {}
+    markevery_for: Dict[str, Tuple[int, int]] = {}
+    for idx_name, name in enumerate(results.keys()):
+        marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
+        offset = idx_name % MARK_EVERY_BASE
+        markevery_for[name] = (offset, MARK_EVERY_BASE)
+
+    any_curve = False
+    for name, data in results.items():
+        if not data["z"]:
+            continue
+        z_arr = np.asarray(data["z"], dtype=np.float64)
+        t_arr = np.asarray(data["time"], dtype=np.float64)
+        plt.plot(
+            z_arr,
+            t_arr,
+            marker=marker_for.get(name, "o"),
+            markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
+            markersize=MARKER_SIZE,
+            linewidth=LINEWIDTH,
+            label=name,
+        )
+        any_curve = True
+
+    if any_curve:
+        plt.xlabel("Zoom factor (0 < z < 2,  z≈1 excluded)", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.ylabel(
+            f"Time (s)  [avg of {REPEATS} runs, forward + backward]",
+            fontsize=PLOT_LABEL_FONTSIZE,
+        )
+        plt.title(
+            f"Round-Trip Timing vs Zoom  (H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
+            fontsize=PLOT_TITLE_FONTSIZE,
+        )
+        plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
+        plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
+        plt.grid(True, alpha=0.35)
+        plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
+        plt.tight_layout()
+    plt.show()
+
+
+def _plot_snr(results: Dict[str, Dict[str, List[float]]], degree_label: str):
+    """SNR vs zoom plot for a given degree."""
+    plt.figure(figsize=PLOT_FIGSIZE)
+
+    marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
+    marker_for: Dict[str, str] = {}
+    markevery_for: Dict[str, Tuple[int, int]] = {}
+    for idx_name, name in enumerate(results.keys()):
+        marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
+        offset = idx_name % MARK_EVERY_BASE
+        markevery_for[name] = (offset, MARK_EVERY_BASE)
+
+    any_curve = False
+    for name, data in results.items():
+        if not data["z"]:
+            continue
+        z_arr = np.asarray(data["z"], dtype=np.float64)
+        s_arr = np.asarray(data["snr"], dtype=np.float64)
+        s_plot = np.where(np.isfinite(s_arr), s_arr, np.nan)
+        plt.plot(
+            z_arr,
+            s_plot,
+            marker=marker_for.get(name, "o"),
+            markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
+            markersize=MARKER_SIZE,
+            linewidth=LINEWIDTH,
+            label=name,
+        )
+        any_curve = True
+
+    if any_curve:
+        plt.xlabel("Zoom factor (0 < z < 2,  z≈1 excluded)", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.ylabel("SNR (dB)  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.title(
+            f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
+            fontsize=PLOT_TITLE_FONTSIZE,
+        )
+        plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
+        plt.yticks(fontsize=PLOT_TICK_FONTSIZE)
+        plt.grid(True, alpha=0.35)
+        plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
+        plt.tight_layout()
+    plt.show()
+
+
+def _plot_ssim(results: Dict[str, Dict[str, List[float]]], degree_label: str):
+    """SSIM vs zoom plot for a given degree (if scikit-image is available)."""
+    if not (_HAS_SKIMAGE and sk_ssim is not None):
+        print("\n[info] scikit-image not available; SSIM plot skipped.")
+        return
+
+    plt.figure(figsize=PLOT_FIGSIZE)
+
+    marker_cycle = ["o", "s", "^", "v", "D", "x", "+", "*", "P", "X"]
+    marker_for: Dict[str, str] = {}
+    markevery_for: Dict[str, Tuple[int, int]] = {}
+    for idx_name, name in enumerate(results.keys()):
+        marker_for[name] = marker_cycle[idx_name % len(marker_cycle)]
+        offset = idx_name % MARK_EVERY_BASE
+        markevery_for[name] = (offset, MARK_EVERY_BASE)
+
+    any_curve = False
     for name, data in results.items():
         if not data["z"]:
             continue
@@ -753,8 +762,28 @@ if _HAS_SKIMAGE and sk_ssim is not None:
         plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
         plt.tight_layout()
     plt.show()
-else:
-    print("\n[info] scikit-image not available; SSIM plot skipped.")
+
+# %%
+# Run benchmark and plots for cubic degree
+# ----------------------------------------
+
+results_cubic, degree_label_cubic = run_sweep_for_degree("cubic")
+
+# Timing / SNR / SSIM for cubic
+_plot_timing(results_cubic, degree_label_cubic)
+_plot_snr(results_cubic, degree_label_cubic)
+_plot_ssim(results_cubic, degree_label_cubic)
+
+# %%
+# Run benchmark and plots for linear degree
+# -----------------------------------------
+
+results_linear, degree_label_linear = run_sweep_for_degree("linear")
+
+# Timing / SNR / SSIM for linear
+_plot_timing(results_linear, degree_label_linear)
+_plot_snr(results_linear, degree_label_linear)
+_plot_ssim(results_linear, degree_label_linear)
 
 # %%
 # Runtime Context
