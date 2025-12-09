@@ -3,8 +3,8 @@
 # sphinx_gallery_end_ignore
 
 """
-Resize Module (2D)
-==================
+Resize Module 2D
+================
 
 Shrink and re-expand a 2-D RGB image with splineops, then discuss aliasing.
 
@@ -27,7 +27,7 @@ matched low-pass step to suppress these artefacts.
 # Imports and Helpers
 # -------------------
 
-# sphinx_gallery_thumbnail_number = 1
+# sphinx_gallery_thumbnail_number = 2
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
@@ -299,9 +299,9 @@ fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 axes[0].imshow(gray, cmap="gray", vmin=0.0, vmax=1.0)
 axes[0].set_title("Original (single channel)")
 axes[1].imshow(gray_cubic, cmap="gray", vmin=0.0, vmax=1.0)
-axes[1].set_title("resize(..., 'cubic')")
+axes[1].set_title("Resized Cubic")
 axes[2].imshow(gray_aa, cmap="gray", vmin=0.0, vmax=1.0)
-axes[2].set_title("resize(..., 'cubic-antialiasing')")
+axes[2].set_title("Resized Cubic Antialiasing")
 for ax in axes:
     ax.axis("off")
 fig.tight_layout()
