@@ -507,29 +507,60 @@ the theory:
   aliasing artefacts compared to plain cubic, at the cost of only a modest
   runtime overhead.
 
+The first figure below shows the global image, the ROI used for metrics, and
+the same ROI after a first-pass SplineOps antialiasing shrink, all at a zoom
+factor of :math:`z = 0.15`:
+
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_010.png
    :align: center
    :width: 100%
+
+The next figure compares the **color ROI** for the main cubic methods
+(Original, SplineOps Standard, SplineOps Antialiasing, OpenCV, SciPy,
+scikit-image, PyTorch bicubic). It highlights visual differences such as
+aliasing and ringing in fine detail:
 
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_015.png
    :align: center
    :width: 100%
 
+The following figure shows the **normalized signed error** in the grayscale ROI
+for the same main subset of methods. Zero error is mid-gray; brighter or darker
+regions indicate positive or negative deviations from the original:
+
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_012.png
    :align: center
    :width: 100%
+
+The next figure compares the **color ROI** for the antialiasing-focused subset
+(Original, SplineOps Standard, SplineOps Antialiasing, Pillow BICUBIC,
+scikit-image cubic with anti-aliasing, PyTorch bicubic with antialiasing).
+This isolates how different antialiasing strategies affect fine structure:
 
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_016.png
    :align: center
    :width: 100%
 
+The companion figure shows the **normalized signed error** in the grayscale ROI
+for this antialiasing subset, again with mid-gray indicating zero error:
+
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_014.png
    :align: center
    :width: 100%
 
+The bar chart below summarizes the **round-trip runtime** (forward + backward)
+for the cubic methods at :math:`z = 0.15` on a 512×768 image. You can see that
+OpenCV and PyTorch are fastest, SplineOps sits comfortably in the middle, and
+SciPy / scikit-image are significantly slower:
+
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_017.png
    :align: center
    :width: 100%
+
+Finally, the last figure in this series summarizes **SNR and SSIM per method**
+for the same configuration, showing that SplineOps Cubic Antialiasing
+typically attains the highest SNR and SSIM, with the Standard cubic preset
+tightly grouped with the other classic cubic filters:
 
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_018.png
    :align: center
@@ -558,15 +589,29 @@ backend:
   quality (higher SNR/SSIM at small :math:`z`) while remaining competitive
   in runtime.
 
+The first plot below shows **round-trip SNR vs zoom** for cubic methods:
+SplineOps Antialiasing cubic rises well above the other curves for strong
+downsampling and remains best or near-best all the way up to :math:`z \approx 2`:
+
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_003.png
    :align: center
    :width: 100%
+
+The second plot shows **round-trip SSIM vs zoom** for the same configuration:
+all methods converge near SSIM :math:`\approx 1` around :math:`z = 1`, but
+SplineOps Antialiasing cubic reaches higher SSIM for the more aggressive
+downsampling factors:
 
 .. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_004.png
    :align: center
    :width: 100%
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_005.png
+The last plot shows **round-trip runtime vs zoom**. It confirms that the
+antialiasing preset adds only a modest overhead over Standard cubic, while
+still remaining competitive with other high-quality methods for a wide range
+of zoom factors:
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_002.png
    :align: center
    :width: 100%
 
