@@ -247,10 +247,8 @@ TensorSpline and Resize APIs
 ----------------------------
 
 The mathematical model above is implemented in SplineOps by two complementary
-APIs:
-
-* :class:`splineops.spline_interpolation.tensor_spline.TensorSpline`
-* :func:`splineops.resize.resize` and :func:`splineops.resize.resize_degrees`
+modules: :ref:`spline interpolation <api-spline_interpolation>` (using :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline`) and
+:ref:`resize <api-resize>` (using :func:`~splineops.resize.resize` and :func:`~splineops.resize.resize_degrees`).
 
 They share the same spline formulation but target slightly different use cases.
 
@@ -262,8 +260,8 @@ Comparison
    :widths: 25 35 40
 
    * - Feature
-     - ``TensorSpline``
-     - ``resize`` / ``resize_degrees``
+     - :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline`
+     - :func:`~splineops.resize.resize` / :func:`~splineops.resize.resize_degrees`
    * - Purpose
      - Generic spline interpolant: evaluate :math:`f(\mathbf{x})` at arbitrary coordinates.
      - High-level N-D resizing on uniform grids (images, volumes, time series).
@@ -287,15 +285,15 @@ Equivalence for standard interpolation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the special case of a uniform grid, B-spline degrees 0–3 and mirror
-boundaries, standard interpolation via :class:`TensorSpline` matches the
-corresponding ``resize`` presets exactly:
+boundaries, standard interpolation via :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline` matches the
+corresponding :func:`~splineops.resize.resize` presets exactly:
 
 .. list-table::
    :header-rows: 1
    :widths: 40 60
 
-   * - ``resize`` method
-     - Equivalent ``TensorSpline`` configuration
+   * - :func:`~splineops.resize.resize` method
+     - Equivalent :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline` configuration
    * - ``resize(data, zoom_factors=zoom_factors, method="fast")``  
        (degree 0 / nearest)
      - ``TensorSpline(data, coordinates, bases="bspline0", modes="mirror")``
@@ -313,13 +311,13 @@ In other words, for these settings:
 
 - the spline model is the same,
 - the interpolation values agree up to numerical precision,
-- but ``resize`` is usually much faster thanks to its C++ core and optimized
+- but :func:`~splineops.resize.resize` is usually much faster thanks to its C++ core and optimized
   memory access patterns.
 
 Code Use
 ~~~~~~~~
 
-Using :class:`TensorSpline` directly:
+Using :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline` directly:
 
 .. code-block:: python
 
@@ -344,7 +342,7 @@ Using :class:`TensorSpline` directly:
    y_fine = np.linspace(0, data.shape[1] - 1, 2 * data.shape[1], dtype=data.dtype)
    data_upsampled = ts(coordinates=(x_fine, y_fine))
 
-Using :func:`resize` for the same operation:
+Using :func:`~splineops.resize.resize` for the same operation:
 
 .. code-block:: python
 

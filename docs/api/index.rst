@@ -1,5 +1,7 @@
 .. splineops/docs/api/index.rst
 
+.. _api-index:
+
 API Reference
 =============
 
@@ -9,7 +11,7 @@ API Reference
 
    * - **Module**
      - **Description**
-   * - :ref:`Spline interpolation <api-spline_interpolation>`
+   * - :ref:`Spline Interpolation <api-spline_interpolation>`
      - Interpolation class for multidimensional data.
    * - :ref:`Resize <api-resize>`
      - Resize using high-quality projection-based methods.

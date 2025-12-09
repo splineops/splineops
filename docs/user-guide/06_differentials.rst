@@ -7,8 +7,9 @@ Differentials
 
 Overview
 --------
-The *differentials* module in *splineops* provides a collection of algorithms for the computation of image differentials based on cubic B-spline interpolation [1]_, [2]_. 
-By modeling a grayscale image as a continuous function reconstructed from its discrete samples, the module enables the accurate computation of derivatives. 
+The :ref:`differentials <api-differentials>` module in :ref:`Splineops <api-index>` provides a collection of algorithms for the 
+computation of image differentials based on cubic B-spline interpolation [1]_, [2]_. By modeling a grayscale image as a continuous function 
+reconstructed from its discrete samples, the module enables the accurate computation of derivatives. 
 It offers several operations such as
 
 - Gradient Magnitude: the local rate of change of the intensity;

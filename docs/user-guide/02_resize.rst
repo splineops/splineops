@@ -8,9 +8,8 @@ Resize
 Overview
 --------
 
-The :func:`resize` family in :mod:`splineops` provides high-performance,
-high-fidelity resizing for N-dimensional arrays built on the spline model
-introduced in :doc:`01_spline_interpolation`.
+The :ref:`resize <api-resize>` module in :ref:`Splineops <api-index>` provides high-performance,
+high-fidelity resizing for N-dimensional arrays. 
 
 Conceptually, resizing means:
 
