@@ -217,6 +217,11 @@ plt.plot(
     label="coarse samples (cubic)",
 )
 
+# --- coarse-grid x-axis ---
+coarse_indices = np.arange(L, dtype=int)   # 0, 1, ..., L-1
+plt.xlim(0, K - 1)                         # same physical domain as f[k]
+plt.xticks(g_support_x, [str(k) for k in coarse_indices])
+
 plt.xlabel("x")
 plt.ylabel("Amplitude")
 plt.grid(True)
@@ -259,6 +264,11 @@ plt.plot(
     label="coarse samples (cubic-antialiasing)",
 )
 
+# --- coarse-grid x-axis ---
+coarse_indices = np.arange(L, dtype=int)
+plt.xlim(0, K - 1)
+plt.xticks(g_support_x, [str(k) for k in coarse_indices])
+
 plt.xlabel("x")
 plt.ylabel("Amplitude")
 plt.grid(True)
@@ -299,7 +309,7 @@ plt.plot(
 plt.plot(
     g_support_x,
     g_samples_cubic,
-    "s",
+    "s",                 # square markers
     mfc="none",
     markersize=10,
     markeredgewidth=2,
@@ -322,6 +332,11 @@ plt.plot(
     markeredgewidth=2,
     label="coarse samples (cubic-antialiasing)",
 )
+
+# --- coarse-grid x-axis, like in 02_02 ---
+coarse_indices = np.arange(L, dtype=int)
+plt.xlim(0, K - 1)
+plt.xticks(g_support_x, [str(k) for k in coarse_indices])
 
 plt.xlabel("x")
 plt.ylabel("Amplitude")
