@@ -103,6 +103,27 @@ The *Differentials* class implements these operations as follows: the input imag
 its interpolation coefficients. The differential-based computations that we perform are then perfectly consistent with this continuously defined function.
 We finally build the output image by sampling the ideal, continuously defined intermediate result.
 
+The following figure, taken from
+:ref:`sphx_glr_auto_examples_07_differentials_07_01_differentials_module.py`,
+shows some of these differential maps (gradient magnitude, gradient direction,
+Laplacian and Hessian-based quantities).
+
+.. image:: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_002.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_003.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_004.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_005.png
+   :align: center
+   :width: 100%
+
 Differentiate Examples
 ----------------------
 

@@ -59,6 +59,16 @@ Wavelet Decomposition
 We construct a spline-based multiscale basis (wavelets) by capturing the detail lost at each reduction step. 
 The wavelet (detail) coefficients together with the final coarse approximation allow perfect reconstruction (synthesis).
 
+The next figure, from
+:ref:`sphx_glr_auto_examples_08_multiscale_08_02_wavelet_decomposition.py`,
+shows a three-level 2D Haar decomposition: the coarse approximation in the
+top-left corner and the horizontal, vertical, and diagonal detail sub-bands
+at each scale.
+
+.. image:: /auto_examples/08_multiscale/images/sphx_glr_08_02_wavelet_decomposition_001.png
+   :align: center
+   :width: 100%
+
 At each scale (analysis):
 
 - an approximation is obtained (the reduced signal or image);

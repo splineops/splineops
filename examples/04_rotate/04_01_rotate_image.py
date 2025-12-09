@@ -93,7 +93,7 @@ ax[1].scatter(
     color="red", 
     label="Center of Rotation"
 )
-ax[1].set_title(f"Rotated Image ({rotation_angle}°")
+ax[1].set_title(f"Rotated Image ({rotation_angle}°)")
 ax[1].axis("off")
 ax[1].legend()
 

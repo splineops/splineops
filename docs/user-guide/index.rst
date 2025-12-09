@@ -78,7 +78,7 @@ Module overview
    .. grid-item-card:: Differentials
       :link: 06_differentials
       :link-type: doc
-      :img-top: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_005.png
+      :img-top: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_002.png
       :img-alt: Gradient/Laplacian visualisation
       :shadow: md
       :class-card: sd-rounded-2 sd-border

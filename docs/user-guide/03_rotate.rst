@@ -105,6 +105,16 @@ back to their original reference frame, to compensate for the recentering step, 
    The geometry of the transform (center, axis, angle) is identical across methods; what changes is the spline used for resampling. 
    Different spline degrees trade sharpness for smoothness (e.g., degree 0/nearest → blocky but fast; degree 1/linear → slight blur; degree 3/cubic → smoother, higher-quality edges).
 
+The following figure from
+:ref:`sphx_glr_auto_examples_04_rotate_04_01_rotate_image.py`
+shows an image rotated around a
+user-defined center using cubic interpolation. The red marker indicates the
+chosen center of rotation.
+
+.. image:: /auto_examples/04_rotate/images/sphx_glr_04_01_rotate_image_001.png
+   :align: center
+   :width: 100%
+
 Rotate Examples
 ---------------
 
