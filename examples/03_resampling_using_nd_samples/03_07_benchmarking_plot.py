@@ -42,9 +42,9 @@ import os
 import time
 from typing import Dict, List, Tuple, Optional
 
+# sphinx_gallery_thumbnail_number = 6  # Show the 6th figure as the gallery thumbnail
 import numpy as np
 import matplotlib.pyplot as plt
-# sphinx_gallery_thumbnail_number = 15  # show the 15th plot (kodim07 comparison) as the gallery thumbnail
 from urllib.request import urlopen
 from PIL import Image
 
