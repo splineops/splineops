@@ -15,7 +15,7 @@ We use the smooth module to smooth N-dimensional data.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.smoothing_splines.smoothingspline import smoothing_spline_nd
+from splineops.smoothing_splines.smoothing_spline import smoothing_spline_nd
 
 # %%
 # Sinusoid 3D Data

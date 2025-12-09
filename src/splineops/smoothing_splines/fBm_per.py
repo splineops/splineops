@@ -3,7 +3,7 @@
 from typing import Tuple
 import numpy as np
 import numpy.typing as npt
-from splineops.smoothing_splines.fractsplineautocorr import fractsplineautocorr
+from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
 
 def fBmper(
     epsH: float,

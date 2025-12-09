@@ -1,10 +1,10 @@
-# splineops/src/splineops/spline_interpolation/modes/extensionmodes.py
+# splineops/src/splineops/spline_interpolation/modes/extension_modes.py
 
 from abc import ABCMeta, abstractmethod
 from typing import Tuple
 import numpy.typing as npt
 
-from ..bases.splinebasis import SplineBasis
+from ..bases.spline_basis import SplineBasis
 
 class ExtensionMode(metaclass=ABCMeta):
     # Abstract methods

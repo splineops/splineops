@@ -19,7 +19,7 @@ Interpolate 1D samples with standard interpolation.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.spline_interpolation.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensor_spline import TensorSpline
 from splineops.spline_interpolation.bases.utils import create_basis
 # sphinx_gallery_thumbnail_number = 2  # show second figure as thumbnail
 

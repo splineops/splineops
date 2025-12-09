@@ -1,9 +1,9 @@
-# splineops/src/splineops/spline_interpolation/bases/bspline9basis.py
+# splineops/src/splineops/spline_interpolation/bases/bspline9_basis.py
 
 import numpy as np
 import numpy.typing as npt
 
-from .splinebasis import SplineBasis
+from .spline_basis import SplineBasis
 
 class BSpline9Basis(SplineBasis):
     def __init__(self) -> None:

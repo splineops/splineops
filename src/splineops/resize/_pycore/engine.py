@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Sequence
 from .params import LSParams
-from .resizend import resize_along_axis
+from .resize_nd import resize_along_axis
 
 # Numerical epsilon for zoom comparisons
 _EPS = 1e-12

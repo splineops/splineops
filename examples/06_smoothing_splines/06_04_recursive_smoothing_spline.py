@@ -16,8 +16,8 @@ We plot a recursive smoothing spline with different parameters.
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from splineops.smoothing_splines.smoothingspline import smoothing_spline
-from splineops.smoothing_splines.smoothingspline import recursive_smoothing_spline
+from splineops.smoothing_splines.smoothing_spline import smoothing_spline
+from splineops.smoothing_splines.smoothing_spline import recursive_smoothing_spline
 
 # %%
 # Recursive Smoothing Spline

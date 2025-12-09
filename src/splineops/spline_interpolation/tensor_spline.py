@@ -1,12 +1,12 @@
-# splineops/src/splineops/spline_interpolation/tensorspline.py
+# splineops/src/splineops/spline_interpolation/tensors_pline.py
 
 import numpy as np
 import numpy.typing as npt
 from typing import Sequence, Union, Tuple, cast
 
-from .bases.splinebasis import SplineBasis
+from .bases.spline_basis import SplineBasis
 from .bases.utils import asbasis
-from .modes.extensionmode import ExtensionMode
+from .modes.extension_mode import ExtensionMode
 from .modes.utils import asmode
 from .utils import is_ndarray
 

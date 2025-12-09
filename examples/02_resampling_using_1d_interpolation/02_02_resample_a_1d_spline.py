@@ -24,7 +24,7 @@ Resample a 1D spline with different sampling rate.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from splineops.spline_interpolation.tensorspline import TensorSpline
+from splineops.spline_interpolation.tensor_spline import TensorSpline
 from splineops.spline_interpolation.bases.utils import create_basis
 
 plt.rcParams.update({
