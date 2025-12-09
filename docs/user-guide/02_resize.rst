@@ -32,8 +32,8 @@ which starts from a spline :math:`f` and samples it more coarsely at positions
 The red stems and markers correspond to the new samples :math:`f(Tk)` on the
 coarser grid.
 
-Scaled grids and basis functions
---------------------------------
+Resized Grids and Basis Functions
+---------------------------------
 
 In the interpolation chapter we introduced a 1D spline model of the form
 
@@ -180,7 +180,7 @@ In this language:
   coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
   :math:`g_T`.
 
-Least-squares projection
+Least-Squares Projection
 ------------------------
 
 So far we have described elements of :math:`V_T` by expanding them in terms of
@@ -230,7 +230,7 @@ and then synthesizing with :math:`\varphi_{k,T}`:
 The resized spline :math:`g_T` is thus the least-squares (orthogonal)
 projection of :math:`f` onto the spline space :math:`V_T` [1]_.
 
-Oblique projection
+Oblique Projection
 ------------------
 
 For higher spline orders, the continuous-domain prefilters associated with the
@@ -260,7 +260,7 @@ reducing computational cost.
 The Algorithm
 -------------
 
-At implementation level, :func:`resize` and :func:`resize_degrees` follow the
+At implementation level, :ref:`resize <api-resize>` follows the
 projection framework described above, but organized as a simple sequence of
 1D operations applied axis by axis.
 
@@ -305,13 +305,12 @@ precomputed plan per axis and zoom configuration.
 Implementation
 --------------
 
-Internally, :func:`resize` and :func:`resize_degrees` use two cooperating
-backends:
+Internally, :ref:`resize <api-resize>` uses two cooperating backends:
 
 * A compiled C++ core, wrapped as a small extension module. For each axis, it
   builds a reusable 1D plan that encodes the mapping from output samples back
   to the input grid (support window, spline weights, boundary handling). The
-  actual evaluation is done in double precision in a tight inner loop and
+  actual evaluation is done in double precision in a tight inner loop and is
   parallelized over independent 1D lines when the workload is large enough.
 
 * A pure-NumPy fallback that mirrors the same 1D scheme. It reshapes the data
@@ -324,19 +323,18 @@ Both backends perform all spline computations in 64-bit floating point; input
 and output arrays keep their original dtype (or a user-specified dtype), with
 casting only at the boundary of each axis pass.
 
-The behaviour of :func:`resize` is driven by a triple of spline degrees
+Conceptually, :ref:`resize <api-resize>` is configured by three spline degrees:
 
-.. math::
+* the **interpolation degree**, which sets the underlying spline model,
+* the **analysis degree**, which controls the projection-based prefilter
+  (for antialiasing; ``-1`` means “no projection”),
+* and the **synthesis degree**, which sets the spline model on the resized
+  grid.
 
-    (\text{interpolation degree},\ \text{analysis degree},\ \text{synthesis degree}).
-
-The interpolation degree controls the underlying spline model, the analysis
-degree controls the projection-based prefilter (for antialiasing), and the
-synthesis degree controls the spline model used on the resized grid. The
-built-in antialiasing presets use oblique projection with a lower analysis
+The built-in antialiasing presets use oblique projection with a lower analysis
 degree and a higher synthesis degree:
 
-.. list-table:: Spline degree configuration for oblique projection in ``resize``
+.. list-table:: Spline degree configuration for oblique projection in :ref:`resize <api-resize>`
    :header-rows: 1
 
    * - Method
@@ -357,25 +355,20 @@ degree and a higher synthesis degree:
      - 3
 
 Here, the synthesis degree matches the interpolation degree, defining the
-output spline model, while the analysis degree is chosen lower to keep the
-projection prefilter short, robust, and fast, yet still very close to the
-ideal least-squares solution in [1]_ and [2]_.
+output spline model, while the lower analysis degree keeps the projection
+prefilter short, robust, and efficient, yet still very close to the ideal
+least-squares solution in [1]_ and [2]_.
 
 .. warning::
-   Strict least-squares configurations, where the analysis and synthesis
-   degrees are equal (for example, a cubic–cubic combination), require high-order
-   discrete integration in this framework (fourth order in the cubic case).
-   These repeated running sums are numerically delicate in double precision:
-   for long lines they accumulate round-off error, can slowly drift in mean
-   level, and the corresponding difference operators do not fully cancel this
-   drift. In practice this leads to visible numerical artefacts on realistic
-   image sizes. For that reason, exact high-order least-squares presets are
-   not exposed and are not recommended in routine use. The oblique
-   antialiasing presets above avoid the problematic high-order integration,
-   remain stable in double precision, and stay very close in quality to the
-   ideal least-squares projection; truly exact high-order least-squares
-   schemes are better left to future hardware with wider floating-point
-   formats.
+   Exact least-squares configurations, where the analysis and synthesis
+   degrees are equal (for example, a cubic–cubic combination), require
+   high-order discrete integration in this framework. In double precision
+   this is numerically fragile: over long lines it can accumulate round-off
+   error and produce visible drift or artefacts. For this reason such
+   configurations are not exposed as presets and are not recommended in
+   routine use. The oblique antialiasing presets above avoid the problematic
+   high-order integration while remaining very close in quality to the ideal
+   least-squares projection.
 
 Resize Examples
 ---------------
