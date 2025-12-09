@@ -331,8 +331,23 @@ Conceptually, :ref:`resize <api-resize>` is configured by three spline degrees:
 * and the **synthesis degree**, which sets the spline model on the resized
   grid.
 
-**The built-in antialiasing presets use oblique projection** with a lower analysis
-degree and a higher synthesis degree:
+These degrees are exposed through the :ref:`resize <api-resize>` API via the
+``method`` argument. There are two main families of presets:
+
+* **Standard interpolation presets** – these use **no projection**  
+  (analysis degree ``-1``) and perform plain spline interpolation:
+
+  - ``"fast"``      → interpolation degree 0 (nearest), analysis degree -1, synthesis degree 0  
+  - ``"linear"``    → interpolation degree 1, analysis degree -1, synthesis degree 1  
+  - ``"quadratic"`` → interpolation degree 2, analysis degree -1, synthesis degree 2  
+  - ``"cubic"``     → interpolation degree 3, analysis degree -1, synthesis degree 3  
+
+  These are appropriate when you mainly want smooth interpolation and are not
+  aggressively downsampling.
+
+* **Antialiasing presets** – these use an **oblique projection** with a lower
+  analysis degree and a higher synthesis degree, designed for downsampling
+  (and its inverse round-trip):
 
 .. list-table:: Spline degree configuration for oblique projection in :ref:`resize <api-resize>`
    :header-rows: 1
