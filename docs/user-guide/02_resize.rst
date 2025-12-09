@@ -258,6 +258,51 @@ oblique projection retains the same approximation order as the least-squares
 projection and yields very similar quality in practice, while significantly
 reducing computational cost. 
 
+The Algorithm
+-------------
+
+At implementation level, :func:`resize` and :func:`resize_degrees` follow the
+projection framework described above, but organized as a simple sequence of
+1D operations applied axis by axis.
+
+For a single axis, the algorithm works on one 1D line at a time:
+
+1. **Spline prefilter.**  
+   The input samples along the line are first converted into spline
+   coefficients using a stable recursive filter. After this step, the line
+   represents a continuous spline in the sense of the previous sections,
+   rather than just raw samples.
+
+2. **Optional projection prefilter.**  
+   In antialiasing modes, a small number of discrete integrations and
+   differences are applied to these coefficients. This realizes the
+   least-squares / oblique projection prefilter from [1]_ and [2]_, and acts
+   as a controlled low-pass filter when down-sampling. For pure
+   interpolation this stage is skipped.
+
+3. **Boundary handling.**  
+   Because real data are finite, each line is extended beyond its endpoints
+   by symmetric or antisymmetric mirroring, depending on the spline degree.
+   This produces a slightly longer “virtual” line on which the spline is
+   evaluated, without introducing visible edge artefacts.
+
+4. **Resampling on the new grid.**  
+   For the chosen zoom, the algorithm precomputes, once per axis, how every
+   output position maps back to the original grid: which input coefficients
+   contribute, and with which spline weights. During execution, each output
+   sample is then obtained as a short weighted sum over that local window.
+   This precomputation is what makes the method both accurate and efficient.
+
+5. **Projection tail (if enabled).**  
+   When using antialiasing, the intermediate result is brought back from the
+   analysis space to the desired spline model by applying the corresponding
+   discrete differences and a final spline reconstruction on the output grid.
+
+For N-dimensional data, this 1D scheme is applied separately along each axis
+in turn (a separable algorithm). All other axes are treated as batch
+dimensions, so the same 1D logic is reused for many lines, with a single
+precomputed plan per axis and zoom configuration.
+
 Implementation
 --------------
 
