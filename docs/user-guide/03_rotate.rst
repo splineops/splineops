@@ -8,7 +8,7 @@ Rotate
 Overview
 --------
 
-The :ref:`rotate <api-rotate>` module in :ref:`Splineops <api-index>` allows for the rotation of 2D or 3D data arrays 
+The :ref:`rotate <api-rotate>` module in :ref:`SplineOps <api-index>` allows for the rotation of 2D or 3D data arrays 
 around a specified axis and center using spline interpolation. 
 This function is widely used in image processing, computer graphics, and scientific computing [1]_.
 

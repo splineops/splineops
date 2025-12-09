@@ -3,7 +3,7 @@
 User Guide
 ==========
 
-This guide provides detailed explanations, tutorials, and examples to use the modules available in :ref:`Splineops <api-index>`.
+This guide provides detailed explanations, tutorials, and examples to use the modules available in :ref:`SplineOps <api-index>`.
 
 .. toctree::
    :maxdepth: 2

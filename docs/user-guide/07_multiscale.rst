@@ -7,7 +7,7 @@ Multiscale
 
 Overview
 --------
-The :ref:`multiscale <api-multiscale>` module in :ref:`Splineops <api-index>` models signals and images as a hierarchy of spline approximations at progressively coarser resolutions. 
+The :ref:`multiscale <api-multiscale>` module in :ref:`SplineOps <api-index>` models signals and images as a hierarchy of spline approximations at progressively coarser resolutions. 
 On top of this model, it provides reduction (spline filtering + dyadic decimation) and expansion 
 (upsampling + spline interpolation), which are the building blocks of pyramid and wavelet transforms [1]_, [2]_, [3]_, [4]_.
 

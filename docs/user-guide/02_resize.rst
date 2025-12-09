@@ -8,7 +8,7 @@ Resize
 Overview
 --------
 
-The :ref:`resize <api-resize>` module in :ref:`Splineops <api-index>` provides high-performance,
+The :ref:`resize <api-resize>` module in :ref:`SplineOps <api-index>` provides high-performance,
 high-fidelity resizing for N-dimensional arrays. 
 
 Conceptually, resizing means:
@@ -455,6 +455,126 @@ least-squares solution in [1]_ and [2]_.
    in routine use. **The oblique antialiasing presets above avoid the
    problematic high-order integration while remaining very close in quality**
    to the ideal least-squares projection.
+
+Benchmarking
+------------
+
+To put :ref:`resize <api-resize>` in context, the examples
+
+- :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_06_benchmarking.py`
+- :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_07_benchmarking_plot.py`
+
+compare SplineOps against widely used interpolation libraries on realistic
+image resizing tasks.
+
+Round-trip ROI benchmark
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+In :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_06_benchmarking.py`,
+several Kodak test images are:
+
+1. **Downsampled** by an image-specific zoom factor :math:`z < 1`,
+2. **Upsampled back** to the original size with the same method (round-trip),
+3. Evaluated on a small **region of interest (ROI)** using
+
+   - round-trip runtime (mean ± standard deviation),
+   - SNR and MSE on the ROI,
+   - SSIM on the ROI.
+
+For each image and method, the example also builds ROI montages and
+normalized error maps that make aliasing and blur easy to see by eye.
+
+The compared methods include:
+
+- `scipy.ndimage.zoom`_ (cubic),
+- `cv2.resize`_ with ``INTER_CUBIC``,
+- `PIL.Image.resize`_ with BICUBIC resampling,
+- `skimage.transform.resize`_ (cubic, with and without ``anti_aliasing``),
+- `torch.nn.functional.interpolate`_ in bicubic mode (with and without
+  ``antialias=True``),
+- **SplineOps Standard cubic** (plain cubic spline interpolation),
+- **SplineOps Cubic Antialiasing** (projection-based low-pass + resize).
+
+On the Kodak examples shipped with SplineOps, the results are consistent with
+the theory:
+
+- **SplineOps Standard cubic** behaves like the “classic” cubic filters
+  (SciPy, OpenCV, scikit-image, PyTorch bicubic without antialiasing): similar
+  sharpness, similar SNR/MSE/SSIM, with competitive or better runtimes than
+  the heavier scientific stacks.
+- **SplineOps Cubic Antialiasing** generally achieves the best or near-best
+  SNR and SSIM on the ROI for strong downsampling, while strongly reducing
+  aliasing artefacts compared to plain cubic, at the cost of only a modest
+  runtime overhead.
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_010.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_015.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_012.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_016.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_014.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_017.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_018.png
+   :align: center
+   :width: 100%
+
+Zoom-sweep benchmark
+~~~~~~~~~~~~~~~~~~~~
+
+In
+:ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_07_benchmarking_plot.py`,
+a single Kodak image is used to run a **1D sweep of zoom factors**
+:math:`0 < z < 2`. For each method and zoom, the script:
+
+- performs a forward and backward resize in float32,
+- measures round-trip **time**, **SNR** and **SSIM** on the full image,
+- plots these quantities as a function of :math:`z` for both **linear** and
+  **cubic** variants.
+
+This provides an at-a-glance view of the quality–speed trade-off of each
+backend:
+
+- OpenCV and PyTorch tend to be the fastest;
+- SciPy and scikit-image tend to be the slowest;
+- SplineOps sits in between, with **Standard** methods matching the quality
+  of traditional cubic/linear filters, and **Antialiasing** methods pushing
+  quality (higher SNR/SSIM at small :math:`z`) while remaining competitive
+  in runtime.
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_003.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_004.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_005.png
+   :align: center
+   :width: 100%
+
+.. _scipy.ndimage.zoom: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.zoom.html
+.. _cv2.resize: https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html
+.. _PIL.Image.resize: https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Image.resize
+.. _skimage.transform.resize: https://scikit-image.org/docs/0.25.x/api/skimage.transform.html#skimage.transform.resize
+.. _torch.nn.functional.interpolate: https://pytorch.org/docs/stable/generated/torch.nn.functional.interpolate.html
 
 Resize Examples
 ---------------

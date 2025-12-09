@@ -6,7 +6,7 @@ Smoothing Splines
 Overview
 --------
 
-The :ref:`smoothing splines <api-smoothing_splines>` module in :ref:`Splineops <api-index>` provides tools 
+The :ref:`smoothing splines <api-smoothing_splines>` module in :ref:`SplineOps <api-index>` provides tools 
 to fit fractional smoothing splines to noisy data. Think of these splines as flexible low-pass filters whose sharpness can
 be tuned continuously, making them effective for signals and images that
 exhibit repeating, self-similar patterns.

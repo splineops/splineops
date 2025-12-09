@@ -8,7 +8,7 @@ Adaptive Regression Splines
 Overview
 --------
 
-The :ref:`adaptive regression splines <api-adaptive_regression_splines>` module in :ref:`Splineops <api-index>` performs 
+The :ref:`adaptive regression splines <api-adaptive_regression_splines>` module in :ref:`SplineOps <api-index>` performs 
 one-dimensional regression with total-variation (TV) regularisation on the second derivative [1]_.  
 Because TV is measured with the measure norm (denoted
 :math:`\|\cdot\|_{\mathcal{M}}`), solutions are piecewise-linear splines that
