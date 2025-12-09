@@ -860,7 +860,7 @@ AA_METHOD_LABELS = [
 
 
 # %%
-# Benchmarking helpers
+# Benchmarking Helpers
 # --------------------
 
 def benchmark_image(
