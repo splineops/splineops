@@ -301,6 +301,7 @@ Resize Examples
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_03_antialiasing.py`
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_04_how_bad_aliasing_can_be.py`
 * :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_05_benchmarking.py`
+* :ref:`sphx_glr_auto_examples_03_resampling_using_2d_interpolation_03_06_benchmarking_plot.py`
 
 References
 ----------
