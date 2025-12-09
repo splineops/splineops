@@ -515,18 +515,26 @@ def build_methods_for_degree(degree: str) -> Tuple[Dict[str, Tuple[str, str | No
 
     METHODS: Dict[str, Tuple[str, str | None]] = {}
 
+    # --- splineops first: Antialiasing, then Standard ---
+    if ENABLE_SPLINEOPS_ANTIALIASING:
+        METHODS[f"Splineops Antialiasing {degree_label}"] = (
+            "splineops",
+            f"{degree}-antialiasing",
+        )
+
+    if ENABLE_SPLINEOPS_STANDARD:
+        METHODS[f"Splineops Standard {degree_label}"] = (
+            "splineops",
+            degree,
+        )
+
+    # --- then the rest ---
+
     # SciPy
     if ENABLE_SCIPY and _HAS_SCIPY:
         METHODS[f"SciPy {degree_label}"] = ("scipy", degree)
     elif ENABLE_SCIPY:
         print("[info] SciPy not found; 'SciPy' curve will be omitted.")
-
-    # splineops: Standard / Antialiasing
-    if ENABLE_SPLINEOPS_STANDARD:
-        METHODS[f"Standard {degree_label}"] = ("splineops", degree)
-
-    if ENABLE_SPLINEOPS_ANTIALIASING:
-        METHODS[f"Antialiasing {degree_label}"] = ("splineops", f"{degree}-antialiasing")
 
     # PyTorch
     if ENABLE_TORCH:
@@ -557,7 +565,6 @@ def build_methods_for_degree(degree: str) -> Tuple[Dict[str, Tuple[str, str | No
             print("[info] scikit-image not found; 'scikit-image' curve will be omitted.")
 
     return METHODS, degree_label
-
 
 def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]], str]:
     """
