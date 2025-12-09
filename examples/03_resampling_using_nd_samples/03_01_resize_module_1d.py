@@ -210,7 +210,7 @@ plt.plot(
 plt.plot(
     g_support_x,
     g_samples_cubic,
-    "p",
+    "s",
     mfc="none",
     markersize=10,
     markeredgewidth=2,
@@ -299,7 +299,7 @@ plt.plot(
 plt.plot(
     g_support_x,
     g_samples_cubic,
-    "p",
+    "s",
     mfc="none",
     markersize=10,
     markeredgewidth=2,
