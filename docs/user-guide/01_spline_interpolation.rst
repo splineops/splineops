@@ -161,7 +161,7 @@ clear case, do inspect abscissa at 2.
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 The example
-:ref:`sphx_glr_auto_examples_02_resampling_using_1d_interpolation_02_01_interpolate_1d_samples.py`
+:ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_01_interpolate_1d_samples.py`
 illustrates how a 1D sequence of samples :math:`f[k]` is interpolated by a
 cubic B-spline, and how this spline can be written as a sum of shifted and
 weighted basis functions.
@@ -189,7 +189,7 @@ Below we reproduce three of the figures from that example.
 
 The first figure shows the discrete samples :math:`f[k]` alone:
 
-.. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_001.png
+.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_01_interpolate_1d_samples_001.png
    :align: center
    :width: 100%
 
@@ -197,7 +197,7 @@ The second figure displays the shifted cubic B-splines :math:`\beta^{3}(x-k)`
 weighted by the corresponding coefficients :math:`c[k]`. Each thin curve is one term
 :math:`c[k]\beta^{3}(x-k)` in the spline expansion:
 
-.. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_002.png
+.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_01_interpolate_1d_samples_002.png
    :align: center
    :width: 100%
 
@@ -206,7 +206,7 @@ overlaid with the original samples :math:`f[k]` (stems). One can see that the sp
 passes exactly through all sample points, while providing a smooth, continuously
 defined representation in between:
 
-.. image:: /auto_examples/02_resampling_using_1d_interpolation/images/sphx_glr_02_01_interpolate_1d_samples_003.png
+.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_01_interpolate_1d_samples_003.png
    :align: center
    :width: 100%
 
