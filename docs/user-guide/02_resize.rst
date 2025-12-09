@@ -32,8 +32,8 @@ which starts from a spline :math:`f` and samples it more coarsely at positions
 The red stems and markers correspond to the new samples :math:`f(Tk)` on the
 coarser grid.
 
-Resized Grids and Basis Functions
----------------------------------
+Resized Grids
+-------------
 
 In the interpolation chapter we introduced a 1D spline model of the form
 
@@ -340,17 +340,33 @@ Implementation
 
 Internally, :ref:`resize <api-resize>` uses two cooperating backends:
 
-* A compiled C++ core, wrapped as a small extension module. For each axis, it
-  builds a reusable 1D plan that encodes the mapping from output samples back
-  to the input grid (support window, spline weights, boundary handling). The
-  actual evaluation is done in double precision in a tight inner loop and is
-  parallelized over independent 1D lines when the workload is large enough.
+* A compiled **C++ core**, wrapped as a small extension module. This is the
+  primary implementation used in normal installations.
 
-* A pure-NumPy fallback that mirrors the same 1D scheme. It reshapes the data
-  so that each line along the resized axis is contiguous, processes lines in
-  batches, and uses vectorized gathers and reductions to apply the same
-  precomputed weights. Plans are cached and reused when the same configuration
-  is requested again.
+  For each axis, it:
+
+  - builds a reusable **1D resampling plan** that encodes, for every output
+    position, which input coefficients contribute and with which spline
+    weights (including boundary handling via mirrored extension),
+  - constructs a single contiguous **extended buffer** per line that contains
+    the mirrored input samples, so the inner loop only sees simple pointer
+    arithmetic and dot products,
+  - evaluates all spline sums in **double precision**, using small dense
+    dot products that can exploit SIMD instructions (AVX2, AVX-512, NEON)
+    when available,
+  - and **parallelizes over independent lines** with a lightweight
+    :mod:`std::thread` pool whenever the estimated workload is large enough.
+
+  The plan is computed once per axis/zoom/degrees combination and then reused
+  across all lines along that axis, which keeps the per-call overhead low even
+  for large N-D arrays.
+
+* A pure-**NumPy fallback** that mirrors the same 1D scheme at a higher level.
+  It reshapes the data so that each line along the resized axis is contiguous,
+  processes lines in batches, and uses vectorized gathers and reductions to
+  apply the same precomputed weights. This backend is mainly intended for
+  environments where the C++ extension cannot be built; it is numerically
+  equivalent but typically slower.
 
 Both backends perform all spline computations in 64-bit floating point; input
 and output arrays keep their original dtype (or a user-specified dtype), with
