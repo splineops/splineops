@@ -3,8 +3,8 @@
 # sphinx_gallery_end_ignore
 
 """
-Resize Module (1D)
-==================
+Resize Module 1D
+================
 
 Starting from a 1D signal :math:`f[k]` on a unit grid, we perform a 1D resize
 directly on the samples and compare:
@@ -12,13 +12,21 @@ directly on the samples and compare:
 - a coarse spline built from ``resize(..., method="cubic")``,
 - a coarse spline built from ``resize(..., method="cubic-antialiasing")``,
 - the interpolating spline :math:`f(x)` of the original samples for reference.
+
+We build up the visualization step-by-step:
+
+1. Only the original samples :math:`f[k]`.
+2. The fine interpolating spline :math:`f(x)`.
+3. The coarse spline from ``resize(..., "cubic")``.
+4. The coarse spline from ``resize(..., "cubic-antialiasing")``.
+5. Everything together on one plot.
 """
 
 # %%
 # Imports
 # -------
 
-# sphinx_gallery_thumbnail_number = 1
+# sphinx_gallery_thumbnail_number = 5  # show the final combined plot as thumbnail
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -53,6 +61,29 @@ f_samples_1d = np.array([
     0.50695, 0.544767, 0.555373
 ], dtype=np.float64)
 
+# %%
+# Original Samples
+# ----------------
+#
+# We start by visualizing only the discrete samples :math:`f[k]` on the unit grid.
+
+plt.figure(figsize=(10, 4))
+plt.title("Original samples f[k]")
+plt.stem(f_support_1d, f_samples_1d, basefmt=" ")
+plt.axhline(0, color="black", linewidth=1, zorder=0)
+plt.xlabel("k")
+plt.ylabel("f[k]")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# %%
+# Fine Spline f(x)
+# ----------------
+#
+# Next, we build the fine interpolating spline :math:`f(x)` on the unit grid
+# using cubic B-splines, and sample it densely for visualization.
+
 # Fine spline f(x) on V₁ (unit grid)
 plot_points_per_unit_1d = 12
 base_1d = "bspline3"
@@ -71,6 +102,30 @@ f_coords_1d = np.array([
     for q in range(plot_points_per_unit_1d * number_of_samples)
 ])
 f_data_1d = f_1d(coordinates=(f_coords_1d,), grid=False)
+
+plt.figure(figsize=(10, 4))
+plt.title("Fine spline f(x) interpolating f[k]")
+plt.stem(f_support_1d, f_samples_1d, basefmt=" ", label="f[k] samples")
+plt.axhline(0, color="black", linewidth=1, zorder=0)
+plt.plot(
+    f_coords_1d,
+    f_data_1d,
+    linewidth=2,
+    label="fine spline f(x)",
+)
+plt.xlabel("x")
+plt.ylabel("Amplitude")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# %%
+# Coarse Grid and Resize
+# ----------------------
+#
+# We now choose a coarser grid and obtain coarse samples by resizing the
+# original discrete signal with two different methods.
 
 # 2) Choose a coarse length: round(27 // π)
 val_T = np.pi
@@ -122,12 +177,102 @@ g_coords_dense = f_coords_1d
 g_cubic_data = g_cubic_ts(coordinates=(g_coords_dense,), grid=False)
 g_aa_data    = g_aa_ts(coordinates=(g_coords_dense,), grid=False)
 
-# 5) Optional sanity check at the coarse nodes: resize(cubic) vs fine spline sampled at x_l
+# Optional sanity check at the coarse nodes: resize(cubic) vs fine spline sampled at x_l
 f_at_xg = f_1d(coordinates=(g_support_x,), grid=False)
 mse_cubic_nodes = np.mean((g_samples_cubic - f_at_xg) ** 2)
 print(f"MSE at coarse nodes: resize(cubic) vs f(x_l) = {mse_cubic_nodes:.6e}")
 
-# 6) Plot comparison
+# %%
+# Coarse Cubic Spline
+# -------------------
+#
+# We now show the coarse spline built from the ``"cubic"`` resize together
+# with the original samples and fine spline.
+
+plt.figure(figsize=(10, 4))
+plt.title("Coarse spline from resize(..., 'cubic')")
+plt.stem(f_support_1d, f_samples_1d, basefmt=" ", label="f[k] samples")
+plt.axhline(0, color="black", linewidth=1, zorder=0)
+
+plt.plot(
+    f_coords_1d,
+    f_data_1d,
+    linewidth=2,
+    alpha=0.5,
+    label="fine spline f(x)",
+)
+plt.plot(
+    g_coords_dense,
+    g_cubic_data,
+    linewidth=2,
+    label="coarse spline (cubic)",
+)
+plt.plot(
+    g_support_x,
+    g_samples_cubic,
+    "p",
+    mfc="none",
+    markersize=10,
+    markeredgewidth=2,
+    label="coarse samples (cubic)",
+)
+
+plt.xlabel("x")
+plt.ylabel("Amplitude")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# %%
+# Coarse Cubic Antialiasing Spline
+# --------------------------------
+#
+# Similarly, we show the coarse spline obtained with the antialiasing
+# preset, which inserts a low-pass step before decimation.
+
+plt.figure(figsize=(10, 4))
+plt.title("Coarse spline from resize(..., 'cubic-antialiasing')")
+plt.stem(f_support_1d, f_samples_1d, basefmt=" ", label="f[k] samples")
+plt.axhline(0, color="black", linewidth=1, zorder=0)
+
+plt.plot(
+    f_coords_1d,
+    f_data_1d,
+    linewidth=2,
+    alpha=0.5,
+    label="fine spline f(x)",
+)
+plt.plot(
+    g_coords_dense,
+    g_aa_data,
+    linewidth=2,
+    label="coarse spline (cubic-antialiasing)",
+)
+plt.plot(
+    g_support_x,
+    g_samples_aa,
+    "o",
+    mfc="none",
+    markersize=8,
+    markeredgewidth=2,
+    label="coarse samples (cubic-antialiasing)",
+)
+
+plt.xlabel("x")
+plt.ylabel("Amplitude")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# %%
+# All Splines Together
+# --------------------
+#
+# Finally, we overlay both coarse splines on top of the fine spline and
+# original samples for a direct comparison.
+
 plt.figure(figsize=(10, 4))
 plt.title("1D resize on f[k]: cubic vs cubic-antialiasing")
 
@@ -139,7 +284,6 @@ plt.axhline(0, color="black", linewidth=1, zorder=0)
 plt.plot(
     f_coords_1d,
     f_data_1d,
-    color="gray",
     linewidth=2,
     alpha=0.5,
     label="fine f(x) (reference)",
@@ -159,6 +303,7 @@ plt.plot(
     mfc="none",
     markersize=10,
     markeredgewidth=2,
+    label="coarse samples (cubic)",
 )
 
 # Coarse spline from resize(..., "cubic-antialiasing")
@@ -175,6 +320,7 @@ plt.plot(
     mfc="none",
     markersize=8,
     markeredgewidth=2,
+    label="coarse samples (cubic-antialiasing)",
 )
 
 plt.xlabel("x")
