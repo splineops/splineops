@@ -13,6 +13,16 @@ This example performs a 1D sweep of zoom factors and evaluates how different
 * **round-trip SNR** between the original and the recovered image,
 * **round-trip SSIM** between the original and the recovered image.
 
+In plain language:
+
+* **SNR (signal-to-noise ratio)** tells you how much error was introduced by
+  the round-trip. Higher SNR means the recovered image is closer to the
+  original (less "noise" added by the resampling).
+* **SSIM (structural similarity index)** measures how similar the structure of
+  the recovered image is to the original, focusing on local patterns of
+  intensity (edges, textures, contrasts). Values close to 1 mean the images
+  look very similar; values closer to 0 mean they differ a lot.
+
 For each zoom factor :math:`z`, we run two resizes:
 
 1. forward:  original → zoomed image,
