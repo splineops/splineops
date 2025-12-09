@@ -1,11 +1,11 @@
-# splineops/src/splineops/resize/_pycore/resizend.py
+# splineops/src/splineops/resize/_pycore/resize_nd.py
 from __future__ import annotations
 import os
 from functools import lru_cache
 from time import perf_counter
 import numpy as np
 from .params import LSParams
-from .plan1d import make_plan_1d
+from .plan_1d import make_plan_1d
 from .filters import (
     get_interpolation_coefficients_batch,
     get_samples_batch,
