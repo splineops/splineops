@@ -34,8 +34,6 @@ Notes
 - All ops run on grayscale images normalized to [0, 1] for metrics.
 - Methods with missing deps are marked "unavailable" in the console and skipped
   from the ROI montages.
-- If ``USE_COLOR_VIS`` is True, we additionally show color intros and color
-  ROI montages for each image, while still computing all metrics on grayscale.
 """
 
 # %%
@@ -77,10 +75,6 @@ def fmt_ms(seconds: float) -> str:
 
 # Benchmark configuration
 N_TRIALS = 10
-
-# Global flag: whether to show color intros / color ROI montage in addition
-# to grayscale metrics and grayscale ROI montage.
-USE_COLOR_VIS = True
 
 # Optional deps
 try:
@@ -139,6 +133,7 @@ KODAK_IMAGES = [
     ("kodim14", f"{KODAK_BASE}/kodim14.png"),
     ("kodim15", f"{KODAK_BASE}/kodim15.png"),
     ("kodim19", f"{KODAK_BASE}/kodim19.png"),
+    ("kodim22", f"{KODAK_BASE}/kodim22.png"),
     ("kodim23", f"{KODAK_BASE}/kodim23.png"),
 ]
 
@@ -168,6 +163,11 @@ IMAGE_CONFIG: Dict[str, Dict[str, object]] = {
         zoom=0.2,
         roi_size_px=256,
         roi_center_frac=(0.65, 0.35),
+    ),
+    "kodim22": dict(
+        zoom=0.2,
+        roi_size_px=256,
+        roi_center_frac=(0.50, 0.25),
     ),
     "kodim23": dict(
         zoom=0.15,
@@ -1523,8 +1523,6 @@ def show_roi_montage_color_main_from_bench(
     orig_rgb: np.ndarray,
 ) -> None:
     """Color ROI montage for the main subset of methods."""
-    if not USE_COLOR_VIS:
-        return
 
     roi_rect = bench["roi_rect"]      # (row_top, col_left, h, w)
     z = float(bench["z"])
@@ -1598,8 +1596,6 @@ def show_roi_montage_color_aa_from_bench(
     orig_rgb: np.ndarray,
 ) -> None:
     """Color ROI montage for AA / smoothing subset."""
-    if not USE_COLOR_VIS:
-        return
 
     roi_rect = bench["roi_rect"]
     z = float(bench["z"])
@@ -1678,12 +1674,9 @@ for name, url in KODAK_IMAGES:
     gray = _load_kodak_gray(url)
     orig_images[name] = gray
 
-    if USE_COLOR_VIS:
-        rgb = _load_kodak_rgb(url)
-        orig_images_rgb[name] = rgb
-        print(f"Loaded {name} from {url}  |  gray shape={gray.shape}, rgb shape={rgb.shape}")
-    else:
-        print(f"Loaded {name} from {url}  |  gray shape={gray.shape}")
+    rgb = _load_kodak_rgb(url)
+    orig_images_rgb[name] = rgb
+    print(f"Loaded {name} from {url}  |  gray shape={gray.shape}, rgb shape={rgb.shape}")
 
 print("\nTimings averaged over "
       f"{N_TRIALS} runs per method (1 warm-up run not counted).\n")
@@ -1698,9 +1691,6 @@ def _color_intro_for_image(
     img_name: str,
     bench: Dict[str, object],
 ) -> None:
-    if not USE_COLOR_VIS:
-        show_intro_from_bench(bench)
-        return
     if not _HAS_SPLINEOPS:
         show_intro_from_bench(bench)
         return
@@ -1750,25 +1740,59 @@ bench_kodim05 = benchmark_image(
     degree_label="Cubic",
 )
 
+# %%
+# Original and Resized
+# ~~~~~~~~~~~~~~~~~~~~
+
 _color_intro_for_image(img_name, bench_kodim05)
 
-# ROI Comparison (main subset, grayscale)
+# %%
+# ROI Comparison
+# ~~~~~~~~~~~~~~
+
 show_roi_montage_main_from_bench(bench_kodim05)
+
+# %%
+# ROI Comparison Error
+# ~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_main_from_bench(bench_kodim05)
 
-# ROI Comparison (AA subset, grayscale)
+# %%
+# ROI Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_roi_montage_aa_from_bench(bench_kodim05)
+
+# %%
+# ROI Comparison Error (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_aa_from_bench(bench_kodim05)
 
-# Color ROIs
-if USE_COLOR_VIS:
-    show_roi_montage_color_main_from_bench(bench_kodim05, orig_images_rgb[img_name])
-    show_roi_montage_color_aa_from_bench(bench_kodim05, orig_images_rgb[img_name])
+# %%
+# ROI Color Comparison
+# ~~~~~~~~~~~~~~~~~~~~
 
-# Timing / SNR / SSIM
+show_roi_montage_color_main_from_bench(bench_kodim05, orig_images_rgb[img_name])
+
+# %%
+# ROI Color Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_aa_from_bench(bench_kodim05, orig_images_rgb[img_name])
+
+# %%
+# Timing Comparison
+# ~~~~~~~~~~~~~~~~~
+
 show_timing_plot_from_bench(bench_kodim05)
-show_snr_ssim_plot_from_bench(bench_kodim05)
 
+# %%
+# SNR/SSIM Comparison
+# ~~~~~~~~~~~~~~~~~~~
+
+show_snr_ssim_plot_from_bench(bench_kodim05)
 
 # %%
 # Image: kodim07
@@ -1790,21 +1814,59 @@ bench_kodim07 = benchmark_image(
     degree_label="Cubic",
 )
 
+# %%
+# Original and Resized
+# ~~~~~~~~~~~~~~~~~~~~
+
 _color_intro_for_image(img_name, bench_kodim07)
 
+# %%
+# ROI Comparison
+# ~~~~~~~~~~~~~~
+
 show_roi_montage_main_from_bench(bench_kodim07)
+
+# %%
+# ROI Comparison Error
+# ~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_main_from_bench(bench_kodim07)
 
+# %%
+# ROI Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_roi_montage_aa_from_bench(bench_kodim07)
+
+# %%
+# ROI Comparison Error (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_aa_from_bench(bench_kodim07)
 
-if USE_COLOR_VIS:
-    show_roi_montage_color_main_from_bench(bench_kodim07, orig_images_rgb[img_name])
-    show_roi_montage_color_aa_from_bench(bench_kodim07, orig_images_rgb[img_name])
+# %%
+# ROI Color Comparison
+# ~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_main_from_bench(bench_kodim07, orig_images_rgb[img_name])
+
+# %%
+# ROI Color Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_aa_from_bench(bench_kodim07, orig_images_rgb[img_name])
+
+# %%
+# Timing Comparison
+# ~~~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim07)
-show_snr_ssim_plot_from_bench(bench_kodim07)
 
+# %%
+# SNR/SSIM Comparison
+# ~~~~~~~~~~~~~~~~~~~
+
+show_snr_ssim_plot_from_bench(bench_kodim07)
 
 # %%
 # Image: kodim14
@@ -1826,21 +1888,59 @@ bench_kodim14 = benchmark_image(
     degree_label="Cubic",
 )
 
+# %%
+# Original and Resized
+# ~~~~~~~~~~~~~~~~~~~~
+
 _color_intro_for_image(img_name, bench_kodim14)
 
+# %%
+# ROI Comparison
+# ~~~~~~~~~~~~~~
+
 show_roi_montage_main_from_bench(bench_kodim14)
+
+# %%
+# ROI Comparison Error
+# ~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_main_from_bench(bench_kodim14)
 
+# %%
+# ROI Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_roi_montage_aa_from_bench(bench_kodim14)
+
+# %%
+# ROI Comparison Error (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_aa_from_bench(bench_kodim14)
 
-if USE_COLOR_VIS:
-    show_roi_montage_color_main_from_bench(bench_kodim14, orig_images_rgb[img_name])
-    show_roi_montage_color_aa_from_bench(bench_kodim14, orig_images_rgb[img_name])
+# %%
+# ROI Color Comparison
+# ~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_main_from_bench(bench_kodim14, orig_images_rgb[img_name])
+
+# %%
+# ROI Color Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_aa_from_bench(bench_kodim14, orig_images_rgb[img_name])
+
+# %%
+# Timing Comparison
+# ~~~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim14)
-show_snr_ssim_plot_from_bench(bench_kodim14)
 
+# %%
+# SNR/SSIM Comparison
+# ~~~~~~~~~~~~~~~~~~~
+
+show_snr_ssim_plot_from_bench(bench_kodim14)
 
 # %%
 # Image: kodim15
@@ -1862,21 +1962,59 @@ bench_kodim15 = benchmark_image(
     degree_label="Cubic",
 )
 
+# %%
+# Original and Resized
+# ~~~~~~~~~~~~~~~~~~~~
+
 _color_intro_for_image(img_name, bench_kodim15)
 
+# %%
+# ROI Comparison
+# ~~~~~~~~~~~~~~
+
 show_roi_montage_main_from_bench(bench_kodim15)
+
+# %%
+# ROI Comparison Error
+# ~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_main_from_bench(bench_kodim15)
 
+# %%
+# ROI Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_roi_montage_aa_from_bench(bench_kodim15)
+
+# %%
+# ROI Comparison Error (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_aa_from_bench(bench_kodim15)
 
-if USE_COLOR_VIS:
-    show_roi_montage_color_main_from_bench(bench_kodim15, orig_images_rgb[img_name])
-    show_roi_montage_color_aa_from_bench(bench_kodim15, orig_images_rgb[img_name])
+# %%
+# ROI Color Comparison
+# ~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_main_from_bench(bench_kodim15, orig_images_rgb[img_name])
+
+# %%
+# ROI Color Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_aa_from_bench(bench_kodim15, orig_images_rgb[img_name])
+
+# %%
+# Timing Comparison
+# ~~~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim15)
-show_snr_ssim_plot_from_bench(bench_kodim15)
 
+# %%
+# SNR/SSIM Comparison
+# ~~~~~~~~~~~~~~~~~~~
+
+show_snr_ssim_plot_from_bench(bench_kodim15)
 
 # %%
 # Image: kodim19
@@ -1898,20 +2036,133 @@ bench_kodim19 = benchmark_image(
     degree_label="Cubic",
 )
 
+# %%
+# Original and Resized
+# ~~~~~~~~~~~~~~~~~~~~
+
 _color_intro_for_image(img_name, bench_kodim19)
 
+# %%
+# ROI Comparison
+# ~~~~~~~~~~~~~~
+
 show_roi_montage_main_from_bench(bench_kodim19)
+
+# %%
+# ROI Comparison Error
+# ~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_main_from_bench(bench_kodim19)
 
+# %%
+# ROI Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_roi_montage_aa_from_bench(bench_kodim19)
+
+# %%
+# ROI Comparison Error (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_aa_from_bench(bench_kodim19)
 
-if USE_COLOR_VIS:
-    show_roi_montage_color_main_from_bench(bench_kodim19, orig_images_rgb[img_name])
-    show_roi_montage_color_aa_from_bench(bench_kodim19, orig_images_rgb[img_name])
+# %%
+# ROI Color Comparison
+# ~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_main_from_bench(bench_kodim19, orig_images_rgb[img_name])
+
+# %%
+# ROI Color Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_aa_from_bench(bench_kodim19, orig_images_rgb[img_name])
+
+# %%
+# Timing Comparison
+# ~~~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim19)
+
+# %%
+# SNR/SSIM Comparison
+# ~~~~~~~~~~~~~~~~~~~
+
 show_snr_ssim_plot_from_bench(bench_kodim19)
+
+# %%
+# Image: kodim22
+# --------------
+
+img_name = "kodim22"
+img_orig = orig_images[img_name]
+cfg = IMAGE_CONFIG[img_name]
+zoom = float(cfg["zoom"])
+roi_size_px = int(cfg["roi_size_px"])
+roi_center_frac = tuple(map(float, cfg["roi_center_frac"]))  # type: ignore[arg-type]
+
+bench_kodim22 = benchmark_image(
+    img_name=img_name,
+    gray=img_orig,
+    zoom=zoom,
+    roi_size_px=roi_size_px,
+    roi_center_frac=roi_center_frac,
+    degree_label="Cubic",
+)
+
+# %%
+# Original and Resized
+# ~~~~~~~~~~~~~~~~~~~~
+
+_color_intro_for_image(img_name, bench_kodim22)
+
+# %%
+# ROI Comparison
+# ~~~~~~~~~~~~~~
+
+show_roi_montage_main_from_bench(bench_kodim22)
+
+# %%
+# ROI Comparison Error
+# ~~~~~~~~~~~~~~~~~~~~
+
+show_error_montage_main_from_bench(bench_kodim22)
+
+# %%
+# ROI Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_aa_from_bench(bench_kodim22)
+
+# %%
+# ROI Comparison Error (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_error_montage_aa_from_bench(bench_kodim22)
+
+# %%
+# ROI Color Comparison
+# ~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_main_from_bench(bench_kodim22, orig_images_rgb[img_name])
+
+# %%
+# ROI Color Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_aa_from_bench(bench_kodim22, orig_images_rgb[img_name])
+
+# %%
+# Timing Comparison
+# ~~~~~~~~~~~~~~~~~
+
+show_timing_plot_from_bench(bench_kodim22)
+
+# %%
+# SNR/SSIM Comparison
+# ~~~~~~~~~~~~~~~~~~~
+
+show_snr_ssim_plot_from_bench(bench_kodim22)
 
 
 # %%
@@ -1934,17 +2185,56 @@ bench_kodim23 = benchmark_image(
     degree_label="Cubic",
 )
 
+# %%
+# Original and Resized
+# ~~~~~~~~~~~~~~~~~~~~
+
 _color_intro_for_image(img_name, bench_kodim23)
 
+# %%
+# ROI Comparison
+# ~~~~~~~~~~~~~~
+
 show_roi_montage_main_from_bench(bench_kodim23)
+
+# %%
+# ROI Comparison Error
+# ~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_main_from_bench(bench_kodim23)
 
+# %%
+# ROI Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_roi_montage_aa_from_bench(bench_kodim23)
+
+# %%
+# ROI Comparison Error (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 show_error_montage_aa_from_bench(bench_kodim23)
 
-if USE_COLOR_VIS:
-    show_roi_montage_color_main_from_bench(bench_kodim23, orig_images_rgb[img_name])
-    show_roi_montage_color_aa_from_bench(bench_kodim23, orig_images_rgb[img_name])
+# %%
+# ROI Color Comparison
+# ~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_main_from_bench(bench_kodim23, orig_images_rgb[img_name])
+
+# %%
+# ROI Color Comparison (Antialiased)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+show_roi_montage_color_aa_from_bench(bench_kodim23, orig_images_rgb[img_name])
+
+# %%
+# Timing Comparison
+# ~~~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim23)
+
+# %%
+# SNR/SSIM Comparison
+# ~~~~~~~~~~~~~~~~~~~
+
 show_snr_ssim_plot_from_bench(bench_kodim23)
