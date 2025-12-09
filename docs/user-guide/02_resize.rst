@@ -332,24 +332,43 @@ Conceptually, :ref:`resize <api-resize>` is configured by three spline degrees:
   grid.
 
 These degrees are exposed through the :ref:`resize <api-resize>` API via the
-``method`` argument. There are two main families of presets:
+``method`` argument. There are two main families of presets.
 
-* **Standard interpolation presets** – these use **no projection**  
-  (analysis degree ``-1``) and perform plain spline interpolation:
+**Standard interpolation presets** use no projection at all (analysis degree
+``-1``) and perform plain spline interpolation:
 
-  - ``"fast"``      → interpolation degree 0 (nearest), analysis degree -1, synthesis degree 0  
-  - ``"linear"``    → interpolation degree 1, analysis degree -1, synthesis degree 1  
-  - ``"quadratic"`` → interpolation degree 2, analysis degree -1, synthesis degree 2  
-  - ``"cubic"``     → interpolation degree 3, analysis degree -1, synthesis degree 3  
+.. list-table:: Spline degree standard interpolation presets in :ref:`resize <api-resize>`
+   :header-rows: 1
 
-  These are appropriate when you mainly want smooth interpolation and are not
-  aggressively downsampling.
+   * - Method
+     - Interpolation degree
+     - Analysis degree
+     - Synthesis degree
+   * - ``"fast"``
+     - 0
+     - -1
+     - 0
+   * - ``"linear"``
+     - 1
+     - -1
+     - 1
+   * - ``"quadratic"``
+     - 2
+     - -1
+     - 2
+   * - ``"cubic"``
+     - 3
+     - -1
+     - 3
 
-* **Antialiasing presets** – these use an **oblique projection** with a lower
-  analysis degree and a higher synthesis degree, designed for downsampling
-  (and its inverse round-trip):
+These are appropriate when you mainly want smooth interpolation and are not
+aggressively downsampling.
 
-.. list-table:: Spline degree configuration for oblique projection in :ref:`resize <api-resize>`
+**Antialiasing presets** use an oblique projection with a lower analysis
+degree and a higher synthesis degree, and are designed for downsampling
+(and its inverse round-trip):
+
+.. list-table:: Spline degree antialiasing configuration in :ref:`resize <api-resize>`
    :header-rows: 1
 
    * - Method
@@ -383,7 +402,7 @@ least-squares solution in [1]_ and [2]_.
    pass is stable in exact arithmetic, but in double precision they amplify
    tiny rounding errors, especially on long lines, which can lead to slow
    drift in the mean level and other visible artefacts. For this reason such
-   configurations are **not exposed as presets and are not recommended**
+   configurations **are not exposed as presets and are not recommended**
    in routine use. **The oblique antialiasing presets above avoid the
    problematic high-order integration while remaining very close in quality**
    to the ideal least-squares projection.
