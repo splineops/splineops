@@ -23,11 +23,6 @@ from PIL import Image
 
 # Wavelet classes for 2D
 from splineops.multiscale.wavelets.haar import HaarWavelets
-from splineops.multiscale.wavelets.splinewavelets import (
-    Spline1Wavelets,
-    Spline3Wavelets,
-    Spline5Wavelets
-)
 
 # %%
 # Load and Normalize a 2D Image

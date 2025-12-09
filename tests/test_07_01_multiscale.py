@@ -10,7 +10,7 @@ from splineops.multiscale.pyramid import (
     reduce_2d, expand_2d
 )
 from splineops.multiscale.wavelets.haar import HaarWavelets
-from splineops.multiscale.wavelets.splinewavelets import Spline3Wavelets
+from splineops.multiscale.wavelets.spline_wavelets import Spline3Wavelets
 
 ##############################################################################
 # 1) Ground truth arrays
