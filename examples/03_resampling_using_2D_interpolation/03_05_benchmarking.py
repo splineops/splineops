@@ -509,8 +509,8 @@ def show_intro_color(
 
 
 # %%
-# Round-Trip Backends & Timing (grayscale)
-# ----------------------------------------
+# Round-Trip Backends & Time
+# --------------------------
 
 def _rt_splineops(
     gray: np.ndarray, z: float, preset: str
@@ -1931,8 +1931,8 @@ show_roi_montage_color_main_from_bench(bench_kodim14, orig_images_rgb[img_name])
 show_roi_montage_color_aa_from_bench(bench_kodim14, orig_images_rgb[img_name])
 
 # %%
-# Timing Comparison
-# ~~~~~~~~~~~~~~~~~
+# Time Comparison
+# ~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim14)
 
@@ -2005,8 +2005,8 @@ show_roi_montage_color_main_from_bench(bench_kodim15, orig_images_rgb[img_name])
 show_roi_montage_color_aa_from_bench(bench_kodim15, orig_images_rgb[img_name])
 
 # %%
-# Timing Comparison
-# ~~~~~~~~~~~~~~~~~
+# Time Comparison
+# ~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim15)
 
@@ -2079,8 +2079,8 @@ show_roi_montage_color_main_from_bench(bench_kodim19, orig_images_rgb[img_name])
 show_roi_montage_color_aa_from_bench(bench_kodim19, orig_images_rgb[img_name])
 
 # %%
-# Timing Comparison
-# ~~~~~~~~~~~~~~~~~
+# Time Comparison
+# ~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim19)
 
@@ -2153,8 +2153,8 @@ show_roi_montage_color_main_from_bench(bench_kodim22, orig_images_rgb[img_name])
 show_roi_montage_color_aa_from_bench(bench_kodim22, orig_images_rgb[img_name])
 
 # %%
-# Timing Comparison
-# ~~~~~~~~~~~~~~~~~
+# Time Comparison
+# ~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim22)
 
@@ -2228,8 +2228,8 @@ show_roi_montage_color_main_from_bench(bench_kodim23, orig_images_rgb[img_name])
 show_roi_montage_color_aa_from_bench(bench_kodim23, orig_images_rgb[img_name])
 
 # %%
-# Timing Comparison
-# ~~~~~~~~~~~~~~~~~
+# Time Comparison
+# ~~~~~~~~~~~~~~~
 
 show_timing_plot_from_bench(bench_kodim23)
 

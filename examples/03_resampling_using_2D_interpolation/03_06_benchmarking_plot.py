@@ -121,6 +121,8 @@ ENABLE_OPENCV                  = True
 ENABLE_PILLOW                  = True
 ENABLE_SKIMAGE                 = True
 
+VERBOSE_PROGRESS = False  # set to True if you want CLI progress printing
+
 # ------------------------
 # Small helpers
 # ------------------------
@@ -468,8 +470,8 @@ def skimage_roundtrip(
 
 
 # %%
-# Zoom Sweep (degree-independent)
-# -------------------------------
+# Zoom Sweep
+# ----------
 #
 # We sweep zoom factors and keep only those that preserve the original image
 # size after a forward/backward round-trip (using simple rounding).
@@ -499,8 +501,8 @@ print(
 )
 
 # %%
-# Method construction and sweep per degree
-# ----------------------------------------
+# Method construction
+# -------------------
 
 def build_methods_for_degree(degree: str) -> Tuple[Dict[str, Tuple[str, str | None]], str]:
     """
@@ -571,7 +573,8 @@ def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]]
     }
 
     for idx, z in enumerate(z_list, 1):
-        print(f"[{degree_label:>6}] [{idx:>3}/{len(z_list)}] z={z:.5f}", end="\r")
+        if VERBOSE_PROGRESS:
+            print(f"[{degree_label:>6}] [{idx:>3}/{len(z_list)}] z={z:.5f}", end="\r")
         for name, (kind, param) in METHODS.items():
             if kind == "scipy":
                 runner = lambda z=z, deg=param: scipy_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
@@ -619,7 +622,7 @@ def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]]
     return results, degree_label
 
 # %%
-# Plotting helpers
+# Plotting Helpers
 # ----------------
 
 def _plot_timing(results: Dict[str, Dict[str, List[float]]], degree_label: str):
@@ -764,25 +767,51 @@ def _plot_ssim(results: Dict[str, Dict[str, List[float]]], degree_label: str):
     plt.show()
 
 # %%
-# Run benchmark and plots for cubic degree
-# ----------------------------------------
+# Benchmark for Cubic Degree
+# --------------------------
 
 results_cubic, degree_label_cubic = run_sweep_for_degree("cubic")
 
-# Timing / SNR / SSIM for cubic
+# %%
+# Time Comparison
+# ~~~~~~~~~~~~~~~
+
 _plot_timing(results_cubic, degree_label_cubic)
+
+# %%
+# SNR Comparison
+# ~~~~~~~~~~~~~~
+
 _plot_snr(results_cubic, degree_label_cubic)
+
+# %%
+# SSIM Comparison
+# ~~~~~~~~~~~~~~~
+
 _plot_ssim(results_cubic, degree_label_cubic)
 
 # %%
-# Run benchmark and plots for linear degree
-# -----------------------------------------
+# Benchmark for Linear Degree
+# ---------------------------
 
 results_linear, degree_label_linear = run_sweep_for_degree("linear")
 
-# Timing / SNR / SSIM for linear
+# %%
+# Time Comparison
+# ~~~~~~~~~~~~~~~
+
 _plot_timing(results_linear, degree_label_linear)
+
+# %%
+# SNR Comparison
+# ~~~~~~~~~~~~~~
+
 _plot_snr(results_linear, degree_label_linear)
+
+# %%
+# SSIM Comparison
+# ~~~~~~~~~~~~~~~
+
 _plot_ssim(results_linear, degree_label_linear)
 
 # %%
