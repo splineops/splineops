@@ -180,6 +180,14 @@ In this language:
   coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
   :math:`g_T`.
 
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_01_resize_module_1d_003.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_02_resize_module_2d_002.png
+   :align: center
+   :width: 100%
+
 Least-Squares Projection
 ------------------------
 
@@ -256,6 +264,14 @@ When the analysis and synthesis spaces satisfy mild compatibility conditions,
 oblique projection retains the same approximation order as the least-squares
 projection and yields very similar quality in practice, while significantly
 reducing computational cost. 
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_01_resize_module_1d_004.png
+   :align: center
+   :width: 100%
+
+.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_02_resize_module_2d_003.png
+   :align: center
+   :width: 100%
 
 The Algorithm
 -------------
