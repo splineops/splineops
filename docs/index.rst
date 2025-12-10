@@ -74,7 +74,7 @@ Modules at a Glance
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Sparsest 1D piecewise-linear fits—data in, knots out.
+      Sparsest 1D piecewise-linear fits: data in, knots out.
 
    .. grid-item-card:: Smoothing Splines
       :link: user-guide/05_smoothing_splines
