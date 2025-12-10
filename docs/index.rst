@@ -3,7 +3,7 @@
 SplineOps: Spline Operations
 ============================
 
-**SplineOps** is an open-source software library written in Python. It provides efficient signal-processing tools based on splines. 
+**SplineOps** is an open-source software library written in Python. It provides ground-breaking signal-processing tools based on splines. 
 Adapted and built on the algorithms developed through the years by the `Biomedical Imaging Group at EPFL <https://bigwww.epfl.ch/>`_ (Lausanne, Switzerland), 
 SplineOps is in active development and supports modern computational demands.
 
@@ -112,6 +112,7 @@ Contents
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
+   :titlesonly:
 
    installation/index
    user-guide/index
