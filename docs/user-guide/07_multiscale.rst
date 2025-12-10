@@ -60,12 +60,12 @@ We construct a spline-based multiscale basis (wavelets) by capturing the detail 
 The wavelet (detail) coefficients together with the final coarse approximation allow perfect reconstruction (synthesis).
 
 The next figure, from
-:ref:`sphx_glr_auto_examples_08_multiscale_08_02_wavelet_decomposition.py`,
+:ref:`sphx_glr_auto_examples_07_multiscale_02_wavelet_decomposition.py`,
 shows a three-level 2D Haar decomposition: the coarse approximation in the
 top-left corner and the horizontal, vertical, and diagonal detail sub-bands
 at each scale.
 
-.. image:: /auto_examples/08_multiscale/images/sphx_glr_08_02_wavelet_decomposition_001.png
+.. image:: /auto_examples/07_multiscale/images/sphx_glr_02_wavelet_decomposition_001.png
    :align: center
    :width: 100%
 
@@ -88,8 +88,8 @@ Implementation Details
 Multiscale Examples
 -------------------
 
-* :ref:`sphx_glr_auto_examples_08_multiscale_08_01_pyramid_decomposition.py`
-* :ref:`sphx_glr_auto_examples_08_multiscale_08_02_wavelet_decomposition.py`
+* :ref:`sphx_glr_auto_examples_07_multiscale_01_pyramid_decomposition.py`
+* :ref:`sphx_glr_auto_examples_07_multiscale_02_wavelet_decomposition.py`
 
 References
 ----------

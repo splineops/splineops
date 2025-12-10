@@ -21,11 +21,11 @@ Conceptually, resizing means:
   best represents the same underlying continuous function.
 
 We illustrate this with the 1D example
-:ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_02_resample_a_1d_spline.py`,
+:ref:`sphx_glr_auto_examples_01_spline_interpolation_05_resample_a_1d_spline.py`,
 which starts from a spline :math:`f` and samples it more coarsely at positions
 :math:`x = T k`:
 
-.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_02_resample_a_1d_spline_001.png
+.. image:: /auto_examples/01_spline_interpolation/images/sphx_glr_05_resample_a_1d_spline_001.png
    :align: center
    :width: 100%
 
@@ -121,7 +121,7 @@ for some coefficient sequence :math:`(c_T[k])_{k \in \mathbb{Z}}` in
 :math:`\ell_2(\mathbb{Z})`.
 
 As a visual example, the following figure from
-:ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_02_resample_a_1d_spline.py`
+:ref:`sphx_glr_auto_examples_01_spline_interpolation_05_resample_a_1d_spline.py`
 has two rows. The top row shows the fine-grid samples :math:`f[k]` together
 with their shifted basis functions :math:`\varphi(x - k)` scaled by the
 coefficients :math:`c[k]`, illustrating the spline space :math:`V_1`. The
@@ -132,7 +132,7 @@ the cubic B-spline, and the coefficients :math:`c[k]` and :math:`c_T[k]`
 implement the standard interpolation scheme described in
 :doc:`01_spline_interpolation`:
 
-.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_02_resample_a_1d_spline_002.png
+.. image:: /auto_examples/01_spline_interpolation/images/sphx_glr_05_resample_a_1d_spline_002.png
    :align: center
    :width: 100%
 
@@ -184,7 +184,7 @@ The next figure shows this operation in **1D**: a fine spline :math:`f` on
 :math:`V_1` and its coarse counterpart :math:`g_T` on the scaled grid
 :math:`\Gamma_T`, obtained by standard cubic interpolation.
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_01_resize_module_1d_003.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_01_resize_module_1d_003.png
    :align: center
    :width: 100%
 
@@ -192,7 +192,7 @@ The following figure shows the same idea in **2D**: an image is resampled
 from the fine grid to a coarser grid using standard cubic interpolation,
 illustrating how :math:`V_1 \to V_T` looks in practice on real data.
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_02_resize_module_2d_002.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_02_resize_module_2d_002.png
    :align: center
    :width: 100%
 
@@ -278,7 +278,7 @@ this oblique projection: compared to plain cubic, the coarse spline is
 slightly smoother, but tracks the underlying fine spline more faithfully
 when downsampling.
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_01_resize_module_1d_004.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_01_resize_module_1d_004.png
    :align: center
    :width: 100%
 
@@ -286,7 +286,7 @@ The 2D example then shows the same effect on an image: the antialiasing
 preset suppresses Moiré and high-frequency artefacts in the downsampled
 ROI, while preserving the main structures and contrasts.
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_02_resize_module_2d_003.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_02_resize_module_2d_003.png
    :align: center
    :width: 100%
 
@@ -461,8 +461,8 @@ Benchmarking
 
 To put :ref:`resize <api-resize>` in context, the examples
 
-- :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_06_benchmarking.py`
-- :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_07_benchmarking_plot.py`
+- :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`
+- :ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`
 
 compare SplineOps against widely used interpolation libraries on realistic
 image resizing tasks.
@@ -470,7 +470,7 @@ image resizing tasks.
 Round-trip ROI benchmark
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-In :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_06_benchmarking.py`,
+In :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`,
 several Kodak test images are:
 
 1. **Downsampled** by an image-specific zoom factor :math:`z < 1`,
@@ -511,7 +511,7 @@ The first figure below shows the global image, the ROI used for metrics, and
 the same ROI after a first-pass SplineOps antialiasing shrink, all at a zoom
 factor of :math:`z = 0.15`:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_010.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_010.png
    :align: center
    :width: 100%
 
@@ -520,7 +520,7 @@ The next figure compares the **color ROI** for the main cubic methods
 scikit-image, PyTorch bicubic). It highlights visual differences such as
 aliasing and ringing in fine detail:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_015.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_015.png
    :align: center
    :width: 100%
 
@@ -528,7 +528,7 @@ The following figure shows the **normalized signed error** in the grayscale ROI
 for the same main subset of methods. Zero error is mid-gray; brighter or darker
 regions indicate positive or negative deviations from the original:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_012.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_012.png
    :align: center
    :width: 100%
 
@@ -537,14 +537,14 @@ The next figure compares the **color ROI** for the antialiasing-focused subset
 scikit-image cubic with anti-aliasing, PyTorch bicubic with antialiasing).
 This isolates how different antialiasing strategies affect fine structure:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_016.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_016.png
    :align: center
    :width: 100%
 
 The companion figure shows the **normalized signed error** in the grayscale ROI
 for this antialiasing subset, again with mid-gray indicating zero error:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_014.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_014.png
    :align: center
    :width: 100%
 
@@ -553,7 +553,7 @@ for the cubic methods at :math:`z = 0.15` on a 512×768 image. You can see that
 OpenCV and PyTorch are fastest, SplineOps sits comfortably in the middle, and
 SciPy / scikit-image are significantly slower:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_017.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_017.png
    :align: center
    :width: 100%
 
@@ -562,7 +562,7 @@ for the same configuration, showing that SplineOps Cubic Antialiasing
 typically attains the highest SNR and SSIM, with the Standard cubic preset
 tightly grouped with the other classic cubic filters:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_06_benchmarking_018.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_018.png
    :align: center
    :width: 100%
 
@@ -570,7 +570,7 @@ Zoom-sweep benchmark
 ~~~~~~~~~~~~~~~~~~~~
 
 In
-:ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_07_benchmarking_plot.py`,
+:ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`,
 a single Kodak image is used to run a **1D sweep of zoom factors**
 :math:`0 < z < 2`. For each method and zoom, the script:
 
@@ -593,7 +593,7 @@ The first plot below shows **round-trip SNR vs zoom** for cubic methods:
 SplineOps Antialiasing cubic rises well above the other curves for strong
 downsampling and remains best or near-best all the way up to :math:`z \approx 2`:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_003.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_003.png
    :align: center
    :width: 100%
 
@@ -602,7 +602,7 @@ all methods converge near SSIM :math:`\approx 1` around :math:`z = 1`, but
 SplineOps Antialiasing cubic reaches higher SSIM for the more aggressive
 downsampling factors:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_004.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_004.png
    :align: center
    :width: 100%
 
@@ -611,7 +611,7 @@ antialiasing preset adds only a modest overhead over Standard cubic, while
 still remaining competitive with other high-quality methods for a wide range
 of zoom factors:
 
-.. image:: /auto_examples/03_resampling_using_nd_samples/images/sphx_glr_03_07_benchmarking_plot_002.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_002.png
    :align: center
    :width: 100%
 
@@ -624,13 +624,13 @@ of zoom factors:
 Resize Examples
 ---------------
 
-* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_01_resize_module_1d.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_02_resize_module_2d.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_03_standard_interpolation.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_04_antialiasing.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_05_how_bad_aliasing_can_be.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_06_benchmarking.py`
-* :ref:`sphx_glr_auto_examples_03_resampling_using_nd_samples_03_07_benchmarking_plot.py`
+* :ref:`sphx_glr_auto_examples_02_resize_01_resize_module_1d.py`
+* :ref:`sphx_glr_auto_examples_02_resize_02_resize_module_2d.py`
+* :ref:`sphx_glr_auto_examples_02_resize_03_standard_interpolation.py`
+* :ref:`sphx_glr_auto_examples_02_resize_04_antialiasing.py`
+* :ref:`sphx_glr_auto_examples_02_resize_05_how_bad_aliasing_can_be.py`
+* :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`
+* :ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`
 
 References
 ----------

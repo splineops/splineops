@@ -67,12 +67,12 @@ DFT of the solution.  The practical recipe is therefore
 A full derivation of this result can be found in [1]_, [2]_ and [3]_.
 
 The next figure, from
-:ref:`sphx_glr_auto_examples_06_smoothing_splines_06_01_1d_fractional_brownian_motion.py`,
+:ref:`sphx_glr_auto_examples_05_smoothing_splines_01_1d_fractional_brownian_motion.py`,
 illustrates these ideas on a noisy fractional Brownian motion: the original
 process, noisy measurements, and the smoothed spline estimates at the
 original and oversampled grids.
 
-.. image:: /auto_examples/06_smoothing_splines/images/sphx_glr_06_01_1d_fractional_brownian_motion_001.png
+.. image:: /auto_examples/05_smoothing_splines/images/sphx_glr_01_1d_fractional_brownian_motion_001.png
    :align: center
    :width: 100%
 
@@ -153,9 +153,10 @@ Choosing the parameters
 Smoothing splines examples
 --------------------------
 
-* :ref:`sphx_glr_auto_examples_06_smoothing_splines_06_01_1d_fractional_brownian_motion.py`
-* :ref:`sphx_glr_auto_examples_06_smoothing_splines_06_02_2d_image_smoothing.py`
-* :ref:`sphx_glr_auto_examples_06_smoothing_splines_06_04_recursive_smoothing_spline.py`
+* :ref:`sphx_glr_auto_examples_05_smoothing_splines_01_1d_fractional_brownian_motion.py`
+* :ref:`sphx_glr_auto_examples_05_smoothing_splines_02_2d_image_smoothing.py`
+* :ref:`sphx_glr_auto_examples_05_smoothing_splines_03_3d_volume_smoothing.py`
+* :ref:`sphx_glr_auto_examples_05_smoothing_splines_04_recursive_smoothing_spline.py`
 
 References
 ----------

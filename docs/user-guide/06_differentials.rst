@@ -104,30 +104,30 @@ its interpolation coefficients. The differential-based computations that we perf
 We finally build the output image by sampling the ideal, continuously defined intermediate result.
 
 The following figure, taken from
-:ref:`sphx_glr_auto_examples_07_differentials_07_01_differentials_module.py`,
+:ref:`sphx_glr_auto_examples_06_differentials_01_differentials_module.py`,
 shows some of these differential maps (gradient magnitude, gradient direction,
 Laplacian and Hessian-based quantities).
 
-.. image:: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_002.png
+.. image:: /auto_examples/06_differentials/images/sphx_glr_01_differentials_module_002.png
    :align: center
    :width: 100%
 
-.. image:: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_003.png
+.. image:: /auto_examples/06_differentials/images/sphx_glr_01_differentials_module_003.png
    :align: center
    :width: 100%
 
-.. image:: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_004.png
+.. image:: /auto_examples/06_differentials/images/sphx_glr_01_differentials_module_004.png
    :align: center
    :width: 100%
 
-.. image:: /auto_examples/07_differentials/images/sphx_glr_07_01_differentials_module_005.png
+.. image:: /auto_examples/06_differentials/images/sphx_glr_01_differentials_module_005.png
    :align: center
    :width: 100%
 
 Differentiate Examples
 ----------------------
 
-* :ref:`sphx_glr_auto_examples_07_differentials_07_01_differentials_module.py`
+* :ref:`sphx_glr_auto_examples_06_differentials_01_differentials_module.py`
 
 References
 ----------

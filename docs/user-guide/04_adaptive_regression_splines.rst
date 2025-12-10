@@ -116,19 +116,19 @@ Practical tip: run the solver on a grid of :math:`\lambda` values and
 *plot sparsity vs. data-fidelity* (e.g., root-MSE) to pick a balanced point.
 
 The figure below, taken from
-:ref:`sphx_glr_auto_examples_05_adaptive_regression_splines_05_01_adaptive_regression_splines_module.py`,
+:ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_01_adaptive_regression_splines_module.py`,
 shows noisy 1D data (crosses), the TV-denoised samples, and the sparsest
 piecewise-linear spline for a given value of :math:`\lambda`, together with
 its knot locations.
 
-.. image:: /auto_examples/05_adaptive_regression_splines/images/sphx_glr_05_01_adaptive_regression_splines_module_002.png
+.. image:: /auto_examples/04_adaptive_regression_splines/images/sphx_glr_01_adaptive_regression_splines_module_002.png
    :align: center
    :width: 100%
 
 Example
 -------
 
-* :ref:`sphx_glr_auto_examples_05_adaptive_regression_splines_05_01_adaptive_regression_splines_module.py`
+* :ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_01_adaptive_regression_splines_module.py`
 
 References
 ----------

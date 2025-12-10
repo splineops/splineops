@@ -64,32 +64,32 @@ where :math:`(t)_{+} = \max(t, 0)` denotes the positive part of :math:`t` and
 
 Here is the plot of a cubic B-spline.
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_004.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_004.png
     :width: 100%
     :align: center
 
 Now, let us shift this B-spline horizontally by one third.
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_005.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_005.png
     :width: 100%
     :align: center
 
 Moreover, let us shrink it by 60%.
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_006.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_006.png
     :width: 100%
     :align: center
 
 Finally, let us multiply it by one fourth. This multiplicative step is called a *weighting* of the B-spline.
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_007.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_007.png
     :width: 100%
     :align: center
 
 Likewise, we could play with any other combination of (shift, shrink, weight) to obtain a zoo of other functions, including some with negative weight. In the 
 present case, all of them would be said to be cubic B-splines, up to their individual (shift, shrink, weight). Here are some.
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_008.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_008.png
     :width: 100%
     :align: center
 
@@ -101,7 +101,7 @@ Spline Definition
 
 Now, we are going to do something bold. Let us sum together the functions of the previous figure.
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_009.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_009.png
     :width: 100%
     :align: center
 
@@ -135,13 +135,13 @@ sufficient freedom to build splines that can be shaped any way we want.
 
 Here is some uniform spline (thick curve), along with its additive constituents (arbitrarily weighted and integer-shifted B-splines of same degree, thin curves).
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_010.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_010.png
     :width: 100%
     :align: center
 
 We now mark with dots the samples at the integers of this particular spline.
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_011.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_011.png
     :width: 100%
     :align: center
 
@@ -149,7 +149,7 @@ These samples make for a discrete list of values (*i.e.*, the data samples). Sin
 follows: is there a way to reverse the process and to first impose a list of arbitrary sample values, then only to determine which B-spline weights are 
 appropriate to build the uniform spline that happens to go through these samples? Here is the succession of operations we have in mind.
 
-..  image:: /auto_examples/01_quick-start/images/sphx_glr_01_02_spline_bases_012.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_012.png
     :width: 100%
     :align: center
 
@@ -161,7 +161,7 @@ clear case, do inspect abscissa at 2.
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 The example
-:ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_01_interpolate_1d_samples.py`
+:ref:`sphx_glr_auto_examples_01_spline_interpolation_04_interpolate_1d_samples.py`
 illustrates how a 1D sequence of samples :math:`f[k]` is interpolated by a
 cubic B-spline, and how this spline can be written as a sum of shifted and
 weighted basis functions.
@@ -189,7 +189,7 @@ Below we reproduce three of the figures from that example.
 
 The first figure shows the discrete samples :math:`f[k]` alone:
 
-.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_01_interpolate_1d_samples_001.png
+.. image:: /auto_examples/01_spline_interpolation/images/sphx_glr_04_interpolate_1d_samples_001.png
    :align: center
    :width: 100%
 
@@ -197,7 +197,7 @@ The second figure displays the shifted cubic B-splines :math:`\beta^{3}(x-k)`
 weighted by the corresponding coefficients :math:`c[k]`. Each thin curve is one term
 :math:`c[k]\beta^{3}(x-k)` in the spline expansion:
 
-.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_01_interpolate_1d_samples_002.png
+.. image:: /auto_examples/01_spline_interpolation/images/sphx_glr_04_interpolate_1d_samples_002.png
    :align: center
    :width: 100%
 
@@ -206,7 +206,7 @@ overlaid with the original samples :math:`f[k]` (stems). One can see that the sp
 passes exactly through all sample points, while providing a smooth, continuously
 defined representation in between:
 
-.. image:: /auto_examples/02_resampling_using_1d_samples/images/sphx_glr_02_01_interpolate_1d_samples_003.png
+.. image:: /auto_examples/01_spline_interpolation/images/sphx_glr_04_interpolate_1d_samples_003.png
    :align: center
    :width: 100%
 
@@ -362,12 +362,12 @@ Using :func:`~splineops.resize.resize` for the same operation:
 Interpolation Examples
 ----------------------
 
-* :ref:`sphx_glr_auto_examples_01_quick-start_01_01_tensorspline_class.py`
-* :ref:`sphx_glr_auto_examples_01_quick-start_01_02_spline_bases.py`
-* :ref:`sphx_glr_auto_examples_01_quick-start_01_03_extension_modes.py`
-* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_01_interpolate_1d_samples.py`
-* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_02_resample_a_1d_spline.py`
-* :ref:`sphx_glr_auto_examples_02_resampling_using_1d_samples_02_03_compare_different_splines.py`
+* :ref:`sphx_glr_auto_examples_01_spline_interpolation_01_tensorspline_class.py`
+* :ref:`sphx_glr_auto_examples_01_spline_interpolation_02_spline_bases.py`
+* :ref:`sphx_glr_auto_examples_01_spline_interpolation_03_extension_modes.py`
+* :ref:`sphx_glr_auto_examples_01_spline_interpolation_04_interpolate_1d_samples.py`
+* :ref:`sphx_glr_auto_examples_01_spline_interpolation_05_resample_a_1d_spline.py`
+* :ref:`sphx_glr_auto_examples_01_spline_interpolation_06_compare_different_splines.py`
 
 References
 ----------
