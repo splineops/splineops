@@ -96,8 +96,12 @@ image_gray = (
 ny, nx = image_gray.shape
 print(f"Downloaded image shape = {ny} x {nx}")
 
+# Choose a base width in inches and match the figure height to the image aspect
+base_width = 8.0
+figsize = (base_width, base_width * ny / nx)
+
 # Plot the original grayscale image
-plt.figure(figsize=(6, 6))
+plt.figure(figsize=figsize)
 plt.imshow(image_gray, cmap='gray', interpolation='nearest', vmin=0, vmax=1)
 plt.title("Original Grayscale Image", fontsize=14)
 plt.axis('off')
@@ -184,19 +188,25 @@ def show_inverted_pyramid(levels, depth: int, fill=1.0, width=6, row_height=3,
 # 1-Level Decomposition
 # ---------------------
 
-show_inverted_pyramid(levels, depth=1, fill=1.0, title="1-Level Decomposition")
+show_inverted_pyramid(levels, depth=1, fill=1.0,
+                      width=base_width,
+                      title="1-Level Decomposition")
 plt.show()
 
 # %%
 # 2-Level Decomposition
 # ---------------------
 
-show_inverted_pyramid(levels, depth=2, fill=1.0, title="2-Level Decomposition")
+show_inverted_pyramid(levels, depth=2, fill=1.0,
+                      width=base_width,
+                      title="2-Level Decomposition")
 plt.show()
 
 # %%
 # 3-Level Decomposition
 # ---------------------
 
-show_inverted_pyramid(levels, depth=3, fill=1.0, title="3-Level Decomposition")
+show_inverted_pyramid(levels, depth=3, fill=1.0,
+                      width=base_width,
+                      title="3-Level Decomposition")
 plt.show()
