@@ -496,17 +496,18 @@ The compared methods include:
 - our method :func:`~splineops.resize.resize` **Cubic** (plain cubic spline interpolation),
 - our method :func:`~splineops.resize.resize` **Cubic Antialiasing** (projection-based low-pass + resize).
 
-On the Kodak examples shipped with :ref:`SplineOps <api-index>`, the results are consistent with
+On the Kodak examples shipped with :ref:`SplineOps <api-index>`, the numbers line up with
 the theory:
 
 - :func:`~splineops.resize.resize` **Cubic** behaves like the “classic” cubic filters
-  (SciPy, OpenCV, scikit-image, PyTorch bicubic without antialiasing): similar
-  sharpness, similar SNR/MSE/SSIM, with competitive or better runtimes than
-  the heavier scientific stacks.
-- :func:`~splineops.resize.resize` **Cubic Antialiasing** generally achieves the best or near-best
-  SNR and SSIM on the ROI for strong downsampling, while strongly reducing
-  aliasing artefacts compared to plain cubic, at the cost of only a modest
-  runtime overhead.
+  (SciPy, OpenCV, scikit-image, PyTorch bicubic without antialiasing): visually
+  similar sharpness and very similar SNR/MSE/SSIM, often at lower cost than the
+  heavier scientific stacks.
+- :func:`~splineops.resize.resize` **Cubic Antialiasing** typically improves SNR and SSIM
+  by a **few dB and a few hundredths of SSIM** over plain cubic in the ROI when
+  downsampling aggressively. Because SNR is in decibels, a 3–6 dB lead means
+  roughly :math:`1.4{-}2\times` smaller RMS error, which is a substantial
+  gain for the same zoom factor.
 
 The first figure below shows the global image, the ROI used for metrics, and
 the same ROI after a first-pass :ref:`SplineOps <api-index>` antialiasing shrink, all at a zoom
@@ -591,13 +592,15 @@ backend:
 The first plot below shows **round-trip SNR vs zoom** for cubic methods:
 :ref:`SplineOps <api-index>` Antialiasing cubic rises well above the other curves for strong
 downsampling and remains best or near-best all the way up to
-:math:`z \approx 2`:
+:math:`z \approx 2`. In the zoomed version focusing on :math:`0 < z < 1`, it
+leads the next-best method by several decibels over a wide range of zoom
+factors, corresponding to a noticeably smaller reconstruction error:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_005.png
    :align: center
    :width: 100%
 
-Here a zoom of the plot for factors between 0 and 1:
+Here is a zoom of the same plot for factors between 0 and 1:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_004.png
    :align: center
@@ -605,29 +608,31 @@ Here a zoom of the plot for factors between 0 and 1:
 
 The next plot shows **round-trip SSIM vs zoom** for the same configuration:
 all methods converge near SSIM :math:`\approx 1` around :math:`z = 1`, but
-:ref:`SplineOps <api-index>` Antialiasing cubic reaches higher SSIM for the more aggressive
-downsampling factors:
+:ref:`SplineOps <api-index>` Antialiasing cubic maintains a clear SSIM advantage for the more
+aggressive downsampling factors, meaning the recovered images preserve local
+structure better:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_007.png
    :align: center
    :width: 100%
 
-Here a zoom of the plot for factors between 0 and 1:
+Here is a zoom of the SSIM plot for factors between 0 and 1:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_006.png
    :align: center
    :width: 100%
 
 The last plot shows **round-trip runtime vs zoom**. It confirms that the
-antialiasing preset adds only a modest overhead over Standard cubic, while
+antialiasing presets add only a modest overhead over the Standard ones, while
 still remaining competitive with other high-quality methods for a wide range
-of zoom factors:
+of zoom factors. The zoomed version for :math:`0 < z < 1` makes this clear
+in the practically most relevant regime (downsampling):
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_003.png
    :align: center
    :width: 100%
 
-Here a zoom of the plot for factors between 0 and 1:
+Here is a zoom of the timing plot for factors between 0 and 1:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_002.png
    :align: center
