@@ -459,30 +459,31 @@ least-squares solution in [1]_ and [2]_.
 Benchmarking
 ------------
 
-To put :ref:`resize <api-resize>` in context, the examples
+To put :ref:`resize <api-resize>` in context, two gallery examples provide
+detailed benchmarks:
 
 - :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`
 - :ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`
 
-compare SplineOps against widely used interpolation libraries on realistic
-image resizing tasks.
+Together they compare SplineOps against widely used interpolation libraries on
+realistic image resizing tasks.
 
 Round-trip ROI benchmark
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-In :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`,
-several Kodak test images are:
+The first example benchmarks several Kodak test images by:
 
-1. **Downsampled** by an image-specific zoom factor :math:`z < 1`,
-2. **Upsampled back** to the original size with the same method (round-trip),
-3. Evaluated on a small **region of interest (ROI)** using
+1. **Downsampling** each image with an image-specific zoom factor
+   :math:`z < 1`,
+2. **Upsampling back** to the original size with the same method (round-trip),
+3. Evaluating a small **region of interest (ROI)** using
 
    - round-trip runtime (mean ± standard deviation),
    - SNR and MSE on the ROI,
    - SSIM on the ROI.
 
-For each image and method, the example also builds ROI montages and
-normalized error maps that make aliasing and blur easy to see by eye.
+For each image and method, it also builds ROI montages and normalized error
+maps that make aliasing and blur easy to see by eye.
 
 The compared methods include:
 
@@ -549,9 +550,9 @@ for this antialiasing subset, again with mid-gray indicating zero error:
    :width: 100%
 
 The bar chart below summarizes the **round-trip runtime** (forward + backward)
-for the cubic methods at :math:`z = 0.15` on a 512×768 image. You can see that
-OpenCV and PyTorch are fastest, SplineOps sits comfortably in the middle, and
-SciPy / scikit-image are significantly slower:
+for the cubic methods at :math:`z = 0.15` on a 512×768 image. OpenCV and
+PyTorch are fastest, SplineOps sits comfortably in the middle, and SciPy /
+scikit-image are significantly slower:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_017.png
    :align: center
@@ -569,10 +570,8 @@ tightly grouped with the other classic cubic filters:
 Zoom-sweep benchmark
 ~~~~~~~~~~~~~~~~~~~~
 
-In
-:ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`,
-a single Kodak image is used to run a **1D sweep of zoom factors**
-:math:`0 < z < 2`. For each method and zoom, the script:
+The second example uses a single Kodak image to run a **1D sweep of zoom
+factors** :math:`0 < z < 2`. For each method and zoom, it:
 
 - performs a forward and backward resize in float32,
 - measures round-trip **time**, **SNR** and **SSIM** on the full image,
@@ -591,7 +590,8 @@ backend:
 
 The first plot below shows **round-trip SNR vs zoom** for cubic methods:
 SplineOps Antialiasing cubic rises well above the other curves for strong
-downsampling and remains best or near-best all the way up to :math:`z \approx 2`:
+downsampling and remains best or near-best all the way up to
+:math:`z \approx 2`:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_003.png
    :align: center
