@@ -51,6 +51,10 @@ image_gray = (
 ny, nx = image_gray.shape
 print(f"Downloaded image shape = {ny} x {nx}")
 
+# Choose a base width in inches and match the figure height to the image aspect
+base_width = 8.0
+figsize = (base_width, base_width * ny / nx)
+
 def imshow_matched_LL(
     coeffs,
     levels,
@@ -174,43 +178,39 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
         
     return out
 
-# %%
 # 1-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet1 = HaarWavelets(scales=1)
 coeffs1  = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
 
-plt.figure(figsize=(8, 8))
+plt.figure(figsize=figsize)
 imshow_matched_LL(coeffs1, levels=1, orig_image=image_gray,
                   detail_pct=95, ll_low=5, ll_high=99,
                   title="Haar 1-Level Decomposition")
 plt.tight_layout()
 plt.show()
 
-
-# %%
 # 2-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet2 = HaarWavelets(scales=2)
 coeffs2  = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
 
-plt.figure(figsize=(8, 8))
+plt.figure(figsize=figsize)
 imshow_matched_LL(coeffs2, levels=2, orig_image=image_gray,
                   detail_pct=95, ll_low=5, ll_high=99,
                   title="Haar 2-Level Decomposition")
 plt.tight_layout()
 plt.show()
 
-# %%
 # 3-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet3 = HaarWavelets(scales=3)
 coeffs3  = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
 
-plt.figure(figsize=(8, 8))
+plt.figure(figsize=figsize)
 imshow_matched_LL(coeffs3, levels=3, orig_image=image_gray,
                   detail_pct=95, ll_low=5, ll_high=99,
                   title="Haar 3-Level Decomposition")
