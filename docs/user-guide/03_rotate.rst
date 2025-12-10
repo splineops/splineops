@@ -111,7 +111,7 @@ shows an image rotated around a
 user-defined center using cubic interpolation. The red marker indicates the
 chosen center of rotation.
 
-.. image:: /auto_examples/04_rotate/images/sphx_glr_04_01_rotate_image_001.png
+.. image:: /auto_examples/03_rotate/images/sphx_glr_01_rotate_image_001.png
    :align: center
    :width: 100%
 

@@ -33,7 +33,7 @@ Module overview
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Extensible pure-Python base interpolation class for multidimensional data.
+      Extensible Python-based interpolation class for multidimensional data.
 
    .. grid-item-card:: Resize
       :link: 02_resize
@@ -43,7 +43,7 @@ Module overview
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Resample multidimensional data using fast, top-quality projection-based methods.
+      Fast, top quality projection methods to resample multidimensional data.
 
    .. grid-item-card:: Rotate
       :link: 03_rotate

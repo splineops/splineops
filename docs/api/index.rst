@@ -12,9 +12,9 @@ API Reference
    * - **Module**
      - **Description**
    * - :ref:`Spline Interpolation <api-spline_interpolation>`
-     - Extensible pure-Python base interpolation class for multidimensional data.
+     - Extensible Python-based interpolation class for multidimensional data.
    * - :ref:`Resize <api-resize>`
-     - Resample multidimensional data using fast, top-quality projection-based methods.
+     - Fast, top quality projection methods to resample multidimensional data.
    * - :ref:`Rotate <api-rotate>`
      - Rotation transformations on 2D/3D data around a user-defined center.
    * - :ref:`Adaptive Regression Splines <api-adaptive_regression_splines>`

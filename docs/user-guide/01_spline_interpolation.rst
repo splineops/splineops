@@ -70,26 +70,26 @@ Here is the plot of a cubic B-spline.
 
 Now, let us shift this B-spline horizontally by one third.
 
-..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_005.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_005.png
     :width: 100%
     :align: center
 
 Moreover, let us shrink it by 60%.
 
-..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_006.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_006.png
     :width: 100%
     :align: center
 
 Finally, let us multiply it by one fourth. This multiplicative step is called a *weighting* of the B-spline.
 
-..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_007.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_007.png
     :width: 100%
     :align: center
 
 Likewise, we could play with any other combination of (shift, shrink, weight) to obtain a zoo of other functions, including some with negative weight. In the 
 present case, all of them would be said to be cubic B-splines, up to their individual (shift, shrink, weight). Here are some.
 
-..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_008.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_008.png
     :width: 100%
     :align: center
 
@@ -101,7 +101,7 @@ Spline Definition
 
 Now, we are going to do something bold. Let us sum together the functions of the previous figure.
 
-..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_009.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_009.png
     :width: 100%
     :align: center
 
@@ -135,13 +135,13 @@ sufficient freedom to build splines that can be shaped any way we want.
 
 Here is some uniform spline (thick curve), along with its additive constituents (arbitrarily weighted and integer-shifted B-splines of same degree, thin curves).
 
-..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_010.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_010.png
     :width: 100%
     :align: center
 
 We now mark with dots the samples at the integers of this particular spline.
 
-..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_011.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_011.png
     :width: 100%
     :align: center
 
@@ -149,7 +149,7 @@ These samples make for a discrete list of values (*i.e.*, the data samples). Sin
 follows: is there a way to reverse the process and to first impose a list of arbitrary sample values, then only to determine which B-spline weights are 
 appropriate to build the uniform spline that happens to go through these samples? Here is the succession of operations we have in mind.
 
-..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_01_02_spline_bases_012.png
+..  image:: /auto_examples/01_spline_interpolation/images/sphx_glr_02_spline_bases_012.png
     :width: 100%
     :align: center
 
