@@ -281,7 +281,7 @@ Comparison
      - Custom interpolation at arbitrary points, nonuniform sampling, algorithm prototyping.
      - Production resizing, antialiasing downsampling, and large N-D data processing.
 
-Equivalence for standard interpolation
+Equivalence for Standard Interpolation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the special case of a uniform grid, B-spline degrees 0–3 and mirror
@@ -314,8 +314,8 @@ In other words, for these settings:
 - but :func:`~splineops.resize.resize` is usually much faster thanks to its C++ core and optimized
   memory access patterns.
 
-Code Use
-~~~~~~~~
+Usage
+~~~~~
 
 Using :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline` directly:
 

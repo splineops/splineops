@@ -29,7 +29,7 @@ You will find:
 * Extra helpers to generate test data
   (fractional Brownian motion) and to compute spline autocorrelations.
 
-Core idea in one dimension
+Core Idea in One Dimension
 --------------------------
 
 Given noisy samples :math:`y[k]` at integer positions, we look for a
@@ -76,7 +76,7 @@ original and oversampled grids.
    :align: center
    :width: 100%
 
-Core idea in higher dimensions
+Core Idea in Higher Dimensions
 ------------------------------
 
 For a 2D image or a 3D volume we replace the one-dimensional
@@ -111,7 +111,7 @@ Because the filter is applied element-wise in the frequency domain, the
 computation still needs just one forward FFT and one inverse FFT,
 whatever the data dimension.
 
-Fast recursive cubic smoother
+Fast Recursive Cubic Smoother
 -----------------------------
 
 When you only need the cubic case (:math:`\gamma = 1`) the frequency
@@ -138,7 +138,7 @@ FFT method but at a cost that is strictly linear in the number of
 samples and with virtually no memory footprint.  A detailed derivation
 appears in [1]_, Section IV-B.
 
-Choosing the parameters
+Choosing the Parameters
 -----------------------
 
 * gamma: controls how steeply the filter rolls off  
@@ -150,7 +150,7 @@ Choosing the parameters
   For most images, :math:`10^{-3} \le \lambda \le 10^{-1}` is a
   good starting interval.
 
-Smoothing splines examples
+Smoothing Splines Examples
 --------------------------
 
 * :ref:`sphx_glr_auto_examples_05_smoothing_splines_01_1d_fractional_brownian_motion.py`

@@ -52,7 +52,7 @@ import os
 import time
 from typing import Dict, List, Tuple, Optional
 
-# sphinx_gallery_thumbnail_number = 6  # Show the 6th figure as the gallery thumbnail
+# sphinx_gallery_thumbnail_number = 4  # Show the 4th figure as the gallery thumbnail
 import numpy as np
 import matplotlib.pyplot as plt
 from urllib.request import urlopen
@@ -513,7 +513,7 @@ print(
 )
 
 # %%
-# Method construction
+# Method Construction
 # -------------------
 
 def build_methods_for_degree(degree: str) -> Tuple[Dict[str, Tuple[str, str | None]], str]:

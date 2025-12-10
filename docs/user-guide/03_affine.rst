@@ -1,6 +1,6 @@
-.. splineops/docs/user-guide/03_rotate.rst
+.. splineops/docs/user-guide/03_affine.rst
 
-Rotate
+Affine
 ======
 
 .. currentmodule:: splineops
@@ -8,9 +8,12 @@ Rotate
 Overview
 --------
 
-The :ref:`rotate <api-rotate>` module in :ref:`SplineOps <api-index>` allows for the rotation of 2D or 3D data arrays 
-around a specified axis and center using spline interpolation. 
-This function is widely used in image processing, computer graphics, and scientific computing [1]_.
+The :ref:`affine <api-affine>` module in :ref:`SplineOps <api-index>` provides
+affine geometric transforms for 2D or 3D data arrays using spline
+interpolation. At the moment it exposes a single helper,
+:func:`~splineops.affine.rotate`, which rotates data around a specified axis
+and center. Such operations are widely used in image processing, computer
+graphics, and scientific computing [1]_.
 
 2D Rotation
 -----------
@@ -106,20 +109,20 @@ back to their original reference frame, to compensate for the recentering step, 
    Different spline degrees trade sharpness for smoothness (e.g., degree 0/nearest → blocky but fast; degree 1/linear → slight blur; degree 3/cubic → smoother, higher-quality edges).
 
 The following figure from
-:ref:`sphx_glr_auto_examples_03_rotate_01_rotate_image.py`
+:ref:`sphx_glr_auto_examples_03_affine_01_rotate_image.py`
 shows an image rotated around a
 user-defined center using cubic interpolation. The red marker indicates the
 chosen center of rotation.
 
-.. image:: /auto_examples/03_rotate/images/sphx_glr_01_rotate_image_001.png
+.. image:: /auto_examples/03_affine/images/sphx_glr_01_rotate_image_001.png
    :align: center
    :width: 100%
 
 Rotate Examples
 ---------------
 
-* :ref:`sphx_glr_auto_examples_03_rotate_01_rotate_image.py`
-* :ref:`sphx_glr_auto_examples_03_rotate_02_rotation_animation.py`
+* :ref:`sphx_glr_auto_examples_03_affine_01_rotate_image.py`
+* :ref:`sphx_glr_auto_examples_03_affine_02_rotation_animation.py`
 
 References
 ----------

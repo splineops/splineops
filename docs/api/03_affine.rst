@@ -1,13 +1,14 @@
-.. splineops/docs/api/03_rotate.rst
+.. splineops/docs/api/03_affine.rst
 
-.. _api-rotate:
+.. _api-affine:
 
-Rotate
+Affine
 ======
 
-Functions for rotating 2D or 3D data around a specified axis/center using spline interpolation.
+Functions for affine transforms (currently rotation) on 2D or 3D data
+using spline interpolation.
 
-.. automodule:: splineops.rotate.rotate
+.. automodule:: splineops.affine.affine
    :members:
    :undoc-members:
    :show-inheritance:

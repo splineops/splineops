@@ -1,5 +1,5 @@
 # sphinx_gallery_start_ignore
-# splineops/examples/03_rotate/01_rotate_image.py
+# splineops/examples/03_affine/01_rotate_image.py
 # sphinx_gallery_end_ignore
 
 """
@@ -16,7 +16,7 @@ We use the rotate module to rotate a 2D image.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from splineops.rotate.rotate import rotate
+from splineops.affine.affine import rotate
 from splineops.resize import resize
 from urllib.request import urlopen
 from PIL import Image

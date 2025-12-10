@@ -178,6 +178,7 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
         
     return out
 
+# %%
 # 1-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
@@ -191,6 +192,7 @@ imshow_matched_LL(coeffs1, levels=1, orig_image=image_gray,
 plt.tight_layout()
 plt.show()
 
+# %%
 # 2-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
@@ -204,6 +206,7 @@ imshow_matched_LL(coeffs2, levels=2, orig_image=image_gray,
 plt.tight_layout()
 plt.show()
 
+# %%
 # 3-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 

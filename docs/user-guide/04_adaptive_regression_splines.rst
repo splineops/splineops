@@ -14,7 +14,7 @@ Because TV is measured with the measure norm (denoted
 :math:`\|\cdot\|_{\mathcal{M}}`), solutions are piecewise-linear splines that
 use few knots, giving very compact models.
 
-Key features
+Key Features
 ~~~~~~~~~~~~
 
 * Guarantees piecewise-linear solutions with few knots.
@@ -27,10 +27,10 @@ In 1D, the method is closely related to rectified linear unit (ReLU) neural netw
 create piecewise-linar functions, but here we obtain the sparsest possible representation
 directly.
 
-Mathematical background
+Mathematical Background
 -----------------------
 
-Problem formulation
+Problem Formulation
 ~~~~~~~~~~~~~~~~~~~
 
 .. math::
@@ -56,7 +56,7 @@ it extends the classical LASSO (:math:`L^1` regularisation on vectors)
 and the Beurling LASSO (BLASSO, :math:`L^1` on measures) by inserting the linear
 operator :math:`\mathrm{D}^2`.
 
-Representer theorem
+Representer Theorem
 ~~~~~~~~~~~~~~~~~~~
 
 A solution of the g-BLASSO has the form
@@ -72,7 +72,7 @@ where
 * :math:`(x-\tau_k)_+` is a shifted ReLU function;
 * the number :math:`K` satisfies :math:`K\le M-2`, so only *few* knots appear.
 
-Uniqueness and sparsity
+Uniqueness and Sparsity
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 The g-BLASSO may admit multiple solutions, but the algorithm implemented here
@@ -92,7 +92,7 @@ The solver uses two stages\*:
 
 \*Stage 2 is linear-time; stage 1 is linear per iteration.
 
-Advantages and applications
+Advantages and Applications
 ---------------------------
 
 * Few-knot guarantee: the returned spline is the sparsest among all
@@ -104,7 +104,7 @@ Advantages and applications
 * ReLU connection: in 1-D this outperforms naïve ReLU networks in terms of
   parameter count.
 
-Regularisation parameter
+Regularisation Parameter
 ------------------------
 
 Choosing :math:`\lambda`:

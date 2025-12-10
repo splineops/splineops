@@ -180,7 +180,7 @@ In this language:
   coefficients (or samples) of :math:`f` to the coefficients :math:`c_T[k]` of
   :math:`g_T`.
 
-The next figure shows this operation in **1D**: a fine spline :math:`f` on
+The next figure shows this operation in 1D: a fine spline :math:`f` on
 :math:`V_1` and its coarse counterpart :math:`g_T` on the scaled grid
 :math:`\Gamma_T`, obtained by standard cubic interpolation.
 
@@ -188,7 +188,7 @@ The next figure shows this operation in **1D**: a fine spline :math:`f` on
    :align: center
    :width: 100%
 
-The following figure shows the same idea in **2D**: an image is resampled
+The following figure shows the same idea in 2D: an image is resampled
 from the fine grid to a coarser grid using standard cubic interpolation,
 illustrating how :math:`V_1 \to V_T` looks in practice on real data.
 
@@ -273,7 +273,7 @@ oblique projection retains the same approximation order as the least-squares
 projection and yields very similar quality in practice, while significantly
 reducing computational cost. 
 
-The 1D example below shows how the **cubic-antialiasing** preset implements
+The 1D example below shows how the ``cubic-antialiasing`` preset implements
 this oblique projection: compared to plain cubic, the coarse spline is
 slightly smoother, but tracks the underlying fine spline more faithfully
 when downsampling.
@@ -340,7 +340,7 @@ Implementation
 
 Internally, :ref:`resize <api-resize>` uses two cooperating backends:
 
-* A compiled **C++ core**, wrapped as a small extension module. This is the
+* A compiled C++ core, wrapped as a small extension module. This is the
   primary implementation used in normal installations.
 
   For each axis, it:
@@ -355,13 +355,13 @@ Internally, :ref:`resize <api-resize>` uses two cooperating backends:
     dot products that can exploit SIMD instructions (AVX2, AVX-512, NEON)
     when available,
   - and **parallelizes over independent lines** with a lightweight
-    :mod:`std::thread` pool whenever the estimated workload is large enough.
+    multithreading pool whenever the estimated workload is large enough.
 
   The plan is computed once per axis/zoom/degrees combination and then reused
   across all lines along that axis, which keeps the per-call overhead low even
   for large N-D arrays.
 
-* A pure-**NumPy fallback** that mirrors the same 1D scheme at a higher level.
+* A pure-NumPy fallback that mirrors the same 1D scheme at a higher level.
   It reshapes the data so that each line along the resized axis is contiguous,
   processes lines in batches, and uses vectorized gathers and reductions to
   apply the same precomputed weights. This backend is mainly intended for
@@ -470,10 +470,10 @@ Round-trip ROI benchmark
 
 The first example benchmarks several test images by:
 
-1. **Downsampling** each image with an image-specific zoom factor
+1. Downsampling each image with an image-specific zoom factor
    :math:`z < 1`,
-2. **Upsampling back** to the original size with the same method (round-trip),
-3. Evaluating a small **region of interest (ROI)** using
+2. Upsampling back to the original size with the same method (round-trip),
+3. Evaluating a small region of interest (ROI) using
 
    - round-trip runtime (mean ± standard deviation),
    - SNR and MSE on the ROI,
@@ -500,7 +500,7 @@ In these examples:
   similar sharpness and very similar SNR/MSE/SSIM, often at lower cost than the
   heavier scientific stacks.
 - :func:`~splineops.resize.resize` ``method="cubic-antialiasing"`` typically improves SNR and SSIM
-  by a **few dB and a few hundredths of SSIM** over plain cubic in the ROI when
+  by a few dB and a few hundredths of SSIM over plain cubic in the ROI when
   downsampling aggressively. Because SNR is in decibels, a 3–6 dB lead means
   roughly :math:`1.4{-}2\times` smaller RMS error, which is a substantial
   gain for the same zoom factor.
@@ -513,7 +513,7 @@ factor of :math:`z = 0.15`:
    :align: center
    :width: 100%
 
-The next figure compares the **color ROI** for the main cubic methods
+The next figure compares the color ROI for the main cubic methods
 (Original, :func:`~splineops.resize.resize` Standard and Antialiasing, OpenCV, SciPy,
 scikit-image, PyTorch bicubic). It highlights visual differences such as
 aliasing and ringing in fine detail:
@@ -522,7 +522,7 @@ aliasing and ringing in fine detail:
    :align: center
    :width: 100%
 
-The following figure shows the **normalized signed error** in the grayscale ROI
+The following figure shows the normalized signed error in the grayscale ROI
 for the same main subset of methods. Zero error is mid-gray; brighter or darker
 regions indicate positive or negative deviations from the original:
 
@@ -530,7 +530,7 @@ regions indicate positive or negative deviations from the original:
    :align: center
    :width: 100%
 
-The next figure compares the **color ROI** for the antialiasing-focused subset
+The next figure compares the color ROI for the antialiasing-focused subset
 (Original, :func:`~splineops.resize.resize` Standard and Antialiasing, Pillow BICUBIC,
 scikit-image cubic with anti-aliasing, PyTorch bicubic with antialiasing).
 This isolates how different antialiasing strategies affect fine structure:
@@ -539,14 +539,14 @@ This isolates how different antialiasing strategies affect fine structure:
    :align: center
    :width: 100%
 
-The companion figure shows the **normalized signed error** in the grayscale ROI
+The companion figure shows the normalized signed error in the grayscale ROI
 for this antialiasing subset, again with mid-gray indicating zero error:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_014.png
    :align: center
    :width: 100%
 
-The bar chart below summarizes the **round-trip runtime** (forward + backward)
+The bar chart below summarizes the round-trip runtime (forward + backward)
 for the cubic methods at :math:`z = 0.15` on a 512×768 image. OpenCV and
 PyTorch are fastest, :func:`~splineops.resize.resize` sits comfortably in the middle, and SciPy /
 scikit-image are significantly slower:
@@ -555,7 +555,7 @@ scikit-image are significantly slower:
    :align: center
    :width: 100%
 
-Finally, the last figure in this series summarizes **SNR and SSIM per method**
+Finally, the last figure in this series summarizes SNR and SSIM per method
 for the same configuration, showing that :func:`~splineops.resize.resize` Cubic Antialiasing
 typically attains the highest SNR and SSIM, with the Standard cubic preset
 tightly grouped with the other classic cubic filters:
@@ -567,13 +567,13 @@ tightly grouped with the other classic cubic filters:
 Zoom-sweep benchmark
 ~~~~~~~~~~~~~~~~~~~~
 
-The second example uses a single Kodak image to run a **1D sweep of zoom
-factors** :math:`0 < z < 2`. For each method and zoom, it:
+The second example uses a single Kodak image to run a 1D sweep of zoom
+factors :math:`0 < z < 2`. For each method and zoom, it:
 
 - performs a forward and backward resize in float32,
-- measures round-trip **time**, **SNR** and **SSIM** on the full image,
-- plots these quantities as a function of :math:`z` for both **linear** and
-  **cubic** variants.
+- measures round-trip time, SNR and SSIM on the full image,
+- plots these quantities as a function of :math:`z` for both linear and
+  cubic variants.
 
 This provides an at-a-glance view of the quality–speed trade-off of each
 backend:
@@ -585,7 +585,7 @@ backend:
   quality (higher SNR/SSIM at small :math:`z`) while remaining competitive
   in runtime.
 
-The first plot below shows **round-trip SNR vs zoom** for cubic methods:
+The first plot below shows round-trip SNR vs zoom for cubic methods:
 :func:`~splineops.resize.resize` Antialiasing cubic rises well above the other curves for strong
 downsampling and remains best or near-best all the way up to
 :math:`z \approx 2`. In the zoomed version focusing on :math:`0 < z < 1`, it
@@ -602,7 +602,7 @@ Here is a zoom of the same plot for factors between 0 and 1:
    :align: center
    :width: 100%
 
-The next plot shows **round-trip SSIM vs zoom** for the same configuration:
+The next plot shows round-trip SSIM vs zoom for the same configuration:
 all methods converge near SSIM :math:`\approx 1` around :math:`z = 1`, but
 :func:`~splineops.resize.resize` Antialiasing cubic maintains a clear SSIM advantage for the more
 aggressive downsampling factors, meaning the recovered images preserve local
@@ -618,7 +618,7 @@ Here is a zoom of the SSIM plot for factors between 0 and 1:
    :align: center
    :width: 100%
 
-The last plot shows **round-trip runtime vs zoom**. It confirms that the
+The last plot shows round-trip runtime vs zoom. It confirms that the
 antialiasing presets add only a modest overhead over the Standard ones, while
 still remaining competitive with other high-quality methods for a wide range
 of zoom factors. The zoomed version for :math:`0 < z < 1` makes this clear

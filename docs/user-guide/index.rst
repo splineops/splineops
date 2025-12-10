@@ -13,7 +13,7 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
 
    01_spline_interpolation
    02_resize
-   03_rotate
+   03_affine
    04_adaptive_regression_splines
    05_smoothing_splines
    06_differentials
@@ -45,15 +45,15 @@ Module overview
 
       Fast, top quality projection methods to resample multidimensional data.
 
-   .. grid-item-card:: Rotate
-      :link: 03_rotate
+   .. grid-item-card:: Affine
+      :link: 03_affine
       :link-type: doc
-      :img-top: /auto_examples/03_rotate/images/sphx_glr_01_rotate_image_001.png
+      :img-top: /auto_examples/03_affine/images/sphx_glr_01_rotate_image_001.png
       :img-alt: Rotated image example
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Rotation transformations on 2D/3D data around a user-defined center.
+      Affine transforms on 2D/3D data using spline interpolation.
 
    .. grid-item-card:: Adaptive Regression Splines
       :link: 04_adaptive_regression_splines
