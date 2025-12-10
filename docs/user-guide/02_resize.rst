@@ -465,7 +465,7 @@ detailed benchmarks:
 - :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`
 - :ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`
 
-Together they compare SplineOps against widely used interpolation libraries on
+Together they compare :ref:`SplineOps <api-index>` against widely used interpolation libraries on
 realistic image resizing tasks.
 
 Round-trip ROI benchmark
@@ -493,23 +493,23 @@ The compared methods include:
 - `skimage.transform.resize`_ (cubic, with and without ``anti_aliasing``),
 - `torch.nn.functional.interpolate`_ in bicubic mode (with and without
   ``antialias=True``),
-- **SplineOps Standard cubic** (plain cubic spline interpolation),
-- **SplineOps Cubic Antialiasing** (projection-based low-pass + resize).
+- our method :func:`~splineops.resize.resize` **Cubic** (plain cubic spline interpolation),
+- our method :func:`~splineops.resize.resize` **Cubic Antialiasing** (projection-based low-pass + resize).
 
-On the Kodak examples shipped with SplineOps, the results are consistent with
+On the Kodak examples shipped with :ref:`SplineOps <api-index>`, the results are consistent with
 the theory:
 
-- **SplineOps Standard cubic** behaves like the “classic” cubic filters
+- :func:`~splineops.resize.resize` **Cubic** behaves like the “classic” cubic filters
   (SciPy, OpenCV, scikit-image, PyTorch bicubic without antialiasing): similar
   sharpness, similar SNR/MSE/SSIM, with competitive or better runtimes than
   the heavier scientific stacks.
-- **SplineOps Cubic Antialiasing** generally achieves the best or near-best
+- :func:`~splineops.resize.resize` **Cubic Antialiasing** generally achieves the best or near-best
   SNR and SSIM on the ROI for strong downsampling, while strongly reducing
   aliasing artefacts compared to plain cubic, at the cost of only a modest
   runtime overhead.
 
 The first figure below shows the global image, the ROI used for metrics, and
-the same ROI after a first-pass SplineOps antialiasing shrink, all at a zoom
+the same ROI after a first-pass :ref:`SplineOps <api-index>` antialiasing shrink, all at a zoom
 factor of :math:`z = 0.15`:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_010.png
@@ -517,7 +517,7 @@ factor of :math:`z = 0.15`:
    :width: 100%
 
 The next figure compares the **color ROI** for the main cubic methods
-(Original, SplineOps Standard, SplineOps Antialiasing, OpenCV, SciPy,
+(Original, :ref:`SplineOps <api-index>` Standard, :ref:`SplineOps <api-index>` Antialiasing, OpenCV, SciPy,
 scikit-image, PyTorch bicubic). It highlights visual differences such as
 aliasing and ringing in fine detail:
 
@@ -534,7 +534,7 @@ regions indicate positive or negative deviations from the original:
    :width: 100%
 
 The next figure compares the **color ROI** for the antialiasing-focused subset
-(Original, SplineOps Standard, SplineOps Antialiasing, Pillow BICUBIC,
+(Original, :ref:`SplineOps <api-index>` Standard, :ref:`SplineOps <api-index>` Antialiasing, Pillow BICUBIC,
 scikit-image cubic with anti-aliasing, PyTorch bicubic with antialiasing).
 This isolates how different antialiasing strategies affect fine structure:
 
@@ -551,7 +551,7 @@ for this antialiasing subset, again with mid-gray indicating zero error:
 
 The bar chart below summarizes the **round-trip runtime** (forward + backward)
 for the cubic methods at :math:`z = 0.15` on a 512×768 image. OpenCV and
-PyTorch are fastest, SplineOps sits comfortably in the middle, and SciPy /
+PyTorch are fastest, :ref:`SplineOps <api-index>` sits comfortably in the middle, and SciPy /
 scikit-image are significantly slower:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_017.png
@@ -559,7 +559,7 @@ scikit-image are significantly slower:
    :width: 100%
 
 Finally, the last figure in this series summarizes **SNR and SSIM per method**
-for the same configuration, showing that SplineOps Cubic Antialiasing
+for the same configuration, showing that :ref:`SplineOps <api-index>` Cubic Antialiasing
 typically attains the highest SNR and SSIM, with the Standard cubic preset
 tightly grouped with the other classic cubic filters:
 
@@ -583,26 +583,38 @@ backend:
 
 - OpenCV and PyTorch tend to be the fastest;
 - SciPy and scikit-image tend to be the slowest;
-- SplineOps sits in between, with **Standard** methods matching the quality
+- :ref:`SplineOps <api-index>` sits in between, with **Standard** methods matching the quality
   of traditional cubic/linear filters, and **Antialiasing** methods pushing
   quality (higher SNR/SSIM at small :math:`z`) while remaining competitive
   in runtime.
 
 The first plot below shows **round-trip SNR vs zoom** for cubic methods:
-SplineOps Antialiasing cubic rises well above the other curves for strong
+:ref:`SplineOps <api-index>` Antialiasing cubic rises well above the other curves for strong
 downsampling and remains best or near-best all the way up to
 :math:`z \approx 2`:
 
-.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_003.png
+.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_005.png
    :align: center
    :width: 100%
 
-The second plot shows **round-trip SSIM vs zoom** for the same configuration:
-all methods converge near SSIM :math:`\approx 1` around :math:`z = 1`, but
-SplineOps Antialiasing cubic reaches higher SSIM for the more aggressive
-downsampling factors:
+Here a zoom of the plot for factors between 0 and 1:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_004.png
+   :align: center
+   :width: 100%
+
+The next plot shows **round-trip SSIM vs zoom** for the same configuration:
+all methods converge near SSIM :math:`\approx 1` around :math:`z = 1`, but
+:ref:`SplineOps <api-index>` Antialiasing cubic reaches higher SSIM for the more aggressive
+downsampling factors:
+
+.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_007.png
+   :align: center
+   :width: 100%
+
+Here a zoom of the plot for factors between 0 and 1:
+
+.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_006.png
    :align: center
    :width: 100%
 
@@ -610,6 +622,12 @@ The last plot shows **round-trip runtime vs zoom**. It confirms that the
 antialiasing preset adds only a modest overhead over Standard cubic, while
 still remaining competitive with other high-quality methods for a wide range
 of zoom factors:
+
+.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_003.png
+   :align: center
+   :width: 100%
+
+Here a zoom of the plot for factors between 0 and 1:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_002.png
    :align: center
