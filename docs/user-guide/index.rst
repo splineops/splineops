@@ -19,7 +19,7 @@ This guide provides detailed explanations, tutorials, and examples to use the mo
    06_differentials
    07_multiscale
 
-Module overview
+Module Overview
 ---------------
 
 .. grid:: 3

@@ -586,9 +586,8 @@ backend:
   in runtime.
 
 The first plot below shows round-trip SNR vs zoom for cubic methods:
-:func:`~splineops.resize.resize` Antialiasing cubic rises well above the other curves for strong
-downsampling and remains best or near-best all the way up to
-:math:`z \approx 2`. In the zoomed version focusing on :math:`0 < z < 1`, it
+:func:`~splineops.resize.resize` ``method="cubic-antialiasing"`` **rises well above the other curves for strong
+downsampling and remains best for all resampling factors**. In the zoomed version focusing on :math:`0 < z < 1`, it
 leads the next-best method by several decibels over a wide range of zoom
 factors, corresponding to a noticeably smaller reconstruction error:
 
@@ -604,9 +603,9 @@ Here is a zoom of the same plot for factors between 0 and 1:
 
 The next plot shows round-trip SSIM vs zoom for the same configuration:
 all methods converge near SSIM :math:`\approx 1` around :math:`z = 1`, but
-:func:`~splineops.resize.resize` Antialiasing cubic maintains a clear SSIM advantage for the more
+:func:`~splineops.resize.resize` ``method="cubic-antialiasing"`` **maintains a clear SSIM advantage for the more
 aggressive downsampling factors, meaning the recovered images preserve local
-structure better:
+structure better**:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_007.png
    :align: center

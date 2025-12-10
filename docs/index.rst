@@ -7,11 +7,6 @@ SplineOps: Spline Operations
 Adapted and built on the algorithms developed through the years by the `Biomedical Imaging Group at EPFL <https://bigwww.epfl.ch/>`_ (Lausanne, Switzerland), 
 SplineOps is in active development and supports modern computational demands.
 
-With a focus on the handling of large datasets, SplineOps deploys both CPU and GPU computations and offers tools for data smoothing, interpolation, 
-and other applications. The library aims to integrate with the PyData ecosystem and supports a variety of research and engineering needs.
-
-By leveraging modern computing architectures, SplineOps seeks to enhance computational workflows while maintaining the rigor and reliability of the original algorithms.
-
 .. figure:: _static/waveletbird_full.jpeg
    :alt: Main Feature of SplineOps
    :align: center
@@ -59,7 +54,7 @@ Modules at a Glance
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Flagship projection-based resampler for highest-quality spline resizing and antialiasing.
+      Projection-based resampler for highest-quality spline resizing and antialiasing.
 
    .. grid-item-card:: Affine
       :link: user-guide/03_affine
@@ -69,7 +64,7 @@ Modules at a Glance
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Rotate (and soon scale & shear) images and volumes around arbitrary centres.
+      Geometric transformations on images and volumes.
 
    .. grid-item-card:: Adaptive Regression Splines
       :link: user-guide/04_adaptive_regression_splines
