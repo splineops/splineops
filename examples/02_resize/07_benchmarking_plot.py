@@ -644,7 +644,11 @@ def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]]
 # Plotting Helpers
 # ----------------
 
-def _plot_timing(results: Dict[str, Dict[str, List[float]]], degree_label: str):
+def _plot_timing(
+    results: Dict[str, Dict[str, List[float]]],
+    degree_label: str,
+    zoom_label: str = "0 < z < 2",
+):
     """Timing vs zoom plot for a given degree."""
     plt.figure(figsize=PLOT_FIGSIZE)
 
@@ -675,7 +679,7 @@ def _plot_timing(results: Dict[str, Dict[str, List[float]]], degree_label: str):
         any_curve = True
 
     if any_curve:
-        plt.xlabel("Zoom factor (0 < z < 2)", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.xlabel(f"Zoom factor ({zoom_label})", fontsize=PLOT_LABEL_FONTSIZE)
         plt.ylabel(
             f"Time (s)  [avg of {REPEATS} runs, forward + backward]",
             fontsize=PLOT_LABEL_FONTSIZE,
@@ -692,7 +696,11 @@ def _plot_timing(results: Dict[str, Dict[str, List[float]]], degree_label: str):
     plt.show()
 
 
-def _plot_snr(results: Dict[str, Dict[str, List[float]]], degree_label: str):
+def _plot_snr(
+    results: Dict[str, Dict[str, List[float]]],
+    degree_label: str,
+    zoom_label: str = "0 < z < 2",
+):
     """SNR vs zoom plot for a given degree."""
     plt.figure(figsize=PLOT_FIGSIZE)
 
@@ -723,7 +731,7 @@ def _plot_snr(results: Dict[str, Dict[str, List[float]]], degree_label: str):
         any_curve = True
 
     if any_curve:
-        plt.xlabel("Zoom factor (0 < z < 2)", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.xlabel(f"Zoom factor ({zoom_label})", fontsize=PLOT_LABEL_FONTSIZE)
         plt.ylabel("SNR (dB)  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
         plt.title(
             f"Round-Trip SNR vs Zoom  (H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
@@ -737,7 +745,11 @@ def _plot_snr(results: Dict[str, Dict[str, List[float]]], degree_label: str):
     plt.show()
 
 
-def _plot_ssim(results: Dict[str, Dict[str, List[float]]], degree_label: str):
+def _plot_ssim(
+    results: Dict[str, Dict[str, List[float]]],
+    degree_label: str,
+    zoom_label: str = "0 < z < 2",
+):
     """SSIM vs zoom plot for a given degree (if scikit-image is available)."""
     if not (_HAS_SKIMAGE and sk_ssim is not None):
         print("\n[info] scikit-image not available; SSIM plot skipped.")
@@ -772,7 +784,7 @@ def _plot_ssim(results: Dict[str, Dict[str, List[float]]], degree_label: str):
         any_curve = True
 
     if any_curve:
-        plt.xlabel("Zoom factor (0 < z < 2)", fontsize=PLOT_LABEL_FONTSIZE)
+        plt.xlabel(f"Zoom factor ({zoom_label})", fontsize=PLOT_LABEL_FONTSIZE)
         plt.ylabel("SSIM  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
         plt.title(
             f"Round-Trip SSIM vs Zoom  (H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
@@ -785,6 +797,42 @@ def _plot_ssim(results: Dict[str, Dict[str, List[float]]], degree_label: str):
         plt.tight_layout()
     plt.show()
 
+def _filter_results_z_range(
+    results: Dict[str, Dict[str, List[float]]],
+    z_min: float | None = None,
+    z_max: float | None = None,
+) -> Dict[str, Dict[str, List[float]]]:
+    """
+    Return a copy of `results` with all series restricted to z in [z_min, z_max].
+    If z_min or z_max is None, that bound is ignored.
+    """
+    filtered: Dict[str, Dict[str, List[float]]] = {}
+
+    for name, data in results.items():
+        z_arr = np.asarray(data["z"], dtype=np.float64)
+        if z_arr.size == 0:
+            # Keep structure but with empty lists
+            filtered[name] = {key: [] for key in data}
+            continue
+
+        mask = np.ones_like(z_arr, dtype=bool)
+        if z_min is not None:
+            mask &= z_arr >= z_min
+        if z_max is not None:
+            mask &= z_arr <= z_max
+
+        # Apply the same mask to all per-zoom fields
+        filtered[name] = {}
+        for key in ("z", "time", "time_sd", "snr", "ssim"):
+            vals = np.asarray(data[key], dtype=np.float64)
+            if vals.shape != z_arr.shape:
+                # Fallback (shouldn't happen here): copy as is
+                filtered[name][key] = list(data[key])
+            else:
+                filtered[name][key] = list(vals[mask])
+
+    return filtered
+
 # %%
 # Benchmark for Cubic Degree
 # --------------------------
@@ -792,20 +840,39 @@ def _plot_ssim(results: Dict[str, Dict[str, List[float]]], degree_label: str):
 results_cubic, degree_label_cubic = run_sweep_for_degree("cubic")
 
 # %%
-# Time Comparison
-# ~~~~~~~~~~~~~~~
+# Time Comparison (Downsampling Only)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+results_cubic_down = _filter_results_z_range(results_cubic, z_min=0.0, z_max=1.0)
+_plot_timing(results_cubic_down, degree_label_cubic, zoom_label="0 < z < 1")
+
+# %%
+# Time Comparison (Full)
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 _plot_timing(results_cubic, degree_label_cubic)
 
 # %%
-# SNR Comparison
-# ~~~~~~~~~~~~~~
+# SNR Comparison (Downsampling Only)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+_plot_snr(results_cubic_down, degree_label_cubic, zoom_label="0 < z < 1")
+
+# %%
+# SNR Comparison (Full)
+# ~~~~~~~~~~~~~~~~~~~~~
 
 _plot_snr(results_cubic, degree_label_cubic)
 
 # %%
-# SSIM Comparison
-# ~~~~~~~~~~~~~~~
+# SSIM Comparison (Downsampling Only)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+_plot_ssim(results_cubic_down, degree_label_cubic, zoom_label="0 < z < 1")
+
+# %%
+# SSIM Comparison (Full)
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 _plot_ssim(results_cubic, degree_label_cubic)
 
@@ -816,20 +883,39 @@ _plot_ssim(results_cubic, degree_label_cubic)
 results_linear, degree_label_linear = run_sweep_for_degree("linear")
 
 # %%
-# Time Comparison
-# ~~~~~~~~~~~~~~~
+# Time Comparison (Downsampling Only)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+results_linear_down = _filter_results_z_range(results_linear, z_min=0.0, z_max=1.0)
+_plot_timing(results_linear_down, degree_label_linear, zoom_label="0 < z < 1")
+
+# %%
+# Time Comparison (Full)
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 _plot_timing(results_linear, degree_label_linear)
 
 # %%
-# SNR Comparison
-# ~~~~~~~~~~~~~~
+# SNR Comparison (Downsampling Only)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+_plot_snr(results_linear_down, degree_label_linear, zoom_label="0 < z < 1")
+
+# %%
+# SNR Comparison (Full)
+# ~~~~~~~~~~~~~~~~~~~~~
 
 _plot_snr(results_linear, degree_label_linear)
 
 # %%
-# SSIM Comparison
-# ~~~~~~~~~~~~~~~
+# SSIM Comparison (Downsampling Only)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+_plot_ssim(results_linear_down, degree_label_linear, zoom_label="0 < z < 1")
+
+# %%
+# SSIM Comparison (Full)
+# ~~~~~~~~~~~~~~~~~~~~~~
 
 _plot_ssim(results_linear, degree_label_linear)
 
