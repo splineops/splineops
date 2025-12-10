@@ -190,3 +190,10 @@ def setup(app):
         else:
             print("Build finished successfully")
     app.connect('build-finished', on_build_finished)
+
+
+# To build docs:
+# pip install -e .[docs]
+# cd docs
+# make html
+# Go to `docs/_build/html` and open `index.html
