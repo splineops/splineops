@@ -25,7 +25,7 @@ Module overview
 .. grid:: 3
    :gutter: 2
 
-   .. grid-item-card:: Spline interpolation
+   .. grid-item-card:: Spline Interpolation
       :link: 01_spline_interpolation
       :link-type: doc
       :img-top: /auto_examples/01_spline_interpolation/images/sphx_glr_04_interpolate_1d_samples_003.png
@@ -33,7 +33,7 @@ Module overview
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Interpolation class for multidimensional data.
+      Extensible pure-Python base interpolation class for multidimensional data.
 
    .. grid-item-card:: Resize
       :link: 02_resize
@@ -43,7 +43,7 @@ Module overview
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Resize using high-quality projection-based methods.
+      Resample multidimensional data using fast, top-quality projection-based methods.
 
    .. grid-item-card:: Rotate
       :link: 03_rotate
@@ -53,7 +53,7 @@ Module overview
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Rotate 2D/3D data around a user-defined center.
+      Rotation transformations on 2D/3D data around a user-defined center.
 
    .. grid-item-card:: Adaptive Regression Splines
       :link: 04_adaptive_regression_splines
@@ -83,7 +83,7 @@ Module overview
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Differentiate 2D images.
+      Compute first and second-order derivatives on 2D images.
 
    .. grid-item-card:: Multiscale
       :link: 07_multiscale
@@ -93,4 +93,4 @@ Module overview
       :shadow: md
       :class-card: sd-rounded-2 sd-border
 
-      Decompose 1D signals and 2D images.
+      Analyze 1D signals and 2D images at multiple scales.

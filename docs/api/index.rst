@@ -12,19 +12,19 @@ API Reference
    * - **Module**
      - **Description**
    * - :ref:`Spline Interpolation <api-spline_interpolation>`
-     - Interpolation class for multidimensional data.
+     - Extensible pure-Python base interpolation class for multidimensional data.
    * - :ref:`Resize <api-resize>`
-     - Resize using high-quality projection-based methods.
+     - Resample multidimensional data using fast, top-quality projection-based methods.
    * - :ref:`Rotate <api-rotate>`
-     - Rotate 2D/3D data around a user-defined center.
+     - Rotation transformations on 2D/3D data around a user-defined center.
    * - :ref:`Adaptive Regression Splines <api-adaptive_regression_splines>`
      - Perform sparsest linear regression on 1D data.
    * - :ref:`Smoothing Splines <api-smoothing_splines>`
      - Fit splines to noisy data.
    * - :ref:`Differentials <api-differentials>`
-     - Differentiate 2D images.
+     - Compute first and second-order derivatives on 2D images.
    * - :ref:`Multiscale <api-multiscale>`
-     - Decompose 1D signals and 2D images.
+     - Analyze 1D signals and 2D images at multiple scales.
 
 .. toctree::
    :maxdepth: 1
