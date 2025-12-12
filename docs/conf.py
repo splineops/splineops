@@ -16,6 +16,15 @@ if "SPLINEOPS_ACCEL" not in os.environ:  # allow users/CI to override
     os.environ["SPLINEOPS_ACCEL"] = "always" if has_native else "auto"
 os.environ["OMP_NUM_THREADS"] = str(os.cpu_count() or 1)
 
+import matplotlib as mpl
+
+try:
+    import imageio_ffmpeg
+    mpl.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
+    mpl.rcParams["animation.writer"] = "ffmpeg"
+except Exception as e:
+    print("[docs] imageio-ffmpeg not available, falling back:", e)
+
 # ------------------------------------------------------------------
 # Make sure we import the *installed/editable* package first
 # (has the compiled extension). Fall back to src/ only if needed.
@@ -85,7 +94,7 @@ sphinx_gallery_conf = {
     'within_subsection_order': FileNameSortKey,
     'backreferences_dir': 'gen_modules/backreferences',
     'filename_pattern': '.*',
-    "matplotlib_animations": (True, "jshtml"),
+    "matplotlib_animations": (True, "html5"),
     'binder': { # https://sphinx-gallery.github.io/stable/configuration.html#generate-binder-links-for-gallery-notebooks-experimental
         'org': 'splineops',
         'repo': 'splineops.github.io',

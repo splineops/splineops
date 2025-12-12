@@ -83,6 +83,9 @@ docs = [
     "scikit-image >=0.25",
     "opencv-python-headless >=4.8",
     "torch >=2.0",
+
+    # ffmpeg binary (pip)
+    "imageio-ffmpeg >=0.5",
 ]
 
 # scikit-build-core configuration
