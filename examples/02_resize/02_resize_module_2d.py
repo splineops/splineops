@@ -376,3 +376,197 @@ show_intro_color(
     label="Antialiasing",
     degree_label="Cubic",
 )
+
+# %%
+# Round-trip animation over Zoom Factors
+# --------------------------------------
+#
+# We animate a downsample → upsample (back to original size) round-trip for
+# several zoom factors z < 1.
+#
+# Top:    original RGB image (fixed)
+# Middle: downsampled image pasted on a white canvas of the original size
+# Bottom: recovered image (round-trip), showing degradation
+#
+# Tip: set METHOD="cubic" to see the effect without the antialiasing preset.
+
+from matplotlib import animation
+
+METHOD = "cubic"   # try "cubic" for standard interpolation
+# Dense near strong downsampling (0.01–0.2), then sparser up to 0.8
+zoom_dense  = np.geomspace(0.05, 0.2, 10)                 # 10 values, dense at the low end
+zoom_sparse = np.array([0.25, 0.30, 0.40, 0.50, 0.65, 0.80, 1.0])
+zoom_values = np.unique(np.concatenate([zoom_dense, zoom_sparse]))
+
+orig = np.clip(data, 0.0, 1.0)  # H×W×3 float image in [0,1]
+H0, W0, _ = orig.shape
+
+# Precompute frames for a smooth/fast animation
+canvases: list[np.ndarray] = []
+recs: list[np.ndarray] = []
+
+for z in zoom_values:
+    # 1) Downsample (first pass)
+    down = resize_rgb(orig, z, method=METHOD)              # H1×W1×3
+    down = np.clip(down, 0.0, 1.0)
+
+    # 2) Paste on white canvas of the original size
+    canvas = np.ones_like(orig)
+    h1, w1, _ = down.shape
+    canvas[:h1, :w1, :] = down
+    canvases.append(canvas)
+
+    # 3) Recover back to original size (second pass)
+    rec_channels = [
+        resize(down[..., c], output_size=(H0, W0), method=METHOD)
+        for c in range(3)
+    ]
+    rec = np.stack(rec_channels, axis=-1)
+    recs.append(np.clip(rec, 0.0, 1.0))
+
+# Figure layout: 3 rows, 1 column
+fig, axes = plt.subplots(3, 1, figsize=(7, 12), constrained_layout=True)
+for ax in axes:
+    ax.axis("off")
+
+axes[0].set_title("Original (fixed)")
+t_down = axes[1].set_title(f"Downsampled (z={zoom_values[0]:.2f}) on white canvas")
+t_rec  = axes[2].set_title(f"Recovered (round-trip) — method={METHOD}, z={zoom_values[0]:.2f}")
+
+im0 = axes[0].imshow(orig)
+im1 = axes[1].imshow(canvases[0])
+im2 = axes[2].imshow(recs[0])
+
+def animate_frame(i: int):
+    im1.set_data(canvases[i])
+    im2.set_data(recs[i])
+    t_down.set_text(f"Downsampled (z={zoom_values[i]:.2f}) on white canvas")
+    t_rec.set_text(f"Recovered (round-trip) — method={METHOD}, z={zoom_values[i]:.2f}")
+    return im1, im2, t_down, t_rec
+
+ani = animation.FuncAnimation(
+    fig,
+    animate_frame,
+    frames=len(zoom_values),
+    interval=900,
+    blit=True,
+)
+
+ani_html = ani.to_jshtml()
+
+# %%
+# Side-by-side animation: cubic vs cubic-antialiasing
+# ---------------------------------------------------
+#
+# Left column:  Standard cubic
+# Right column: Cubic-antialiasing
+#
+# Row 1: Original (fixed)
+# Row 2: Downsampled (on white canvas)
+# Row 3: Recovered (round-trip)
+
+from matplotlib import animation
+
+METHOD_STD = "cubic"
+METHOD_AA  = "cubic-antialiasing"
+
+# Use the same zoom_values from the previous cell
+# (If you prefer, you can redefine zoom_values here.)
+zoom_values_cmp = np.asarray(zoom_values, dtype=float)
+
+orig_f = np.clip(data, 0.0, 1.0)
+H0, W0, _ = orig_f.shape
+orig_u8 = (orig_f * 255.0 + 0.5).astype(np.uint8)
+
+# Precompute frames (store uint8 to keep memory low)
+canv_std: list[np.ndarray] = []
+recs_std: list[np.ndarray] = []
+canv_aa:  list[np.ndarray] = []
+recs_aa:  list[np.ndarray] = []
+
+def _roundtrip_frames(method: str):
+    canv: list[np.ndarray] = []
+    recs: list[np.ndarray] = []
+    for z in zoom_values_cmp:
+        # Downsample
+        down_f = resize_rgb(orig_f, z, method=method)
+        down_f = np.clip(down_f, 0.0, 1.0)
+        down_u8 = (down_f * 255.0 + 0.5).astype(np.uint8)
+
+        # Canvas (white, original size)
+        canvas = np.full_like(orig_u8, 255)
+        h1, w1, _ = down_u8.shape
+        canvas[:h1, :w1, :] = down_u8
+        canv.append(canvas)
+
+        # Recover to original size (round-trip)
+        rec_channels = [
+            resize(down_f[..., c], output_size=(H0, W0), method=method)
+            for c in range(3)
+        ]
+        rec_f = np.clip(np.stack(rec_channels, axis=-1), 0.0, 1.0)
+        rec_u8 = (rec_f * 255.0 + 0.5).astype(np.uint8)
+        recs.append(rec_u8)
+
+    return canv, recs
+
+canv_std, recs_std = _roundtrip_frames(METHOD_STD)
+canv_aa,  recs_aa  = _roundtrip_frames(METHOD_AA)
+
+# Layout: 3 rows × 2 columns
+fig, axes = plt.subplots(3, 2, figsize=(12, 12), constrained_layout=True)
+for ax in axes.ravel():
+    ax.axis("off")
+
+# Column headers (Row 1)
+axes[0, 0].set_title("Standard cubic — Original (fixed)")
+axes[0, 1].set_title("Cubic-antialiasing — Original (fixed)")
+
+im_orig_l = axes[0, 0].imshow(orig_u8)
+im_orig_r = axes[0, 1].imshow(orig_u8)
+
+# Row 2: downsampled on canvas
+t_down_l = axes[1, 0].set_title(f"Downsampled on canvas (z={zoom_values_cmp[0]:.3f})")
+t_down_r = axes[1, 1].set_title(f"Downsampled on canvas (z={zoom_values_cmp[0]:.3f})")
+
+im_down_l = axes[1, 0].imshow(canv_std[0])
+im_down_r = axes[1, 1].imshow(canv_aa[0])
+
+# Row 3: recovered
+t_rec_l = axes[2, 0].set_title(f"Recovered (round-trip) — z={zoom_values_cmp[0]:.3f}")
+t_rec_r = axes[2, 1].set_title(f"Recovered (round-trip) — z={zoom_values_cmp[0]:.3f}")
+
+im_rec_l = axes[2, 0].imshow(recs_std[0])
+im_rec_r = axes[2, 1].imshow(recs_aa[0])
+
+def animate_frame(i: int):
+    z = zoom_values_cmp[i]
+
+    im_down_l.set_data(canv_std[i])
+    im_down_r.set_data(canv_aa[i])
+
+    im_rec_l.set_data(recs_std[i])
+    im_rec_r.set_data(recs_aa[i])
+
+    t_down_l.set_text(f"Downsampled on canvas (z={z:.3f})")
+    t_down_r.set_text(f"Downsampled on canvas (z={z:.3f})")
+
+    t_rec_l.set_text(f"Recovered (round-trip) — z={z:.3f}")
+    t_rec_r.set_text(f"Recovered (round-trip) — z={z:.3f}")
+
+    return (
+        im_down_l, im_down_r,
+        im_rec_l, im_rec_r,
+        t_down_l, t_down_r,
+        t_rec_l, t_rec_r,
+    )
+
+ani_cmp = animation.FuncAnimation(
+    fig,
+    animate_frame,
+    frames=len(zoom_values_cmp),
+    interval=900,
+    blit=True,
+)
+
+ani_cmp_html = ani_cmp.to_jshtml()
