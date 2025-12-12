@@ -127,6 +127,7 @@ Example
 -------
 
 * :ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_01_adaptive_regression_splines_module.py`
+* :ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_02_lambda_sweep_animation.py`
 
 References
 ----------
