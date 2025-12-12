@@ -118,6 +118,27 @@ chosen center of rotation.
    :align: center
    :width: 100%
 
+Rotation Animation
+------------------
+
+Here a more comprehensive animation exported from the example :ref:`sphx_glr_auto_examples_03_affine_02_rotation_animation.py`, using
+different values of rotation angles and spline degrees.
+
+.. only:: html
+
+   .. raw:: html
+
+      <iframe
+        src="../_static/animations/rotation_animation.html"
+        style="width: 100%; height: 1100px; border: 0;"
+        loading="lazy">
+      </iframe>
+
+.. only:: not html
+
+   The interactive animation is available in the HTML docs:
+   :ref:`sphx_glr_auto_examples_03_affine_02_rotation_animation.py`.
+
 Rotate Examples
 ---------------
 

@@ -25,6 +25,11 @@ splineops_env/
 *.synctex.gz
 *.pdf
 
+# Generated animation-only HTML embeds (built during docs/examples execution)
+docs/_static/animations/
+# (or, if you want to keep the folder but ignore only files:)
+# docs/_static/animations/*.html
+
 # Distribution / packaging
 .Python
 build/

@@ -85,7 +85,7 @@ sphinx_gallery_conf = {
     'within_subsection_order': FileNameSortKey,
     'backreferences_dir': 'gen_modules/backreferences',
     'filename_pattern': '.*',
-    'matplotlib_animations': True,
+    "matplotlib_animations": (True, "jshtml"),
     'binder': { # https://sphinx-gallery.github.io/stable/configuration.html#generate-binder-links-for-gallery-notebooks-experimental
         'org': 'splineops',
         'repo': 'splineops.github.io',

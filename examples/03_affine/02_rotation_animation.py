@@ -29,8 +29,8 @@ from PIL import Image
 # and then resize it by a factor of (0.5, 0.5). After that,
 # scale its intensity back to [0, 255] before rotation.
 
-# Load the 'kodim17.png' image
-url = 'https://r0k.us/graphics/kodak/kodak/kodim22.png'
+# Load the image
+url = 'https://r0k.us/graphics/kodak/kodak/kodim07.png'
 with urlopen(url, timeout=10) as resp:
     img = Image.open(resp)
 data = np.array(img, dtype=np.float64)
@@ -150,3 +150,70 @@ def create_combined_animation(image, center, radius):
 # Create the animation
 ani = create_combined_animation(image_resized, center=custom_center, radius=radius)
 ani_html = ani.to_jshtml()
+
+# %%
+# Export the Animation
+# --------------------
+#
+# This section is needed only to export the animation to the user guide.
+
+from pathlib import Path
+import inspect
+
+def _export_animation_only_html(anim_html: str, filename: str = "rotation_animation.html") -> None:
+    """
+    Write a standalone HTML file (only the animation) into docs/_static/animations/.
+
+    Note: Sphinx-Gallery may execute without defining __file__, so we rely on
+    the code object's filename as a fallback.
+    """
+    co_filename = inspect.currentframe().f_code.co_filename
+    candidate = globals().get("__file__", co_filename)
+
+    try:
+        here = Path(candidate).resolve()
+    except Exception:
+        here = Path.cwd().resolve()
+
+    # Find docs/ folder by looking for docs/conf.py up the tree
+    docs_dir = None
+    for p in [here] + list(here.parents) + [Path.cwd().resolve()] + list(Path.cwd().resolve().parents):
+        if (p / "docs" / "conf.py").exists():
+            docs_dir = p / "docs"
+            break
+        if p.name == "docs" and (p / "conf.py").exists():
+            docs_dir = p
+            break
+
+    if docs_dir is None:
+        print("[splineops] docs/conf.py not found; skipping animation-only export.")
+        return
+
+    out_dir = docs_dir / "_static" / "animations"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / filename
+
+    html_doc = f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body {{ margin: 0; padding: 0; }}
+    .animation {{ display: block; margin: 0 auto; }}
+  </style>
+</head>
+<body>
+{anim_html}
+</body>
+</html>
+"""
+
+    # Avoid rewriting if unchanged (keeps git noise down)
+    try:
+        if out_path.exists() and out_path.read_text(encoding="utf-8") == html_doc:
+            return
+        out_path.write_text(html_doc, encoding="utf-8")
+    except Exception as e:
+        print(f"[splineops] Could not write {out_path}: {e}")
+
+_export_animation_only_html(ani_html)

@@ -132,7 +132,7 @@ def _run_lambda(lamb: float):
     ax.plot(x, y_d, 'x', label='Denoised', markersize=8)
     ax.plot(t_grid, linear_spline(t_grid, knots, amplitudes, polynomial), label='Sparsest')
     if len(knots) > 0:
-        ax.plot(knots, linear_spline(knots, knots, amplitudes, polynomial), 'o', label='Knots')
+        ax.plot(knots, linear_spline(knots, knots, amplitudes, polynomial), 'o', color="C3", label='Knots')
     ax.set_title(f"λ = {lamb:g}   |   K = {len(knots)}")
     ax.legend()
     plt.show()

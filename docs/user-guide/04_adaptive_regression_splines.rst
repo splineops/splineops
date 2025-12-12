@@ -123,6 +123,27 @@ its knot locations.
    :align: center
    :width: 100%
 
+Lambda Sweep Animation
+----------------------
+
+Here a more comprehensive animation exported from the example :ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_02_lambda_sweep_animation.py`, 
+trying different values of :math:`\lambda`.
+
+.. only:: html
+
+   .. raw:: html
+
+      <iframe
+        src="../_static/animations/lambda_sweep_animation.html"
+        style="width: 100%; height: 650px; border: 0;"
+        loading="lazy">
+      </iframe>
+
+.. only:: not html
+
+   The interactive animation is available in the HTML docs:
+   :ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_02_lambda_sweep_animation.py`.
+
 Example
 -------
 
