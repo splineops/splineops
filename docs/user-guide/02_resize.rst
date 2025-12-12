@@ -68,7 +68,7 @@ The set of all such splines then forms a spline space, which we denote by
 We call this space :math:`V_1` because it corresponds to a unit sampling
 step along the integer grid :math:`\{0, 1, 2, \dots\}`.
 
-Now fix a scale factor :math:`T > 0` and consider the scaled grid
+Now fix a scale factor, a non-negative real number :math:`T > 0`, and consider the scaled grid
 
 .. math::
 
@@ -136,8 +136,8 @@ implement the standard interpolation scheme described in
    :align: center
    :width: 100%
 
-Resizing
---------
+Resizing by Resampling
+----------------------
 
 Suppose that the original signal :math:`f` belongs to :math:`V_1`. For a given
 scale factor :math:`T`, we can form new samples on the scaled grid
@@ -196,8 +196,8 @@ illustrating how :math:`V_1 \to V_T` looks in practice on real data.
    :align: center
    :width: 100%
 
-Least-Squares Projection
-------------------------
+Optimal Resizing by Least-Squares Projection
+--------------------------------------------
 
 So far we have described elements of :math:`V_T` by expanding them in terms of
 the shifted basis functions :math:`\varphi_{k,T}`:
@@ -213,7 +213,7 @@ signal :math:`f`.
 
 In the least-squares setting, this is done using a second family of functions
 :math:`\{\tilde{\varphi}_{k,T}\}_{k\in\mathbb{Z}}`, often called the
-analysis functions. They are chosen to be dual to the synthesis functions,
+analysis functions (also called dual-basis functions). They are chosen to be dual to the synthesis functions,
 in the sense of the biorthonormality relation
 
 .. math::
@@ -262,7 +262,7 @@ approximation is still written as
     g_T^{\mathrm{obl}}(x)
     = \sum_{k \in \mathbb{Z}} d[k]\,\varphi_{k,T}(x),
 
-but to compute the coefficients :math:`d[k]` using a simpler analysis family
+but to compute the coefficients :math:`d[k]` using a biorthonormal analysis family
 :math:`\{\psi_{k,T}\}_{k\in\mathbb{Z}}` that typically belongs to a lower-degree
 spline space. In this case, the projection error is orthogonal to the analysis
 space spanned by :math:`\psi_{k,T}`, rather than to :math:`V_T` itself, hence

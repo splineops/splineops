@@ -21,10 +21,10 @@ You will find:
   Extends the idea to 2D pictures or 3D volumes through one FFT;
   internally it uses a Butterworth low-pass filter.
 
-* Fast cubic shortcut:
-  A lightweight forward/backward IIR filter that approximates the cubic
-  case and runs in a single pass—handy for real-time
-  streams.
+* Fast linear shortcut:
+  A lightweight forward/backward IIR filter that implements the
+  first-order (piecewise-linear) smoothing spline in linear time—handy
+  for real-time streams.
 
 * Extra helpers to generate test data
   (fractional Brownian motion) and to compute spline autocorrelations.
@@ -47,7 +47,7 @@ where
 * the second term penalises roughness,
 * :math:`\lambda` balances the two,
 * :math:`\partial^{\gamma}` is a *fractional* derivative: 
-  the optimal solution is a fractional spline of degree :math:`2\gamma + 1`.
+  the optimal solution is a fractional spline of degree :math:`2\gamma - 1`.
 
 Taking the discrete Fourier transform (DFT) of both sides turns the
 problem into a simple, frequency-by-frequency scaling
@@ -58,12 +58,18 @@ problem into a simple, frequency-by-frequency scaling
 
 where :math:`Y(\omega)` is the DFT of the data and :math:`S(\omega)` the
 DFT of the solution.  
-:math:`H(\omega)` has been computed and has a closed form [2]_. A good approximation of :math:`H(\omega)`
-is the Butterworth filter :math:`H_{2\gamma}(\omega)`
+:math:`H(\omega)` has been computed and has a closed form [1]_. A convenient Butterworth-like
+approximation of :math:`H(\omega)` is :math:`H_{2\gamma}(\omega)`, with
 
 .. math::
 
    H_{2\gamma}(\omega)=\frac{1}{1+\lambda\,|\omega|^{2\gamma}}.
+
+.. note::
+
+   Here :math:`\omega` denotes the (angular) frequency variable.  This form is
+   equivalent to the standard Butterworth parameterization
+   :math:`1/(1+|\omega/\omega_0|^{2\gamma})` with :math:`\omega_0=\lambda^{-1/(2\gamma)}`.
 
 The practical recipe is therefore
 
@@ -117,32 +123,58 @@ Because the filter is applied element-wise in the frequency domain, the
 computation still needs just one forward FFT and one inverse FFT,
 whatever the data dimension.
 
-Fast Recursive Cubic Smoother
------------------------------
+Fast Recursive Linear Smoother
+------------------------------
 
-When you only need the cubic case (:math:`\gamma = 1`) the frequency
-response above simplifies so much that it can be implemented with two
-tiny first-order filters—one run forward, the other backward.  The key
-quantity is the *pole*  
+When you only need the first-order case (:math:`\gamma = 1`), the
+corresponding discrete frequency response simplifies to
 
 .. math::
 
-   z_1 \;=\;-\frac{\lambda}{1+\sqrt{\,1+4\lambda\,}}.
+   H(\omega)=\frac{1}{1+4\lambda\,\sin^{2}(\omega/2)}.
+
+This symmetric all-pole response can be factorized into a causal and an
+anti-causal first-order filter with pole :math:`z_1\in(0,1)`:
+
+.. math::
+
+   H(\omega)=\frac{(1-z_1)^2}{1-2z_1\cos\omega+z_1^2},
+   \qquad
+   z_1=\frac{\sqrt{1+4\lambda}-1}{\sqrt{1+4\lambda}+1}.
 
 With that number in hand the algorithm is
 
-#. Causal pass:
-   start at :math:`k = 0` and accumulate  
-   :math:`c[k] = y[k] + z_1\,c[k-1]`.
+#. Causal pass (forward), with steady-state initialization:
 
-#. Anti-causal pass:
-   start at the last sample and run backwards  
-   :math:`s[k] = c[k] + z_1\,s[k+1]`.
+   .. math::
 
-The two passes give the same zero-phase result you would obtain from the
-FFT method but at a cost that is strictly linear in the number of
-samples and with virtually no memory footprint.  A detailed derivation
-appears in [1]_, Section IV-B.
+      c[0]=\frac{y[0]}{1-z_1},\qquad
+      c[k]=y[k]+z_1\,c[k-1].
+
+#. Anti-causal pass (backward), with steady-state initialization:
+
+   .. math::
+
+      s[K-1]=\frac{c[K-1]}{1-z_1},\qquad
+      s[k]=c[k]+z_1\,s[k+1].
+
+#. Normalization:
+
+   .. math::
+
+      s[k]\leftarrow (1-z_1)^2\,s[k].
+
+The two passes yield the same zero-phase result as applying :math:`H(\omega)`
+in the Fourier domain, but at a cost that is strictly linear in the number
+of samples and with constant memory. A detailed derivation (including
+boundary handling for finite-length signals) appears in [4]_, Sections II-B
+and II-D.
+
+.. note::
+
+   The *cubic* smoothing spline case requires a higher-order recursion
+   (complex-conjugate poles) and does not reduce to a single real pole;
+   see [4]_, Section IV-B.
 
 Choosing the Parameters
 -----------------------
@@ -178,3 +210,7 @@ References
 
 .. [3] M. Unser, T. Blu, `Fractional Splines and Wavelets <https://doi.org/10.1137/S0036144598349435>`_, 
    SIAM Review, vol. 42, no. 1, pp. 43-67, March 2000.
+
+.. [4] M. Unser, A. Aldroubi, M. Eden, *B-Spline Signal Processing:
+   Part II—Efficient Design and Applications*, IEEE Transactions on Signal
+   Processing, vol. 41, no. 2, pp. 834–848, Feb. 1993.

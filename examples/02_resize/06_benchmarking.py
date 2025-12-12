@@ -13,15 +13,15 @@ images. For each image we:
 2. Measure the runtime of the round-trip (forward + backward).
 3. Compute SNR / MSE / SSIM on a local ROI.
 4. Visualise the results with ROI-aware zooms: first a 2x2 figure showing the
-   original image with its magnified ROI and the Splineops Antialiasing
+   original image with its magnified ROI and the SplineOps Antialiasing
    first-pass image with the mapped ROI, then ROI montages of the original
    ROI and each method's first-pass ROI, all magnified with nearest-neighbour.
 
 We compare:
 
 - SciPy ndimage.zoom (cubic).
-- splineops Standard cubic interpolation.
-- splineops Cubic Antialiasing (oblique projection).
+- SplineOps Standard cubic interpolation.
+- SplineOps Cubic Antialiasing (oblique projection).
 - OpenCV INTER_CUBIC.
 - Pillow BICUBIC.
 - scikit-image (resize, cubic).
@@ -107,7 +107,7 @@ try:
 except Exception:
     _HAS_TORCH = False
 
-# splineops
+# SplineOps
 try:
     from splineops.resize import resize as sp_resize
     _HAS_SPLINEOPS = True
@@ -289,7 +289,7 @@ def _show_initial_original_vs_aa(
       - Magnified original ROI
 
     Row 2:
-      - Splineops Antialiasing first-pass resized image on white canvas with
+      - SplineOps Antialiasing first-pass resized image on white canvas with
         mapped ROI box
       - Magnified mapped ROI from the Antialiasing first-pass
     """
@@ -518,7 +518,7 @@ def _rt_splineops(
 ) -> Tuple[np.ndarray, np.ndarray, Optional[str]]:
     """SplineOps standard / antialiasing cubic."""
     if not _HAS_SPLINEOPS:
-        return gray, gray, f"splineops unavailable: {_SPLINEOPS_IMPORT_ERR}"
+        return gray, gray, f"SplineOps unavailable: {_SPLINEOPS_IMPORT_ERR}"
     try:
         first = sp_resize(gray, zoom_factors=(z, z), method=preset)
         rec   = sp_resize(first, output_size=gray.shape, method=preset)
@@ -830,8 +830,8 @@ def _avg_time(rt_fn, repeats: int = N_TRIALS, warmup: bool = True):
 
 # Methods and backend keys
 BENCH_METHODS: List[Tuple[str, str]] = [
-    ("Splineops Standard cubic",       "spl_standard"),
-    ("Splineops Antialiasing cubic",   "spl_aa"),
+    ("SplineOps Standard cubic",       "spl_standard"),
+    ("SplineOps Antialiasing cubic",   "spl_aa"),
     ("OpenCV INTER_CUBIC",             "opencv"),
     ("SciPy cubic",                    "scipy"),
     ("Pillow BICUBIC",                 "pillow"),
@@ -843,8 +843,8 @@ BENCH_METHODS: List[Tuple[str, str]] = [
 
 # Subsets for ROI main vs AA
 MAIN_METHOD_LABELS = [
-    "Splineops Standard cubic",
-    "Splineops Antialiasing cubic",
+    "SplineOps Standard cubic",
+    "SplineOps Antialiasing cubic",
     "OpenCV INTER_CUBIC",
     "SciPy cubic",
     "scikit-image cubic",
@@ -852,8 +852,8 @@ MAIN_METHOD_LABELS = [
 ]
 
 AA_METHOD_LABELS = [
-    "Splineops Standard cubic",
-    "Splineops Antialiasing cubic",
+    "SplineOps Standard cubic",
+    "SplineOps Antialiasing cubic",
     "Pillow BICUBIC",
     "scikit-image cubic (AA)",
     "PyTorch bicubic (AA, CPU)",
@@ -1047,8 +1047,8 @@ def show_roi_montage_main_from_bench(bench: Dict[str, object]) -> None:
     Grayscale ROI montage (main subset):
 
       Original +
-      Splineops Standard cubic
-      Splineops Antialiasing cubic
+      SplineOps Standard cubic
+      SplineOps Antialiasing cubic
       OpenCV INTER_CUBIC
       SciPy cubic
       scikit-image cubic
@@ -1091,8 +1091,8 @@ def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
     Grayscale ROI montage (AA subset):
 
       Original +
-      Splineops Standard cubic
-      Splineops Antialiasing cubic
+      SplineOps Standard cubic
+      SplineOps Antialiasing cubic
       Pillow BICUBIC
       scikit-image cubic (AA)
       PyTorch bicubic (AA, CPU)
@@ -1542,8 +1542,8 @@ def show_roi_montage_color_main_from_bench(
     center_c = col0 + roi_w / 2.0
 
     subset = [
-        ("Splineops Standard cubic",     "spl_standard"),
-        ("Splineops Antialiasing cubic", "spl_aa"),
+        ("SplineOps Standard cubic",     "spl_standard"),
+        ("SplineOps Antialiasing cubic", "spl_aa"),
         ("OpenCV INTER_CUBIC",           "opencv"),
         ("SciPy cubic",                  "scipy"),
         ("scikit-image cubic",           "skimage"),
@@ -1615,8 +1615,8 @@ def show_roi_montage_color_aa_from_bench(
     center_c = col0 + roi_w / 2.0
 
     subset = [
-        ("Splineops Standard cubic",     "spl_standard"),
-        ("Splineops Antialiasing cubic", "spl_aa"),
+        ("SplineOps Standard cubic",     "spl_standard"),
+        ("SplineOps Antialiasing cubic", "spl_aa"),
         ("Pillow BICUBIC",               "pillow"),
         ("scikit-image cubic (AA)",      "skimage_aa"),
         ("PyTorch bicubic (AA, CPU)",    "torch_aa"),

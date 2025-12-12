@@ -33,8 +33,8 @@ All methods are compared on exactly the same round-trip task.
 We compare:
 
 - SciPy ``ndimage.zoom`` (linear / cubic),
-- splineops Standard (linear / cubic),
-- splineops Antialiasing (linear / cubic),
+- SplineOps Standard (linear / cubic),
+- SplineOps Antialiasing (linear / cubic),
 - PyTorch bilinear / bicubic (CPU, with antialiasing),
 - OpenCV ``INTER_LINEAR`` / ``INTER_CUBIC``,
 - Pillow BILINEAR / BICUBIC,
@@ -93,7 +93,7 @@ except Exception:
     _HAS_SKIMAGE = False
     sk_ssim = None  # type: ignore[assignment]
 
-# splineops
+# SplineOps
 from splineops.resize import resize as spl_resize
 try:
     from splineops.utils.specs import print_runtime_context
@@ -294,7 +294,7 @@ def spl_roundtrip(
     img: np.ndarray, z: float, method: str
 ) -> Tuple[np.ndarray, float]:
     """
-    splineops round-trip using a single preset string:
+    SplineOps round-trip using a single preset string:
 
       - "linear", "cubic"            → Standard interpolation
       - "linear-antialiasing", ...   → Antialiasing (oblique projection)
@@ -527,16 +527,16 @@ def build_methods_for_degree(degree: str) -> Tuple[Dict[str, Tuple[str, str | No
 
     METHODS: Dict[str, Tuple[str, str | None]] = {}
 
-    # --- splineops first: Antialiasing, then Standard ---
+    # --- SplineOps first: Antialiasing, then Standard ---
     if ENABLE_SPLINEOPS_ANTIALIASING:
-        METHODS[f"Splineops Antialiasing {degree_label}"] = (
-            "splineops",
+        METHODS[f"SplineOps Antialiasing {degree_label}"] = (
+            "SplineOps",
             f"{degree}-antialiasing",
         )
 
     if ENABLE_SPLINEOPS_STANDARD:
-        METHODS[f"Splineops Standard {degree_label}"] = (
-            "splineops",
+        METHODS[f"SplineOps Standard {degree_label}"] = (
+            "SplineOps",
             degree,
         )
 
@@ -597,7 +597,7 @@ def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]]
         for name, (kind, param) in METHODS.items():
             if kind == "scipy":
                 runner = lambda z=z, deg=param: scipy_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
-            elif kind == "splineops":
+            elif kind == "SplineOps":
                 runner = lambda z=z, m=param: spl_roundtrip(img_gray, z, m)        # type: ignore[arg-type]
             elif kind == "torch":
                 runner = lambda z=z, deg=param: torch_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]

@@ -27,13 +27,13 @@ A grayscale image is modeled as the continuous function
 
 .. math::
 
-    f(x_1, x_2) = \sum_{k_1,k_2} c[k_1,k_2] \cdot \phi(x_1-k_1, x_2-k_2),
+    f(x_1, x_2) = \sum_{k_1,k_2} c[k_1,k_2] \cdot \varphi(x_1-k_1, x_2-k_2),
 
-where :math:`\phi(x_1,x_2)` is defined as the tensor-product cubic B‑spline
+where :math:`\varphi(x_1,x_2)` is defined as the tensor-product cubic B‑spline
 
 .. math::
 
-    \phi(x_1,x_2) = \beta^{3}(x_1) \cdot \beta^{3}(x_2).
+    \varphi(x_1,x_2) = \beta^{3}(x_1) \cdot \beta^{3}(x_2).
 
 This formulation allows one to compute exact derivatives of the image by first determining the spline coefficients :math:`c[k_1,k_2]`.
 

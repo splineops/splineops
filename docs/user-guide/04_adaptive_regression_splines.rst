@@ -38,16 +38,14 @@ Problem Formulation
 
    f^\star = \operatorname*{arg\,min}_{f}\;
    \Biggl(
-     \sum_{m=1}^{M} E\bigl(f(x_m),y_m\bigr)
+     \sum_{m=1}^{M} (f(x_m)-y_m)^2
      \;+\; \lambda\,\|\mathrm{D}^2 f\|_{\mathcal{M}}
    \Biggr).
 
 where
 
-* the term :math:`E` is a data-fidelity term (e.g., squared loss
-  :math:`(f(x_m)-y_m)^2`);
 * the regularization parameter :math:`\lambda>0` balances fidelity and sparsity;
-* the operator :math:`\mathrm{D}^2 f` is the second derivative;
+* the operator :math:`\mathrm{D}^2` is the second derivative;
 * the norm :math:`\|\cdot\|_{\mathcal{M}}` is the total variation (TV) norm on measures, promoting sparse
   second derivatives.
 

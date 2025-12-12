@@ -95,8 +95,8 @@ The rotated point is calculated as
    z_\mathrm{c}
    \end{pmatrix}
 
-Interpolation
--------------
+Affine Transformation by Resampling
+-----------------------------------
 
 The rotated coordinates may not coincide with the original data grid, so spline interpolation is employed for the resampling of the rotated data. 
 The approach documented here uses standard interpolation, which leverages tensor-product B-splines for smooth, accurate results across multiple 
