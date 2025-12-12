@@ -28,7 +28,7 @@ x = np.linspace(0, np.pi, 100)
 signal = np.sin(x) + 0.1 * np.random.normal(size=x.shape)
 
 # Different values for the smoothing parameter in recursive smoothing spline
-lam_values = [0.005, 0.05, 0.1]  # You can try smaller or larger values
+lam_values = [0.1]  # You can try smaller or larger values
 
 # Apply fractional smoothing spline as a baseline for comparison
 lambda_ = 0.1  # Regularization parameter for fractional method

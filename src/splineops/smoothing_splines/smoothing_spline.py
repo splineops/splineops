@@ -161,6 +161,65 @@ def recursive_smoothing_spline(
         
     return smoothed_signal
 
+def recursive_smoothing_spline(
+    signal: npt.NDArray,
+    lamb: float = 1.0
+) -> npt.NDArray:
+    """
+    Apply a recursive first-order smoothing spline filter (piecewise-linear).
+
+    This implements the symmetric all-pole factorization (causal + anticausal)
+    for the *first-order* smoothing spline filter.
+
+    Notes
+    -----
+    - This is NOT the cubic smoother (which requires a higher-order recursion).
+    - Includes DC normalization so constant signals remain constant.
+
+    Parameters
+    ----------
+    signal : ndarray
+        1D array of data points to smooth.
+    lamb : float, optional
+        Smoothing parameter (>= 0). Default is 1.0.
+
+    Returns
+    -------
+    smoothed_signal : ndarray
+        Smoothed data, same length as `signal`.
+    """
+    x = np.asarray(signal)
+    dtype = np.result_type(x.dtype, np.float64)
+    x = x.astype(dtype, copy=False)
+
+    if lamb <= 0:
+        return x.copy()
+
+    # --- Legacy (kept for reference; not consistent with the paper) ---
+    # z1 = -lamb / (1 + np.sqrt(1 + 4 * lamb))
+
+    # Paper-consistent pole for first-order smoothing spline:
+    r = np.sqrt(1.0 + 4.0 * lamb)
+    z1 = (r - 1.0) / (r + 1.0)      # in (0, 1)
+
+    # DC normalization (preserves constants): (1 - z1)^2 == z1 / lamb
+    scale = (1.0 - z1) ** 2
+
+    K = x.size
+
+    # Causal pass (steady-state init)
+    c = np.zeros(K, dtype=dtype)
+    c[0] = x[0] / (1.0 - z1)
+    for k in range(1, K):
+        c[k] = x[k] + z1 * c[k - 1]
+
+    # Anticausal pass (steady-state init)
+    y = np.zeros(K, dtype=dtype)
+    y[-1] = c[-1] / (1.0 - z1)
+    for k in range(K - 2, -1, -1):
+        y[k] = c[k] + z1 * y[k + 1]
+
+    return scale * y
 
 def smoothing_spline_nd(
     data: npt.NDArray,
