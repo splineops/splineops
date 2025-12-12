@@ -46,22 +46,29 @@ where
 * the first term measures closeness to the data,
 * the second term penalises roughness,
 * :math:`\lambda` balances the two,
-* :math:`\partial^{\gamma}` is a *fractional* derivative
-  (:math:`\gamma=1` gives the classic cubic penalty).
+* :math:`\partial^{\gamma}` is a *fractional* derivative: 
+  the optimal solution is a fractional spline of degree :math:`2\gamma + 1`.
 
 Taking the discrete Fourier transform (DFT) of both sides turns the
 problem into a simple, frequency-by-frequency scaling
 
 .. math::
 
-   S(\omega) \;=\; H(\omega)\,Y(\omega),\qquad
-   H(\omega)=\frac{1}{1+\lambda\,|\omega|^{2\gamma}},
+   S(\omega) \;=\; H(\omega)\,Y(\omega),
 
 where :math:`Y(\omega)` is the DFT of the data and :math:`S(\omega)` the
-DFT of the solution.  The practical recipe is therefore
+DFT of the solution.  
+:math:`H(\omega)` has been computed and has a closed form [2]_. A good approximation of :math:`H(\omega)`
+is the Butterworth filter :math:`H_{2\gamma}(\omega)`
+
+.. math::
+
+   H_{2\gamma}(\omega)=\frac{1}{1+\lambda\,|\omega|^{2\gamma}}.
+
+The practical recipe is therefore
 
 #. FFT the data,
-#. multiply by :math:`H(\omega)`,
+#. multiply by :math:`H_{2\gamma}(\omega)`,
 #. inverse FFT to obtain the smoothed samples.
 
 A full derivation of this result can be found in [1]_, [2]_ and [3]_.
@@ -90,8 +97,8 @@ fractional derivative with the fractional Laplacian
    \lambda\,\bigl\lVert(-\Delta)^{\gamma/2}s\bigr\rVert_{L^{2}}^{2}.
 
 In the Fourier domain the Laplacian turns into
-:math:`\|\boldsymbol\omega\|^{2}`, so the optimal filter is the *radial*
-version of the 1D one:
+:math:`\|\boldsymbol\omega\|^{2}`. A good approximation of the optimal filter is the
+radial counterpart of the 1D Butterworth filter:
 
 .. math::
 
@@ -100,8 +107,7 @@ version of the 1D one:
    \frac{1}{1+\lambda\,\lVert\boldsymbol\omega\rVert^{2\gamma}}\,
    Y(\boldsymbol\omega).
 
-This a Butterworth low-pass filter of order :math:`2\gamma`. The practical
-algorithm is identical to the 1D case:
+The practical algorithm is identical to the 1D case:
 
 #. Run an *n*-dimensional FFT to obtain :math:`Y(\boldsymbol\omega)`.  
 #. Multiply by the gain above.  
