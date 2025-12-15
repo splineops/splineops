@@ -290,6 +290,22 @@ ROI, while preserving the main structures and contrasts.
    :align: center
    :width: 100%
 
+.. only:: html
+
+  .. raw:: html
+
+    <iframe
+      src="../_static/animations/resize_module_2d_cubic_vs_aa.html"
+      style="width: 100%; height: 950px; border: 0;"
+      loading="lazy"
+      allow="fullscreen"
+      allowfullscreen>
+    </iframe>
+
+.. only:: not html
+
+  The animation is available in the HTML documentation.
+
 The Algorithm
 -------------
 

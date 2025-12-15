@@ -393,6 +393,8 @@ show_intro_color(
 from matplotlib import animation
 
 METHOD = "cubic"   # try "cubic" for standard interpolation
+INTERVAL_MS = 900  # keep in sync with MP4 export
+
 # Dense near strong downsampling (0.01–0.2), then sparser up to 0.8
 zoom_dense  = np.geomspace(0.05, 0.2, 10)                 # 10 values, dense at the low end
 zoom_sparse = np.array([0.25, 0.30, 0.40, 0.50, 0.65, 0.80, 1.0])
@@ -565,4 +567,21 @@ ani_cmp = animation.FuncAnimation(
     frames=len(zoom_values_cmp),
     interval=900,
     blit=True,
+)
+
+# %%
+# Export animation for the user-guide (build-only)
+# ------------------------------------------------
+#
+# Writes into: <generated static dir>/_static/animations/
+# No-op when run normally by users.
+
+from splineops.utils.sphinx import export_animation_mp4_and_html
+
+export_animation_mp4_and_html(
+    ani_cmp,
+    stem="resize_module_2d_cubic_vs_aa",
+    interval_ms=INTERVAL_MS,  # matches FuncAnimation interval
+    dpi=80,
+    # force=False by default (set CLEAN_ANIMS in docs/conf.py when you want refresh)
 )
