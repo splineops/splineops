@@ -28,15 +28,15 @@ DOCS_DIR = Path(__file__).resolve().parent
 GENERATED_STATIC_DIR = DOCS_DIR / "_build" / "_generated_static"
 GENERATED_STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
-# Optional: clean only generated animations each build start (avoids stale files)
-anim_gen_dir = GENERATED_STATIC_DIR / "animations"
-if anim_gen_dir.exists():
-    shutil.rmtree(anim_gen_dir)
-anim_gen_dir.mkdir(parents=True, exist_ok=True)
-
 # IMPORTANT: set these EARLY so sphinx-gallery examples can export during execution
-os.environ["SPLINEOPS_SPHINX_BUILD"] = "1"
-os.environ["SPLINEOPS_SPHINX_STATICDIR"] = str(GENERATED_STATIC_DIR)
+# (Examples import splineops.utils.sphinx.export_animation_mp4_and_html and rely
+# on these env vars to decide where to write.)
+os.environ.setdefault("SPLINEOPS_SPHINX_BUILD", "1")
+os.environ.setdefault("SPLINEOPS_SPHINX_STATICDIR", str(GENERATED_STATIC_DIR))
+
+# Optional: allow explicit cleaning of generated animations (OFF by default)
+# In PowerShell:  $env:SPLINEOPS_DOCS_CLEAN_ANIMATIONS="1"; .\make html
+CLEAN_ANIMS = os.environ.get("SPLINEOPS_DOCS_CLEAN_ANIMATIONS", "0") == "1"
 
 # -----------------------------------------------------------------------------
 # FFMPEG setup for Matplotlib animations (Windows-friendly)
@@ -78,8 +78,9 @@ try:
         mpl.rcParamsDefault["animation.ffmpeg_path"] = "ffmpeg"
         mpl.rcParamsDefault["animation.writer"] = "ffmpeg"
 
-        print("[docs] writers.is_available('ffmpeg'):", mpl_animation.writers.is_available("ffmpeg"))
-        if mpl_animation.writers.is_available("ffmpeg"):
+        ff_ok = mpl_animation.writers.is_available("ffmpeg")
+        print("[docs] writers.is_available('ffmpeg'):", ff_ok)
+        if ff_ok:
             SG_ANIM_FORMAT = "html5"
 except Exception as e:
     print("[docs] ffmpeg setup failed; using jshtml. Reason:", e)
@@ -100,6 +101,8 @@ def _log_native():
         print("[docs] native present:", _util.find_spec("splineops._lsresize") is not None)
         print("[docs] OMP_NUM_THREADS:", os.environ.get("OMP_NUM_THREADS"))
         print("[docs] export static dir:", os.environ.get("SPLINEOPS_SPHINX_STATICDIR"))
+        print("[docs] SG_ANIM_FORMAT:", SG_ANIM_FORMAT)
+        print("[docs] CLEAN_ANIMS:", CLEAN_ANIMS)
     except Exception as e:
         print("[docs] import failure:", e)
 
@@ -176,10 +179,18 @@ html_theme_options = {
     "navbar_center": ["navbar-nav"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "icon_links": [
-        {"name": "", "url": "https://github.com/splineops/splineops", "icon": "fa-brands fa-github",
-         "attributes": {"title": "GitHub"}},
-        {"name": "", "url": "https://pypi.org/project/splineops/", "icon": "fa-brands fa-python",
-         "attributes": {"title": "PyPI"}},
+        {
+            "name": "",
+            "url": "https://github.com/splineops/splineops",
+            "icon": "fa-brands fa-github",
+            "attributes": {"title": "GitHub"},
+        },
+        {
+            "name": "",
+            "url": "https://pypi.org/project/splineops/",
+            "icon": "fa-brands fa-python",
+            "attributes": {"title": "PyPI"},
+        },
     ],
     "use_edit_page_button": True,
     "secondary_sidebar_items": {"**": ["page-toc", "sourcelink"]},
@@ -197,9 +208,14 @@ html_favicon = "_static/logo.ico"
 
 # Hide secondary sidebar for sphinx-gallery index pages
 html_theme_options["secondary_sidebar_items"][f"{sg_gallery_dir}/index"] = []
-for sub_sg_dir in (Path(".") / sg_examples_dir).iterdir():
-    if sub_sg_dir.is_dir():
-        html_theme_options["secondary_sidebar_items"][f"{sg_gallery_dir}/{sub_sg_dir.name}/index"] = []
+try:
+    examples_root = (DOCS_DIR / sg_examples_dir).resolve()
+    if examples_root.exists():
+        for sub_sg_dir in examples_root.iterdir():
+            if sub_sg_dir.is_dir():
+                html_theme_options["secondary_sidebar_items"][f"{sg_gallery_dir}/{sub_sg_dir.name}/index"] = []
+except Exception as e:
+    print("[docs] could not configure gallery sidebars:", e)
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
@@ -221,6 +237,27 @@ def make_sphinx_gallery_conf_picklable(app, config):
 
 def setup(app):
     app.connect("config-inited", make_sphinx_gallery_conf_picklable)
+
+    # Optional clean: only when building HTML, and only if the env var is set.
+    def _maybe_clean_generated_anims(app):
+        try:
+            builder = getattr(app, "builder", None)
+            builder_name = getattr(builder, "name", "")
+            if builder_name != "html":
+                return
+        except Exception:
+            return
+
+        if not CLEAN_ANIMS:
+            return
+
+        anim_dir = GENERATED_STATIC_DIR / "animations"
+        if anim_dir.exists():
+            shutil.rmtree(anim_dir)
+        anim_dir.mkdir(parents=True, exist_ok=True)
+        print("[docs] cleaned generated animations:", anim_dir)
+
+    app.connect("builder-inited", _maybe_clean_generated_anims)
 
 # To build docs:
 # pip install -e .[docs]
