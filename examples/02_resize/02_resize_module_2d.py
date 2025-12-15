@@ -399,6 +399,7 @@ INTERVAL_MS = 900  # keep in sync with MP4 export
 zoom_dense  = np.geomspace(0.05, 0.2, 10)                 # 10 values, dense at the low end
 zoom_sparse = np.array([0.25, 0.30, 0.40, 0.50, 0.65, 0.80, 1.0])
 zoom_values = np.unique(np.concatenate([zoom_dense, zoom_sparse]))
+zoom_values = np.sort(zoom_values)[::-1]  # 1.0 -> ... -> small
 
 orig = np.clip(data, 0.0, 1.0)  # H×W×3 float image in [0,1]
 H0, W0, _ = orig.shape
@@ -583,5 +584,5 @@ export_animation_mp4_and_html(
     stem="resize_module_2d_cubic_vs_aa",
     interval_ms=INTERVAL_MS,  # matches FuncAnimation interval
     dpi=80,
-    # force=False by default (set CLEAN_ANIMS in docs/conf.py when you want refresh)
+    force=True,
 )
