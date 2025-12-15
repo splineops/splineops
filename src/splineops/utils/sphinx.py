@@ -72,8 +72,18 @@ def export_animation_mp4_and_html(
     # Keep timing consistent with the interactive animation interval
     fps = max(0.1, 1000.0 / float(interval_ms))  # float keeps 750ms -> 1.333fps
 
-    if force or not mp4_path.exists():
-        ani.save(str(mp4_path), writer=writer, fps=fps, dpi=dpi)
+    try:
+        if force or not mp4_path.exists():
+            ani.save(str(mp4_path), writer=writer, fps=fps, dpi=dpi)
+    except Exception as e:
+        # Don’t kill doc builds if ffmpeg isn’t usable on some platform.
+        # (Optionally write a tiny HTML placeholder.)
+        html_path.write_text(
+            "<!doctype html><html><body><p>"
+            "Animation export failed during doc build.</p></body></html>",
+            encoding="utf-8",
+        )
+        return None
 
     attrs = []
     if controls:

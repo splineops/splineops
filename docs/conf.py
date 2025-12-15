@@ -39,8 +39,9 @@ os.environ.setdefault("SPLINEOPS_SPHINX_STATICDIR", str(GENERATED_STATIC_DIR))
 CLEAN_ANIMS = os.environ.get("SPLINEOPS_DOCS_CLEAN_ANIMATIONS", "0") == "1"
 
 # -----------------------------------------------------------------------------
-# FFMPEG setup for Matplotlib animations (Windows-friendly)
+# FFMPEG setup for Matplotlib animations (Windows + Linux/macOS robust)
 # -----------------------------------------------------------------------------
+import stat
 import matplotlib as mpl
 from matplotlib import animation as mpl_animation
 
@@ -53,7 +54,7 @@ try:
     print("[docs] imageio-ffmpeg exe:", ffmpeg_exe)
 
     if ffmpeg_exe.exists():
-        # Smoke test
+        # Smoke test on the *original* binary
         subprocess.run(
             [str(ffmpeg_exe), "-version"],
             check=True,
@@ -61,27 +62,36 @@ try:
             stderr=subprocess.DEVNULL,
         )
 
-        # Create PATH-visible alias "ffmpeg(.exe)" under docs/_build/_ffmpeg_bin
+        # Create a PATH-visible alias under docs/_build/_ffmpeg_bin
         ffmpeg_alias_dir = DOCS_DIR / "_build" / "_ffmpeg_bin"
         ffmpeg_alias_dir.mkdir(parents=True, exist_ok=True)
 
         alias_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
         ffmpeg_alias = ffmpeg_alias_dir / alias_name
-        if not ffmpeg_alias.exists():
-            shutil.copyfile(ffmpeg_exe, ffmpeg_alias)
 
+        if not ffmpeg_alias.exists():
+            # copy2 preserves metadata when possible (better than copyfile)
+            shutil.copy2(ffmpeg_exe, ffmpeg_alias)
+
+        # Ensure executable bit on POSIX (critical on Linux/macOS runners)
+        if os.name != "nt":
+            mode = ffmpeg_alias.stat().st_mode
+            ffmpeg_alias.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+        # Put alias dir first on PATH
         os.environ["PATH"] = str(ffmpeg_alias_dir) + os.pathsep + os.environ.get("PATH", "")
 
-        # Force Matplotlib to use the alias name
-        mpl.rcParams["animation.ffmpeg_path"] = "ffmpeg"
+        # Point Matplotlib to the alias (absolute path is robust)
+        mpl.rcParams["animation.ffmpeg_path"] = str(ffmpeg_alias)
         mpl.rcParams["animation.writer"] = "ffmpeg"
-        mpl.rcParamsDefault["animation.ffmpeg_path"] = "ffmpeg"
+        mpl.rcParamsDefault["animation.ffmpeg_path"] = str(ffmpeg_alias)
         mpl.rcParamsDefault["animation.writer"] = "ffmpeg"
 
-        ff_ok = mpl_animation.writers.is_available("ffmpeg")
-        print("[docs] writers.is_available('ffmpeg'):", ff_ok)
-        if ff_ok:
+        ok = mpl_animation.writers.is_available("ffmpeg")
+        print("[docs] writers.is_available('ffmpeg'):", ok)
+        if ok:
             SG_ANIM_FORMAT = "html5"
+
 except Exception as e:
     print("[docs] ffmpeg setup failed; using jshtml. Reason:", e)
 
