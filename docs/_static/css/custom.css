@@ -184,3 +184,15 @@ h2 code {
 p {
   text-align: justify;
 }
+
+
+/* -------------------- JUSTIFY VIDEO -------------------- */
+
+.bd-article .sphx-glr-animation video {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+.bd-article .sphx-glr-animation {
+  overflow-x: hidden;
+}

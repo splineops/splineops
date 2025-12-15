@@ -16,14 +16,69 @@ if "SPLINEOPS_ACCEL" not in os.environ:  # allow users/CI to override
     os.environ["SPLINEOPS_ACCEL"] = "always" if has_native else "auto"
 os.environ["OMP_NUM_THREADS"] = str(os.cpu_count() or 1)
 
+import subprocess
+import shutil
 import matplotlib as mpl
+from matplotlib import animation as mpl_animation
+
+# Default: safe fallback (bigger HTML, but never needs ffmpeg)
+SG_ANIM_FORMAT = "jshtml"
 
 try:
     import imageio_ffmpeg
-    mpl.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
-    mpl.rcParams["animation.writer"] = "ffmpeg"
+
+    ffmpeg_exe = Path(imageio_ffmpeg.get_ffmpeg_exe())
+    print("[docs] imageio-ffmpeg exe:", ffmpeg_exe)
+
+    if ffmpeg_exe.exists():
+        # --- 1) Smoke test: can we run the binary? ---
+        subprocess.run(
+            [str(ffmpeg_exe), "-version"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        # --- 2) Create a PATH-visible alias "ffmpeg(.exe)" ---
+        # This is robust if Matplotlib/Sphinx resets rcParams later.
+        ffmpeg_alias_dir = Path(__file__).resolve().parent / "_build" / "_ffmpeg_bin"
+        ffmpeg_alias_dir.mkdir(parents=True, exist_ok=True)
+
+        alias_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+        ffmpeg_alias = ffmpeg_alias_dir / alias_name
+
+        # Copy only if missing (keeps rebuilds fast)
+        if not ffmpeg_alias.exists():
+            shutil.copyfile(ffmpeg_exe, ffmpeg_alias)
+
+        # Put the alias directory first on PATH so "ffmpeg" always resolves
+        os.environ["PATH"] = str(ffmpeg_alias_dir) + os.pathsep + os.environ.get("PATH", "")
+
+        # --- 3) Force Matplotlib to use the alias name (not an absolute path) ---
+        mpl.rcParams["animation.ffmpeg_path"] = "ffmpeg"
+        mpl.rcParams["animation.writer"] = "ffmpeg"
+
+        # Also patch defaults: rcdefaults() won't break ffmpeg usage
+        mpl.rcParamsDefault["animation.ffmpeg_path"] = "ffmpeg"
+        mpl.rcParamsDefault["animation.writer"] = "ffmpeg"
+
+        # Optional debug (keep if you like)
+        import shutil as _shutil
+        print("[docs] rc animation.ffmpeg_path:", mpl.rcParams["animation.ffmpeg_path"])
+        print("[docs] shutil.which('ffmpeg'):", _shutil.which("ffmpeg"))
+        print("[docs] writers.is_available('ffmpeg'):", mpl_animation.writers.is_available("ffmpeg"))
+
+        # --- 4) Choose Sphinx-Gallery animation format ---
+        if mpl_animation.writers.is_available("ffmpeg"):
+            SG_ANIM_FORMAT = "html5"
+        else:
+            print("[docs] Matplotlib still reports ffmpeg unavailable; using jshtml.")
+    else:
+        print("[docs] ffmpeg exe path does not exist; using jshtml.")
+
 except Exception as e:
-    print("[docs] imageio-ffmpeg not available, falling back:", e)
+    print("[docs] ffmpeg setup failed; using jshtml. Reason:", e)
+
 
 # ------------------------------------------------------------------
 # Make sure we import the *installed/editable* package first
@@ -94,7 +149,7 @@ sphinx_gallery_conf = {
     'within_subsection_order': FileNameSortKey,
     'backreferences_dir': 'gen_modules/backreferences',
     'filename_pattern': '.*',
-    "matplotlib_animations": (True, "html5"),
+    "matplotlib_animations": (True, SG_ANIM_FORMAT),
     'binder': { # https://sphinx-gallery.github.io/stable/configuration.html#generate-binder-links-for-gallery-notebooks-experimental
         'org': 'splineops',
         'repo': 'splineops.github.io',

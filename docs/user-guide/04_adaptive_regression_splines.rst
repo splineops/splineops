@@ -131,13 +131,15 @@ trying different values of :math:`\lambda`.
 
 .. only:: html
 
-   .. raw:: html
+  .. raw:: html
 
-      <iframe
-        src="../_static/animations/lambda_sweep_animation.html"
-        style="width: 100%; height: 650px; border: 0;"
-        loading="lazy">
-      </iframe>
+    <iframe
+      src="../_static/animations/lambda_sweep_animation.html"
+      style="width: 100%; height: 650px; border: 0;"
+      loading="lazy"
+      allow="fullscreen"
+      allowfullscreen>
+    </iframe>
 
 .. only:: not html
 

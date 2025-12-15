@@ -129,9 +129,11 @@ different values of rotation angles and spline degrees.
    .. raw:: html
 
       <iframe
-        src="../_static/animations/rotation_animation.html"
-        style="width: 100%; height: 1100px; border: 0;"
-        loading="lazy">
+      src="../_static/animations/rotation_animation.html"
+      style="width: 100%; height: 1100px; border: 0;"
+      loading="lazy"
+      allow="fullscreen"
+      allowfullscreen>
       </iframe>
 
 .. only:: not html

@@ -24,6 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
+# sphinx_gallery_thumbnail_number = 2 # show second figure as thumbnail
 from splineops.adaptive_regression_splines.denoising import denoise_y
 from splineops.adaptive_regression_splines.sparsification import (
     sparsest_interpolant,
@@ -200,7 +201,6 @@ def create_lambda_sweep_animation(lambdas: np.ndarray, interval: int = 700):
 lambda_values = np.geomspace(1e-4, 2e-1, 12)
 
 ani = create_lambda_sweep_animation(lambda_values, interval=750)
-ani_html = ani.to_jshtml()
 
 # %%
 # Export the Animation
@@ -211,60 +211,72 @@ ani_html = ani.to_jshtml()
 from pathlib import Path
 import inspect
 
-def _export_animation_only_html(anim_html: str, filename: str = "lambda_sweep_animation.html") -> None:
-    """Write a standalone HTML file (only the animation) into docs/_static/animations/."""
-    # Sphinx-Gallery may not define __file__. Use the code object's filename instead.
+def _find_docs_dir() -> Path | None:
     co_filename = inspect.currentframe().f_code.co_filename
     candidate = globals().get("__file__", co_filename)
-
     try:
         here = Path(candidate).resolve()
     except Exception:
         here = Path.cwd().resolve()
 
-    # Find the repo's docs/ folder by looking for docs/conf.py up the tree
-    docs_dir = None
     for p in [here] + list(here.parents) + [Path.cwd().resolve()] + list(Path.cwd().resolve().parents):
         if (p / "docs" / "conf.py").exists():
-            docs_dir = p / "docs"
-            break
+            return p / "docs"
         if p.name == "docs" and (p / "conf.py").exists():
-            docs_dir = p
-            break
+            return p
+    return None
 
+def _export_animation_mp4_and_html(
+    ani,
+    stem: str = "lambda_sweep_animation",
+    fps: int = 6,
+    dpi: int = 80,
+) -> None:
+    docs_dir = _find_docs_dir()
     if docs_dir is None:
-        # Not in the repo layout → skip without failing the gallery build.
-        print("[splineops] docs/conf.py not found; skipping animation-only export.")
+        print("[splineops] docs/conf.py not found; skipping animation export.")
         return
 
     out_dir = docs_dir / "_static" / "animations"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / filename
+
+    mp4_path = out_dir / f"{stem}.mp4"
+    html_path = out_dir / f"{stem}.html"
+
+    if not mp4_path.exists():
+        try:
+            ani.save(str(mp4_path), writer="ffmpeg", fps=fps, dpi=dpi)
+        except Exception as e:
+            print(f"[splineops] Could not export MP4 via ffmpeg: {e}")
+            return
 
     html_doc = f"""<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     html, body {{ margin: 0; padding: 0; }}
-    .animation {{ display: block; margin: 0 auto; }}
+    video {{ width: 100%; height: auto; display: block; }}
   </style>
 </head>
 <body>
-{anim_html}
+  <video controls loop autoplay muted playsinline>
+    <source src="{mp4_path.name}" type="video/mp4">
+  </video>
 </body>
 </html>
 """
     try:
-        out_path.write_text(html_doc, encoding="utf-8")
+        if html_path.exists() and html_path.read_text(encoding="utf-8") == html_doc:
+            return
+        html_path.write_text(html_doc, encoding="utf-8")
     except Exception as e:
-        # Don’t fail the example build if writing is disallowed
-        print(f"[splineops] Could not write {out_path}: {e}")
-        return
+        print(f"[splineops] Could not write {html_path}: {e}")
 
-# Build animation once
-ani = create_lambda_sweep_animation(lambda_values, interval=750)
-ani_html = ani.to_jshtml()
-
-# Export the already-generated HTML (avoid calling to_jshtml twice)
-_export_animation_only_html(ani_html)
+_export_animation_mp4_and_html(
+    ani,
+    stem="lambda_sweep_animation",
+    fps=max(1, round(1000 / 750)),   # interval=750ms -> fps≈1
+    dpi=80,
+)

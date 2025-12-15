@@ -20,6 +20,7 @@ from splineops.affine.affine import rotate
 from splineops.resize.resize import resize
 from urllib.request import urlopen
 from PIL import Image
+# sphinx_gallery_thumbnail_number = 2 # show second figure as thumbnail
 
 # %%
 # Load and Preprocess the Image
@@ -41,6 +42,14 @@ data_gray = (
     data[:, :, 1] * 0.5870 +
     data[:, :, 2] * 0.1140
 )
+
+# Show the original grayscale image
+plt.figure(figsize=(5, 5))
+plt.imshow(data_gray, cmap="gray", vmin=0, vmax=255)
+plt.title("Original grayscale image")
+plt.axis("off")
+plt.tight_layout()
+plt.show()
 
 # Normalize the grayscale image to [0,1]
 data_normalized = data_gray / 255.0
@@ -68,6 +77,9 @@ radius = min(image_resized.shape) // 2
 # -------------------
 #
 # Create the animation of the image being rotated from 0 to 360 degrees. Explore the effect of the spline degree.
+
+ROTATION_STEP_DEG = 5
+INTERVAL_MS = 250
 
 def rotate_and_mask(image, angle, degree, center, radius):
     rotated = rotate(image, angle=angle, degree=degree, center=center)
@@ -125,7 +137,8 @@ def create_combined_animation(image, center, radius):
     # ------------------------------------------------------------------
     # 3.  Animation driver
     # ------------------------------------------------------------------
-    rotation_step = 10                      # ° per frame
+    rotation_step = ROTATION_STEP_DEG       # ° per frame
+    interval_ms = INTERVAL_MS               # interval in ms
     total_frames = 360 // rotation_step     # one full revolution
 
     def animate(frame):
@@ -143,13 +156,12 @@ def create_combined_animation(image, center, radius):
         fig,
         animate,
         frames=total_frames,
-        interval=250,
+        interval=interval_ms,
         blit=True,
     )
 
 # Create the animation
 ani = create_combined_animation(image_resized, center=custom_center, radius=radius)
-ani_html = ani.to_jshtml()
 
 # %%
 # Export the Animation
@@ -160,60 +172,69 @@ ani_html = ani.to_jshtml()
 from pathlib import Path
 import inspect
 
-def _export_animation_only_html(anim_html: str, filename: str = "rotation_animation.html") -> None:
-    """
-    Write a standalone HTML file (only the animation) into docs/_static/animations/.
-
-    Note: Sphinx-Gallery may execute without defining __file__, so we rely on
-    the code object's filename as a fallback.
-    """
+def _find_docs_dir() -> Path | None:
     co_filename = inspect.currentframe().f_code.co_filename
     candidate = globals().get("__file__", co_filename)
-
     try:
         here = Path(candidate).resolve()
     except Exception:
         here = Path.cwd().resolve()
 
-    # Find docs/ folder by looking for docs/conf.py up the tree
-    docs_dir = None
     for p in [here] + list(here.parents) + [Path.cwd().resolve()] + list(Path.cwd().resolve().parents):
         if (p / "docs" / "conf.py").exists():
-            docs_dir = p / "docs"
-            break
+            return p / "docs"
         if p.name == "docs" and (p / "conf.py").exists():
-            docs_dir = p
-            break
+            return p
+    return None
 
+def _export_animation_mp4_and_html(
+    ani,
+    stem: str = "rotation_animation",
+    fps: int = 6,
+    dpi: int = 80,
+) -> None:
+    docs_dir = _find_docs_dir()
     if docs_dir is None:
-        print("[splineops] docs/conf.py not found; skipping animation-only export.")
+        print("[splineops] docs/conf.py not found; skipping animation export.")
         return
 
     out_dir = docs_dir / "_static" / "animations"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / filename
+
+    mp4_path = out_dir / f"{stem}.mp4"
+    html_path = out_dir / f"{stem}.html"
+
+    # Rebuild the MP4 only if missing (or if you want, compare mtimes to source)
+    if not mp4_path.exists():
+        try:
+            ani.save(str(mp4_path), writer="ffmpeg", fps=fps, dpi=dpi)
+        except Exception as e:
+            print(f"[splineops] Could not export MP4 via ffmpeg: {e}")
+            return
 
     html_doc = f"""<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     html, body {{ margin: 0; padding: 0; }}
-    .animation {{ display: block; margin: 0 auto; }}
+    video {{ width: 100%; height: auto; display: block; }}
   </style>
 </head>
 <body>
-{anim_html}
+  <video controls loop autoplay muted playsinline>
+    <source src="{mp4_path.name}" type="video/mp4">
+  </video>
 </body>
 </html>
 """
-
-    # Avoid rewriting if unchanged (keeps git noise down)
     try:
-        if out_path.exists() and out_path.read_text(encoding="utf-8") == html_doc:
+        if html_path.exists() and html_path.read_text(encoding="utf-8") == html_doc:
             return
-        out_path.write_text(html_doc, encoding="utf-8")
+        html_path.write_text(html_doc, encoding="utf-8")
     except Exception as e:
-        print(f"[splineops] Could not write {out_path}: {e}")
+        print(f"[splineops] Could not write {html_path}: {e}")
 
-_export_animation_only_html(ani_html)
+fps = max(1, round(1000 / INTERVAL_MS))
+_export_animation_mp4_and_html(ani, stem="rotation_animation", fps=fps, dpi=80)

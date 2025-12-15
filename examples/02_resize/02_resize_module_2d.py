@@ -452,8 +452,6 @@ ani = animation.FuncAnimation(
     blit=True,
 )
 
-ani_html = ani.to_jshtml()
-
 # %%
 # Side-by-side animation: cubic vs cubic-antialiasing
 # ---------------------------------------------------
@@ -568,5 +566,3 @@ ani_cmp = animation.FuncAnimation(
     interval=900,
     blit=True,
 )
-
-ani_cmp_html = ani_cmp.to_jshtml()
