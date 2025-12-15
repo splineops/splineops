@@ -20,6 +20,6 @@ Only the submodules themselves are exported from ``splineops.utils``.
 
 from __future__ import annotations
 
-from . import image, metrics, plotting, diagram, specs
+from . import image, metrics, plotting, diagram, specs, sphinx
 
-__all__ = ["image", "metrics", "plotting", "diagram", "specs"]
+__all__ = ["image", "metrics", "plotting", "diagram", "specs", "sphinx"]

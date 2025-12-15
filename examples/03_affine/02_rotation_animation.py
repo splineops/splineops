@@ -167,74 +167,15 @@ ani = create_combined_animation(image_resized, center=custom_center, radius=radi
 # Export the Animation
 # --------------------
 #
-# This section is needed only to export the animation to the user guide.
+# Writes into: <sphinx outdir>/_static/animations/
+# Does nothing when the file is run normally by users.
 
-from pathlib import Path
-import inspect
+from splineops.utils.sphinx import export_animation_mp4_and_html
 
-def _find_docs_dir() -> Path | None:
-    co_filename = inspect.currentframe().f_code.co_filename
-    candidate = globals().get("__file__", co_filename)
-    try:
-        here = Path(candidate).resolve()
-    except Exception:
-        here = Path.cwd().resolve()
-
-    for p in [here] + list(here.parents) + [Path.cwd().resolve()] + list(Path.cwd().resolve().parents):
-        if (p / "docs" / "conf.py").exists():
-            return p / "docs"
-        if p.name == "docs" and (p / "conf.py").exists():
-            return p
-    return None
-
-def _export_animation_mp4_and_html(
+export_animation_mp4_and_html(
     ani,
-    stem: str = "rotation_animation",
-    fps: int = 6,
-    dpi: int = 80,
-) -> None:
-    docs_dir = _find_docs_dir()
-    if docs_dir is None:
-        print("[splineops] docs/conf.py not found; skipping animation export.")
-        return
-
-    out_dir = docs_dir / "_static" / "animations"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    mp4_path = out_dir / f"{stem}.mp4"
-    html_path = out_dir / f"{stem}.html"
-
-    # Rebuild the MP4 only if missing (or if you want, compare mtimes to source)
-    if not mp4_path.exists():
-        try:
-            ani.save(str(mp4_path), writer="ffmpeg", fps=fps, dpi=dpi)
-        except Exception as e:
-            print(f"[splineops] Could not export MP4 via ffmpeg: {e}")
-            return
-
-    html_doc = f"""<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    html, body {{ margin: 0; padding: 0; }}
-    video {{ width: 100%; height: auto; display: block; }}
-  </style>
-</head>
-<body>
-  <video controls loop autoplay muted playsinline>
-    <source src="{mp4_path.name}" type="video/mp4">
-  </video>
-</body>
-</html>
-"""
-    try:
-        if html_path.exists() and html_path.read_text(encoding="utf-8") == html_doc:
-            return
-        html_path.write_text(html_doc, encoding="utf-8")
-    except Exception as e:
-        print(f"[splineops] Could not write {html_path}: {e}")
-
-fps = max(1, round(1000 / INTERVAL_MS))
-_export_animation_mp4_and_html(ani, stem="rotation_animation", fps=fps, dpi=80)
+    stem="rotation_animation",
+    interval_ms=INTERVAL_MS,
+    dpi=80,
+    force=True,
+)
