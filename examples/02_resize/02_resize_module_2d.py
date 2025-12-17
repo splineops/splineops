@@ -516,31 +516,55 @@ def _roundtrip_frames(method: str):
 canv_std, recs_std = _roundtrip_frames(METHOD_STD)
 canv_aa,  recs_aa  = _roundtrip_frames(METHOD_AA)
 
-# Layout: 3 rows × 2 columns
-fig, axes = plt.subplots(3, 2, figsize=(12, 12), constrained_layout=True)
+# --- Error magnitude (shared scale across both methods + all zooms) ----------
+# Error magnitude per pixel: sqrt(mean_c (rec - orig)^2)  in [0, ~1]
+def _err_mag(rec_u8: np.ndarray) -> np.ndarray:
+    rec_f = rec_u8.astype(np.float32) / 255.0
+    diff = rec_f - orig_f  # orig_f is float in [0,1], shape H×W×3
+    return np.sqrt(np.mean(diff * diff, axis=-1))  # H×W
+
+# Global max (for consistent scaling across frames)
+err_max = 0.0
+for r in (recs_std + recs_aa):
+    err_max = max(err_max, float(_err_mag(r).max()))
+err_max = max(err_max, 1e-12)
+
+def _err_u8(rec_u8: np.ndarray) -> np.ndarray:
+    e = _err_mag(rec_u8) / err_max
+    return (np.clip(e, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
+
+errs_std = [_err_u8(r) for r in recs_std]
+errs_aa  = [_err_u8(r) for r in recs_aa]
+
+# --- Layout: 4 rows × 2 columns ---------------------------------------------
+fig, axes = plt.subplots(4, 2, figsize=(12, 16), constrained_layout=True)
 for ax in axes.ravel():
     ax.axis("off")
 
-# Column headers (Row 1)
+# Row 1: Original (fixed)
 axes[0, 0].set_title("Standard cubic — Original (fixed)")
 axes[0, 1].set_title("Cubic-antialiasing — Original (fixed)")
-
 im_orig_l = axes[0, 0].imshow(orig_u8)
 im_orig_r = axes[0, 1].imshow(orig_u8)
 
-# Row 2: downsampled on canvas
+# Row 2: Downsampled on canvas
 t_down_l = axes[1, 0].set_title(f"Downsampled on canvas (z={zoom_values_cmp[0]:.3f})")
 t_down_r = axes[1, 1].set_title(f"Downsampled on canvas (z={zoom_values_cmp[0]:.3f})")
-
 im_down_l = axes[1, 0].imshow(canv_std[0])
 im_down_r = axes[1, 1].imshow(canv_aa[0])
 
-# Row 3: recovered
+# Row 3: Recovered (round-trip)
 t_rec_l = axes[2, 0].set_title(f"Recovered (round-trip) — z={zoom_values_cmp[0]:.3f}")
 t_rec_r = axes[2, 1].set_title(f"Recovered (round-trip) — z={zoom_values_cmp[0]:.3f}")
-
 im_rec_l = axes[2, 0].imshow(recs_std[0])
 im_rec_r = axes[2, 1].imshow(recs_aa[0])
+
+# Row 4: Error magnitude
+# (scaled to global max across all frames; 255 = max error)
+t_err_l = axes[3, 0].set_title(f"Error magnitude |rec-orig| (scaled, max={err_max:.3e})")
+t_err_r = axes[3, 1].set_title(f"Error magnitude |rec-orig| (scaled, max={err_max:.3e})")
+im_err_l = axes[3, 0].imshow(errs_std[0], cmap="gray", vmin=0, vmax=255)
+im_err_r = axes[3, 1].imshow(errs_aa[0],  cmap="gray", vmin=0, vmax=255)
 
 def animate_frame(i: int):
     z = zoom_values_cmp[i]
@@ -551,24 +575,28 @@ def animate_frame(i: int):
     im_rec_l.set_data(recs_std[i])
     im_rec_r.set_data(recs_aa[i])
 
+    im_err_l.set_data(errs_std[i])
+    im_err_r.set_data(errs_aa[i])
+
     t_down_l.set_text(f"Downsampled on canvas (z={z:.3f})")
     t_down_r.set_text(f"Downsampled on canvas (z={z:.3f})")
-
     t_rec_l.set_text(f"Recovered (round-trip) — z={z:.3f}")
     t_rec_r.set_text(f"Recovered (round-trip) — z={z:.3f}")
 
     return (
         im_down_l, im_down_r,
         im_rec_l, im_rec_r,
+        im_err_l, im_err_r,
         t_down_l, t_down_r,
         t_rec_l, t_rec_r,
+        t_err_l, t_err_r,
     )
 
 ani_cmp = animation.FuncAnimation(
     fig,
     animate_frame,
     frames=len(zoom_values_cmp),
-    interval=900,
+    interval=INTERVAL_MS,
     blit=True,
 )
 
