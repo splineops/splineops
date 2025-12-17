@@ -395,10 +395,12 @@ from matplotlib import animation
 METHOD = "cubic"   # try "cubic" for standard interpolation
 INTERVAL_MS = 900  # keep in sync with MP4 export
 
-# Dense near strong downsampling (0.01–0.2), then sparser up to 0.8
-zoom_dense  = np.geomspace(0.05, 0.2, 10)                 # 10 values, dense at the low end
-zoom_sparse = np.array([0.25, 0.30, 0.40, 0.50, 0.65, 0.80, 1.0])
-zoom_values = np.unique(np.concatenate([zoom_dense, zoom_sparse]))
+# Dense where artefacts change fast (0.01–0.2), then sparser up to 1.0
+zoom_dense = np.geomspace(0.01, 0.2, 25)          # was 10
+zoom_mid   = np.geomspace(0.22, 0.8, 10)          # optional mid range
+zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])    # near-1 “sanity” points
+
+zoom_values = np.unique(np.concatenate([zoom_dense, zoom_mid, zoom_top]))
 zoom_values = np.sort(zoom_values)[::-1]  # 1.0 -> ... -> small
 
 orig = np.clip(data, 0.0, 1.0)  # H×W×3 float image in [0,1]
