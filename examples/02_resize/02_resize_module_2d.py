@@ -434,7 +434,7 @@ fig, axes = plt.subplots(3, 1, figsize=(7, 12), constrained_layout=True)
 for ax in axes:
     ax.axis("off")
 
-axes[0].set_title("Original (fixed)")
+axes[0].set_title("Original")
 t_down = axes[1].set_title(f"Downsampled (z={zoom_values[0]:.2f}) on white canvas")
 t_rec  = axes[2].set_title(f"Recovered (round-trip) — method={METHOD}, z={zoom_values[0]:.2f}")
 
@@ -550,7 +550,11 @@ gs = fig.add_gridspec(
     width_ratios=[1.05, 1.0, 1.0],
 )
 
-ax_orig     = fig.add_subplot(gs[:, 0])   # span all rows
+# Original ONLY in the top-left cell (same height as other panels)
+ax_orig     = fig.add_subplot(gs[0, 0])
+ax_orig_mid = fig.add_subplot(gs[1, 0])  # blank spacer
+ax_orig_err = fig.add_subplot(gs[2, 0])  # blank spacer
+
 ax_down_std = fig.add_subplot(gs[0, 1])
 ax_down_aa  = fig.add_subplot(gs[0, 2])
 ax_rec_std  = fig.add_subplot(gs[1, 1])
@@ -558,28 +562,53 @@ ax_rec_aa   = fig.add_subplot(gs[1, 2])
 ax_err_std  = fig.add_subplot(gs[2, 1])
 ax_err_aa   = fig.add_subplot(gs[2, 2])
 
-for ax in (ax_orig, ax_down_std, ax_down_aa, ax_rec_std, ax_rec_aa, ax_err_std, ax_err_aa):
+for ax in (ax_orig, ax_orig_mid, ax_orig_err,
+           ax_down_std, ax_down_aa, ax_rec_std, ax_rec_aa, ax_err_std, ax_err_aa):
     ax.axis("off")
 
-# Left column: Original (fixed)
-ax_orig.set_title("Original (fixed)")
+# --- Legend (benchmark-style) in the empty bottom-left cell -----------------
+ax_leg_host = ax_orig_err
+ax_leg_host.axis("off")
+
+# Make a thick vertical bar as an inset axis inside the cell
+leg = ax_leg_host.inset_axes([0.42, 0.05, 0.18, 0.90])  # [x0, y0, w, h] in axes fraction
+leg.axis("off")
+
+H_leg = 256
+W_leg = 16   # thinner bar
+y = np.linspace(1.0, 0.0, H_leg, dtype=np.float32)
+legend_img = np.repeat(y[:, None], W_leg, axis=1)
+
+leg.imshow(legend_img, cmap="gray", vmin=0.0, vmax=1.0, aspect="auto")
+
+# Labels next to the bar (keep them on the host axis so they don't get clipped)
+ax_leg_host.text(0.62, 0.05, "-1", transform=ax_leg_host.transAxes,
+                 fontsize=9, va="bottom", ha="left")
+ax_leg_host.text(0.62, 0.50, "0", transform=ax_leg_host.transAxes,
+                 fontsize=9, va="center", ha="left")
+ax_leg_host.text(0.62, 0.95, "+1", transform=ax_leg_host.transAxes,
+                 fontsize=9, va="top", ha="left")
+ax_leg_host.text(0.5, 1.02, "Diff legend", transform=ax_leg_host.transAxes,
+                 fontsize=10, va="bottom", ha="center")
+
+ax_orig.set_title("Original")
 im_orig = ax_orig.imshow(orig_u8)
 
 # Row 1: Downsampled
-t_down_std = ax_down_std.set_title(f"Downsampled — Standard cubic (z={zoom_values_cmp[0]:.3f})")
-t_down_aa  = ax_down_aa.set_title (f"Downsampled — Cubic-antialiasing (z={zoom_values_cmp[0]:.3f})")
+t_down_std = ax_down_std.set_title(f"Standard cubic (z={zoom_values_cmp[0]:.3f})")
+t_down_aa  = ax_down_aa.set_title (f"Cubic-antialiasing (z={zoom_values_cmp[0]:.3f})")
 im_down_std = ax_down_std.imshow(canv_std[0])
 im_down_aa  = ax_down_aa.imshow(canv_aa[0])
 
 # Row 2: Recovered
-t_rec_std = ax_rec_std.set_title(f"Recovered — Standard cubic (z={zoom_values_cmp[0]:.3f})")
-t_rec_aa  = ax_rec_aa.set_title (f"Recovered — Cubic-antialiasing (z={zoom_values_cmp[0]:.3f})")
+t_rec_std = ax_rec_std.set_title(f"Recovered, SplineOps Cubic")
+t_rec_aa  = ax_rec_aa.set_title (f"Recovered, SplineOps Cubic-antialiasing")
 im_rec_std = ax_rec_std.imshow(recs_std[0])
 im_rec_aa  = ax_rec_aa.imshow(recs_aa[0])
 
 # Row 3: Signed error (benchmark-style normalization)
-ax_err_std.set_title("Signed error (rec−orig), normalized: 0.5 = 0")
-ax_err_aa.set_title ("Signed error (rec−orig), normalized: 0.5 = 0")
+ax_err_std.set_title("Signed error")
+ax_err_aa.set_title ("Signed error")
 im_err_std = ax_err_std.imshow(diffs_std[0], cmap="gray", vmin=0.0, vmax=1.0)
 im_err_aa  = ax_err_aa.imshow (diffs_aa[0],  cmap="gray", vmin=0.0, vmax=1.0)
 
@@ -595,11 +624,11 @@ def animate_frame(i: int):
     im_err_std.set_data(diffs_std[i])
     im_err_aa.set_data(diffs_aa[i])
 
-    t_down_std.set_text(f"Downsampled — Standard cubic (z={z:.3f})")
-    t_down_aa.set_text (f"Downsampled — Cubic-antialiasing (z={z:.3f})")
+    t_down_std.set_text(f"Standard cubic (z={z:.3f})")
+    t_down_aa.set_text (f"Cubic-antialiasing (z={z:.3f})")
 
-    t_rec_std.set_text(f"Recovered — Standard cubic (z={z:.3f})")
-    t_rec_aa.set_text (f"Recovered — Cubic-antialiasing (z={z:.3f})")
+    t_rec_std.set_text(f"Recovered, SplineOps Cubic")
+    t_rec_aa.set_text (f"Recovered, SplineOps Cubic-antialiasing")
 
     return (
         im_down_std, im_down_aa,
