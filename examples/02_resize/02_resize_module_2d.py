@@ -516,89 +516,107 @@ def _roundtrip_frames(method: str):
 canv_std, recs_std = _roundtrip_frames(METHOD_STD)
 canv_aa,  recs_aa  = _roundtrip_frames(METHOD_AA)
 
-# --- Error magnitude (shared scale across both methods + all zooms) ----------
-# Error magnitude per pixel: sqrt(mean_c (rec - orig)^2)  in [0, ~1]
-def _err_mag(rec_u8: np.ndarray) -> np.ndarray:
-    rec_f = rec_u8.astype(np.float32) / 255.0
-    diff = rec_f - orig_f  # orig_f is float in [0,1], shape H×W×3
-    return np.sqrt(np.mean(diff * diff, axis=-1))  # H×W
+# --- Signed normalized error maps (benchmark style) --------------------------
+# We compare rec - orig on a grayscale luminance, normalized into [0, 1]:
+#   0.5 = 0 error, <0.5 negative, >0.5 positive
+# We use a GLOBAL max(|diff|) across all frames + both methods (stable contrast).
 
-# Global max (for consistent scaling across frames)
-err_max = 0.0
+def _u8_to_gray01(u8_rgb: np.ndarray) -> np.ndarray:
+    u = u8_rgb.astype(np.float32) / 255.0
+    return (0.2989 * u[..., 0] + 0.5870 * u[..., 1] + 0.1140 * u[..., 2]).astype(np.float32)
+
+orig_gray01 = _u8_to_gray01(orig_u8)
+
+def _diff01(rec_u8: np.ndarray) -> np.ndarray:
+    return _u8_to_gray01(rec_u8) - orig_gray01  # signed
+
+max_abs = 0.0
 for r in (recs_std + recs_aa):
-    err_max = max(err_max, float(_err_mag(r).max()))
-err_max = max(err_max, 1e-12)
+    max_abs = max(max_abs, float(np.max(np.abs(_diff01(r)))))
+max_abs = max(max_abs, 1e-12)
 
-def _err_u8(rec_u8: np.ndarray) -> np.ndarray:
-    e = _err_mag(rec_u8) / err_max
-    return (np.clip(e, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
+def _diff_norm(rec_u8: np.ndarray) -> np.ndarray:
+    d = _diff01(rec_u8)
+    n = 0.5 + 0.5 * (d / max_abs)
+    return np.clip(n, 0.0, 1.0).astype(np.float32)
 
-errs_std = [_err_u8(r) for r in recs_std]
-errs_aa  = [_err_u8(r) for r in recs_aa]
+diffs_std = [_diff_norm(r) for r in recs_std]
+diffs_aa  = [_diff_norm(r) for r in recs_aa]
 
-# --- Layout: 4 rows × 2 columns ---------------------------------------------
-fig, axes = plt.subplots(4, 2, figsize=(12, 16), constrained_layout=True)
-for ax in axes.ravel():
+# --- Layout: 3 columns (Original | Std | AA), 3 rows (Down | Rec | Error) ----
+fig = plt.figure(figsize=(13, 9), constrained_layout=True)
+gs = fig.add_gridspec(
+    nrows=3, ncols=3,
+    width_ratios=[1.05, 1.0, 1.0],
+)
+
+ax_orig     = fig.add_subplot(gs[:, 0])   # span all rows
+ax_down_std = fig.add_subplot(gs[0, 1])
+ax_down_aa  = fig.add_subplot(gs[0, 2])
+ax_rec_std  = fig.add_subplot(gs[1, 1])
+ax_rec_aa   = fig.add_subplot(gs[1, 2])
+ax_err_std  = fig.add_subplot(gs[2, 1])
+ax_err_aa   = fig.add_subplot(gs[2, 2])
+
+for ax in (ax_orig, ax_down_std, ax_down_aa, ax_rec_std, ax_rec_aa, ax_err_std, ax_err_aa):
     ax.axis("off")
 
-# Row 1: Original (fixed)
-axes[0, 0].set_title("Standard cubic — Original (fixed)")
-axes[0, 1].set_title("Cubic-antialiasing — Original (fixed)")
-im_orig_l = axes[0, 0].imshow(orig_u8)
-im_orig_r = axes[0, 1].imshow(orig_u8)
+# Left column: Original (fixed)
+ax_orig.set_title("Original (fixed)")
+im_orig = ax_orig.imshow(orig_u8)
 
-# Row 2: Downsampled on canvas
-t_down_l = axes[1, 0].set_title(f"Downsampled on canvas (z={zoom_values_cmp[0]:.3f})")
-t_down_r = axes[1, 1].set_title(f"Downsampled on canvas (z={zoom_values_cmp[0]:.3f})")
-im_down_l = axes[1, 0].imshow(canv_std[0])
-im_down_r = axes[1, 1].imshow(canv_aa[0])
+# Row 1: Downsampled
+t_down_std = ax_down_std.set_title(f"Downsampled — Standard cubic (z={zoom_values_cmp[0]:.3f})")
+t_down_aa  = ax_down_aa.set_title (f"Downsampled — Cubic-antialiasing (z={zoom_values_cmp[0]:.3f})")
+im_down_std = ax_down_std.imshow(canv_std[0])
+im_down_aa  = ax_down_aa.imshow(canv_aa[0])
 
-# Row 3: Recovered (round-trip)
-t_rec_l = axes[2, 0].set_title(f"Recovered (round-trip) — z={zoom_values_cmp[0]:.3f}")
-t_rec_r = axes[2, 1].set_title(f"Recovered (round-trip) — z={zoom_values_cmp[0]:.3f}")
-im_rec_l = axes[2, 0].imshow(recs_std[0])
-im_rec_r = axes[2, 1].imshow(recs_aa[0])
+# Row 2: Recovered
+t_rec_std = ax_rec_std.set_title(f"Recovered — Standard cubic (z={zoom_values_cmp[0]:.3f})")
+t_rec_aa  = ax_rec_aa.set_title (f"Recovered — Cubic-antialiasing (z={zoom_values_cmp[0]:.3f})")
+im_rec_std = ax_rec_std.imshow(recs_std[0])
+im_rec_aa  = ax_rec_aa.imshow(recs_aa[0])
 
-# Row 4: Error magnitude
-# (scaled to global max across all frames; 255 = max error)
-t_err_l = axes[3, 0].set_title(f"Error magnitude |rec-orig| (scaled, max={err_max:.3e})")
-t_err_r = axes[3, 1].set_title(f"Error magnitude |rec-orig| (scaled, max={err_max:.3e})")
-im_err_l = axes[3, 0].imshow(errs_std[0], cmap="gray", vmin=0, vmax=255)
-im_err_r = axes[3, 1].imshow(errs_aa[0],  cmap="gray", vmin=0, vmax=255)
+# Row 3: Signed error (benchmark-style normalization)
+ax_err_std.set_title("Signed error (rec−orig), normalized: 0.5 = 0")
+ax_err_aa.set_title ("Signed error (rec−orig), normalized: 0.5 = 0")
+im_err_std = ax_err_std.imshow(diffs_std[0], cmap="gray", vmin=0.0, vmax=1.0)
+im_err_aa  = ax_err_aa.imshow (diffs_aa[0],  cmap="gray", vmin=0.0, vmax=1.0)
 
 def animate_frame(i: int):
     z = zoom_values_cmp[i]
 
-    im_down_l.set_data(canv_std[i])
-    im_down_r.set_data(canv_aa[i])
+    im_down_std.set_data(canv_std[i])
+    im_down_aa.set_data(canv_aa[i])
 
-    im_rec_l.set_data(recs_std[i])
-    im_rec_r.set_data(recs_aa[i])
+    im_rec_std.set_data(recs_std[i])
+    im_rec_aa.set_data(recs_aa[i])
 
-    im_err_l.set_data(errs_std[i])
-    im_err_r.set_data(errs_aa[i])
+    im_err_std.set_data(diffs_std[i])
+    im_err_aa.set_data(diffs_aa[i])
 
-    t_down_l.set_text(f"Downsampled on canvas (z={z:.3f})")
-    t_down_r.set_text(f"Downsampled on canvas (z={z:.3f})")
-    t_rec_l.set_text(f"Recovered (round-trip) — z={z:.3f}")
-    t_rec_r.set_text(f"Recovered (round-trip) — z={z:.3f}")
+    t_down_std.set_text(f"Downsampled — Standard cubic (z={z:.3f})")
+    t_down_aa.set_text (f"Downsampled — Cubic-antialiasing (z={z:.3f})")
+
+    t_rec_std.set_text(f"Recovered — Standard cubic (z={z:.3f})")
+    t_rec_aa.set_text (f"Recovered — Cubic-antialiasing (z={z:.3f})")
 
     return (
-        im_down_l, im_down_r,
-        im_rec_l, im_rec_r,
-        im_err_l, im_err_r,
-        t_down_l, t_down_r,
-        t_rec_l, t_rec_r,
-        t_err_l, t_err_r,
+        im_down_std, im_down_aa,
+        im_rec_std, im_rec_aa,
+        im_err_std, im_err_aa,
+        t_down_std, t_down_aa,
+        t_rec_std,  t_rec_aa,
     )
 
 ani_cmp = animation.FuncAnimation(
     fig,
     animate_frame,
     frames=len(zoom_values_cmp),
-    interval=INTERVAL_MS,
+    interval=INTERVAL_MS,   # keep consistent with your export
     blit=True,
 )
+
 
 # %%
 # Export animation for the user-guide (build-only)
