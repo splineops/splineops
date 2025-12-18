@@ -6,7 +6,7 @@
 Benchmarking Animation
 ======================
 
-This example builds a short animation for each Kodak test image.
+This example builds a short animation for a set of images.
 
 For a sequence of zoom factors, we do a round-trip resize: original → downsampled → recovered.
 
@@ -15,11 +15,8 @@ and compare two methods:
 - PyTorch bicubic (if available; otherwise SciPy cubic),
 - SplineOps cubic-antialiasing.
 
-Each frame shows:
-- the original image (fixed),
-- the downsampled image (pasted on a white canvas),
-- the recovered image,
-- a normalized signed error map (recovered − original).
+Each frame shows the original image (fixed), the downsampled image (pasted on a white canvas),
+the recovered image and a normalized signed error map (recovered − original).
 
 The animations are displayed in the docs (no files are exported here).
 """

@@ -136,11 +136,6 @@ different values of rotation angles and spline degrees.
       allowfullscreen>
       </iframe>
 
-.. only:: not html
-
-   The interactive animation is available in the HTML docs:
-   :ref:`sphx_glr_auto_examples_03_affine_02_rotation_animation.py`.
-
 Rotate Examples
 ---------------
 

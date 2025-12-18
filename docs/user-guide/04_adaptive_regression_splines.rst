@@ -141,11 +141,6 @@ trying different values of :math:`\lambda`.
       allowfullscreen>
     </iframe>
 
-.. only:: not html
-
-   The interactive animation is available in the HTML docs:
-   :ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_02_lambda_sweep_animation.py`.
-
 Example
 -------
 

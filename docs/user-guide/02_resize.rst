@@ -11,7 +11,8 @@ Overview
 The :ref:`resize <api-resize>` module in :ref:`SplineOps <api-index>` provides high-performance,
 high-fidelity resizing for N-dimensional arrays.
 
-Essentially, we move from standard cubic interpolation (left) to the projection-based antialiasing method (right).
+This module allows us to obtain classical standard cubic interpolation (see following animation, at left) and 
+high-quality antialiasing projection-based (see following animation, at right).
 
 .. only:: html
 
@@ -24,7 +25,7 @@ Essentially, we move from standard cubic interpolation (left) to the projection-
       allowfullscreen>
     </iframe>
 
-This animation is available in the example :ref:`sphx_glr_auto_examples_02_resize_02_resize_module_2d.py`.
+This animation and its details are available in the example :ref:`sphx_glr_auto_examples_02_resize_02_resize_module_2d.py`.
 
 Conceptually, resizing means:
 
@@ -479,23 +480,16 @@ realistic image resizing tasks, in these two examples:
 
 - :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`
 - :ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`
+- :ref:`sphx_glr_auto_examples_02_resize_08_benchmarking_animation.py`
 
-Round-trip ROI benchmark
+Round-Trip ROI Benchmark
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-The first example benchmarks several test images by:
+The first and third benchmark examples evaluate several images by:
 
-1. Downsampling each image with an image-specific zoom factor
-   :math:`z < 1`,
-2. Upsampling back to the original size with the same method (round-trip),
-3. Evaluating a small region of interest (ROI) using
-
-   - round-trip runtime (mean ± standard deviation),
-   - SNR and MSE on the ROI,
-   - SSIM on the ROI.
-
-For each image and method, it also builds ROI montages and normalized error
-maps that make aliasing and blur easy to see by eye.
+1. downsampling with an image-specific zoom factor :math:`z < 1`,
+2. upsampling back to the original size (round-trip),
+3. measuring quality on a small region of interest (ROI) and reporting timing.
 
 The compared methods include:
 
@@ -503,10 +497,13 @@ The compared methods include:
 - `cv2.resize`_ with ``INTER_CUBIC``,
 - `PIL.Image.resize`_ with BICUBIC resampling,
 - `skimage.transform.resize`_ (cubic, with and without ``anti_aliasing``),
-- `torch.nn.functional.interpolate`_ in bicubic mode (with and without
-  ``antialias=True``),
-- our method :func:`~splineops.resize.resize` ``method="cubic"`` (plain cubic spline interpolation),
-- our method :func:`~splineops.resize.resize` ``method="cubic-antialiasing"`` (projection-based low-pass + resize).
+- `torch.nn.functional.interpolate`_ (bicubic),
+- our method :func:`~splineops.resize.resize` ``method="cubic"`` (standard cubic),
+- our method :func:`~splineops.resize.resize` ``method="cubic-antialiasing"`` (projection-based antialiasing).
+
+As a concrete example, we show a side-by-side round-trip comparison against PyTorch bicubic, which is a widely 
+used high-quality baseline in modern pipelines. The animation sweeps a range of downsampling factors on an input image. 
+The left column shows PyTorch; the right column shows SplineOps ``method="cubic-antialiasing"``.
 
 .. only:: html
 
@@ -519,80 +516,16 @@ The compared methods include:
       allowfullscreen>
     </iframe>
 
-See also :ref:`sphx_glr_auto_examples_02_resize_08_benchmarking_animation.py`.
+Across the image test set, ``method="cubic-antialiasing"`` is designed to reduce downsampling artefacts by 
+applying a projection-based low-pass step before decimation. In practice this typically shows up as:
 
-In these examples:
+- fewer Moiré / ripple patterns after downsampling,
+- a recovered image that preserves local structure better after the round-trip,
+- and smaller, less structured errors in the ROI (as seen in the error maps).
 
-- :func:`~splineops.resize.resize` ``method="cubic"`` behaves like the “classic” cubic filters
-  (SciPy, OpenCV, scikit-image, PyTorch bicubic without antialiasing): visually
-  similar sharpness and very similar SNR/MSE/SSIM, often at lower cost than the
-  heavier scientific stacks.
-- :func:`~splineops.resize.resize` ``method="cubic-antialiasing"`` typically improves SNR and SSIM
-  by a few dB and a few hundredths of SSIM over plain cubic in the ROI when
-  downsampling aggressively. Because SNR is in decibels, a 3–6 dB lead means
-  roughly :math:`1.4{-}2\times` smaller RMS error, which is a substantial
-  gain for the same zoom factor.
+The accompanying benchmark scripts report the ROI metrics (SNR/MSE/SSIM) and round-trip timing for all methods and images.
 
-The first figure below shows the global image, the ROI used for metrics, and
-the same ROI after a first-pass with antialiasing shrink, all at a zoom
-factor of :math:`z = 0.15`:
-
-.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_010.png
-   :align: center
-   :width: 100%
-
-The next figure compares the color ROI for the main cubic methods
-(Original, :func:`~splineops.resize.resize` Standard and Antialiasing, OpenCV, SciPy,
-scikit-image, PyTorch bicubic). It highlights visual differences such as
-aliasing and ringing in fine detail:
-
-.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_015.png
-   :align: center
-   :width: 100%
-
-The following figure shows the normalized signed error in the grayscale ROI
-for the same main subset of methods. Zero error is mid-gray; brighter or darker
-regions indicate positive or negative deviations from the original:
-
-.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_012.png
-   :align: center
-   :width: 100%
-
-The next figure compares the color ROI for the antialiasing-focused subset
-(Original, :func:`~splineops.resize.resize` Standard and Antialiasing, Pillow BICUBIC,
-scikit-image cubic with anti-aliasing, PyTorch bicubic with antialiasing).
-This isolates how different antialiasing strategies affect fine structure:
-
-.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_016.png
-   :align: center
-   :width: 100%
-
-The companion figure shows the normalized signed error in the grayscale ROI
-for this antialiasing subset, again with mid-gray indicating zero error:
-
-.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_014.png
-   :align: center
-   :width: 100%
-
-The bar chart below summarizes the round-trip runtime (forward + backward)
-for the cubic methods at :math:`z = 0.15` on a 512×768 image. OpenCV and
-PyTorch are fastest, :func:`~splineops.resize.resize` sits comfortably in the middle, and SciPy /
-scikit-image are significantly slower:
-
-.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_017.png
-   :align: center
-   :width: 100%
-
-Finally, the last figure in this series summarizes SNR and SSIM per method
-for the same configuration, showing that :func:`~splineops.resize.resize` Cubic Antialiasing
-typically attains the highest SNR and SSIM, with the Standard cubic preset
-tightly grouped with the other classic cubic filters:
-
-.. image:: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_018.png
-   :align: center
-   :width: 100%
-
-Zoom-sweep benchmark
+Zoom-Sweep Benchmark
 ~~~~~~~~~~~~~~~~~~~~
 
 The second example uses a single Kodak image to run a 1D sweep of zoom
@@ -619,12 +552,6 @@ downsampling and remains best for all resampling factors**. In the zoomed versio
 leads the next-best method by several decibels over a wide range of zoom
 factors, corresponding to a noticeably smaller reconstruction error:
 
-.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_005.png
-   :align: center
-   :width: 100%
-
-Here is a zoom of the same plot for factors between 0 and 1:
-
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_004.png
    :align: center
    :width: 100%
@@ -635,12 +562,6 @@ all methods converge near SSIM :math:`\approx 1` around :math:`z = 1`, but
 aggressive downsampling factors, meaning the recovered images preserve local
 structure better**:
 
-.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_007.png
-   :align: center
-   :width: 100%
-
-Here is a zoom of the SSIM plot for factors between 0 and 1:
-
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_006.png
    :align: center
    :width: 100%
@@ -650,12 +571,6 @@ antialiasing presets add only a modest overhead over the Standard ones, while
 still remaining competitive with other high-quality methods for a wide range
 of zoom factors. The zoomed version for :math:`0 < z < 1` makes this clear
 in the practically most relevant regime (downsampling):
-
-.. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_003.png
-   :align: center
-   :width: 100%
-
-Here is a zoom of the timing plot for factors between 0 and 1:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_002.png
    :align: center
