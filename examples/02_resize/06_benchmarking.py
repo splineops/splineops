@@ -520,6 +520,63 @@ def show_intro_color(
     fig.tight_layout()
     plt.show()
 
+def _smart_ylim(
+    values: np.ndarray,
+    *,
+    hi_cap: float | None = None,
+    lo_cap: float | None = None,
+    pad_frac: float = 0.06,
+    iqr_k: float = 1.5,
+    q_floor: float = 10.0,   # percentile used when min is an outlier
+    min_span: float | None = None,
+) -> tuple[float, float] | None:
+    """
+    Robust y-limits for plots.
+
+    - If the minimum is a strong outlier (below Q1 - k*IQR), use q_floor percentile as the lower bound.
+    - Otherwise use the true min.
+    - Add a small padding.
+    - Optionally clamp/cap.
+    """
+    v = np.asarray(values, dtype=np.float64)
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return None
+
+    vmin = float(v.min())
+    vmax = float(v.max())
+
+    if vmin == vmax:
+        span = float(min_span) if min_span is not None else (1e-3 if vmax <= 1.0 else 1.0)
+        lo, hi = vmin - 0.5 * span, vmax + 0.5 * span
+    else:
+        q1, q3 = np.percentile(v, [25.0, 75.0])
+        iqr = float(q3 - q1)
+
+        lo0 = vmin
+        if iqr > 0.0:
+            low_outlier_thr = float(q1 - iqr_k * iqr)
+            if vmin < low_outlier_thr:
+                lo0 = float(np.percentile(v, q_floor))
+
+        span = vmax - lo0
+        pad = pad_frac * span
+        lo, hi = lo0 - pad, vmax + pad
+
+        if min_span is not None and (hi - lo) < float(min_span):
+            mid = 0.5 * (hi + lo)
+            lo = mid - 0.5 * float(min_span)
+            hi = mid + 0.5 * float(min_span)
+
+    if lo_cap is not None:
+        lo = max(lo, float(lo_cap))
+    if hi_cap is not None:
+        hi = min(hi, float(hi_cap))
+
+    if lo >= hi:
+        hi = lo + (float(min_span) if min_span is not None else 1e-6)
+
+    return lo, hi
 
 # %%
 # Round-Trip Backends & Time
@@ -1414,6 +1471,15 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
         bbox_to_anchor=(1, 1),
         fontsize=PLOT_LEGEND_FONTSIZE,
     )
+
+    # --- Smart truncated y-limits (robust) ---
+    snr_lim = _smart_ylim(snrs, pad_frac=0.06, min_span=1.0)  # dB
+    if snr_lim is not None:
+        ax1.set_ylim(*snr_lim)
+
+    ssim_lim = _smart_ylim(ssims, lo_cap=0.0, hi_cap=1.0, pad_frac=0.02, min_span=0.02)
+    if ssim_lim is not None:
+        ax2.set_ylim(*ssim_lim)
 
     fig.tight_layout()
     plt.show()
