@@ -79,19 +79,14 @@ else:
 ANIM_SCALE = float(os.environ.get("SPLINEOPS_ANIM_SCALE", "0.5"))
 ANIM_SCALE = float(np.clip(ANIM_SCALE, 0.1, 1.0))
 
-# Zoom factors:
-# - fewer very small zooms (0.01–0.15)
-# - dense sweep in the middle interval (0.15–0.50)
-# - lighter sampling afterwards (0.50–0.80)
-# Total frames: 6 + 22 + 6 + 4 = 38
+# Zoom factors (downsampling-only): start at 0.30 and go downwards
+# Total frames: 6 + 8 + 24 = 38
+zoom_tiny  = np.geomspace(0.01, 0.08, 6,  endpoint=False)   # very small
+zoom_low   = np.geomspace(0.08, 0.15, 8,  endpoint=False)   # small
+zoom_focus = np.geomspace(0.15, 0.30, 24, endpoint=True)    # dense near 0.30
 
-zoom_low   = np.geomspace(0.01, 0.15, 6,  endpoint=False)   # < 0.15
-zoom_focus = np.geomspace(0.15, 0.50, 22, endpoint=False)   # [0.15, 0.50)
-zoom_mid   = np.geomspace(0.50, 0.80, 6,  endpoint=True)    # [0.50, 0.80]
-zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])
-
-ZOOM_VALUES = np.concatenate([zoom_low, zoom_focus, zoom_mid, zoom_top])
-ZOOM_VALUES = np.sort(ZOOM_VALUES)[::-1]  # 1.0 -> ... -> small
+ZOOM_VALUES = np.concatenate([zoom_tiny, zoom_low, zoom_focus])
+ZOOM_VALUES = np.sort(ZOOM_VALUES)[::-1]  # 0.30 -> ... -> 0.01
 
 KODAK_BASE = "https://r0k.us/graphics/kodak/kodak"
 KODAK_IMAGES = {
