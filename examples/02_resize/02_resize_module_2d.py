@@ -381,20 +381,24 @@ show_intro_color(
 # Animation: Cubic vs Cubic-Antialiasing
 # --------------------------------------
 #
-# Left column:  Standard cubic
-# Right column: Cubic-antialiasing
-#
-# Row 1: Original (fixed)
-# Row 2: Downsampled (on white canvas)
-# Row 3: Recovered (round-trip)
+# We compare in the following the two methids side by side.
 
 from matplotlib import animation
 
 METHOD_STD = "cubic"
 METHOD_AA  = "cubic-antialiasing"
 
-# Use the same zoom_values from the previous cell
-# (If you prefer, you can redefine zoom_values here.)
+INTERVAL_MS = 900
+
+# Zoom values
+zoom_low   = np.geomspace(0.01, 0.15, 6,  endpoint=False)   # < 0.15
+zoom_focus = np.geomspace(0.15, 0.50, 22, endpoint=False)   # [0.15, 0.50)
+zoom_mid   = np.geomspace(0.50, 0.80, 6,  endpoint=True)    # [0.50, 0.80]
+zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])
+
+zoom_values = np.concatenate([zoom_low, zoom_focus, zoom_mid, zoom_top])
+zoom_values = np.sort(zoom_values)[::-1]  # 1.0 -> ... -> small
+
 zoom_values_cmp = np.asarray(zoom_values, dtype=float)
 
 orig_f = np.clip(data, 0.0, 1.0)
@@ -572,7 +576,7 @@ ani_cmp = animation.FuncAnimation(
 )
 
 # %%
-# Export animation
+# Export Animation
 # ----------------
 #
 # Writes into: <generated static dir>/_static/animations/

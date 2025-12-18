@@ -9,7 +9,26 @@ Overview
 --------
 
 The :ref:`resize <api-resize>` module in :ref:`SplineOps <api-index>` provides high-performance,
-high-fidelity resizing for N-dimensional arrays. 
+high-fidelity resizing for N-dimensional arrays.
+
+Essentially, we will get from "low-quality" interpolation existing today, (following figure, method at left), to the
+"high-quality" projection method (following figure, method at right).
+
+.. only:: html
+
+  .. raw:: html
+
+    <iframe
+      src="../_static/animations/resize_module_2d_cubic_vs_aa.html"
+      style="width: 100%; height: 950px; border: 0;"
+      loading="lazy"
+      allow="fullscreen"
+      allowfullscreen>
+    </iframe>
+
+.. only:: not html
+
+  This animation is available in the example :ref:`sphx_glr_auto_examples_02_resize_08_benchmarking_animation.py`.
 
 Conceptually, resizing means:
 
@@ -289,22 +308,6 @@ ROI, while preserving the main structures and contrasts.
 .. image:: /auto_examples/02_resize/images/sphx_glr_02_resize_module_2d_003.png
    :align: center
    :width: 100%
-
-.. only:: html
-
-  .. raw:: html
-
-    <iframe
-      src="../_static/animations/resize_module_2d_cubic_vs_aa.html"
-      style="width: 100%; height: 950px; border: 0;"
-      loading="lazy"
-      allow="fullscreen"
-      allowfullscreen>
-    </iframe>
-
-.. only:: not html
-
-  The animation is available in the HTML documentation.
 
 The Algorithm
 -------------

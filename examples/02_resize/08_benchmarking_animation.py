@@ -8,9 +8,7 @@ Benchmarking Animation
 
 This example builds a short animation for each Kodak test image.
 
-For a sequence of zoom factors, we do a round-trip resize:
-
-    original → downsampled → recovered
+For a sequence of zoom factors, we do a round-trip resize: original → downsampled → recovered.
 
 and compare two methods:
 
@@ -21,8 +19,7 @@ Each frame shows:
 - the original image (fixed),
 - the downsampled image (pasted on a white canvas),
 - the recovered image,
-- a normalized signed error map (recovered − original),
-  where 0.5 means “no error”.
+- a normalized signed error map (recovered − original).
 
 The animations are displayed in the docs (no files are exported here).
 """
