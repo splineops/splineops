@@ -259,20 +259,32 @@ def _nearest_big(roi: np.ndarray, target_h: int = ROI_MAG_TARGET) -> np.ndarray:
     return np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
 
 
-def _diff_normalized(orig: np.ndarray, rec: np.ndarray) -> np.ndarray:
+def _diff_normalized(
+    orig: np.ndarray,
+    rec: np.ndarray,
+    *,
+    max_abs: Optional[float] = None,
+) -> np.ndarray:
     """
     Normalize signed difference (rec - orig) into [0,1] for display.
 
     0.5 = no difference, >0.5 positive, <0.5 negative.
+
+    If max_abs is provided, it is used as a shared scale (same range across tiles).
     """
     diff = rec.astype(np.float64, copy=False) - orig.astype(np.float64, copy=False)
-    max_abs = np.max(np.abs(diff))
-    if max_abs <= 0:
+
+    if max_abs is None:
+        max_abs = float(np.max(np.abs(diff)))
+    else:
+        max_abs = float(max_abs)
+
+    if max_abs <= 0.0:
         return 0.5 * np.ones_like(diff, dtype=DTYPE)
+
     norm = 0.5 + 0.5 * diff / max_abs
     norm = np.clip(norm, 0.0, 1.0)
     return norm.astype(DTYPE, copy=False)
-
 
 def _show_initial_original_vs_aa(
     gray: np.ndarray,
@@ -881,6 +893,7 @@ def benchmark_image(
       - roi_tiles (list of (name, tile) for first-pass ROI montages, grayscale)
       - diff_tiles (list of (name, tile) for ROI error montages, grayscale)
       - rows (per-method metrics)
+      - diff_max_abs (shared max abs diff used for all diff tiles)
     """
     H, W = gray.shape
     z = zoom
@@ -906,14 +919,21 @@ def benchmark_image(
     orig_tile = _nearest_big(roi, ROI_MAG_TARGET)
     roi_tiles.append(("Original", orig_tile))
 
-    # Zero-diff baseline
+    # Zero-diff baseline (stays at mid-gray)
     diff_zero = 0.5 * np.ones_like(roi, dtype=DTYPE)
     diff_zero_big = _nearest_big(diff_zero, ROI_MAG_TARGET)
     diff_tiles.append(("Original (no diff)", diff_zero_big))
 
+    # Collect per-method recovered ROI for a shared error scale (per image)
+    rec_roi_store: List[Tuple[str, np.ndarray]] = []
+    diff_max_abs = 0.0
+
     aa_first_for_plot: Optional[np.ndarray] = None
 
-    header = f"{'Method':<32} {'Time (mean)':>14} {'± SD':>10} {'SNR (dB)':>10} {'MSE':>14} {'SSIM':>8}"
+    header = (
+        f"{'Method':<32} {'Time (mean)':>14} {'± SD':>10} "
+        f"{'SNR (dB)':>10} {'MSE':>14} {'SSIM':>8}"
+    )
     print(header)
     print("-" * len(header))
 
@@ -942,7 +962,10 @@ def benchmark_image(
         first, rec, t_mean, t_sd, err = _avg_time(rt_fn, repeats=N_TRIALS, warmup=True)
 
         if err is not None or first.size == 0 or rec.size == 0:
-            print(f"{label:<32} {'unavailable':>14} {'':>10} {'—':>10} {'—':>14} {'—':>8}")
+            print(
+                f"{label:<32} {'unavailable':>14} {'':>10} "
+                f"{'—':>10} {'—':>14} {'—':>8}"
+            )
             rows.append(
                 dict(
                     name=label,
@@ -991,6 +1014,7 @@ def benchmark_image(
             )
         )
 
+        # First-pass ROI tile (in the resized domain)
         H1, W1 = first.shape
         roi_h_res = max(1, int(round(roi_h * z)))
         roi_w_res = max(1, int(round(roi_w * z)))
@@ -1010,7 +1034,17 @@ def benchmark_image(
         tile = _nearest_big(first_roi, ROI_MAG_TARGET)
         roi_tiles.append((label, tile))
 
-        diff_roi = _diff_normalized(roi, rec_roi)
+        # Store recovered ROI (copy) for shared-scale diff montage
+        rec_roi_store.append((label, rec_roi.astype(DTYPE, copy=True)))
+
+        # Update shared max(|diff|) across all methods for this ROI
+        d = rec_roi.astype(np.float64, copy=False) - roi.astype(np.float64, copy=False)
+        diff_max_abs = max(diff_max_abs, float(np.max(np.abs(d))))
+
+    # Build diff tiles with ONE shared scale (per image) so all tiles are comparable
+    diff_max_abs = max(diff_max_abs, 1e-12)
+    for label, rec_roi_m in rec_roi_store:
+        diff_roi = _diff_normalized(roi, rec_roi_m, max_abs=diff_max_abs)
         diff_tile = _nearest_big(diff_roi, ROI_MAG_TARGET)
         diff_tiles.append((label, diff_tile))
 
@@ -1024,9 +1058,9 @@ def benchmark_image(
         aa_first=aa_first_for_plot,
         roi_tiles=roi_tiles,
         diff_tiles=diff_tiles,
+        diff_max_abs=diff_max_abs,
         rows=rows,
     )
-
 
 def show_intro_from_bench(bench: Dict[str, object]) -> None:
     """2×2 introductory figure for SplineOps AA (grayscale)."""
