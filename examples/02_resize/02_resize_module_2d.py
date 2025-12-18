@@ -27,7 +27,7 @@ matched low-pass step to suppress these artefacts.
 # Imports and Helpers
 # -------------------
 
-# sphinx_gallery_thumbnail_number = 2
+# sphinx_gallery_thumbnail_number = 4
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
@@ -378,89 +378,8 @@ show_intro_color(
 )
 
 # %%
-# Round-trip animation over Zoom Factors
+# Animation: Cubic vs Cubic-Antialiasing
 # --------------------------------------
-#
-# We animate a downsample → upsample (back to original size) round-trip for
-# several zoom factors z < 1.
-#
-# Top:    original RGB image (fixed)
-# Middle: downsampled image pasted on a white canvas of the original size
-# Bottom: recovered image (round-trip), showing degradation
-#
-# Tip: set METHOD="cubic" to see the effect without the antialiasing preset.
-
-from matplotlib import animation
-
-METHOD = "cubic"   # try "cubic" for standard interpolation
-INTERVAL_MS = 900  # keep in sync with MP4 export
-
-# Dense where artefacts change fast (0.01–0.2), then sparser up to 1.0
-zoom_low   = np.geomspace(0.01, 0.10, 10, endpoint=False)  # fewer near zero
-zoom_dense = np.geomspace(0.10, 0.22, 15)                  # more in 0.10–0.22 (includes 0.10)
-zoom_mid   = np.geomspace(0.22, 0.80, 10, endpoint=False)  # avoid duplicating 0.22
-zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])             # near-1 “sanity” points
-
-zoom_values = np.unique(np.concatenate([zoom_low, zoom_dense, zoom_mid, zoom_top]))
-zoom_values = np.sort(zoom_values)[::-1]  # 1.0 -> ... -> small
-
-orig = np.clip(data, 0.0, 1.0)  # H×W×3 float image in [0,1]
-H0, W0, _ = orig.shape
-
-# Precompute frames for a smooth/fast animation
-canvases: list[np.ndarray] = []
-recs: list[np.ndarray] = []
-
-for z in zoom_values:
-    # 1) Downsample (first pass)
-    down = resize_rgb(orig, z, method=METHOD)              # H1×W1×3
-    down = np.clip(down, 0.0, 1.0)
-
-    # 2) Paste on white canvas of the original size
-    canvas = np.ones_like(orig)
-    h1, w1, _ = down.shape
-    canvas[:h1, :w1, :] = down
-    canvases.append(canvas)
-
-    # 3) Recover back to original size (second pass)
-    rec_channels = [
-        resize(down[..., c], output_size=(H0, W0), method=METHOD)
-        for c in range(3)
-    ]
-    rec = np.stack(rec_channels, axis=-1)
-    recs.append(np.clip(rec, 0.0, 1.0))
-
-# Figure layout: 3 rows, 1 column
-fig, axes = plt.subplots(3, 1, figsize=(7, 12), constrained_layout=True)
-for ax in axes:
-    ax.axis("off")
-
-axes[0].set_title("Original")
-t_down = axes[1].set_title(f"Downsampled (z={zoom_values[0]:.2f}) on white canvas")
-t_rec  = axes[2].set_title(f"Recovered (round-trip) — method={METHOD}, z={zoom_values[0]:.2f}")
-
-im0 = axes[0].imshow(orig)
-im1 = axes[1].imshow(canvases[0])
-im2 = axes[2].imshow(recs[0])
-
-def animate_frame(i: int):
-    im1.set_data(canvases[i])
-    im2.set_data(recs[i])
-    t_down.set_text(f"Downsampled (z={zoom_values[i]:.2f}) on white canvas")
-    t_rec.set_text(f"Recovered (round-trip) — method={METHOD}, z={zoom_values[i]:.2f}")
-    return im1, im2, t_down, t_rec
-
-ani = animation.FuncAnimation(
-    fig,
-    animate_frame,
-    frames=len(zoom_values),
-    interval=900,
-    blit=True,
-)
-
-# %%
-# Side-by-side animation: cubic vs cubic-antialiasing
-# ---------------------------------------------------
 #
 # Left column:  Standard cubic
 # Right column: Cubic-antialiasing
@@ -652,10 +571,9 @@ ani_cmp = animation.FuncAnimation(
     blit=True,
 )
 
-
 # %%
-# Export animation for the user-guide (build-only)
-# ------------------------------------------------
+# Export animation
+# ----------------
 #
 # Writes into: <generated static dir>/_static/animations/
 # No-op when run normally by users.

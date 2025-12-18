@@ -6,17 +6,25 @@
 Benchmarking Animation
 ======================
 
-Per Kodak image, animate a zoom sweep comparing:
+This example builds a short animation for each Kodak test image.
 
-- SplineOps cubic-antialiasing
-- Competitor (preferred): PyTorch bicubic (antialias=True)
-  Fallback: SciPy cubic (if PyTorch not installed)
+For a sequence of zoom factors, we do a round-trip resize:
 
-Each frame shows the same layout as 02_resize_module_2d.py:
-Original (fixed), downsampled-on-canvas, recovered, signed error (rec-orig)
-normalized to [0,1] with 0.5=0, plus a small legend bar.
+    original → downsampled → recovered
 
-No animation export in this example (display only).
+and compare two methods:
+
+- PyTorch bicubic (if available; otherwise SciPy cubic),
+- SplineOps cubic-antialiasing.
+
+Each frame shows:
+- the original image (fixed),
+- the downsampled image (pasted on a white canvas),
+- the recovered image,
+- a normalized signed error map (recovered − original),
+  where 0.5 means “no error”.
+
+The animations are displayed in the docs (no files are exported here).
 """
 
 # %%
@@ -77,12 +85,18 @@ else:
 ANIM_SCALE = float(os.environ.get("SPLINEOPS_ANIM_SCALE", "0.5"))
 ANIM_SCALE = float(np.clip(ANIM_SCALE, 0.1, 1.0))
 
-# Zoom factors (your tuned distribution)
-zoom_low   = np.geomspace(0.01, 0.10, 10, endpoint=False)   # fewer near zero
-zoom_dense = np.geomspace(0.10, 0.22, 15)                   # denser in 0.10–0.22
-zoom_mid   = np.geomspace(0.22, 0.80, 10, endpoint=False)   # avoid duplicating 0.22
+# Zoom factors:
+# - fewer very small zooms (0.01–0.15)
+# - dense sweep in the middle interval (0.15–0.50)
+# - lighter sampling afterwards (0.50–0.80)
+# Total frames: 6 + 22 + 6 + 4 = 38
+
+zoom_low   = np.geomspace(0.01, 0.15, 6,  endpoint=False)   # < 0.15
+zoom_focus = np.geomspace(0.15, 0.50, 22, endpoint=False)   # [0.15, 0.50)
+zoom_mid   = np.geomspace(0.50, 0.80, 6,  endpoint=True)    # [0.50, 0.80]
 zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])
-ZOOM_VALUES = np.unique(np.concatenate([zoom_low, zoom_dense, zoom_mid, zoom_top]))
+
+ZOOM_VALUES = np.concatenate([zoom_low, zoom_focus, zoom_mid, zoom_top])
 ZOOM_VALUES = np.sort(ZOOM_VALUES)[::-1]  # 1.0 -> ... -> small
 
 KODAK_BASE = "https://r0k.us/graphics/kodak/kodak"
