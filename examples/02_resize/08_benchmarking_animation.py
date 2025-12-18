@@ -68,7 +68,7 @@ SPLINEOPS_LABEL = "SplineOps Antialiasing cubic"
 
 # Prefer torch if available; otherwise SciPy
 if _HAS_TORCH:
-    COMP_LABEL = "PyTorch bicubic (AA)"
+    COMP_LABEL = "PyTorch bicubic"
 else:
     COMP_LABEL = "SciPy cubic"
 
@@ -319,52 +319,50 @@ def make_benchmark_animation(
 
     # First frame (i=0)
     z0 = float(zoom_values[0])
-    down_a0, rec_a0 = rt_splineops_aa(orig01, z0)
-    down_b0, rec_b0 = rt_comp(orig01, z0)
+    down_so0,   rec_so0   = rt_splineops_aa(orig01, z0)
+    down_cmp0,  rec_cmp0  = rt_comp(orig01, z0)
 
-    _paste_on_white_canvas(down_a0, canvas_a)
-    _paste_on_white_canvas(down_b0, canvas_b)
+    # Column order: competitor first (left), splineops second (right)
+    _paste_on_white_canvas(down_cmp0, canvas_a)  # left method column
+    _paste_on_white_canvas(down_so0,  canvas_b)  # right method column
 
-    # Titles
-    t_down_a = ax_down_a.set_title(f"{SPLINEOPS_LABEL} (z={z0:.3f})", fontsize=title_fs)
-    t_down_b = ax_down_b.set_title(f"{comp_label} (z={z0:.3f})", fontsize=title_fs)
+    t_down_a = ax_down_a.set_title(f"{comp_label} (z={z0:.3f})", fontsize=title_fs)
+    t_down_b = ax_down_b.set_title(f"{SPLINEOPS_LABEL} (z={z0:.3f})", fontsize=title_fs)
 
-    ax_rec_a.set_title(f"Recovered, {SPLINEOPS_LABEL}", fontsize=title_fs)
-    ax_rec_b.set_title(f"Recovered, {comp_label}", fontsize=title_fs)
-
-    ax_err_a.set_title("Signed error", fontsize=title_fs)
-    ax_err_b.set_title("Signed error", fontsize=title_fs)
+    ax_rec_a.set_title(f"Recovered, {comp_label}", fontsize=title_fs)
+    ax_rec_b.set_title(f"Recovered, {SPLINEOPS_LABEL}", fontsize=title_fs)
 
     # Artists
     im_down_a = ax_down_a.imshow(canvas_a)
     im_down_b = ax_down_b.imshow(canvas_b)
 
-    im_rec_a = ax_rec_a.imshow(rec_a0)
-    im_rec_b = ax_rec_b.imshow(rec_b0)
+    im_rec_a = ax_rec_a.imshow(rec_cmp0)
+    im_rec_b = ax_rec_b.imshow(rec_so0)
 
-    im_err_a = ax_err_a.imshow(diff_norm_u8(rec_a0), cmap="gray", vmin=0, vmax=255)
-    im_err_b = ax_err_b.imshow(diff_norm_u8(rec_b0), cmap="gray", vmin=0, vmax=255)
+    im_err_a = ax_err_a.imshow(diff_norm_u8(rec_cmp0), cmap="gray", vmin=0, vmax=255)
+    im_err_b = ax_err_b.imshow(diff_norm_u8(rec_so0),  cmap="gray", vmin=0, vmax=255)
 
     def animate(i: int):
         z = float(zoom_values[i])
 
-        down_a, rec_a = rt_splineops_aa(orig01, z)
-        down_b, rec_b = rt_comp(orig01, z)
+        down_so,  rec_so  = rt_splineops_aa(orig01, z)
+        down_cmp, rec_cmp = rt_comp(orig01, z)
 
-        _paste_on_white_canvas(down_a, canvas_a)
-        _paste_on_white_canvas(down_b, canvas_b)
+        # Column order: competitor first (left), splineops second (right)
+        _paste_on_white_canvas(down_cmp, canvas_a)
+        _paste_on_white_canvas(down_so,  canvas_b)
 
         im_down_a.set_data(canvas_a)
         im_down_b.set_data(canvas_b)
 
-        im_rec_a.set_data(rec_a)
-        im_rec_b.set_data(rec_b)
+        im_rec_a.set_data(rec_cmp)
+        im_rec_b.set_data(rec_so)
 
-        im_err_a.set_data(diff_norm_u8(rec_a))
-        im_err_b.set_data(diff_norm_u8(rec_b))
+        im_err_a.set_data(diff_norm_u8(rec_cmp))
+        im_err_b.set_data(diff_norm_u8(rec_so))
 
-        t_down_a.set_text(f"{SPLINEOPS_LABEL} (z={z:.3f})")
-        t_down_b.set_text(f"{comp_label} (z={z:.3f})")
+        t_down_a.set_text(f"{comp_label} (z={z:.3f})")
+        t_down_b.set_text(f"{SPLINEOPS_LABEL} (z={z:.3f})")
 
         return (
             im_down_a, im_down_b,
