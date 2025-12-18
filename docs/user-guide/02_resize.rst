@@ -11,8 +11,7 @@ Overview
 The :ref:`resize <api-resize>` module in :ref:`SplineOps <api-index>` provides high-performance,
 high-fidelity resizing for N-dimensional arrays.
 
-Essentially, we will get from "low-quality" interpolation existing today, (following figure, method at left), to the
-"high-quality" projection method (following figure, method at right).
+Essentially, we move from standard cubic interpolation (left) to the projection-based antialiasing method (right).
 
 .. only:: html
 
@@ -20,15 +19,12 @@ Essentially, we will get from "low-quality" interpolation existing today, (follo
 
     <iframe
       src="../_static/animations/resize_module_2d_cubic_vs_aa.html"
-      style="width: 100%; height: 950px; border: 0;"
+      style="width: 100%; aspect-ratio: 13 / 9; border: 0;"
       loading="lazy"
-      allow="fullscreen"
       allowfullscreen>
     </iframe>
 
-.. only:: not html
-
-  This animation is available in the example :ref:`sphx_glr_auto_examples_02_resize_08_benchmarking_animation.py`.
+This animation is available in the example :ref:`sphx_glr_auto_examples_02_resize_02_resize_module_2d.py`.
 
 Conceptually, resizing means:
 
@@ -511,6 +507,19 @@ The compared methods include:
   ``antialias=True``),
 - our method :func:`~splineops.resize.resize` ``method="cubic"`` (plain cubic spline interpolation),
 - our method :func:`~splineops.resize.resize` ``method="cubic-antialiasing"`` (projection-based low-pass + resize).
+
+.. only:: html
+
+  .. raw:: html
+
+    <iframe
+      src="../_static/animations/benchmark_animation_kodim07_pytorch_vs_splineops.html"
+      style="width: 100%; aspect-ratio: 13 / 9; border: 0;"
+      loading="lazy"
+      allowfullscreen>
+    </iframe>
+
+See also :ref:`sphx_glr_auto_examples_02_resize_08_benchmarking_animation.py`.
 
 In these examples:
 

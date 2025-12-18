@@ -415,6 +415,23 @@ ani_kodim05 = make_benchmark_animation("kodim05", KODAK_IMAGES["kodim05"])
 ani_kodim07 = make_benchmark_animation("kodim07", KODAK_IMAGES["kodim07"])
 
 # %%
+# Export (build-only): kodim07 animation
+# --------------------------------------
+#
+# Writes into: <generated static dir>/_static/animations/
+# No-op when run normally by users.
+
+from splineops.utils.sphinx import export_animation_mp4_and_html
+
+export_animation_mp4_and_html(
+    ani_kodim07,
+    stem="benchmark_animation_kodim07_pytorch_vs_splineops",
+    interval_ms=INTERVAL_MS,
+    dpi=80,
+    force=True,
+)
+
+# %%
 # Image: kodim14
 # --------------
 ani_kodim14 = make_benchmark_animation("kodim14", KODAK_IMAGES["kodim14"])
