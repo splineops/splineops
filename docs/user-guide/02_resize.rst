@@ -665,6 +665,7 @@ Resize Examples
 * :ref:`sphx_glr_auto_examples_02_resize_05_how_bad_aliasing_can_be.py`
 * :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`
 * :ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`
+* :ref:`sphx_glr_auto_examples_02_resize_08_benchmarking_animation.py`
 
 References
 ----------
