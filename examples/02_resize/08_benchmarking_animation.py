@@ -6,18 +6,15 @@
 Benchmarking Animation
 ======================
 
-For each Kodak test image, animate a zoom sweep comparing:
+Per Kodak image, animate a zoom sweep comparing:
 
-- SplineOps: cubic-antialiasing
-- Competitor: PyTorch bicubic (antialias=True)   [if available]
+- SplineOps cubic-antialiasing
+- Competitor (preferred): PyTorch bicubic (antialias=True)
+  Fallback: SciPy cubic (if PyTorch not installed)
 
-Each frame shows (same layout as 02_resize_module_2d.py):
-- Original (fixed)
-- Downsampled pasted on a white canvas (per method)
-- Recovered after round-trip (per method)
-- Signed error map (rec - orig), normalized to [0, 1] with 0.5 = 0,
-  using a GLOBAL max(|diff|) across all frames + both methods
-  (benchmark-style stable contrast), plus a legend bar.
+Each frame shows the same layout as 02_resize_module_2d.py:
+Original (fixed), downsampled-on-canvas, recovered, signed error (rec-orig)
+normalized to [0,1] with 0.5=0, plus a small legend bar.
 
 No animation export in this example (display only).
 """
@@ -29,8 +26,8 @@ No animation export in this example (display only).
 from __future__ import annotations
 
 import os
+from typing import Callable, Tuple
 from urllib.request import urlopen
-from typing import Callable, List, Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,10 +36,18 @@ from PIL import Image
 
 from splineops.resize import resize as sp_resize
 
-# Optional PyTorch competitor
+# Optional SciPy (fallback competitor)
 try:
-    import torch
-    import torch.nn.functional as F
+    from scipy.ndimage import zoom as ndi_zoom  # type: ignore
+    _HAS_SCIPY = True
+except Exception:
+    _HAS_SCIPY = False
+    ndi_zoom = None  # type: ignore[assignment]
+
+# Optional PyTorch (preferred competitor)
+try:
+    import torch  # type: ignore
+    import torch.nn.functional as F  # type: ignore
     _HAS_TORCH = True
 except Exception:
     _HAS_TORCH = False
@@ -60,31 +65,40 @@ INTERVAL_MS = 900
 TITLE_FS = 13
 
 SPLINEOPS_LABEL = "SplineOps Antialiasing cubic"
-COMPETITOR_LABEL = "PyTorch bicubic (AA)"
 
-# Zoom factors (same idea as in 02_resize_module_2d.py)
-zoom_low   = np.geomspace(0.01, 0.10, 10, endpoint=False)
-zoom_dense = np.geomspace(0.10, 0.22, 15)
-zoom_mid   = np.geomspace(0.22, 0.80, 10, endpoint=False)
+# Prefer torch if available; otherwise SciPy
+if _HAS_TORCH:
+    COMP_LABEL = "PyTorch bicubic (AA)"
+else:
+    COMP_LABEL = "SciPy cubic"
+
+# Speed knob: scale images down for animation (keeps docs builds reasonable).
+# Set SPLINEOPS_ANIM_SCALE=1.0 if you want full resolution.
+ANIM_SCALE = float(os.environ.get("SPLINEOPS_ANIM_SCALE", "0.5"))
+ANIM_SCALE = float(np.clip(ANIM_SCALE, 0.1, 1.0))
+
+# Zoom factors (your tuned distribution)
+zoom_low   = np.geomspace(0.01, 0.10, 10, endpoint=False)   # fewer near zero
+zoom_dense = np.geomspace(0.10, 0.22, 15)                   # denser in 0.10–0.22
+zoom_mid   = np.geomspace(0.22, 0.80, 10, endpoint=False)   # avoid duplicating 0.22
 zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])
 ZOOM_VALUES = np.unique(np.concatenate([zoom_low, zoom_dense, zoom_mid, zoom_top]))
 ZOOM_VALUES = np.sort(ZOOM_VALUES)[::-1]  # 1.0 -> ... -> small
 
 KODAK_BASE = "https://r0k.us/graphics/kodak/kodak"
-KODAK_IMAGES = [
-    ("kodim05", f"{KODAK_BASE}/kodim05.png"),
-    ("kodim07", f"{KODAK_BASE}/kodim07.png"),
-    ("kodim14", f"{KODAK_BASE}/kodim14.png"),
-    ("kodim15", f"{KODAK_BASE}/kodim15.png"),
-    ("kodim19", f"{KODAK_BASE}/kodim19.png"),
-    ("kodim22", f"{KODAK_BASE}/kodim22.png"),
-    ("kodim23", f"{KODAK_BASE}/kodim23.png"),
-]
+KODAK_IMAGES = {
+    "kodim05": f"{KODAK_BASE}/kodim05.png",
+    "kodim07": f"{KODAK_BASE}/kodim07.png",
+    "kodim14": f"{KODAK_BASE}/kodim14.png",
+    "kodim15": f"{KODAK_BASE}/kodim15.png",
+    "kodim19": f"{KODAK_BASE}/kodim19.png",
+    "kodim22": f"{KODAK_BASE}/kodim22.png",
+    "kodim23": f"{KODAK_BASE}/kodim23.png",
+}
 
-# Keep docs builds reasonable by default
-MAX_IMAGES_DOCS = 1
-if os.environ.get("SPLINEOPS_SPHINX_BUILD") == "1":
-    KODAK_IMAGES = KODAK_IMAGES[:MAX_IMAGES_DOCS]
+# Optional local limiter (defaults to "all")
+# e.g.  SPLINEOPS_MAX_IMAGES=2  to run only first 2 sections locally
+MAX_IMAGES = int(os.environ.get("SPLINEOPS_MAX_IMAGES", "0"))
 
 
 # %%
@@ -109,15 +123,10 @@ def _u8_to_gray01(u8_rgb: np.ndarray) -> np.ndarray:
 
 
 def _paste_on_white_canvas(down_u8: np.ndarray, canvas_u8: np.ndarray) -> None:
-    """In-place: paste down_u8 at top-left onto a full-size white canvas_u8."""
     canvas_u8[...] = 255
     h1, w1 = down_u8.shape[:2]
     canvas_u8[:h1, :w1, :] = down_u8
 
-
-# %%
-# Backends (round-trip)
-# ---------------------
 
 def _resize_rgb_splineops(img01: np.ndarray, z: float, *, method: str) -> np.ndarray:
     """Channel-wise splineops resize for RGB."""
@@ -127,99 +136,133 @@ def _resize_rgb_splineops(img01: np.ndarray, z: float, *, method: str) -> np.nda
     return np.clip(out, 0.0, 1.0).astype(DTYPE, copy=False)
 
 
-def _roundtrip_splineops_aa(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
+def _match_shape_center(a: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
+    """Center-crop or pad (with edge values) to match (H,W) exactly."""
+    Ht, Wt = shape
+    H, W = a.shape[:2]
+    if (H, W) == (Ht, Wt):
+        return a
+    # crop
+    r0 = max(0, (H - Ht) // 2)
+    c0 = max(0, (W - Wt) // 2)
+    a2 = a[r0:r0 + min(Ht, H), c0:c0 + min(Wt, W), ...]
+    # pad if needed
+    H2, W2 = a2.shape[:2]
+    if (H2, W2) == (Ht, Wt):
+        return a2
+    pad_top = max(0, (Ht - H2) // 2)
+    pad_bot = max(0, Ht - H2 - pad_top)
+    pad_lft = max(0, (Wt - W2) // 2)
+    pad_rgt = max(0, Wt - W2 - pad_lft)
+    return np.pad(a2, ((pad_top, pad_bot), (pad_lft, pad_rgt), (0, 0)), mode="edge")
+
+
+# %%
+# Backends (round-trip)
+# ---------------------
+
+def rt_splineops_aa(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
     """Return (down_u8, rec_u8) for splineops cubic-antialiasing."""
     H0, W0 = orig01.shape[:2]
     down01 = _resize_rgb_splineops(orig01, z, method="cubic-antialiasing")
     down_u8 = _to_u8(down01)
 
-    # Recover to exact original size (channel-wise output_size)
     rec_ch = [sp_resize(down01[..., c], output_size=(H0, W0), method="cubic-antialiasing") for c in range(3)]
     rec01 = np.stack(rec_ch, axis=-1)
     rec_u8 = _to_u8(rec01)
     return down_u8, rec_u8
 
 
-def _torch_resize_rgb_bicubic_aa(img01: np.ndarray, out_hw: tuple[int, int]) -> np.ndarray:
-    """Torch bicubic resize with antialias=True. Returns float32 RGB in [0,1]."""
-    assert _HAS_TORCH and F is not None
-
-    x = torch.from_numpy(img01.astype(np.float32, copy=False)).permute(2, 0, 1).unsqueeze(0)  # 1,3,H,W
-    y = F.interpolate(
-        x,
-        size=out_hw,
-        mode="bicubic",
-        align_corners=False,
-        antialias=True,
-    )
-    out = y[0].permute(1, 2, 0).detach().cpu().numpy()
-    return np.clip(out, 0.0, 1.0).astype(np.float32, copy=False)
-
-
-def _roundtrip_torch_bicubic_aa(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
+def rt_torch_bicubic_aa(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
     """Return (down_u8, rec_u8) for torch bicubic antialias=True."""
-    assert _HAS_TORCH
+    assert _HAS_TORCH and F is not None
 
     H0, W0 = orig01.shape[:2]
     H1 = max(1, int(round(H0 * z)))
     W1 = max(1, int(round(W0 * z)))
 
-    down01 = _torch_resize_rgb_bicubic_aa(orig01, (H1, W1))
-    rec01  = _torch_resize_rgb_bicubic_aa(down01, (H0, W0))
+    x = torch.from_numpy(orig01.astype(np.float32, copy=False)).permute(2, 0, 1).unsqueeze(0)
+    y = F.interpolate(x, size=(H1, W1), mode="bicubic", align_corners=False, antialias=True)
+    y2 = F.interpolate(y, size=(H0, W0), mode="bicubic", align_corners=False, antialias=True)
+
+    down01 = y[0].permute(1, 2, 0).detach().cpu().numpy()
+    rec01  = y2[0].permute(1, 2, 0).detach().cpu().numpy()
 
     return _to_u8(down01), _to_u8(rec01)
 
 
-# %%
-# Animation builder
-# -----------------
+def rt_scipy_cubic(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
+    """Return (down_u8, rec_u8) for SciPy cubic (reflect)."""
+    assert _HAS_SCIPY and ndi_zoom is not None
 
-def make_two_method_animation(
-    *,
+    H0, W0 = orig01.shape[:2]
+    H1 = max(1, int(round(H0 * z)))
+    W1 = max(1, int(round(W0 * z)))
+
+    # SciPy works channel-wise
+    downs = []
+    for c in range(3):
+        ch = ndi_zoom(orig01[..., c], zoom=(z, z), order=3, prefilter=True, mode="reflect", grid_mode=False)
+        downs.append(ch)
+    down01 = np.stack(downs, axis=-1)
+    down01 = _match_shape_center(down01, (H1, W1))
+
+    # back to original size
+    Hz, Wz = down01.shape[:2]
+    zoom_bwd = (H0 / float(Hz), W0 / float(Wz))
+
+    recs = []
+    for c in range(3):
+        ch = ndi_zoom(down01[..., c], zoom=zoom_bwd, order=3, prefilter=True, mode="reflect", grid_mode=False)
+        recs.append(ch)
+    rec01 = np.stack(recs, axis=-1)
+    rec01 = _match_shape_center(rec01, (H0, W0))
+
+    return _to_u8(down01), _to_u8(rec01)
+
+
+def get_competitor_rt() -> tuple[str, Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]]:
+    if _HAS_TORCH:
+        return COMP_LABEL, rt_torch_bicubic_aa
+    if _HAS_SCIPY:
+        return COMP_LABEL, rt_scipy_cubic
+    raise RuntimeError("Neither PyTorch nor SciPy is available for the competitor backend.")
+
+
+# %%
+# Animation builder (single image)
+# --------------------------------
+
+def make_benchmark_animation(
     img_name: str,
-    orig01: np.ndarray,
-    zoom_values: np.ndarray,
-    rt_a: Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]],
-    rt_b: Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]],
-    label_a: str,
-    label_b: str,
+    url: str,
+    *,
+    zoom_values: np.ndarray = ZOOM_VALUES,
     interval_ms: int = INTERVAL_MS,
     title_fs: int = TITLE_FS,
-):
+) -> animation.FuncAnimation:
     """
-    Build a 3x3 layout animation:
-
-      [ Original | A down | B down ]
-      [   blank  | A rec  | B rec  ]
-      [  legend  | A err  | B err  ]
-
-    where "err" is benchmark-style normalized signed diff:
-        n = 0.5 + 0.5 * ( (rec_gray - orig_gray) / max_abs )
+    Build the per-image animation.
+    Computes a GLOBAL max(|diff|) across all frames + both methods (stable contrast).
     """
+    comp_label, rt_comp = get_competitor_rt()
+
+    # Load + (optional) downscale for speed
+    orig01 = _load_kodak_rgb01(url)
+    if ANIM_SCALE < 0.999:
+        orig01 = _resize_rgb_splineops(orig01, ANIM_SCALE, method="cubic")
+
     orig_u8 = _to_u8(orig01)
     H0, W0 = orig_u8.shape[:2]
     orig_gray01 = _u8_to_gray01(orig_u8)
 
-    # --- Precompute down + recovered frames (u8) ---
-    downs_a: List[np.ndarray] = []
-    recs_a: List[np.ndarray] = []
-    downs_b: List[np.ndarray] = []
-    recs_b: List[np.ndarray] = []
-
-    for z in zoom_values:
-        d_a, r_a = rt_a(orig01, float(z))
-        d_b, r_b = rt_b(orig01, float(z))
-        downs_a.append(d_a)
-        recs_a.append(r_a)
-        downs_b.append(d_b)
-        recs_b.append(r_b)
-
-    # --- Compute global max(|diff|) across all frames + both methods ---
+    # --- Prepass: compute global max_abs across frames for both methods ---
     max_abs = 0.0
-    for r in recs_a:
-        max_abs = max(max_abs, float(np.max(np.abs(_u8_to_gray01(r) - orig_gray01))))
-    for r in recs_b:
-        max_abs = max(max_abs, float(np.max(np.abs(_u8_to_gray01(r) - orig_gray01))))
+    for z in zoom_values:
+        _, rec_a = rt_splineops_aa(orig01, float(z))
+        _, rec_b = rt_comp(orig01, float(z))
+        max_abs = max(max_abs, float(np.max(np.abs(_u8_to_gray01(rec_a) - orig_gray01))))
+        max_abs = max(max_abs, float(np.max(np.abs(_u8_to_gray01(rec_b) - orig_gray01))))
     max_abs = max(max_abs, 1e-12)
 
     def diff_norm_u8(rec_u8: np.ndarray) -> np.ndarray:
@@ -227,7 +270,7 @@ def make_two_method_animation(
         n = 0.5 + 0.5 * (d / max_abs)
         return (np.clip(n, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
-    # --- Layout ---
+    # --- Layout (same as 02_resize_module_2d.py style) ---
     fig = plt.figure(figsize=(13, 9), constrained_layout=True)
     gs = fig.add_gridspec(nrows=3, ncols=3, width_ratios=[1.05, 1.0, 1.0])
 
@@ -245,10 +288,9 @@ def make_two_method_animation(
     for ax in (ax_orig, ax_blank, ax_leg_host, ax_down_a, ax_down_b, ax_rec_a, ax_rec_b, ax_err_a, ax_err_b):
         ax.axis("off")
 
-    # Optional: one overall title per image
     fig.suptitle(f"{img_name} — Round-trip sweep (z: 1.0 → small)", fontsize=title_fs + 1)
 
-    # --- Legend bar (benchmark-style) ---
+    # Legend bar
     ax_leg_host.axis("off")
     leg = ax_leg_host.inset_axes([0.42, 0.05, 0.18, 0.90])
     leg.axis("off")
@@ -263,89 +305,123 @@ def make_two_method_animation(
     ax_leg_host.text(0.50, 1.02, "Diff legend", transform=ax_leg_host.transAxes,
                      fontsize=title_fs, va="bottom", ha="center")
 
-    # --- Static original ---
+    # Static original
     ax_orig.set_title("Original", fontsize=title_fs)
-    im_orig = ax_orig.imshow(orig_u8)
+    ax_orig.imshow(orig_u8)
 
-    # --- Downsampled canvases (reuse the same canvas arrays) ---
+    # Create reusable canvases
     canvas_a = np.full_like(orig_u8, 255)
     canvas_b = np.full_like(orig_u8, 255)
-    _paste_on_white_canvas(downs_a[0], canvas_a)
-    _paste_on_white_canvas(downs_b[0], canvas_b)
 
-    t_down_a = ax_down_a.set_title(f"{label_a} (z={zoom_values[0]:.3f})", fontsize=title_fs)
-    t_down_b = ax_down_b.set_title(f"{label_b} (z={zoom_values[0]:.3f})", fontsize=title_fs)
+    # First frame (i=0)
+    z0 = float(zoom_values[0])
+    down_a0, rec_a0 = rt_splineops_aa(orig01, z0)
+    down_b0, rec_b0 = rt_comp(orig01, z0)
+
+    _paste_on_white_canvas(down_a0, canvas_a)
+    _paste_on_white_canvas(down_b0, canvas_b)
+
+    # Titles
+    t_down_a = ax_down_a.set_title(f"{SPLINEOPS_LABEL} (z={z0:.3f})", fontsize=title_fs)
+    t_down_b = ax_down_b.set_title(f"{comp_label} (z={z0:.3f})", fontsize=title_fs)
+
+    ax_rec_a.set_title(f"Recovered, {SPLINEOPS_LABEL}", fontsize=title_fs)
+    ax_rec_b.set_title(f"Recovered, {comp_label}", fontsize=title_fs)
+
+    ax_err_a.set_title("Signed error", fontsize=title_fs)
+    ax_err_b.set_title("Signed error", fontsize=title_fs)
+
+    # Artists
     im_down_a = ax_down_a.imshow(canvas_a)
     im_down_b = ax_down_b.imshow(canvas_b)
 
-    # --- Recovered ---
-    t_rec_a = ax_rec_a.set_title(f"Recovered, {label_a}", fontsize=title_fs)
-    t_rec_b = ax_rec_b.set_title(f"Recovered, {label_b}", fontsize=title_fs)
-    im_rec_a = ax_rec_a.imshow(recs_a[0])
-    im_rec_b = ax_rec_b.imshow(recs_b[0])
+    im_rec_a = ax_rec_a.imshow(rec_a0)
+    im_rec_b = ax_rec_b.imshow(rec_b0)
 
-    # --- Error ---
-    ax_err_a.set_title("Signed error", fontsize=title_fs)
-    ax_err_b.set_title("Signed error", fontsize=title_fs)
-    im_err_a = ax_err_a.imshow(diff_norm_u8(recs_a[0]), cmap="gray", vmin=0, vmax=255)
-    im_err_b = ax_err_b.imshow(diff_norm_u8(recs_b[0]), cmap="gray", vmin=0, vmax=255)
+    im_err_a = ax_err_a.imshow(diff_norm_u8(rec_a0), cmap="gray", vmin=0, vmax=255)
+    im_err_b = ax_err_b.imshow(diff_norm_u8(rec_b0), cmap="gray", vmin=0, vmax=255)
 
     def animate(i: int):
         z = float(zoom_values[i])
 
-        _paste_on_white_canvas(downs_a[i], canvas_a)
-        _paste_on_white_canvas(downs_b[i], canvas_b)
+        down_a, rec_a = rt_splineops_aa(orig01, z)
+        down_b, rec_b = rt_comp(orig01, z)
+
+        _paste_on_white_canvas(down_a, canvas_a)
+        _paste_on_white_canvas(down_b, canvas_b)
+
         im_down_a.set_data(canvas_a)
         im_down_b.set_data(canvas_b)
 
-        im_rec_a.set_data(recs_a[i])
-        im_rec_b.set_data(recs_b[i])
+        im_rec_a.set_data(rec_a)
+        im_rec_b.set_data(rec_b)
 
-        im_err_a.set_data(diff_norm_u8(recs_a[i]))
-        im_err_b.set_data(diff_norm_u8(recs_b[i]))
+        im_err_a.set_data(diff_norm_u8(rec_a))
+        im_err_b.set_data(diff_norm_u8(rec_b))
 
-        t_down_a.set_text(f"{label_a} (z={z:.3f})")
-        t_down_b.set_text(f"{label_b} (z={z:.3f})")
+        t_down_a.set_text(f"{SPLINEOPS_LABEL} (z={z:.3f})")
+        t_down_b.set_text(f"{comp_label} (z={z:.3f})")
 
         return (
             im_down_a, im_down_b,
             im_rec_a, im_rec_b,
             im_err_a, im_err_b,
             t_down_a, t_down_b,
-            t_rec_a, t_rec_b,
         )
 
-    ani = animation.FuncAnimation(
-        fig,
-        animate,
-        frames=len(zoom_values),
-        interval=interval_ms,
-        blit=True,
-    )
+    # Avoid Matplotlib caching all frames in memory (important when many animations)
+    try:
+        ani = animation.FuncAnimation(
+            fig,
+            animate,
+            frames=len(zoom_values),
+            interval=interval_ms,
+            blit=True,
+            cache_frame_data=False,
+        )
+    except TypeError:
+        ani = animation.FuncAnimation(
+            fig,
+            animate,
+            frames=len(zoom_values),
+            interval=interval_ms,
+            blit=True,
+        )
+
     return ani
 
 
 # %%
-# Run (per image)
-# ---------------
+# Image: kodim05
+# --------------
+ani_kodim05 = make_benchmark_animation("kodim05", KODAK_IMAGES["kodim05"])
 
-animations: List[animation.FuncAnimation] = []
+# %%
+# Image: kodim07
+# --------------
+ani_kodim07 = make_benchmark_animation("kodim07", KODAK_IMAGES["kodim07"])
 
-if not _HAS_TORCH:
-    print("[info] PyTorch not available → skipping PyTorch comparison animation.")
-else:
-    for name, url in KODAK_IMAGES:
-        orig01 = _load_kodak_rgb01(url)
+# %%
+# Image: kodim14
+# --------------
+ani_kodim14 = make_benchmark_animation("kodim14", KODAK_IMAGES["kodim14"])
 
-        ani = make_two_method_animation(
-            img_name=name,
-            orig01=orig01,
-            zoom_values=ZOOM_VALUES,
-            rt_a=_roundtrip_splineops_aa,
-            rt_b=_roundtrip_torch_bicubic_aa,
-            label_a=SPLINEOPS_LABEL,
-            label_b=COMPETITOR_LABEL,
-            interval_ms=INTERVAL_MS,
-            title_fs=TITLE_FS,
-        )
-        animations.append(ani)
+# %%
+# Image: kodim15
+# --------------
+ani_kodim15 = make_benchmark_animation("kodim15", KODAK_IMAGES["kodim15"])
+
+# %%
+# Image: kodim19
+# --------------
+ani_kodim19 = make_benchmark_animation("kodim19", KODAK_IMAGES["kodim19"])
+
+# %%
+# Image: kodim22
+# --------------
+ani_kodim22 = make_benchmark_animation("kodim22", KODAK_IMAGES["kodim22"])
+
+# %%
+# Image: kodim23
+# --------------
+ani_kodim23 = make_benchmark_animation("kodim23", KODAK_IMAGES["kodim23"])
