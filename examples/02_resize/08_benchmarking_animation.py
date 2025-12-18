@@ -173,8 +173,8 @@ def rt_splineops_aa(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarra
     return down_u8, rec_u8
 
 
-def rt_torch_bicubic_aa(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
-    """Return (down_u8, rec_u8) for torch bicubic antialias=True."""
+def rt_torch_bicubic(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
+    """Return (down_u8, rec_u8) for torch bicubic with antialias=False."""
     assert _HAS_TORCH and F is not None
 
     H0, W0 = orig01.shape[:2]
@@ -182,8 +182,14 @@ def rt_torch_bicubic_aa(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.nd
     W1 = max(1, int(round(W0 * z)))
 
     x = torch.from_numpy(orig01.astype(np.float32, copy=False)).permute(2, 0, 1).unsqueeze(0)
-    y = F.interpolate(x, size=(H1, W1), mode="bicubic", align_corners=False, antialias=True)
-    y2 = F.interpolate(y, size=(H0, W0), mode="bicubic", align_corners=False, antialias=True)
+
+    # antialias=False explicitly; if not supported by the torch version, fallback without it
+    try:
+        y  = F.interpolate(x,  size=(H1, W1), mode="bicubic", align_corners=False, antialias=False)
+        y2 = F.interpolate(y,  size=(H0, W0), mode="bicubic", align_corners=False, antialias=False)
+    except TypeError:
+        y  = F.interpolate(x,  size=(H1, W1), mode="bicubic", align_corners=False)
+        y2 = F.interpolate(y,  size=(H0, W0), mode="bicubic", align_corners=False)
 
     down01 = y[0].permute(1, 2, 0).detach().cpu().numpy()
     rec01  = y2[0].permute(1, 2, 0).detach().cpu().numpy()
@@ -223,7 +229,7 @@ def rt_scipy_cubic(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray
 
 def get_competitor_rt() -> tuple[str, Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]]:
     if _HAS_TORCH:
-        return COMP_LABEL, rt_torch_bicubic_aa
+        return COMP_LABEL, rt_torch_bicubic
     if _HAS_SCIPY:
         return COMP_LABEL, rt_scipy_cubic
     raise RuntimeError("Neither PyTorch nor SciPy is available for the competitor backend.")
@@ -287,8 +293,6 @@ def make_benchmark_animation(
 
     for ax in (ax_orig, ax_blank, ax_leg_host, ax_down_a, ax_down_b, ax_rec_a, ax_rec_b, ax_err_a, ax_err_b):
         ax.axis("off")
-
-    fig.suptitle(f"{img_name} — Round-trip sweep (z: 1.0 → small)", fontsize=title_fs + 1)
 
     # Legend bar
     ax_leg_host.axis("off")
