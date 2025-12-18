@@ -381,7 +381,12 @@ show_intro_color(
 # Animation: Cubic vs Cubic-Antialiasing
 # --------------------------------------
 #
-# We compare in the following the two methids side by side.
+# Side-by-side comparison over a zoom sweep.
+# The animation starts at z=0.30 and then goes downwards.
+#
+# Row 1: Original (fixed) + Downsampled (on white canvas)
+# Row 2: Recovered (round-trip)
+# Row 3: Signed error (rec−orig), normalized with a shared scale
 
 from matplotlib import animation
 
@@ -389,28 +394,27 @@ METHOD_STD = "cubic"
 METHOD_AA  = "cubic-antialiasing"
 
 INTERVAL_MS = 900
+TITLE_FS = 13
+Z_START = 0.30
 
-# Zoom values
+# --- Zoom values: keep the original distribution, but start the animation at Z_START
 zoom_low   = np.geomspace(0.01, 0.15, 6,  endpoint=False)   # < 0.15
 zoom_focus = np.geomspace(0.15, 0.50, 22, endpoint=False)   # [0.15, 0.50)
 zoom_mid   = np.geomspace(0.50, 0.80, 6,  endpoint=True)    # [0.50, 0.80]
 zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])
 
-zoom_values = np.concatenate([zoom_low, zoom_focus, zoom_mid, zoom_top])
-zoom_values = np.sort(zoom_values)[::-1]  # 1.0 -> ... -> small
+zoom_values_full = np.sort(
+    np.unique(np.concatenate([zoom_low, zoom_focus, zoom_mid, zoom_top, [Z_START]]))
+)[::-1]  # 1.0 -> ... -> small
 
-zoom_values_cmp = np.asarray(zoom_values, dtype=float)
+start_idx = int(np.where(zoom_values_full <= Z_START)[0][0])
+zoom_values_cmp = zoom_values_full[start_idx:].astype(float)  # Z_START -> ... -> small
 
 orig_f = np.clip(data, 0.0, 1.0)
 H0, W0, _ = orig_f.shape
 orig_u8 = (orig_f * 255.0 + 0.5).astype(np.uint8)
 
-# Precompute frames (store uint8 to keep memory low)
-canv_std: list[np.ndarray] = []
-recs_std: list[np.ndarray] = []
-canv_aa:  list[np.ndarray] = []
-recs_aa:  list[np.ndarray] = []
-
+# --- Precompute frames (store uint8 to keep memory low) ---------------------
 def _roundtrip_frames(method: str):
     canv: list[np.ndarray] = []
     recs: list[np.ndarray] = []
@@ -426,7 +430,7 @@ def _roundtrip_frames(method: str):
         canvas[:h1, :w1, :] = down_u8
         canv.append(canvas)
 
-        # Recover to original size (round-trip)
+        # Recover (round-trip)
         rec_channels = [
             resize(down_f[..., c], output_size=(H0, W0), method=method)
             for c in range(3)
@@ -440,16 +444,13 @@ def _roundtrip_frames(method: str):
 canv_std, recs_std = _roundtrip_frames(METHOD_STD)
 canv_aa,  recs_aa  = _roundtrip_frames(METHOD_AA)
 
-# --- Signed normalized error maps (benchmark style) --------------------------
-# We compare rec - orig on a grayscale luminance, normalized into [0, 1]:
-#   0.5 = 0 error, <0.5 negative, >0.5 positive
-# We use a GLOBAL max(|diff|) across all frames + both methods (stable contrast).
-
+# --- Signed normalized error maps (shared scale across BOTH methods + frames) ---
 def _u8_to_gray01(u8_rgb: np.ndarray) -> np.ndarray:
     u = u8_rgb.astype(np.float32) / 255.0
     return (0.2989 * u[..., 0] + 0.5870 * u[..., 1] + 0.1140 * u[..., 2]).astype(np.float32)
 
 orig_gray01 = _u8_to_gray01(orig_u8)
+orig_energy = float(np.sum(orig_gray01.astype(np.float64) ** 2))
 
 def _diff01(rec_u8: np.ndarray) -> np.ndarray:
     return _u8_to_gray01(rec_u8) - orig_gray01  # signed
@@ -467,17 +468,33 @@ def _diff_norm(rec_u8: np.ndarray) -> np.ndarray:
 diffs_std = [_diff_norm(r) for r in recs_std]
 diffs_aa  = [_diff_norm(r) for r in recs_aa]
 
+# --- SNR per frame (grayscale), shown in the recovered titles -----------------
+def _snr_db_from_rec(rec_u8: np.ndarray) -> float:
+    d = _diff01(rec_u8).astype(np.float64, copy=False)
+    den = float(np.sum(d * d))
+    if den == 0.0:
+        return float("inf")
+    if orig_energy == 0.0:
+        return -float("inf")
+    return 10.0 * float(np.log10(orig_energy / den))
+
+def _fmt_snr(v: float) -> str:
+    if np.isposinf(v):
+        return "∞"
+    if np.isneginf(v):
+        return "-∞"
+    return f"{v:.2f} dB"
+
+snr_std = [_snr_db_from_rec(r) for r in recs_std]
+snr_aa  = [_snr_db_from_rec(r) for r in recs_aa]
+
 # --- Layout: 3 columns (Original | Std | AA), 3 rows (Down | Rec | Error) ----
 fig = plt.figure(figsize=(13, 9), constrained_layout=True)
-gs = fig.add_gridspec(
-    nrows=3, ncols=3,
-    width_ratios=[1.05, 1.0, 1.0],
-)
+gs = fig.add_gridspec(nrows=3, ncols=3, width_ratios=[1.05, 1.0, 1.0])
 
-# Original ONLY in the top-left cell (same height as other panels)
 ax_orig     = fig.add_subplot(gs[0, 0])
-ax_orig_mid = fig.add_subplot(gs[1, 0])  # blank spacer
-ax_orig_err = fig.add_subplot(gs[2, 0])  # blank spacer
+ax_orig_mid = fig.add_subplot(gs[1, 0])  # spacer -> used as row label ("Recovered")
+ax_orig_err = fig.add_subplot(gs[2, 0])  # legend host
 
 ax_down_std = fig.add_subplot(gs[0, 1])
 ax_down_aa  = fig.add_subplot(gs[0, 2])
@@ -490,35 +507,36 @@ for ax in (ax_orig, ax_orig_mid, ax_orig_err,
            ax_down_std, ax_down_aa, ax_rec_std, ax_rec_aa, ax_err_std, ax_err_aa):
     ax.axis("off")
 
-TITLE_FS = 13  # tweak to taste
+# Row label for recovered row
+ax_orig_mid.text(
+    0.5, 0.5, "Recovered",
+    transform=ax_orig_mid.transAxes,
+    ha="center", va="center",
+    fontsize=TITLE_FS,
+)
 
-# --- Legend (benchmark-style) in the empty bottom-left cell -----------------
+# --- Legend bar in bottom-left cell ------------------------------------------
 ax_leg_host = ax_orig_err
 ax_leg_host.axis("off")
 
-# Make a thick vertical bar as an inset axis inside the cell
-leg = ax_leg_host.inset_axes([0.42, 0.05, 0.18, 0.90])  # [x0, y0, w, h] in axes fraction
+leg = ax_leg_host.inset_axes([0.42, 0.05, 0.18, 0.90])
 leg.axis("off")
 
 H_leg = 256
-W_leg = 16   # thinner bar
+W_leg = 16
 y = np.linspace(1.0, 0.0, H_leg, dtype=np.float32)
 legend_img = np.repeat(y[:, None], W_leg, axis=1)
-
 leg.imshow(legend_img, cmap="gray", vmin=0.0, vmax=1.0, aspect="auto")
 
-# Labels next to the bar (keep them on the host axis so they don't get clipped)
-ax_leg_host.text(0.62, 0.05, "-1", transform=ax_leg_host.transAxes,
-                 fontsize=9, va="bottom", ha="left")
-ax_leg_host.text(0.62, 0.50, "0", transform=ax_leg_host.transAxes,
-                 fontsize=9, va="center", ha="left")
-ax_leg_host.text(0.62, 0.95, "+1", transform=ax_leg_host.transAxes,
-                 fontsize=9, va="top", ha="left")
-ax_leg_host.text(0.5, 1.02, "Diff legend", transform=ax_leg_host.transAxes,
+ax_leg_host.text(0.62, 0.05, "-1", transform=ax_leg_host.transAxes, fontsize=9, va="bottom", ha="left")
+ax_leg_host.text(0.62, 0.50, "0",  transform=ax_leg_host.transAxes, fontsize=9, va="center", ha="left")
+ax_leg_host.text(0.62, 0.95, "+1", transform=ax_leg_host.transAxes, fontsize=9, va="top", ha="left")
+ax_leg_host.text(0.50, 1.02, "Diff legend", transform=ax_leg_host.transAxes,
                  fontsize=TITLE_FS, va="bottom", ha="center")
 
+# Titles / images
 ax_orig.set_title("Original", fontsize=TITLE_FS)
-im_orig = ax_orig.imshow(orig_u8)
+ax_orig.imshow(orig_u8)
 
 STD_LABEL = "SplineOps Standard cubic"
 AA_LABEL  = "SplineOps Antialiasing cubic"
@@ -529,20 +547,20 @@ t_down_aa  = ax_down_aa.set_title (f"{AA_LABEL} (z={zoom_values_cmp[0]:.3f})", f
 im_down_std = ax_down_std.imshow(canv_std[0])
 im_down_aa  = ax_down_aa.imshow(canv_aa[0])
 
-# Row 2: Recovered
-t_rec_std  = ax_rec_std.set_title(f"Recovered, {STD_LABEL}", fontsize=TITLE_FS)
-t_rec_aa   = ax_rec_aa.set_title (f"Recovered, {AA_LABEL}", fontsize=TITLE_FS)
+# Row 2: Recovered (no "Recovered," prefix)
+t_rec_std = ax_rec_std.set_title(f"{STD_LABEL} (SNR={_fmt_snr(snr_std[0])})", fontsize=TITLE_FS)
+t_rec_aa  = ax_rec_aa.set_title (f"{AA_LABEL} (SNR={_fmt_snr(snr_aa[0])})",  fontsize=TITLE_FS)
 im_rec_std = ax_rec_std.imshow(recs_std[0])
 im_rec_aa  = ax_rec_aa.imshow(recs_aa[0])
 
-# Row 3: Signed error (benchmark-style normalization)
+# Row 3: Signed error (shared scale already baked into diffs_*)
 ax_err_std.set_title("Signed error", fontsize=TITLE_FS)
 ax_err_aa.set_title ("Signed error", fontsize=TITLE_FS)
 im_err_std = ax_err_std.imshow(diffs_std[0], cmap="gray", vmin=0.0, vmax=1.0)
 im_err_aa  = ax_err_aa.imshow (diffs_aa[0],  cmap="gray", vmin=0.0, vmax=1.0)
 
 def animate_frame(i: int):
-    z = zoom_values_cmp[i]
+    z = float(zoom_values_cmp[i])
 
     im_down_std.set_data(canv_std[i])
     im_down_aa.set_data(canv_aa[i])
@@ -556,22 +574,22 @@ def animate_frame(i: int):
     t_down_std.set_text(f"{STD_LABEL} (z={z:.3f})")
     t_down_aa.set_text (f"{AA_LABEL} (z={z:.3f})")
 
-    t_rec_std.set_text(f"Recovered, {STD_LABEL}")
-    t_rec_aa.set_text (f"Recovered, {AA_LABEL}")
+    t_rec_std.set_text(f"{STD_LABEL} (SNR={_fmt_snr(snr_std[i])})")
+    t_rec_aa.set_text (f"{AA_LABEL} (SNR={_fmt_snr(snr_aa[i])})")
 
     return (
         im_down_std, im_down_aa,
-        im_rec_std, im_rec_aa,
-        im_err_std, im_err_aa,
-        t_down_std, t_down_aa,
-        t_rec_std,  t_rec_aa,
+        im_rec_std,  im_rec_aa,
+        im_err_std,  im_err_aa,
+        t_down_std,  t_down_aa,
+        t_rec_std,   t_rec_aa,
     )
 
 ani_cmp = animation.FuncAnimation(
     fig,
     animate_frame,
     frames=len(zoom_values_cmp),
-    interval=INTERVAL_MS,   # keep consistent with your export
+    interval=INTERVAL_MS,
     blit=True,
 )
 
@@ -587,7 +605,7 @@ from splineops.utils.sphinx import export_animation_mp4_and_html
 export_animation_mp4_and_html(
     ani_cmp,
     stem="resize_module_2d_cubic_vs_aa",
-    interval_ms=INTERVAL_MS,  # matches FuncAnimation interval
+    interval_ms=INTERVAL_MS,
     dpi=80,
     force=True,
 )

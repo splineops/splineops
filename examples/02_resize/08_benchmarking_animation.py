@@ -79,14 +79,28 @@ else:
 ANIM_SCALE = float(os.environ.get("SPLINEOPS_ANIM_SCALE", "0.5"))
 ANIM_SCALE = float(np.clip(ANIM_SCALE, 0.1, 1.0))
 
-# Zoom factors (downsampling-only): start at 0.30 and go downwards
-# Total frames: 6 + 8 + 24 = 38
-zoom_tiny  = np.geomspace(0.01, 0.08, 6,  endpoint=False)   # very small
-zoom_low   = np.geomspace(0.08, 0.15, 8,  endpoint=False)   # small
-zoom_focus = np.geomspace(0.15, 0.30, 24, endpoint=True)    # dense near 0.30
+# Zoom factors (full sweep), but start the animation at z=0.30 and go downwards
+Z_START = 0.30
 
-ZOOM_VALUES = np.concatenate([zoom_tiny, zoom_low, zoom_focus])
-ZOOM_VALUES = np.sort(ZOOM_VALUES)[::-1]  # 0.30 -> ... -> 0.01
+# Original distribution (includes values up to 1.0)
+zoom_low   = np.geomspace(0.01, 0.15, 6,  endpoint=False)   # < 0.15
+zoom_focus = np.geomspace(0.15, 0.50, 22, endpoint=False)   # [0.15, 0.50)
+zoom_mid   = np.geomspace(0.50, 0.80, 6,  endpoint=True)    # [0.50, 0.80]
+zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])
+
+ZOOM_VALUES_FULL = np.sort(
+    np.unique(np.concatenate([zoom_low, zoom_focus, zoom_mid, zoom_top, [Z_START]]))
+)[::-1]  # 1.0 -> ... -> small
+
+# Start at Z_START, go down to ~0.01
+start_idx = int(np.where(ZOOM_VALUES_FULL <= Z_START)[0][0])
+tail = ZOOM_VALUES_FULL[start_idx:]          # Z_START -> ... -> small
+
+# Then go from 1.0 down to Z_START to close the loop
+head = ZOOM_VALUES_FULL[: start_idx + 1]     # 1.0 -> ... -> Z_START
+
+# Final sequence: 0.30 -> ... -> 0.01 -> 1.0 -> ... -> 0.30
+ZOOM_VALUES = np.concatenate([tail, head]).astype(float)
 
 KODAK_BASE = "https://r0k.us/graphics/kodak/kodak"
 KODAK_IMAGES = {
@@ -316,6 +330,14 @@ def make_benchmark_animation(
     for ax in (ax_orig, ax_blank, ax_leg_host, ax_down_a, ax_down_b, ax_rec_a, ax_rec_b, ax_err_a, ax_err_b):
         ax.axis("off")
 
+    # Row label for the recovered row (keeps per-panel titles shorter)
+    ax_blank.text(
+        0.5, 0.5, "Recovered image",
+        transform=ax_blank.transAxes,
+        ha="center", va="center",
+        fontsize=title_fs,
+    )
+
     # Legend bar
     ax_leg_host.axis("off")
     leg = ax_leg_host.inset_axes([0.42, 0.05, 0.18, 0.90])
@@ -328,11 +350,11 @@ def make_benchmark_animation(
     ax_leg_host.text(0.62, 0.05, "-1", transform=ax_leg_host.transAxes, fontsize=9, va="bottom", ha="left")
     ax_leg_host.text(0.62, 0.50, "0",  transform=ax_leg_host.transAxes, fontsize=9, va="center", ha="left")
     ax_leg_host.text(0.62, 0.95, "+1", transform=ax_leg_host.transAxes, fontsize=9, va="top", ha="left")
-    ax_leg_host.text(0.50, 1.02, "Diff legend", transform=ax_leg_host.transAxes,
+    ax_leg_host.text(0.50, 1.02, "Signed error", transform=ax_leg_host.transAxes,
                      fontsize=title_fs, va="bottom", ha="center")
 
     # Static original
-    ax_orig.set_title("Original", fontsize=title_fs)
+    ax_orig.set_title("Original image", fontsize=title_fs)
     ax_orig.imshow(orig_u8)
 
     # Create reusable canvases
@@ -369,11 +391,11 @@ def make_benchmark_animation(
     snr_so0  = _snr_db(rec_so_g0)
 
     t_rec_a = ax_rec_a.set_title(
-        f"Recovered, {comp_label} (SNR={_fmt_snr(snr_cmp0)})",
+        f"{comp_label} (SNR={_fmt_snr(snr_cmp0)})",
         fontsize=title_fs,
     )
     t_rec_b = ax_rec_b.set_title(
-        f"Recovered, {SPLINEOPS_LABEL} (SNR={_fmt_snr(snr_so0)})",
+        f"{SPLINEOPS_LABEL} (SNR={_fmt_snr(snr_so0)})",
         fontsize=title_fs,
     )
 
@@ -407,8 +429,8 @@ def make_benchmark_animation(
         t_down_a.set_text(f"{comp_label} (z={z:.3f})")
         t_down_b.set_text(f"{SPLINEOPS_LABEL} (z={z:.3f})")
 
-        t_rec_a.set_text(f"Recovered, {comp_label} (SNR={_fmt_snr(_snr_db(rec_cmp_g))})")
-        t_rec_b.set_text(f"Recovered, {SPLINEOPS_LABEL} (SNR={_fmt_snr(_snr_db(rec_so_g))})")
+        t_rec_a.set_text(f"{comp_label} (SNR={_fmt_snr(_snr_db(rec_cmp_g))})")
+        t_rec_b.set_text(f"{SPLINEOPS_LABEL} (SNR={_fmt_snr(_snr_db(rec_so_g))})")
 
         return (
             im_down_a, im_down_b,
