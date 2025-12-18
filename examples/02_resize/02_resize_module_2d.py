@@ -396,11 +396,12 @@ METHOD = "cubic"   # try "cubic" for standard interpolation
 INTERVAL_MS = 900  # keep in sync with MP4 export
 
 # Dense where artefacts change fast (0.01–0.2), then sparser up to 1.0
-zoom_dense = np.geomspace(0.01, 0.2, 25)          # was 10
-zoom_mid   = np.geomspace(0.22, 0.8, 10)          # optional mid range
-zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])    # near-1 “sanity” points
+zoom_low   = np.geomspace(0.01, 0.10, 10, endpoint=False)  # fewer near zero
+zoom_dense = np.geomspace(0.10, 0.22, 15)                  # more in 0.10–0.22 (includes 0.10)
+zoom_mid   = np.geomspace(0.22, 0.80, 10, endpoint=False)  # avoid duplicating 0.22
+zoom_top   = np.array([0.85, 0.90, 0.95, 1.0])             # near-1 “sanity” points
 
-zoom_values = np.unique(np.concatenate([zoom_dense, zoom_mid, zoom_top]))
+zoom_values = np.unique(np.concatenate([zoom_low, zoom_dense, zoom_mid, zoom_top]))
 zoom_values = np.sort(zoom_values)[::-1]  # 1.0 -> ... -> small
 
 orig = np.clip(data, 0.0, 1.0)  # H×W×3 float image in [0,1]
@@ -566,6 +567,8 @@ for ax in (ax_orig, ax_orig_mid, ax_orig_err,
            ax_down_std, ax_down_aa, ax_rec_std, ax_rec_aa, ax_err_std, ax_err_aa):
     ax.axis("off")
 
+TITLE_FS = 13  # tweak to taste
+
 # --- Legend (benchmark-style) in the empty bottom-left cell -----------------
 ax_leg_host = ax_orig_err
 ax_leg_host.axis("off")
@@ -589,26 +592,29 @@ ax_leg_host.text(0.62, 0.50, "0", transform=ax_leg_host.transAxes,
 ax_leg_host.text(0.62, 0.95, "+1", transform=ax_leg_host.transAxes,
                  fontsize=9, va="top", ha="left")
 ax_leg_host.text(0.5, 1.02, "Diff legend", transform=ax_leg_host.transAxes,
-                 fontsize=10, va="bottom", ha="center")
+                 fontsize=TITLE_FS, va="bottom", ha="center")
 
-ax_orig.set_title("Original")
+ax_orig.set_title("Original", fontsize=TITLE_FS)
 im_orig = ax_orig.imshow(orig_u8)
 
+STD_LABEL = "SplineOps Standard cubic"
+AA_LABEL  = "SplineOps Antialiasing cubic"
+
 # Row 1: Downsampled
-t_down_std = ax_down_std.set_title(f"Standard cubic (z={zoom_values_cmp[0]:.3f})")
-t_down_aa  = ax_down_aa.set_title (f"Cubic-antialiasing (z={zoom_values_cmp[0]:.3f})")
+t_down_std = ax_down_std.set_title(f"{STD_LABEL} (z={zoom_values_cmp[0]:.3f})", fontsize=TITLE_FS)
+t_down_aa  = ax_down_aa.set_title (f"{AA_LABEL} (z={zoom_values_cmp[0]:.3f})", fontsize=TITLE_FS)
 im_down_std = ax_down_std.imshow(canv_std[0])
 im_down_aa  = ax_down_aa.imshow(canv_aa[0])
 
 # Row 2: Recovered
-t_rec_std = ax_rec_std.set_title(f"Recovered, SplineOps Cubic")
-t_rec_aa  = ax_rec_aa.set_title (f"Recovered, SplineOps Cubic-antialiasing")
+t_rec_std  = ax_rec_std.set_title(f"Recovered, {STD_LABEL}", fontsize=TITLE_FS)
+t_rec_aa   = ax_rec_aa.set_title (f"Recovered, {AA_LABEL}", fontsize=TITLE_FS)
 im_rec_std = ax_rec_std.imshow(recs_std[0])
 im_rec_aa  = ax_rec_aa.imshow(recs_aa[0])
 
 # Row 3: Signed error (benchmark-style normalization)
-ax_err_std.set_title("Signed error")
-ax_err_aa.set_title ("Signed error")
+ax_err_std.set_title("Signed error", fontsize=TITLE_FS)
+ax_err_aa.set_title ("Signed error", fontsize=TITLE_FS)
 im_err_std = ax_err_std.imshow(diffs_std[0], cmap="gray", vmin=0.0, vmax=1.0)
 im_err_aa  = ax_err_aa.imshow (diffs_aa[0],  cmap="gray", vmin=0.0, vmax=1.0)
 
@@ -624,11 +630,11 @@ def animate_frame(i: int):
     im_err_std.set_data(diffs_std[i])
     im_err_aa.set_data(diffs_aa[i])
 
-    t_down_std.set_text(f"Standard cubic (z={z:.3f})")
-    t_down_aa.set_text (f"Cubic-antialiasing (z={z:.3f})")
+    t_down_std.set_text(f"{STD_LABEL} (z={z:.3f})")
+    t_down_aa.set_text (f"{AA_LABEL} (z={z:.3f})")
 
-    t_rec_std.set_text(f"Recovered, SplineOps Cubic")
-    t_rec_aa.set_text (f"Recovered, SplineOps Cubic-antialiasing")
+    t_rec_std.set_text(f"Recovered, {STD_LABEL}")
+    t_rec_aa.set_text (f"Recovered, {AA_LABEL}")
 
     return (
         im_down_std, im_down_aa,
