@@ -126,6 +126,26 @@ SPLINEOPS_CURVE_STYLE = {
     },
 }
 
+# --- Cool palette for non-SplineOps methods (avoid Matplotlib's orange/red cycle) ---
+OTHER_CURVE_COLORS = {
+    "SciPy":        "#2563EB",  # blue
+    "PyTorch":      "#0EA5E9",  # sky/cyan
+    "OpenCV":       "#6366F1",  # indigo
+    "Pillow":       "#14B8A6",  # teal
+    "scikit-image": "#64748B",  # slate
+}
+
+def _color_for_curve(name: str) -> str | None:
+    """SplineOps -> warm highlight; others -> cool palette; else None."""
+    st = _curve_style_for_name(name)
+    if st:
+        return st.get("color")
+
+    for prefix, col in OTHER_CURVE_COLORS.items():
+        if name.startswith(prefix):
+            return col
+    return None
+
 def _curve_style_for_name(name: str) -> dict:
     """Return style dict for SplineOps curves (prefix match), else {}."""
     for prefix, st in SPLINEOPS_CURVE_STYLE.items():
@@ -684,15 +704,14 @@ def _plot_timing(
             continue
         z_arr = np.asarray(data["z"], dtype=np.float64)
         t_arr = np.asarray(data["time"], dtype=np.float64)
-        st = _curve_style_for_name(name)
         plt.plot(
             z_arr,
-            t_arr,
+            t_arr,  # (or s_plot / q_plot)
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,
-            color=st.get("color", None),
+            linewidth=LINEWIDTH,                 # SAME for everyone
+            color=_color_for_curve(name),         # warm for SplineOps, cool for others
             label=name,
         )
         any_curve = True
@@ -738,15 +757,14 @@ def _plot_snr(
         z_arr = np.asarray(data["z"], dtype=np.float64)
         s_arr = np.asarray(data["snr"], dtype=np.float64)
         s_plot = np.where(np.isfinite(s_arr), s_arr, np.nan)
-        st = _curve_style_for_name(name)
         plt.plot(
             z_arr,
-            s_plot,
+            t_arr,  # (or s_plot / q_plot)
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,
-            color=st.get("color", None),
+            linewidth=LINEWIDTH,                 # SAME for everyone
+            color=_color_for_curve(name),         # warm for SplineOps, cool for others
             label=name,
         )
         any_curve = True
@@ -793,15 +811,14 @@ def _plot_ssim(
         z_arr = np.asarray(data["z"], dtype=np.float64)
         q_arr = np.asarray(data["ssim"], dtype=np.float64)
         q_plot = np.where(np.isfinite(q_arr), q_arr, np.nan)
-        st = _curve_style_for_name(name)
         plt.plot(
             z_arr,
-            q_plot,
+            t_arr,  # (or s_plot / q_plot)
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,
-            color=st.get("color", None),
+            linewidth=LINEWIDTH,                 # SAME for everyone
+            color=_color_for_curve(name),         # warm for SplineOps, cool for others
             label=name,
         )
         any_curve = True
