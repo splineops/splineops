@@ -240,13 +240,22 @@ def show_intro_color(
         ax.add_patch(rect2)
     # Row 2, left: first-pass resized image on canvas with mapped ROI box
     if label.lower().startswith("standard"):
-        title_kw = dict(fontsize=12, color=STD_COLOR, fontweight="bold")
-        ax.set_title(f"{STD_LABEL} (zoom ×{zoom:g}, {Hs}×{Ws} px)", **title_kw)
+        ax.set_title(
+            f"{STD_LABEL}\n(zoom ×{zoom:g}, {Hs}×{Ws} px)",
+            fontsize=12,
+            color=STD_COLOR,
+            fontweight="bold",
+            multialignment="center",
+        )
 
     elif label.lower().startswith("antialiasing"):
-        title_kw = dict(fontsize=12, color=AA_COLOR, fontweight="bold")
-        ax.set_title(f"{AA_LABEL} (zoom ×{zoom:g}, {Hs}×{Ws} px)", **title_kw)
-
+        ax.set_title(
+            f"{AA_LABEL}\n(zoom ×{zoom:g}, {Hs}×{Ws} px)",
+            fontsize=12,
+            color=AA_COLOR,
+            fontweight="bold",
+            multialignment="center",
+        )
     else:
         ax.set_title(
             f"{label} ({degree_label}, zoom ×{zoom:g}, {Hs}×{Ws} px)",
