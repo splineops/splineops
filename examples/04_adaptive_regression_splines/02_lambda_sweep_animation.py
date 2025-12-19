@@ -10,10 +10,10 @@ This example animates the fidelity–sparsity trade-off of the adaptive regressi
 splines module by sweeping the regularization parameter :math:`\\lambda`.
 
 Each frame shows:
-    - Original samples (fixed)
-    - TV-denoised samples (changes with :math:`\\lambda`)
-    - Sparsest piecewise-linear spline (changes with :math:`\\lambda`)
-    - Detected knots (changes with :math:`\\lambda`)
+    - Original samples (fixed).
+    - TV-denoised samples (changes with :math:`\\lambda`).
+    - Sparsest piecewise-linear spline (changes with :math:`\\lambda`).
+    - Detected knots (changes with :math:`\\lambda`).
 """
 
 # %%

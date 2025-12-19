@@ -394,7 +394,7 @@ METHOD_STD = "cubic"
 METHOD_AA  = "cubic-antialiasing"
 
 INTERVAL_MS = 900
-TITLE_FS = 13
+TITLE_FS = 12
 Z_START = 0.30
 
 # --- Zoom values: keep the original distribution, but start the animation at Z_START
@@ -538,18 +538,42 @@ ax_leg_host.text(0.50, 1.02, "Diff legend", transform=ax_leg_host.transAxes,
 ax_orig.set_title("Original", fontsize=TITLE_FS)
 ax_orig.imshow(orig_u8)
 
+STD_COLOR = "#C2410C"
+AA_COLOR  = "#BE185D"
+
 STD_LABEL = "SplineOps Standard cubic"
 AA_LABEL  = "SplineOps Antialiasing cubic"
 
 # Row 1: Downsampled
-t_down_std = ax_down_std.set_title(f"{STD_LABEL} (z={zoom_values_cmp[0]:.3f})", fontsize=TITLE_FS)
-t_down_aa  = ax_down_aa.set_title (f"{AA_LABEL} (z={zoom_values_cmp[0]:.3f})", fontsize=TITLE_FS)
+t_down_std = ax_down_std.set_title(
+    f"{STD_LABEL} (z={zoom_values_cmp[0]:.3f})",
+    fontsize=TITLE_FS,
+    color=STD_COLOR,
+    fontweight="bold",
+)
+t_down_aa  = ax_down_aa.set_title(
+    f"{AA_LABEL} (z={zoom_values_cmp[0]:.3f})",
+    fontsize=TITLE_FS,
+    color=AA_COLOR,
+    fontweight="bold",
+)
+
 im_down_std = ax_down_std.imshow(canv_std[0])
 im_down_aa  = ax_down_aa.imshow(canv_aa[0])
 
 # Row 2: Recovered (no "Recovered," prefix)
-t_rec_std = ax_rec_std.set_title(f"{STD_LABEL} (SNR={_fmt_snr(snr_std[0])})", fontsize=TITLE_FS)
-t_rec_aa  = ax_rec_aa.set_title (f"{AA_LABEL} (SNR={_fmt_snr(snr_aa[0])})",  fontsize=TITLE_FS)
+t_rec_std = ax_rec_std.set_title(
+    f"{STD_LABEL} (SNR={_fmt_snr(snr_std[0])})",
+    fontsize=TITLE_FS,
+    color=STD_COLOR,
+    fontweight="bold",
+)
+t_rec_aa  = ax_rec_aa.set_title(
+    f"{AA_LABEL} (SNR={_fmt_snr(snr_aa[0])})",
+    fontsize=TITLE_FS,
+    color=AA_COLOR,
+    fontweight="bold",
+)
 im_rec_std = ax_rec_std.imshow(recs_std[0])
 im_rec_aa  = ax_rec_aa.imshow(recs_aa[0])
 

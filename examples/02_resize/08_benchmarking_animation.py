@@ -64,9 +64,13 @@ except Exception:
 DTYPE = np.float32
 
 INTERVAL_MS = 900
-TITLE_FS = 13
+TITLE_FS = 12
 
 SPLINEOPS_LABEL = "SplineOps Antialiasing cubic"
+
+# --- Highlight colors ---
+SPLINEOPS_AA_COLOR = "#BE185D"   # Antialiasing
+SPLINEOPS_STD_COLOR = "#C2410C"  # (unused here, but kept consistent)
 
 # Prefer torch if available; otherwise SciPy
 if _HAS_TORCH:
@@ -371,7 +375,12 @@ def make_benchmark_animation(
     _paste_on_white_canvas(down_so0,  canvas_b)  # right method column
 
     t_down_a = ax_down_a.set_title(f"{comp_label} (z={z0:.3f})", fontsize=title_fs)
-    t_down_b = ax_down_b.set_title(f"{SPLINEOPS_LABEL} (z={z0:.3f})", fontsize=title_fs)
+    t_down_b = ax_down_b.set_title(
+        f"{SPLINEOPS_LABEL} (z={z0:.3f})",
+        fontsize=title_fs,
+        color=SPLINEOPS_AA_COLOR,
+        fontweight="bold",
+    )
 
     ax_rec_a.set_title(f"Recovered, {comp_label}", fontsize=title_fs)
     ax_rec_b.set_title(f"Recovered, {SPLINEOPS_LABEL}", fontsize=title_fs)
@@ -397,6 +406,8 @@ def make_benchmark_animation(
     t_rec_b = ax_rec_b.set_title(
         f"{SPLINEOPS_LABEL} (SNR={_fmt_snr(snr_so0)})",
         fontsize=title_fs,
+        color=SPLINEOPS_AA_COLOR,
+        fontweight="bold",
     )
 
     # Error maps: same range for BOTH methods (0..255) and shared normalization

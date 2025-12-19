@@ -120,11 +120,9 @@ LINEWIDTH = 1.8
 SPLINEOPS_CURVE_STYLE = {
     "SplineOps Standard": {
         "color": "#C2410C",
-        "lw": 2.8,
     },
     "SplineOps Antialiasing": {
         "color": "#BE185D",
-        "lw": 2.8,
     },
 }
 
@@ -693,9 +691,8 @@ def _plot_timing(
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=float(st.get("lw", LINEWIDTH)),
+            linewidth=LINEWIDTH,
             color=st.get("color", None),
-            zorder=3 if st else 2,
             label=name,
         )
         any_curve = True
@@ -748,9 +745,8 @@ def _plot_snr(
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=float(st.get("lw", LINEWIDTH)),
+            linewidth=LINEWIDTH,
             color=st.get("color", None),
-            zorder=3 if st else 2,
             label=name,
         )
         any_curve = True
@@ -804,9 +800,8 @@ def _plot_ssim(
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=float(st.get("lw", LINEWIDTH)),
+            linewidth=LINEWIDTH,
             color=st.get("color", None),
-            zorder=3 if st else 2,
             label=name,
         )
         any_curve = True
