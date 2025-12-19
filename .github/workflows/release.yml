@@ -26,9 +26,9 @@ jobs:
             mac_arch: x86_64   # unused on Windows, but keeps env simple
 
           # macOS Intel (x86_64) and Apple Silicon (arm64)
-          - os: macos-13
+          - os: macos-15-intel
             mac_arch: x86_64
-          - os: macos-14
+          - os: macos-15   # or macos-latest
             mac_arch: arm64
 
     steps:
