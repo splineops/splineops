@@ -116,6 +116,25 @@ PLOT_LEGEND_FONTSIZE = 12
 MARKER_SIZE = 4
 LINEWIDTH = 1.8
 
+# --- SplineOps highlight colors (match 06_benchmarking.py) ---
+SPLINEOPS_CURVE_STYLE = {
+    "SplineOps Standard": {
+        "color": "#C2410C",
+        "lw": 2.8,
+    },
+    "SplineOps Antialiasing": {
+        "color": "#BE185D",
+        "lw": 2.8,
+    },
+}
+
+def _curve_style_for_name(name: str) -> dict:
+    """Return style dict for SplineOps curves (prefix match), else {}."""
+    for prefix, st in SPLINEOPS_CURVE_STYLE.items():
+        if name.startswith(prefix):
+            return st
+    return {}
+
 # Show markers only on every N-th point (sparser markers).
 # All methods share the same stride but use different phase offsets
 # so their markers don't sit on top of each other.
@@ -667,13 +686,16 @@ def _plot_timing(
             continue
         z_arr = np.asarray(data["z"], dtype=np.float64)
         t_arr = np.asarray(data["time"], dtype=np.float64)
+        st = _curve_style_for_name(name)
         plt.plot(
             z_arr,
             t_arr,
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,
+            linewidth=float(st.get("lw", LINEWIDTH)),
+            color=st.get("color", None),
+            zorder=3 if st else 2,
             label=name,
         )
         any_curve = True
@@ -719,13 +741,16 @@ def _plot_snr(
         z_arr = np.asarray(data["z"], dtype=np.float64)
         s_arr = np.asarray(data["snr"], dtype=np.float64)
         s_plot = np.where(np.isfinite(s_arr), s_arr, np.nan)
+        st = _curve_style_for_name(name)
         plt.plot(
             z_arr,
             s_plot,
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,
+            linewidth=float(st.get("lw", LINEWIDTH)),
+            color=st.get("color", None),
+            zorder=3 if st else 2,
             label=name,
         )
         any_curve = True
@@ -772,13 +797,16 @@ def _plot_ssim(
         z_arr = np.asarray(data["z"], dtype=np.float64)
         q_arr = np.asarray(data["ssim"], dtype=np.float64)
         q_plot = np.where(np.isfinite(q_arr), q_arr, np.nan)
+        st = _curve_style_for_name(name)
         plt.plot(
             z_arr,
             q_plot,
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,
+            linewidth=float(st.get("lw", LINEWIDTH)),
+            color=st.get("color", None),
+            zorder=3 if st else 2,
             label=name,
         )
         any_curve = True

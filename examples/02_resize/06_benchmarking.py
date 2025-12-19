@@ -73,11 +73,11 @@ PLOT_LEGEND_FONTSIZE = 18
 # Highlight styles (per method) used everywhere (ROI montages + plots)
 HIGHLIGHT_STYLE = {
     "SplineOps Standard cubic": {
-        "color": "tab:blue",   # blueish
+        "color": "#C2410C",
         "lw": 3.0,
     },
     "SplineOps Antialiasing cubic": {
-        "color": "tab:green",  # greenish
+        "color": "#BE185D",
         "lw": 3.0,
     },
 }
