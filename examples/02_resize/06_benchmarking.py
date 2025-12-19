@@ -76,6 +76,18 @@ HIGHLIGHT_METHODS = {
     "SplineOps Antialiasing cubic",
 }
 
+# Highlight styles (per method) for ROI/error montages
+HIGHLIGHT_STYLE = {
+    "SplineOps Standard cubic": {
+        "color": "tab:blue",   # blueish
+        "lw": 3.0,
+    },
+    "SplineOps Antialiasing cubic": {
+        "color": "tab:green",  # greenish
+        "lw": 3.0,
+    },
+}
+
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
@@ -584,7 +596,7 @@ def _smart_ylim(
 
     return lo, hi
 
-def _highlight_tile(ax, *, color: str = "red", lw: float = 3.0) -> None:
+def _highlight_tile(ax, *, color: str, lw: float = 3.0) -> None:
     # Full-axes border, works even with ax.axis("off")
     rect = patches.Rectangle(
         (0, 0), 1, 1,
@@ -1191,11 +1203,14 @@ def show_roi_montage_main_from_bench(bench: Dict[str, object]) -> None:
 
         ax.imshow(tile, cmap="gray", interpolation="nearest")
 
-        is_hi = name in HIGHLIGHT_METHODS
         title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
-        if is_hi:
-            title_kw.update(color="red", fontweight="bold")
-            _highlight_tile(ax)
+
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            c = style.get("color", "tab:blue")
+            lw = float(style.get("lw", 3.0))
+            title_kw.update(color=c, fontweight="bold")
+            _highlight_tile(ax, color=c, lw=lw)
 
         ax.set_title(name, **title_kw)
         ax.axis("off")
@@ -1245,11 +1260,14 @@ def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
 
         ax.imshow(tile, cmap="gray", interpolation="nearest")
 
-        is_hi = name in HIGHLIGHT_METHODS
         title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
-        if is_hi:
-            title_kw.update(color="red", fontweight="bold")
-            _highlight_tile(ax)
+
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            c = style.get("color", "tab:blue")
+            lw = float(style.get("lw", 3.0))
+            title_kw.update(color=c, fontweight="bold")
+            _highlight_tile(ax, color=c, lw=lw)
 
         ax.set_title(name, **title_kw)
         ax.axis("off")
@@ -1293,11 +1311,14 @@ def show_error_montage_main_from_bench(bench: Dict[str, object]) -> None:
 
         ax.imshow(tile, cmap="gray", interpolation="nearest", vmin=0.0, vmax=1.0)
 
-        is_hi = name in HIGHLIGHT_METHODS
         title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
-        if is_hi:
-            title_kw.update(color="red", fontweight="bold")
-            _highlight_tile(ax)
+
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            c = style.get("color", "tab:blue")
+            lw = float(style.get("lw", 3.0))
+            title_kw.update(color=c, fontweight="bold")
+            _highlight_tile(ax, color=c, lw=lw)
 
         ax.set_title(name, **title_kw)
         ax.axis("off")
@@ -1361,11 +1382,14 @@ def show_error_montage_aa_from_bench(bench: Dict[str, object]) -> None:
 
         ax.imshow(tile, cmap="gray", interpolation="nearest", vmin=0.0, vmax=1.0)
 
-        is_hi = name in HIGHLIGHT_METHODS
         title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
-        if is_hi:
-            title_kw.update(color="red", fontweight="bold")
-            _highlight_tile(ax)
+
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            c = style.get("color", "tab:blue")
+            lw = float(style.get("lw", 3.0))
+            title_kw.update(color=c, fontweight="bold")
+            _highlight_tile(ax, color=c, lw=lw)
 
         ax.set_title(name, **title_kw)
         ax.axis("off")
@@ -1734,11 +1758,14 @@ def show_roi_montage_color_main_from_bench(
 
         ax.imshow(np.clip(tile, 0.0, 1.0))
 
-        is_hi = name in HIGHLIGHT_METHODS
         title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
-        if is_hi:
-            title_kw.update(color="red", fontweight="bold")
-            _highlight_tile(ax)
+
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            c = style.get("color", "tab:blue")
+            lw = float(style.get("lw", 3.0))
+            title_kw.update(color=c, fontweight="bold")
+            _highlight_tile(ax, color=c, lw=lw)
 
         ax.set_title(name, **title_kw)
         ax.axis("off")
@@ -1814,11 +1841,14 @@ def show_roi_montage_color_aa_from_bench(
 
         ax.imshow(np.clip(tile, 0.0, 1.0))
 
-        is_hi = name in HIGHLIGHT_METHODS
         title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
-        if is_hi:
-            title_kw.update(color="red", fontweight="bold")
-            _highlight_tile(ax)
+
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            c = style.get("color", "tab:blue")
+            lw = float(style.get("lw", 3.0))
+            title_kw.update(color=c, fontweight="bold")
+            _highlight_tile(ax, color=c, lw=lw)
 
         ax.set_title(name, **title_kw)
         ax.axis("off")
