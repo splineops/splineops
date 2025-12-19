@@ -400,9 +400,13 @@ def _show_initial_original_vs_aa(
             facecolor="none",
         )
         ax.add_patch(rect_aa)
+
     ax.set_title(
-        f"Antialiasing ({degree_label}, zoom ×{z:g}, {H1}×{W1} px)",
+        f"{AA_METHOD_LABEL}\n(zoom ×{z:g}, {H1}×{W1} px)",
         fontsize=ROI_TILE_TITLE_FONTSIZE,
+        color=AA_COLOR,
+        fontweight="bold",
+        multialignment="center",
     )
     ax.axis("off")
 
@@ -520,17 +524,15 @@ def show_intro_color(
         ax.add_patch(rect2)
     # Bottom-left: resized image on canvas (change title only here)
     if label == "Antialiasing":
-        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE, fontweight="bold")
-        if AA_COLOR is not None:
-            title_kw["color"] = AA_COLOR
-        ax.set_title(
-            f"{AA_METHOD_LABEL} (zoom ×{zoom:g}, {Hs}×{Ws} px)",
-            **title_kw,
-        )
-    else:
-        ax.set_title(
-            f"{label} ({degree_label}, zoom ×{zoom:g}, {Hs}×{Ws} px)",
+        title_kw = dict(
             fontsize=ROI_TILE_TITLE_FONTSIZE,
+            fontweight="bold",
+            color=AA_COLOR,
+            multialignment="center",
+        )
+        ax.set_title(
+            f"{AA_METHOD_LABEL}\n(zoom ×{zoom:g}, {Hs}×{Ws} px)",
+            **title_kw,
         )
     ax.axis("off")
 
