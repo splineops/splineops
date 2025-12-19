@@ -82,6 +82,9 @@ HIGHLIGHT_STYLE = {
     },
 }
 
+AA_METHOD_LABEL = "SplineOps Antialiasing cubic"
+AA_COLOR = HIGHLIGHT_STYLE[AA_METHOD_LABEL]["color"]
+
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
@@ -515,18 +518,39 @@ def show_intro_color(
             facecolor="none",
         )
         ax.add_patch(rect2)
-    ax.set_title(
-        f"{label} ({degree_label}, zoom ×{zoom:g}, {Hs}×{Ws} px)",
-        fontsize=ROI_TILE_TITLE_FONTSIZE,
-    )
+    # Bottom-left: resized image on canvas (change title only here)
+    if label == "Antialiasing":
+        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE, fontweight="bold")
+        if AA_COLOR is not None:
+            title_kw["color"] = AA_COLOR
+        ax.set_title(
+            f"{AA_METHOD_LABEL} (zoom ×{zoom:g}, {Hs}×{Ws} px)",
+            **title_kw,
+        )
+    else:
+        ax.set_title(
+            f"{label} ({degree_label}, zoom ×{zoom:g}, {Hs}×{Ws} px)",
+            fontsize=ROI_TILE_TITLE_FONTSIZE,
+        )
     ax.axis("off")
 
     ax = axes[1, 1]
     ax.imshow(np.clip(roi_shrunk_big, 0.0, 1.0))
-    ax.set_title(
-        f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
-        fontsize=ROI_TILE_TITLE_FONTSIZE,
-    )
+
+    if label == "Antialiasing":
+        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE, fontweight="bold")
+        if AA_COLOR is not None:
+            title_kw["color"] = AA_COLOR
+        ax.set_title(
+            f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+            **title_kw,
+        )
+    else:
+        ax.set_title(
+            f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+            fontsize=ROI_TILE_TITLE_FONTSIZE,
+        )
+
     ax.axis("off")
 
     fig.tight_layout()
