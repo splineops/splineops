@@ -117,13 +117,9 @@ MARKER_SIZE = 4
 LINEWIDTH = 1.8
 
 # --- SplineOps highlight colors (match 06_benchmarking.py) ---
-SPLINEOPS_CURVE_STYLE = {
-    "SplineOps Standard": {
-        "color": "#C2410C",
-    },
-    "SplineOps Antialiasing": {
-        "color": "#BE185D",
-    },
+SPLINEOPS_CURVE_COLORS = {
+    "SplineOps Standard": "#C2410C",
+    "SplineOps Antialiasing": "#BE185D",
 }
 
 # --- Cool palette for non-SplineOps methods (avoid Matplotlib's orange/red cycle) ---
@@ -137,21 +133,13 @@ OTHER_CURVE_COLORS = {
 
 def _color_for_curve(name: str) -> str | None:
     """SplineOps -> warm highlight; others -> cool palette; else None."""
-    st = _curve_style_for_name(name)
-    if st:
-        return st.get("color")
-
+    for prefix, col in SPLINEOPS_CURVE_COLORS.items():
+        if name.startswith(prefix):
+            return col
     for prefix, col in OTHER_CURVE_COLORS.items():
         if name.startswith(prefix):
             return col
     return None
-
-def _curve_style_for_name(name: str) -> dict:
-    """Return style dict for SplineOps curves (prefix match), else {}."""
-    for prefix, st in SPLINEOPS_CURVE_STYLE.items():
-        if name.startswith(prefix):
-            return st
-    return {}
 
 # Show markers only on every N-th point (sparser markers).
 # All methods share the same stride but use different phase offsets
@@ -759,7 +747,7 @@ def _plot_snr(
         s_plot = np.where(np.isfinite(s_arr), s_arr, np.nan)
         plt.plot(
             z_arr,
-            t_arr,  # (or s_plot / q_plot)
+            s_plot,  # (or s_plot / q_plot)
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
@@ -813,7 +801,7 @@ def _plot_ssim(
         q_plot = np.where(np.isfinite(q_arr), q_arr, np.nan)
         plt.plot(
             z_arr,
-            t_arr,  # (or s_plot / q_plot)
+            q_plot,  # (or s_plot / q_plot)
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,

@@ -274,3 +274,9 @@ def setup(app):
 # cd docs
 # make html
 # Open `docs/_build/html/index.html`
+
+# To make a new release, for example 1.1.1:
+# Update version = "1.1.1" in pyproject.toml
+# Merge into main
+# git tag v1.1.1
+# git push origin v1.1.1
