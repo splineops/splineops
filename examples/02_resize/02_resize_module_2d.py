@@ -465,7 +465,12 @@ zoom_values_full = np.sort(
 )[::-1]  # 1.0 -> ... -> small
 
 start_idx = int(np.where(zoom_values_full <= Z_START)[0][0])
-zoom_values_cmp = zoom_values_full[start_idx:].astype(float)  # Z_START -> ... -> small
+
+tail = zoom_values_full[start_idx:]          # Z_START -> ... -> small
+head = zoom_values_full[: start_idx + 1]     # 1.0 -> ... -> Z_START
+
+# Final sequence: 0.30 -> ... -> 0.01 -> 1.0 -> ... -> 0.30
+zoom_values_cmp = np.concatenate([tail, head]).astype(float)
 
 orig_f = np.clip(data, 0.0, 1.0)
 H0, W0, _ = orig_f.shape

@@ -276,7 +276,7 @@ def setup(app):
 # Open `docs/_build/html/index.html`
 
 # To make a new release, for example 1.1.1:
-# Update version = "1.2.0" in pyproject.toml
+# Update version = "1.2.1" in pyproject.toml
 # Merge into main
-# git tag v1.2.0
-# git push origin v1.2.0
+# git tag v1.2.1
+# git push origin v1.2.1
