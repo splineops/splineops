@@ -1540,8 +1540,10 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
     ax2.set_ylabel("SSIM", color=ssim_color, fontsize=PLOT_LABEL_FONTSIZE)
     ax2.tick_params(axis="y", labelcolor=ssim_color, labelsize=PLOT_TICK_FONTSIZE)
 
+    roi_h, roi_w = bench["roi_rect"][2], bench["roi_rect"][3]  # type: ignore[index]
+
     ax1.set_title(
-        f"SNR / SSIM vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
+        f"SNR / SSIM vs Method (ROI = {roi_h}×{roi_w} px, zoom ×{z:g}, degree={degree_label})",
         fontsize=PLOT_TITLE_FONTSIZE,
     )
 
