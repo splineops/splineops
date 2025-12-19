@@ -46,6 +46,10 @@ plt.rcParams.update({
 # Use float32 for storage / IO (resize still computes internally in float64).
 DTYPE = np.float32
 
+STD_LABEL = "SplineOps Standard cubic"
+AA_LABEL  = "SplineOps Antialiasing cubic"
+STD_COLOR = "#C2410C"
+AA_COLOR  = "#BE185D"
 
 def resize_rgb(
     img: np.ndarray,
@@ -234,19 +238,45 @@ def show_intro_color(
             facecolor="none",
         )
         ax.add_patch(rect2)
-    ax.set_title(
-        f"{label} ({degree_label}, zoom ×{zoom:g}, {Hs}×{Ws} px)",
-        fontsize=12,
-    )
+    # Row 2, left: first-pass resized image on canvas with mapped ROI box
+    if label.lower().startswith("standard"):
+        title_kw = dict(fontsize=12, color=STD_COLOR, fontweight="bold")
+        ax.set_title(f"{STD_LABEL} (zoom ×{zoom:g}, {Hs}×{Ws} px)", **title_kw)
+
+    elif label.lower().startswith("antialiasing"):
+        title_kw = dict(fontsize=12, color=AA_COLOR, fontweight="bold")
+        ax.set_title(f"{AA_LABEL} (zoom ×{zoom:g}, {Hs}×{Ws} px)", **title_kw)
+
+    else:
+        ax.set_title(
+            f"{label} ({degree_label}, zoom ×{zoom:g}, {Hs}×{Ws} px)",
+            fontsize=12,
+        )
     ax.axis("off")
 
     # Row 2, right: magnified resized ROI
     ax = axes[1, 1]
     ax.imshow(roi_shrunk_big)
-    ax.set_title(
-        f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
-        fontsize=12,
-    )
+    # Row 2, right: magnified resized ROI
+    if label.lower().startswith("standard"):
+        title_kw = dict(fontsize=12, color=STD_COLOR, fontweight="bold")
+        ax.set_title(
+            f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+            **title_kw,
+        )
+
+    elif label.lower().startswith("antialiasing"):
+        title_kw = dict(fontsize=12, color=AA_COLOR, fontweight="bold")
+        ax.set_title(
+            f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+            **title_kw,
+        )
+
+    else:
+        ax.set_title(
+            f"{label} ROI ({roi_h_res}×{roi_w_res} px, NN magnified)",
+            fontsize=12,
+        )
     ax.axis("off")
 
     fig.tight_layout()
