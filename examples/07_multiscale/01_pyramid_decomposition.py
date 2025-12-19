@@ -147,7 +147,7 @@ for _ in range(num_reductions):
 original_shape = image_gray.shape  # (ny, nx)
 
 # %%
-# Inverted-pyramid helpers
+# Inverted-Pyramid Helpers
 # ------------------------
 
 def embed_center(small: np.ndarray, big_shape, fill=1.0) -> np.ndarray:

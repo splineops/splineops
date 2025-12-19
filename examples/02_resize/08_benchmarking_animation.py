@@ -38,6 +38,14 @@ from PIL import Image
 
 from splineops.resize import resize as sp_resize
 
+# Optional: runtime context (nice for docs / reproducibility)
+try:
+    from splineops.utils.specs import print_runtime_context
+    _HAS_SPECS = True
+except Exception:
+    print_runtime_context = None  # type: ignore[assignment]
+    _HAS_SPECS = False
+
 # Optional SciPy (fallback competitor)
 try:
     from scipy.ndimage import zoom as ndi_zoom  # type: ignore
@@ -123,7 +131,7 @@ MAX_IMAGES = int(os.environ.get("SPLINEOPS_MAX_IMAGES", "0"))
 
 
 # %%
-# Small helpers
+# Small Helpers
 # -------------
 
 def _load_kodak_rgb01(url: str) -> np.ndarray:
@@ -257,7 +265,7 @@ def get_competitor_rt() -> tuple[str, Callable[[np.ndarray, float], tuple[np.nda
 
 
 # %%
-# Animation builder (single image)
+# Animation Builder (Single Image)
 # --------------------------------
 
 def make_benchmark_animation(
@@ -484,8 +492,8 @@ ani_kodim05 = make_benchmark_animation("kodim05", KODAK_IMAGES["kodim05"])
 ani_kodim07 = make_benchmark_animation("kodim07", KODAK_IMAGES["kodim07"])
 
 # %%
-# Export (build-only): kodim07 animation
-# --------------------------------------
+# Export: kodim07 Animation
+# -------------------------
 #
 # Writes into: <generated static dir>/_static/animations/
 # No-op when run normally by users.
@@ -524,3 +532,19 @@ ani_kodim22 = make_benchmark_animation("kodim22", KODAK_IMAGES["kodim22"])
 # Image: kodim23
 # --------------
 ani_kodim23 = make_benchmark_animation("kodim23", KODAK_IMAGES["kodim23"])
+
+# %%
+# Runtime Context
+# ---------------
+#
+# Print a short summary of the runtime environment and the dtype used
+# for the animation computations.
+
+if _HAS_SPECS and print_runtime_context is not None:
+    print_runtime_context(include_threadpools=True)
+    print()  # blank line
+
+print(f"Animation storage dtype: {np.dtype(DTYPE).name}")
+print(f"ANIM_SCALE: {ANIM_SCALE}")
+print(f"Competitor backend: {COMP_LABEL}")
+print(f"Number of frames per animation: {len(ZOOM_VALUES)}")

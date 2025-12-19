@@ -37,8 +37,8 @@ Notes
 """
 
 # %%
-# Imports & configuration
-# -----------------------
+# Imports and Configuration
+# -------------------------
 
 from __future__ import annotations
 
@@ -629,8 +629,8 @@ def _highlight_tile(ax, *, color: str, lw: float = 3.0) -> None:
     ax.add_patch(rect)
 
 # %%
-# Round-Trip Backends & Time
-# --------------------------
+# Round-Trip Backends and Time
+# ----------------------------
 
 def _rt_splineops(
     gray: np.ndarray, z: float, preset: str

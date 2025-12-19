@@ -55,6 +55,10 @@ jobs:
           CIBW_ARCHS_WINDOWS: "AMD64"
           CIBW_ARCHS_MACOS: ${{ matrix.mac_arch }}
 
+          # macOS: ensure wheels target a realistic minimum for C++17
+          # (Intel: 10.13+ matches cp312 minimum; arm64 will still be 11.0+)
+          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=10.13
+
           # Simple smoke test: import and check native module presence
           CIBW_TEST_COMMAND: >
             python -c "import importlib.util, numpy as np, splineops;

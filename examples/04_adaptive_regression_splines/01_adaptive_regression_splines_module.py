@@ -138,26 +138,26 @@ def _run_lambda(lamb: float):
     plt.show()
 
 # %%
-# Smallest lambda
+# Smallest Lambda
 # ---------------
 _run_lambda(1e-4)
 
 # %%
-# Small lambda
+# Small Lambda
 # ------------
 _run_lambda(1e-3)
 
 # %%
-# Medium lambda
+# Medium Lambda
 # -------------
 _run_lambda(1e-2)
 
 # %%
-# Big lambda
+# Big Lambda
 # ----------
 _run_lambda(5e-2)
 
 # %%
-# Biggest lambda
+# Biggest Lambda
 # --------------
 _run_lambda(2e-1)
