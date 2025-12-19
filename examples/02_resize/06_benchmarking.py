@@ -70,6 +70,12 @@ PLOT_LABEL_FONTSIZE = 18
 PLOT_TICK_FONTSIZE = 18
 PLOT_LEGEND_FONTSIZE = 18
 
+# Highlight these methods in ROI/error montages
+HIGHLIGHT_METHODS = {
+    "SplineOps Standard cubic",
+    "SplineOps Antialiasing cubic",
+}
+
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
@@ -577,6 +583,18 @@ def _smart_ylim(
         hi = lo + (float(min_span) if min_span is not None else 1e-6)
 
     return lo, hi
+
+def _highlight_tile(ax, *, color: str = "red", lw: float = 3.0) -> None:
+    # Full-axes border, works even with ax.axis("off")
+    rect = patches.Rectangle(
+        (0, 0), 1, 1,
+        transform=ax.transAxes,
+        fill=False,
+        edgecolor=color,
+        linewidth=lw,
+        clip_on=False,
+    )
+    ax.add_patch(rect)
 
 # %%
 # Round-Trip Backends & Time
@@ -1166,16 +1184,24 @@ def show_roi_montage_main_from_bench(bench: Dict[str, object]) -> None:
     for idx, name in enumerate(names):
         if idx >= rows * cols:
             break
+
         tile = tile_map[name]
         r, c = divmod(idx, cols)
         ax = axes[r, c]
+
         ax.imshow(tile, cmap="gray", interpolation="nearest")
-        ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
+
+        is_hi = name in HIGHLIGHT_METHODS
+        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
+        if is_hi:
+            title_kw.update(color="red", fontweight="bold")
+            _highlight_tile(ax)
+
+        ax.set_title(name, **title_kw)
         ax.axis("off")
 
     fig.tight_layout()
     plt.show()
-
 
 def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
     """
@@ -1199,7 +1225,6 @@ def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
         if lbl in tile_map:
             names.append(lbl)
 
-    # Dynamically choose rows so we don't end up with a completely empty row
     cols = 3
     n_tiles = len(names)
     rows = max(1, (n_tiles + cols - 1) // cols)
@@ -1213,11 +1238,20 @@ def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
     for idx, name in enumerate(names):
         if idx >= rows * cols:
             break
+
         tile = tile_map[name]
         r, c = divmod(idx, cols)
         ax = axes[r, c]
+
         ax.imshow(tile, cmap="gray", interpolation="nearest")
-        ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
+
+        is_hi = name in HIGHLIGHT_METHODS
+        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
+        if is_hi:
+            title_kw.update(color="red", fontweight="bold")
+            _highlight_tile(ax)
+
+        ax.set_title(name, **title_kw)
         ax.axis("off")
 
     fig.tight_layout()
@@ -1256,19 +1290,26 @@ def show_error_montage_main_from_bench(bench: Dict[str, object]) -> None:
         tile = tile_map[name]
         r, c = divmod(idx, cols)
         ax = axes[r, c]
+
         ax.imshow(tile, cmap="gray", interpolation="nearest", vmin=0.0, vmax=1.0)
-        ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
+
+        is_hi = name in HIGHLIGHT_METHODS
+        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
+        if is_hi:
+            title_kw.update(color="red", fontweight="bold")
+            _highlight_tile(ax)
+
+        ax.set_title(name, **title_kw)
         ax.axis("off")
 
-    # Legend
+    # Legend (unchanged)
     ax_leg = axes[-1, -1]
     ax_leg.axis("off")
 
     H_leg = ROI_MAG_TARGET
     W_leg = 32
     y = np.linspace(1.0, 0.0, H_leg, dtype=np.float32)
-    legend_col = y[:, None]
-    legend_img = np.repeat(legend_col, W_leg, axis=1)
+    legend_img = np.repeat(y[:, None], W_leg, axis=1)
 
     ax_leg.imshow(legend_img, cmap="gray", vmin=0.0, vmax=1.0, aspect="auto")
     ax_leg.set_title("Diff legend", fontsize=ROI_TILE_TITLE_FONTSIZE, pad=4)
@@ -1283,7 +1324,6 @@ def show_error_montage_main_from_bench(bench: Dict[str, object]) -> None:
     fig.suptitle("Normalized signed difference in ROI", fontsize=ROI_SUPTITLE_FONTSIZE)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
-
 
 def show_error_montage_aa_from_bench(bench: Dict[str, object]) -> None:
     """
@@ -1318,18 +1358,26 @@ def show_error_montage_aa_from_bench(bench: Dict[str, object]) -> None:
         tile = tile_map[name]
         r, c = divmod(idx, cols)
         ax = axes[r, c]
+
         ax.imshow(tile, cmap="gray", interpolation="nearest", vmin=0.0, vmax=1.0)
-        ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
+
+        is_hi = name in HIGHLIGHT_METHODS
+        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
+        if is_hi:
+            title_kw.update(color="red", fontweight="bold")
+            _highlight_tile(ax)
+
+        ax.set_title(name, **title_kw)
         ax.axis("off")
 
+    # Legend (unchanged)
     ax_leg = axes[-1, -1]
     ax_leg.axis("off")
 
     H_leg = ROI_MAG_TARGET
     W_leg = 32
     y = np.linspace(1.0, 0.0, H_leg, dtype=np.float32)
-    legend_col = y[:, None]
-    legend_img = np.repeat(legend_col, W_leg, axis=1)
+    legend_img = np.repeat(y[:, None], W_leg, axis=1)
 
     ax_leg.imshow(legend_img, cmap="gray", vmin=0.0, vmax=1.0, aspect="auto")
     ax_leg.set_title("Diff legend", fontsize=ROI_TILE_TITLE_FONTSIZE, pad=4)
@@ -1344,7 +1392,6 @@ def show_error_montage_aa_from_bench(bench: Dict[str, object]) -> None:
     fig.suptitle("Normalized signed difference in ROI", fontsize=ROI_SUPTITLE_FONTSIZE)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
-
 
 def show_timing_plot_from_bench(bench: Dict[str, object]) -> None:
     """Horizontal bar chart of round-trip timing per method."""
@@ -1627,12 +1674,9 @@ def show_roi_montage_color_main_from_bench(
     orig_rgb: np.ndarray,
 ) -> None:
     """Color ROI montage for the main subset of methods."""
-
-    roi_rect = bench["roi_rect"]      # (row_top, col_left, h, w)
+    roi_rect = bench["roi_rect"]
     z = float(bench["z"])
     row0, col0, roi_h, roi_w = roi_rect
-    H, W, _ = orig_rgb.shape
-
     roi_orig = orig_rgb[row0:row0 + roi_h, col0:col0 + roi_w, :]
     orig_tile = _nearest_big_color(roi_orig, ROI_MAG_TARGET)
 
@@ -1687,8 +1731,16 @@ def show_roi_montage_color_main_from_bench(
             break
         r, c = divmod(idx, cols)
         ax = axes[r, c]
+
         ax.imshow(np.clip(tile, 0.0, 1.0))
-        ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
+
+        is_hi = name in HIGHLIGHT_METHODS
+        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
+        if is_hi:
+            title_kw.update(color="red", fontweight="bold")
+            _highlight_tile(ax)
+
+        ax.set_title(name, **title_kw)
         ax.axis("off")
 
     fig.tight_layout()
@@ -1700,12 +1752,9 @@ def show_roi_montage_color_aa_from_bench(
     orig_rgb: np.ndarray,
 ) -> None:
     """Color ROI montage for AA / smoothing subset."""
-
     roi_rect = bench["roi_rect"]
     z = float(bench["z"])
     row0, col0, roi_h, roi_w = roi_rect
-    H, W, _ = orig_rgb.shape
-
     roi_orig = orig_rgb[row0:row0 + roi_h, col0:col0 + roi_w, :]
     orig_tile = _nearest_big_color(roi_orig, ROI_MAG_TARGET)
 
@@ -1747,7 +1796,6 @@ def show_roi_montage_color_aa_from_bench(
         tile = _nearest_big_color(roi_first, ROI_MAG_TARGET)
         tiles.append((label, tile))
 
-    # Dynamically choose rows for the number of tiles we actually have
     cols = 3
     n_tiles = len(tiles)
     rows = max(1, (n_tiles + cols - 1) // cols)
@@ -1763,13 +1811,20 @@ def show_roi_montage_color_aa_from_bench(
             break
         r, c = divmod(idx, cols)
         ax = axes[r, c]
+
         ax.imshow(np.clip(tile, 0.0, 1.0))
-        ax.set_title(name, fontsize=ROI_TILE_TITLE_FONTSIZE)
+
+        is_hi = name in HIGHLIGHT_METHODS
+        title_kw = dict(fontsize=ROI_TILE_TITLE_FONTSIZE)
+        if is_hi:
+            title_kw.update(color="red", fontweight="bold")
+            _highlight_tile(ax)
+
+        ax.set_title(name, **title_kw)
         ax.axis("off")
 
     fig.tight_layout()
     plt.show()
-
 
 # %%
 # Load All Images
