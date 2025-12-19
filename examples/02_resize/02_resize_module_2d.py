@@ -334,13 +334,31 @@ gray_aa = resize(
     method="cubic-antialiasing",
 )
 
+TITLE_FS = 12
+
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 axes[0].imshow(gray, cmap="gray", vmin=0.0, vmax=1.0)
-axes[0].set_title("Original (single channel)")
+axes[0].set_title(
+    "Original\n(red channel)",
+    fontsize=TITLE_FS,
+    multialignment="center",
+)
 axes[1].imshow(gray_cubic, cmap="gray", vmin=0.0, vmax=1.0)
-axes[1].set_title("Resized Cubic")
+axes[1].set_title(
+    f"{STD_LABEL}\n(zoom ×{simple_zoom:g}, {gray_cubic.shape[0]}×{gray_cubic.shape[1]} px)",
+    fontsize=TITLE_FS,
+    color=STD_COLOR,
+    fontweight="bold",
+    multialignment="center",
+)
 axes[2].imshow(gray_aa, cmap="gray", vmin=0.0, vmax=1.0)
-axes[2].set_title("Resized Cubic Antialiasing")
+axes[2].set_title(
+    f"{AA_LABEL}\n(zoom ×{simple_zoom:g}, {gray_aa.shape[0]}×{gray_aa.shape[1]} px)",
+    fontsize=TITLE_FS,
+    color=AA_COLOR,
+    fontweight="bold",
+    multialignment="center",
+)
 for ax in axes:
     ax.axis("off")
 fig.tight_layout()
