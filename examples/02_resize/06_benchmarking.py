@@ -70,13 +70,7 @@ PLOT_LABEL_FONTSIZE = 18
 PLOT_TICK_FONTSIZE = 18
 PLOT_LEGEND_FONTSIZE = 18
 
-# Highlight these methods in ROI/error montages
-HIGHLIGHT_METHODS = {
-    "SplineOps Standard cubic",
-    "SplineOps Antialiasing cubic",
-}
-
-# Highlight styles (per method) for ROI/error montages
+# Highlight styles (per method) used everywhere (ROI montages + plots)
 HIGHLIGHT_STYLE = {
     "SplineOps Standard cubic": {
         "color": "tab:blue",   # blueish
@@ -1441,23 +1435,39 @@ def show_timing_plot_from_bench(bench: Dict[str, object]) -> None:
     times = times[order]
     sds   = sds[order]
 
-    plt.figure(figsize=PLOT_FIGSIZE)
+    fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
     y = np.arange(len(names))
-    plt.barh(y, times, xerr=sds, alpha=0.8)
-    plt.yticks(y, names, fontsize=PLOT_TICK_FONTSIZE)
-    plt.xticks(fontsize=PLOT_TICK_FONTSIZE)
-    plt.xlabel(
+
+    bars = ax.barh(y, times, xerr=sds, alpha=0.8)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(names, fontsize=PLOT_TICK_FONTSIZE)
+    ax.tick_params(axis="x", labelsize=PLOT_TICK_FONTSIZE)
+
+    ax.set_xlabel(
         f"Round-trip time (s) mean ± sd over {N_TRIALS} runs",
         fontsize=PLOT_LABEL_FONTSIZE,
     )
-    plt.title(
+    ax.set_title(
         f"Timing vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",
         fontsize=PLOT_TITLE_FONTSIZE,
     )
-    plt.grid(axis="x", alpha=0.3)
-    plt.tight_layout()
-    plt.show()
+    ax.grid(axis="x", alpha=0.3)
 
+    # --- Color the METHOD NAMES (yticks) + outline highlighted bars ---
+    for tick, name, bar in zip(ax.get_yticklabels(), names, bars.patches):
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            c = style.get("color", "tab:blue")
+            lw = float(style.get("lw", 3.0))
+            tick.set_color(c)
+            tick.set_fontweight("bold")
+            # Optional: outline the bar too (nice but not required)
+            bar.set_edgecolor(c)
+            bar.set_linewidth(lw)
+
+    fig.tight_layout()
+    plt.show()
 
 def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
     """Combined SNR/SSIM bar chart per method."""
@@ -1507,6 +1517,7 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
     )
     ax1.set_ylabel("SNR (dB)", color=snr_color, fontsize=PLOT_LABEL_FONTSIZE)
     ax1.tick_params(axis="y", labelcolor=snr_color, labelsize=PLOT_TICK_FONTSIZE)
+
     ax1.set_xticks(x)
     ax1.set_xticklabels(
         names,
@@ -1514,6 +1525,7 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
         ha="right",
         fontsize=PLOT_TICK_FONTSIZE,
     )
+
     ax1.grid(axis="y", alpha=0.3)
 
     ax2 = ax1.twinx()
@@ -1543,6 +1555,25 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
         fontsize=PLOT_LEGEND_FONTSIZE,
     )
 
+    # --- Highlight xtick labels (SplineOps methods) ---
+    for tick, name in zip(ax1.get_xticklabels(), names):
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            col = style.get("color", "tab:blue")
+            tick.set_color(col)
+            tick.set_fontweight("bold")
+
+    # --- Outline BOTH bars (now safe because ssim_bars exists) ---
+    for i, name in enumerate(names):
+        style = HIGHLIGHT_STYLE.get(name)
+        if style is not None:
+            col = style.get("color", "tab:blue")
+            lw = float(style.get("lw", 3.0))
+            snr_bars.patches[i].set_edgecolor(col)
+            snr_bars.patches[i].set_linewidth(lw)
+            ssim_bars.patches[i].set_edgecolor(col)
+            ssim_bars.patches[i].set_linewidth(lw)
+
     # --- Smart truncated y-limits (robust) ---
     snr_lim = _smart_ylim(snrs, pad_frac=0.06, min_span=1.0)  # dB
     if snr_lim is not None:
@@ -1554,7 +1585,6 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
 
     fig.tight_layout()
     plt.show()
-
 
 # %%
 # Color ROI Montage Helpers
