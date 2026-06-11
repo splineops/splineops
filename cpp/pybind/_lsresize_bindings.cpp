@@ -27,6 +27,64 @@ static std::vector<int64> shape_to_vec_i64(const py::array &a)
     return s;
 }
 
+static std::vector<int> choose_axis_order(
+    const std::vector<int64>& in_shape,
+    const std::vector<int64>& out_shape)
+{
+    const int D = static_cast<int>(in_shape.size());
+    std::vector<int> axes(static_cast<size_t>(D));
+    std::iota(axes.begin(), axes.end(), 0);
+
+    constexpr double eps = 1e-12;
+
+    auto scale = [&](int ax) -> double {
+        const int64 in_len = in_shape[static_cast<size_t>(ax)];
+        if (in_len <= 0) {
+            return 1.0;
+        }
+        return static_cast<double>(out_shape[static_cast<size_t>(ax)]) /
+               static_cast<double>(in_len);
+    };
+
+    std::stable_sort(
+        axes.begin(),
+        axes.end(),
+        [&](int a, int b) {
+            const double sa = scale(a);
+            const double sb = scale(b);
+            const bool shrink_a = sa < 1.0 - eps;
+            const bool shrink_b = sb < 1.0 - eps;
+            const bool grow_a = sa > 1.0 + eps;
+            const bool grow_b = sb > 1.0 + eps;
+
+            if (shrink_a != shrink_b) {
+                return shrink_a;
+            }
+
+            if (shrink_a && shrink_b) {
+                if (std::abs(sa - sb) > eps) {
+                    return sa < sb;
+                }
+                return a > b;
+            }
+
+            if (grow_a != grow_b) {
+                return !grow_a && grow_b;
+            }
+
+            if (grow_a && grow_b) {
+                if (std::abs(sa - sb) > eps) {
+                    return sa < sb;
+                }
+                return a < b;
+            }
+
+            return a < b;
+        });
+
+    return axes;
+}
+
 // Restrict and sanity-check the degrees coming from Python.
 // We treat 3 as the hard ceiling for robustness:
 //
@@ -146,8 +204,35 @@ py::array_t<T> resize_nd_impl(
     std::vector<T> prev;     // holds current intermediate result
     std::vector<T> scratch;  // temporary buffer for next pass
     std::vector<int64> cur_shape = in_shape;
+    const std::vector<int> axis_order = choose_axis_order(in_shape, out_shape);
+    std::vector<int> active_axes;
+    active_axes.reserve(axis_order.size());
+    for (int ax : axis_order) {
+        const bool identity_axis =
+            (analy_degree < 0) &&
+            (out_shape[static_cast<size_t>(ax)] ==
+             in_shape[static_cast<size_t>(ax)]) &&
+            (std::abs(zoom_factors[static_cast<size_t>(ax)] - 1.0) <= 1e-12);
+        if (!identity_axis) {
+            active_axes.push_back(ax);
+        }
+    }
 
-    for (int ax = 0; ax < D; ++ax) {
+    if (active_axes.empty()) {
+        const int64 total = std::accumulate(
+            in_shape.begin(), in_shape.end(),
+            static_cast<int64>(1),
+            std::multiplies<int64>());
+        std::copy(
+            static_cast<const T*>(in_arr.data()),
+            static_cast<const T*>(in_arr.data()) + total,
+            static_cast<T*>(out.mutable_data()));
+        return out;
+    }
+
+    const int n_passes = static_cast<int>(active_axes.size());
+    for (int pass = 0; pass < n_passes; ++pass) {
+        const int ax = active_axes[static_cast<size_t>(pass)];
         std::vector<int64> next_shape = cur_shape;
         next_shape[static_cast<size_t>(ax)] =
             out_shape[static_cast<size_t>(ax)];
@@ -165,8 +250,8 @@ py::array_t<T> resize_nd_impl(
         p.shift         = 0.0;
         p.inversable    = inversable;
 
-        const bool first_pass = (ax == 0);
-        const bool last_pass  = (ax == D - 1);
+        const bool first_pass = (pass == 0);
+        const bool last_pass  = (pass == n_passes - 1);
 
         const T* in_ptr  = nullptr;
         T*       out_ptr = nullptr;
