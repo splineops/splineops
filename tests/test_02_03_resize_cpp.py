@@ -96,6 +96,37 @@ def _time_and_run_ls(
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping batched-axis compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("method", ["linear", "quadratic", "cubic"])
+@pytest.mark.parametrize(
+    "shape,zoom",
+    [
+        ((64, 48), (0.7, 1.3)),
+        ((48, 32), (0.5, 0.75)),
+        ((24, 20, 16), (0.5, 0.75, 1.25)),
+    ],
+)
+def test_batched_axis_matches_default_pure_interpolation(monkeypatch, dtype, method, shape, zoom):
+    rng = np.random.default_rng(123)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping C++ vs Python compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
