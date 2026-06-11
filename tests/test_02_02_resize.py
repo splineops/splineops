@@ -308,6 +308,42 @@ def test_standard_identity_zoom_one(shape, degree):
     err = np.max(np.abs(y - x))
     assert err < 1e-10, f"Identity failed (deg={degree}, shape={shape}), L∞={err}"
 
+
+@pytest.mark.parametrize("degree", [2, 3])
+@pytest.mark.parametrize("length", [2, 3, 4, 5, 8, 16, 32])
+def test_interpolation_prefilter_preserves_short_constants(degree, length):
+    from splineops.resize._pycore.filters import get_interpolation_coefficients
+
+    coeff = np.ones(length, dtype=np.float64)
+    get_interpolation_coefficients(coeff, degree)
+
+    assert np.allclose(coeff, 1.0, atol=5e-10, rtol=0.0)
+
+
+@pytest.mark.parametrize("method", [
+    "quadratic",
+    "cubic",
+    "linear-antialiasing",
+    "quadratic-antialiasing",
+    "cubic-antialiasing",
+])
+@pytest.mark.parametrize("shape, zoom_factors", [
+    ((4,), (0.5,)),
+    ((8,), (0.5,)),
+    ((32,), (0.37,)),
+    ((4, 4), (0.5, 0.5)),
+    ((8, 8), (0.5, 0.5)),
+    ((32, 32), (0.37, 0.37)),
+    ((5, 7), (0.6, 0.5)),
+])
+def test_resize_preserves_short_constants(method, shape, zoom_factors):
+    x = np.ones(shape, dtype=np.float64)
+
+    y = resize(x, zoom_factors=zoom_factors, method=method)
+
+    assert np.allclose(y, 1.0, atol=1e-9, rtol=0.0)
+
+
 def _poly_expected(shape, zf, degree):
     D = len(shape)
     out_shape = tuple(int(round(n * z)) for n, z in zip(shape, zf))

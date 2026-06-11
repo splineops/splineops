@@ -49,12 +49,17 @@ def sampling_fir(deg: int) -> np.ndarray:
 def initial_causal(c: np.ndarray, z: float, tol: float = 1e-10) -> float:
     N = c.size
     if N == 0: return 0.0
-    zn = z**(N-1)
+    if N == 1: return float(c[0])
     horizon = min(N, int(2 + np.log(tol)/np.log(abs(z)))) if tol > 0 else N
+    if horizon < N:
+        n = np.arange(1, horizon)
+        return c[0] + np.sum((z**n) * c[1:horizon])
+
+    zn = z**(N-1)
     s = c[0] + zn*c[-1]
-    if horizon > 2:
-        n = np.arange(1, horizon-1)
-        s += np.sum((z**n + zn/(z**n)) * c[1:horizon-1])
+    if N > 2:
+        n = np.arange(1, N-1)
+        s += np.sum((z**n + z**(2*N - 2 - n)) * c[1:N-1])
     return s / (1.0 - (zn * zn))
 
 def initial_anti_causal(c: np.ndarray, z: float) -> float:
@@ -149,13 +154,21 @@ def initial_causal_batch(C: np.ndarray, z: float, tol: float = 1e-10) -> np.ndar
     """C: (B, N) -> (B,)"""
     B, N = C.shape
     if N == 0: return np.zeros(B, dtype=C.dtype)
-    zn = z**(N-1)
+    if N == 1: return C[:, 0].copy()
     horizon = min(N, int(2 + np.log(tol)/np.log(abs(z)))) if tol > 0 else N
+    if horizon < N:
+        s = C[:, 0].copy()
+        if horizon > 1:
+            n = np.arange(1, horizon)
+            s += C[:, 1:horizon] @ (z**n)
+        return s
+
+    zn = z**(N-1)
     s = C[:, 0] + zn * C[:, -1]
-    if horizon > 2:
-        n = np.arange(1, horizon-1)
-        w = (z**n + zn/(z**n))             # (h-2,)
-        s += C[:, 1:horizon-1] @ w         # (B, h-2) @ (h-2,) -> (B,)
+    if N > 2:
+        n = np.arange(1, N-1)
+        w = z**n + z**(2*N - 2 - n)
+        s += C[:, 1:N-1] @ w
     return s / (1.0 - (zn * zn))
 
 def initial_anti_causal_batch(C: np.ndarray, z: float) -> np.ndarray:

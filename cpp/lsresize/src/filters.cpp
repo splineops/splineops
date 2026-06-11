@@ -13,21 +13,32 @@ double initial_causal(
 {
   const size_t N = c.size();
   if (N == 0) return 0.0;
+  if (N == 1) return c[0];
 
-  const double zn = std::pow(z, double(N - 1));
   size_t horizon = N;
   if (tol > 0.0) {
     horizon = std::min(N, size_t(2 + std::log(tol) / std::log(std::abs(z))));
   }
 
+  if (horizon < N) {
+    double sum = c[0];
+    double p = z;
+    for (size_t n = 1; n < horizon; ++n) {
+      sum += p * c[n];
+      p *= z;
+    }
+    return sum;
+  }
+
+  const double zn = std::pow(z, double(N - 1));
   double sum = c[0] + zn * c[N - 1];
-  // z^n and z^(N-1-n) without pow:
+  // Exact finite-length mirror-boundary terms: z^n and z^(2N-2-n).
   double p1 = z;          // z^1
-  double p2 = (N >= 2) ? (zn / z) : 1.0;  // z^(N-2) if N>=2 else 1
-  for (size_t n = 1; n + 1 < horizon; ++n) {
+  double p2 = (zn * zn) / z;  // z^(2N-3)
+  for (size_t n = 1; n + 1 < N; ++n) {
     sum += (p1 + p2) * c[n];
     p1 *= z;            // z^n -> z^(n+1)
-    p2 /= z;            // z^(N-1-n) -> z^(N-2-n)
+    p2 /= z;            // z^(2N-2-n) -> z^(2N-3-n)
   }
 
   const double denom = 1.0 - (zn * zn);   // 1 - z^(2N-2)
