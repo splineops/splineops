@@ -18,6 +18,10 @@ Work completed today:
   `[left pad | line | right pad]` extension buffer. Interior rows now read
   coefficient columns directly, and boundary/tail rows use a precomputed
   per-weight source/sign table.
+- Split pure interpolation into its own batched native kernel. It skips
+  projection scratch, correction filtering, and projection-only branches.
+- Added a pure-interpolation direct-write path for non-contiguous output axes,
+  avoiding the intermediate `y` buffer plus strided scatter on those passes.
 - Moved the col-major batched IIR prefilter into `cpp/lsresize/src/filters.*`
   so the finite-size mirror initializer is shared instead of duplicated in
   `resize_nd.cpp`.
@@ -41,11 +45,7 @@ Work completed today:
 
 Current changed files to expect in the working tree:
 
-- `cpp/lsresize/src/filters.cpp`
-- `cpp/lsresize/src/filters.h`
 - `cpp/lsresize/src/resize_nd.cpp`
-- `scripts/benchmark_resize_native.py`
-- `tests/test_02_03_resize_cpp.py`
 - `scripts/resize_optimization_notes.md`
 
 Validation run:
@@ -76,6 +76,12 @@ Observed results:
 - After the interior/boundary split:
   - batched/auto parity tests: `60 passed`
   - focused resize suite default: `175 passed`
+  - focused resize suite with `LSRESIZE_BATCHED_AXIS=auto`: `175 passed`
+  - focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
+  - full suite default: `429 passed`
+  - full suite with `LSRESIZE_BATCHED_AXIS=auto`: `429 passed`
+- After the pure-interpolation specialization:
+  - batched/auto parity tests: `60 passed`
   - focused resize suite with `LSRESIZE_BATCHED_AXIS=auto`: `175 passed`
   - focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
   - full suite default: `429 passed`
@@ -157,6 +163,28 @@ source/sign table:
 The focused repeat benchmark showed high best-time noise for the default path,
 so median times should be checked before overfitting the auto heuristic.
 
+Selected best-of timings after the pure-interpolation specialization and
+non-contiguous direct-write path:
+
+| Case | Default path | Auto path | Speedup |
+| --- | ---: | ---: | ---: |
+| float32, 512x512, cubic down, 1 thread | 14.00 ms | 6.49 ms | 2.16x |
+| float32, 1024x1024, cubic down, 1 thread | 54.71 ms | 24.28 ms | 2.25x |
+| float32, 1024x1024, cubic down, default threads | 7.12 ms | 5.57 ms | 1.28x |
+| float64, 1024x1024, cubic down, 1 thread | 51.40 ms | 23.27 ms | 2.21x |
+| float32, 1024x1024, cubic-antialiasing, 1 thread | 119.39 ms | 41.86 ms | 2.85x |
+| float32, 1024x1024, cubic-antialiasing, default threads | 12.41 ms | 7.44 ms | 1.67x |
+| float64, 1024x1024, cubic-antialiasing, default threads | 14.48 ms | 7.50 ms | 1.93x |
+
+Median-focused repeat timings from the same code path showed:
+
+- float32 1024x1024 cubic down, 1 thread: `54.39 ms -> 23.77 ms`
+  (`2.31x` median speedup).
+- float64 1024x1024 cubic down, 1 thread: `50.92 ms -> 22.27 ms`
+  (`2.29x` median speedup).
+- float32 1024x1024 cubic-antialiasing, default threads:
+  `13.96 ms -> 8.26 ms` (`1.69x` median speedup).
+
 Smoke `--batch-lines-sweep 8,16,32,64` observations:
 
 - Best batch size is workload/thread dependent.
@@ -184,9 +212,8 @@ Suggested next steps:
 2. Consider enabling `LSRESIZE_BATCHED_AXIS=auto` in performance experiments or
    downstream workloads, but keep package defaults unchanged until more target
    hardware has been swept.
-3. Specialize the pure-interpolation batched path further. The extension-buffer
-   removal helped antialiasing/projection most, while pure cubic interpolation
-   still has noisy margins on some 1-thread best-times.
+3. Run a standard/full saved sweep with medians and CPU affinity before changing
+   `LSRESIZE_BATCHED_AXIS=auto` from opt-in to default.
 4. Consider fused resize/permutation writes for N-D cases where strided passes
    dominate.
 
