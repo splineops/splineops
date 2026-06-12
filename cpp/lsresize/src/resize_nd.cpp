@@ -42,6 +42,8 @@ enum class BatchedAxisMode {
   Auto
 };
 
+constexpr int kDefaultBatchLines = 64;
+
 static inline char ascii_lower(char c)
 {
   return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
@@ -259,7 +261,8 @@ static void resize_along_axis_batched_interp_t(
   const int outN = plan.outN;
   const int length = plan.length_total;
   const int LP = plan.left_pad;
-  const int batch_lines = std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", 32));
+  const int batch_lines =
+      std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", kDefaultBatchLines));
   const bool axis_contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
 
@@ -433,7 +436,8 @@ static void resize_along_axis_batched_t(
   const int corr_degree = (p.analy_degree < 0)
                         ? p.interp_degree
                         : (p.analy_degree + p.synthe_degree + 1);
-  const int batch_lines = std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", 32));
+  const int batch_lines =
+      std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", kDefaultBatchLines));
   const bool axis_contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   std::vector<char> row_is_interior;
@@ -626,9 +630,10 @@ static void resize_along_axis_t(
     }
   }
 
-  // Build the per-axis plan ONCE (shared read-only across threads)
+  // Build or reuse the per-axis plan ONCE (shared read-only across threads)
   const int N_line = static_cast<int>(in_shape[static_cast<size_t>(axis)]);
-  const Plan1D plan = make_plan_1d(N_line, p);
+  const auto plan_handle = get_plan_1d_cached(N_line, p);
+  const Plan1D& plan = *plan_handle;
 
   if (should_use_batched_axis(
           batched_axis_mode(),

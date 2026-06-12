@@ -121,6 +121,7 @@ def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
         "SPLINEOPS_ACCEL",
         "LSRESIZE_NUM_THREADS",
         "LSRESIZE_PARALLEL_THRESHOLD",
+        "LSRESIZE_PLAN_CACHE_SIZE",
         "OMP_NUM_THREADS",
         "OMP_DYNAMIC",
         "OMP_PROC_BIND",

@@ -50,11 +50,21 @@ Work completed today:
     instead of always using every logical CPU
   - one-worker decisions now run directly in the current thread instead of
     launching a single `std::thread`
+- Added a bounded process-local native `Plan1D` cache:
+  - keyed exactly by line length, degrees, zoom bits, shift bits, and
+    `inversable`
+  - plans are immutable/read-only after construction and shared by axis workers
+  - `LSRESIZE_PLAN_CACHE_SIZE=0` disables the cache for measurements/debugging
+- Promoted the batched-axis default block size from 32 to 64 after a saved
+  standard `--batch-lines-sweep` on the local target CPU.
 
 Current changed files to expect in the working tree:
 
-- `cpp/lsresize/src/parallel_utils.h`
+- `cpp/lsresize/src/resize_1d.cpp`
+- `cpp/lsresize/src/resize_1d.h`
+- `cpp/lsresize/src/resize_nd.cpp`
 - `scripts/resize_optimization_notes.md`
+- `src/splineops/utils/specs.py`
 
 Validation run:
 
@@ -68,6 +78,7 @@ Validation run:
 .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
 LSRESIZE_BATCHED_AXIS=off .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
 LSRESIZE_BATCHED_AXIS=1 .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
+LSRESIZE_PLAN_CACHE_SIZE=0 .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
 .venv/bin/python -m pytest -q
 .venv/bin/python -m py_compile scripts/benchmark_resize_native.py
 .venv/bin/python scripts/benchmark_resize_native.py \
@@ -102,6 +113,34 @@ LSRESIZE_BATCHED_AXIS=1 .venv/bin/python -m pytest -q tests/test_02_02_resize.py
   --skip-checks \
   --output-json /tmp/splineops_resize_scheduler_after_physicalcap.json \
   --output-csv /tmp/splineops_resize_scheduler_after_physicalcap.csv
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --threads default \
+  --repeats 5 \
+  --warmups 2 \
+  --batched-axis auto \
+  --batch-lines-sweep 8,16,32,64,128 \
+  --skip-checks \
+  --output-json /tmp/splineops_resize_batch_sweep_plan_cache.json \
+  --output-csv /tmp/splineops_resize_batch_sweep_plan_cache.csv
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --threads default \
+  --repeats 5 \
+  --warmups 2 \
+  --batched-axis env \
+  --skip-checks \
+  --output-json /tmp/splineops_resize_auto_default_b64_seq.json \
+  --output-csv /tmp/splineops_resize_auto_default_b64_seq.csv
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --threads default \
+  --repeats 5 \
+  --warmups 2 \
+  --batched-axis off \
+  --skip-checks \
+  --output-json /tmp/splineops_resize_off_default_b64_seq.json \
+  --output-csv /tmp/splineops_resize_off_default_b64_seq.csv
 git diff --check
 ```
 
@@ -126,6 +165,26 @@ Observed results:
   - on the local 16-logical/8-core CPU, default scheduling now tracks the
     8-thread/physical-core-style setting instead of the previous all-logical
     default, while explicit `LSRESIZE_NUM_THREADS=16` remains available
+- After native plan caching and batch-size tuning:
+  - focused resize suite default/unset: `175 passed`
+  - focused resize suite with `LSRESIZE_PLAN_CACHE_SIZE=0`: `175 passed`
+  - focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
+  - full suite default/unset: `429 passed`
+  - repeated-call microbenchmarks show cache wins mostly on small workloads:
+    about `1.17x` for 1-D length 64 cubic, `1.08x` for 16x16 cubic,
+    `1.06x` for 32x32 cubic, and `1.02x` for 64x64 cubic-antialiasing
+    on this CPU; 64-256 squared cases were closer to `1.01x-1.04x`
+  - standard default-thread batch sweep saved to
+    `/tmp/splineops_resize_batch_sweep_plan_cache.{json,csv}`
+  - batch size 64 won the most median-time cases in the standard sweep and
+    gave about `1.07x` median / `1.10x` mean speedup versus batch size 32
+    across standard cases
+  - sequential standard auto-vs-off artifacts saved to
+    `/tmp/splineops_resize_auto_default_b64_seq.{json,csv}` and
+    `/tmp/splineops_resize_off_default_b64_seq.{json,csv}`
+  - default-auto with batch size 64 was faster than explicit off on every 2-D
+    standard case by median; 2-D median speedup averaged about `2.15x`, with
+    the weakest 2-D case still about `1.57x`
 - `git diff --check`: clean
 
 Fresh local benchmark command:
@@ -145,7 +204,7 @@ Fresh local benchmark command:
   --repeats 3 \
   --warmups 1 \
   --batched-axis on \
-  --batch-lines 32 \
+  --batch-lines 64 \
   --skip-checks
 
 .venv/bin/python scripts/benchmark_resize_native.py \
@@ -154,7 +213,7 @@ Fresh local benchmark command:
   --repeats 2 \
   --warmups 1 \
   --batched-axis on \
-  --batch-lines-sweep 8,16,32,64 \
+  --batch-lines-sweep 8,16,32,64,128 \
   --skip-checks
 
 .venv/bin/python scripts/benchmark_resize_native.py \
@@ -225,7 +284,7 @@ Median-focused repeat timings from the same code path showed:
 - float32 1024x1024 cubic-antialiasing, default threads:
   `13.96 ms -> 8.26 ms` (`1.69x` median speedup).
 
-Smoke `--batch-lines-sweep 8,16,32,64` observations:
+Smoke/standard `--batch-lines-sweep` observations:
 
 - Best batch size is workload/thread dependent.
 - After the no-extension-buffer split, the latest smoke sweep picked different
@@ -233,8 +292,10 @@ Smoke `--batch-lines-sweep 8,16,32,64` observations:
   default-thread pure/anisotropic cases, 32 for single-thread
   cubic-antialiasing/anisotropic cases, and 64 for default-thread
   cubic-antialiasing.
-- The current default of 32 remains a reasonable conservative default. Do not
-  change it without a saved standard/full sweep on the target CPU.
+- After plan caching and the default-thread scheduler update, a saved standard
+  sweep over 8, 16, 32, 64, and 128 picked 64 most often by median time.
+  The native default is now 64. Re-run a saved target-CPU sweep before changing
+  it again.
 
 Important caveat:
 
@@ -248,16 +309,21 @@ Important caveat:
 - Default thread scheduling is now conservative on SMT-style machines. Use
   `LSRESIZE_NUM_THREADS=<n>` to force a particular thread count for benchmark
   sweeps or deployments that benefit from all logical CPUs.
+- Native plan caching is on by default with capacity 32. Use
+  `LSRESIZE_PLAN_CACHE_SIZE=0` to disable it when measuring cold-plan behavior.
 
 Suggested next steps:
 
-1. Run a saved standard/full `--batch-lines-sweep` artifact on the target CPU
-   before changing the default batch size from 32.
-2. Run default-auto versus `LSRESIZE_BATCHED_AXIS=off` saved artifacts on the
-   target CPU before tuning the auto heuristic further.
+1. Run a saved standard/full `--batch-lines-sweep` artifact on additional target
+   CPUs before changing the default batch size from 64.
+2. Run default-auto versus `LSRESIZE_BATCHED_AXIS=off` saved artifacts on
+   additional target CPUs before tuning the auto heuristic further.
 3. Run a standard/full saved thread sweep on target hardware before changing
    the default scheduler constants.
-4. Consider fused resize/permutation writes for N-D cases where strided passes
+4. Consider exposing an explicit reusable native `ResizePlan` object if repeated
+   same-shape workloads remain important; the private cache is the low-risk
+   first step.
+5. Consider fused resize/permutation writes for N-D cases where strided passes
    dominate.
 
 ## Handoff: 2026-06-11

@@ -1,5 +1,6 @@
 // splineops/cpp/lsresize/src/resize_1d.h
 #pragma once
+#include <memory>
 #include <vector>
 #include <cstdint>
 
@@ -59,6 +60,10 @@ struct Work1D {
 
 // Build the reusable plan once per axis.
 Plan1D make_plan_1d(int N, const LSParams& p);
+
+// Process-local bounded cache for repeated same-shape/same-parameter axes.
+// Set LSRESIZE_PLAN_CACHE_SIZE=0 to disable it.
+std::shared_ptr<const Plan1D> get_plan_1d_cached(int N, const LSParams& p);
 
 // Allocation-free fast path: reuse the provided workspace (vector in/out).
 void resize_1d_workspace(

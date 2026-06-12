@@ -7,6 +7,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <list>
+#include <memory>
+#include <mutex>
 #include <vector>
 
 // 1D resizing pipeline layout
@@ -30,6 +36,98 @@
 //   - resize_1d_line_buffered:   caller has already filled the line buffer
 
 namespace lsresize {
+
+namespace {
+
+static inline std::uint64_t double_bits(double value)
+{
+  std::uint64_t bits = 0;
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
+struct PlanCacheKey {
+  int N;
+  int interp_degree;
+  int analy_degree;
+  int synthe_degree;
+  std::uint64_t zoom_bits;
+  std::uint64_t shift_bits;
+  bool inversable;
+};
+
+static inline bool operator==(const PlanCacheKey& a, const PlanCacheKey& b)
+{
+  return a.N == b.N &&
+         a.interp_degree == b.interp_degree &&
+         a.analy_degree == b.analy_degree &&
+         a.synthe_degree == b.synthe_degree &&
+         a.zoom_bits == b.zoom_bits &&
+         a.shift_bits == b.shift_bits &&
+         a.inversable == b.inversable;
+}
+
+static inline PlanCacheKey plan_cache_key(int N, const LSParams& p)
+{
+  return PlanCacheKey{
+      N,
+      p.interp_degree,
+      p.analy_degree,
+      p.synthe_degree,
+      double_bits(p.zoom),
+      double_bits(p.shift),
+      p.inversable};
+}
+
+static inline int plan_cache_capacity()
+{
+  if (const char* value = std::getenv("LSRESIZE_PLAN_CACHE_SIZE")) {
+    const int parsed = std::atoi(value);
+    return std::max(0, parsed);
+  }
+  return 32;
+}
+
+struct PlanCacheEntry {
+  PlanCacheKey key;
+  std::shared_ptr<const Plan1D> plan;
+};
+
+static std::mutex& plan_cache_mutex()
+{
+  static std::mutex m;
+  return m;
+}
+
+static std::list<PlanCacheEntry>& plan_cache_entries()
+{
+  static std::list<PlanCacheEntry> entries;
+  return entries;
+}
+
+static std::shared_ptr<const Plan1D> find_cached_plan_locked(
+  const PlanCacheKey& key)
+{
+  auto& entries = plan_cache_entries();
+  for (auto it = entries.begin(); it != entries.end(); ++it) {
+    if (it->key == key) {
+      auto plan = it->plan;
+      entries.splice(entries.begin(), entries, it);
+      return plan;
+    }
+  }
+  return nullptr;
+}
+
+static void trim_plan_cache_locked(int capacity)
+{
+  auto& entries = plan_cache_entries();
+  while (static_cast<int>(entries.size()) > capacity) {
+    entries.pop_back();
+  }
+}
+
+} // namespace
 
 // Build the reusable 1-D plan (window metadata + contiguous weights + pad map)
 Plan1D make_plan_1d(int N, const LSParams& p)
@@ -198,6 +296,38 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   }
 
   return plan;
+}
+
+std::shared_ptr<const Plan1D> get_plan_1d_cached(int N, const LSParams& p)
+{
+  const int capacity = plan_cache_capacity();
+  if (capacity <= 0) {
+    return std::make_shared<Plan1D>(make_plan_1d(N, p));
+  }
+
+  const PlanCacheKey key = plan_cache_key(N, p);
+  {
+    std::lock_guard<std::mutex> lock(plan_cache_mutex());
+    if (auto plan = find_cached_plan_locked(key)) {
+      trim_plan_cache_locked(capacity);
+      return plan;
+    }
+  }
+
+  auto built = std::make_shared<Plan1D>(make_plan_1d(N, p));
+
+  {
+    std::lock_guard<std::mutex> lock(plan_cache_mutex());
+    if (auto plan = find_cached_plan_locked(key)) {
+      trim_plan_cache_locked(capacity);
+      return plan;
+    }
+    auto& entries = plan_cache_entries();
+    entries.push_front(PlanCacheEntry{key, built});
+    trim_plan_cache_locked(capacity);
+  }
+
+  return built;
 }
 
 // -----------------------------------------------------------------------------
