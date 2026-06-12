@@ -55,6 +55,13 @@ Work completed today:
     `inversable`
   - plans are immutable/read-only after construction and shared by axis workers
   - `LSRESIZE_PLAN_CACHE_SIZE=0` disables the cache for measurements/debugging
+- Moved the native batched row map into cached `Plan1D` metadata:
+  - contiguous interior/boundary row runs are precomputed once per plan
+  - boundary rows use cached per-weight coefficient source/sign mapping
+  - batched ND kernels now execute branch-free direct interior runs and fall
+    back to the exact mapped boundary runs
+  - this removes per-call row-map allocation/setup from repeated same-plan
+    workloads
 - Promoted the batched-axis default block size from 32 to 64 after a saved
   standard `--batch-lines-sweep` on the local target CPU.
 - Extended `scripts/benchmark_resize_native.py` beyond native-only measurements:
@@ -75,10 +82,10 @@ Work completed today:
 
 Current changed files to expect in the working tree:
 
-- `scripts/benchmark_resize_native.py`
+- `cpp/lsresize/src/resize_1d.cpp`
+- `cpp/lsresize/src/resize_1d.h`
+- `cpp/lsresize/src/resize_nd.cpp`
 - `scripts/resize_optimization_notes.md`
-- `src/splineops/resize/_pycore/resize_nd.py`
-- `src/splineops/utils/specs.py`
 
 Validation run:
 
@@ -146,6 +153,16 @@ SPLINEOPS_ACCEL=never .venv/bin/python -m pytest -q tests/test_02_02_resize.py t
   --skip-checks \
   --output-json /tmp/splineops_resize_python_support_block256.json \
   --output-csv /tmp/splineops_resize_python_support_block256.csv
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --backend native \
+  --threads default \
+  --repeats 8 \
+  --warmups 2 \
+  --batched-axis auto \
+  --skip-checks \
+  --output-json /tmp/splineops_resize_native_after_plan_row_runs_final_r8.json \
+  --output-csv /tmp/splineops_resize_native_after_plan_row_runs_final_r8.csv
 .venv/bin/python scripts/benchmark_resize_native.py \
   --profile standard \
   --threads default \
@@ -228,6 +245,21 @@ Observed results:
   - full suite default/unset: `429 passed`
   - standard Python benchmark saved to
     `/tmp/splineops_resize_python_support_block256.{json,csv}`
+- After cached native row-run/interior-boundary split:
+  - editable native rebuild: clean
+  - direct batched-axis parity tests: `60 passed`
+  - focused resize suite default/unset: `175 passed`
+  - fair baseline from committed `HEAD` saved to
+    `/tmp/splineops_resize_native_baseline_head_r8.{json,csv}`
+  - final default-thread standard artifact saved to
+    `/tmp/splineops_resize_native_after_plan_row_runs_final_r8.{json,csv}`
+  - versus the committed baseline, standard default-thread medians improved in
+    `15/18` cases overall and `14/16` 2-D cases
+  - 2-D median speedup: `1.12x` mean / `1.12x` median, with noise/regression
+    on small anisotropic float32/large anisotropic float64 medians but best-of
+    timings still mostly improved
+  - best-of timings improved in `15/18` cases overall, with `1.16x` mean /
+    `1.12x` median speedup
 - `git diff --check`: clean
 
 Fresh local benchmark command:
@@ -382,10 +414,12 @@ Suggested next steps:
    additional target CPUs before tuning the auto heuristic further.
 3. Run a standard/full saved thread sweep on target hardware before changing
    the default scheduler constants.
-4. Consider exposing an explicit reusable native `ResizePlan` object if repeated
+4. Add template-specialized native preset kernels for the common methods
+   (`linear`, `cubic`, `linear-antialiasing`, `cubic-antialiasing`).
+5. Consider exposing an explicit reusable native `ResizePlan` object if repeated
    same-shape workloads remain important; the private cache is the low-risk
    first step.
-5. Consider fused resize/permutation writes for N-D cases where strided passes
+6. Consider fused resize/permutation writes for N-D cases where strided passes
    dominate.
 
 ## Handoff: 2026-06-11
@@ -606,11 +640,11 @@ The environment override `LSRESIZE_NUM_THREADS` should remain available.
 
 ### 4. Batched Native Axis Kernel
 
-This is the most important fundamental redesign.
+Status: implemented for pure interpolation, projection, and antialiasing.
 
-Current native code processes one 1-D line at a time. But all lines for an axis
-share the same plan and weights. A batched C++ kernel could process a block of
-lines together:
+The original native code processed one 1-D line at a time. But all lines for an
+axis share the same plan and weights. The batched C++ kernel now processes a
+block of lines together:
 
 ```text
 for output index l:
@@ -627,10 +661,11 @@ Benefits:
 
 This should be exact, not an approximation.
 
-Prototype status:
+Implementation status:
 
 - Feature flag: `LSRESIZE_BATCHED_AXIS=1`.
 - Batch size override: `LSRESIZE_BATCH_LINES=<positive integer>`.
+- Default routing: `LSRESIZE_BATCHED_AXIS` unset means conservative `auto`.
 - Current scope: pure interpolation plus projection/antialiasing.
 - Tests compare flagged native output against default native output for
   interpolation, antialiasing presets, and equal-degree projection on 2-D and
@@ -650,21 +685,25 @@ Later local timings after projection support was added are recorded in the
 
 ### 5. Interior/Boundary Split
 
+Status: implemented inside the batched native path.
+
 Most output samples are far from mirrored boundaries. The hot loop should not
 pay boundary-extension costs for those samples.
 
-Proposed structure:
+Implemented structure:
 
 - Fast interior kernel:
   - no mirror handling
   - no extension buffer
   - direct weighted reads
-  - branchless or nearly branchless
+  - contiguous row runs precomputed in `Plan1D`
 - Slow boundary kernel:
   - exact mirror or antisymmetric boundary behavior
-  - current generic machinery is acceptable here
+  - cached per-weight source/sign mapping in `Plan1D`
 
-For large images, most rows hit the fast interior path.
+For large images, most rows hit the fast interior path. The current
+implementation keeps the row-run metadata in the private plan cache; an explicit
+public `ResizePlan` could reuse the same metadata across user-managed workloads.
 
 ### 6. Template-Specialized Presets
 
@@ -718,14 +757,14 @@ single small 2-D images.
 
 ## Recommended Priority
 
-1. Add conservative automatic routing for the feature-flagged batched path.
-2. Add native plan cache or `ResizePlan`.
-3. Improve thread-count heuristic.
-4. Split interior and boundary kernels.
-5. Add specialized preset kernels.
-6. Add opt-in float32 internal mode.
-7. Explore tiled/fused memory strategies for large N-D workloads.
+1. Add specialized native preset kernels.
+2. Add opt-in float32 internal mode.
+3. Expose an explicit reusable native `ResizePlan` if repeated same-shape
+   workloads are a priority.
+4. Explore tiled/fused memory strategies for large N-D workloads.
+5. Revisit the auto-routing/thread heuristics with artifacts from additional
+   target CPUs.
 
-The highest-upside exact redesign is the batched native axis kernel combined
-with an interior/boundary split. The lowest-risk next engineering step is a
-batch-size/thread sweep followed by conservative routing.
+The batched native axis kernel and interior/boundary split are now implemented.
+The next highest-upside exact redesign is method-specialized native kernels,
+followed by an opt-in float32 internal mode for image-oriented workloads.

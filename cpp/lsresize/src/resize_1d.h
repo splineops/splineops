@@ -19,6 +19,12 @@ struct LSParams {
   bool   inversable;      // size adjustment
 };
 
+struct RowRun1D {
+  int begin = 0;
+  int end = 0;
+  char interior = 0;
+};
+
 // Precomputed, per-axis resampling plan.
 // Reused for every 1-D line with the same (N, zoom, degrees, inversable, shift).
 struct Plan1D {
@@ -49,6 +55,14 @@ struct Plan1D {
   // Precomputed right-tail mapping: ext[N + i] = rp_sign * line[rp_src[i]]
   std::vector<int>  rp_src;        // size == max(0, length_total - N)
   char              rp_sign = 1;
+
+  // Batched ND row map: direct interior output rows use coefficient columns
+  // directly; boundary rows use coeff_src/coeff_sgn to preserve exact extension.
+  std::vector<RowRun1D> row_runs;
+  std::vector<int>      coeff_src;
+  std::vector<double>   coeff_sgn;
+  int                   interior_rows = 0;
+  int                   mapped_rows = 0;
 };
 
 // Per-thread reusable workspace to avoid per-line allocations

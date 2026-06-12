@@ -127,6 +127,108 @@ static void trim_plan_cache_locked(int capacity)
   }
 }
 
+static inline void append_row_run(
+  std::vector<RowRun1D>& runs,
+  int row,
+  bool interior)
+{
+  const char flag = interior ? 1 : 0;
+  if (!runs.empty() &&
+      runs.back().interior == flag &&
+      runs.back().end == row) {
+    runs.back().end = row + 1;
+    return;
+  }
+  runs.push_back(RowRun1D{row, row + 1, flag});
+}
+
+static inline bool is_direct_interior_row(
+  const Plan1D& plan,
+  int row)
+{
+  const int begin = plan.row_ptr[static_cast<size_t>(row)];
+  const int endw = plan.row_ptr[static_cast<size_t>(row) + 1];
+  const int k0 = plan.kmin[static_cast<size_t>(row)];
+  const int kmax = k0 + (endw - begin) - 1;
+  return (begin == endw || (k0 >= 0 && kmax < plan.N));
+}
+
+static inline void mapped_coeff_col(
+  int k,
+  const Plan1D& plan,
+  int& src,
+  double& sgn)
+{
+  const int N = plan.N;
+  if (k < 0) {
+    if (plan.left_pad <= 0 || plan.pad_src_idx.empty()) {
+      src = 0;
+      sgn = 1.0;
+      return;
+    }
+    const int pad_i = std::min(
+        std::max(plan.left_pad + k, 0),
+        std::max(0, plan.left_pad - 1));
+    src = std::min(
+        std::max(plan.pad_src_idx[static_cast<size_t>(pad_i)], 0),
+        std::max(0, N - 1));
+    sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(pad_i)]);
+    return;
+  }
+
+  if (k < N) {
+    src = k;
+    sgn = 1.0;
+    return;
+  }
+
+  const int last_k = std::max(0, plan.length_total - 1);
+  const int ext_k = (k < plan.length_total) ? k : last_k;
+  if (ext_k < N || plan.rp_src.empty()) {
+    src = std::min(std::max(ext_k, 0), std::max(0, N - 1));
+    sgn = 1.0;
+    return;
+  }
+
+  const int tail_i = std::min(
+      std::max(ext_k - N, 0),
+      static_cast<int>(plan.rp_src.size()) - 1);
+  src = std::min(
+      std::max(plan.rp_src[static_cast<size_t>(tail_i)], 0),
+      std::max(0, N - 1));
+  sgn = static_cast<int>(plan.rp_sign);
+}
+
+static void precompute_batched_row_map(Plan1D& plan)
+{
+  plan.row_runs.clear();
+  plan.coeff_src.assign(plan.weights.size(), 0);
+  plan.coeff_sgn.assign(plan.weights.size(), 1.0);
+  plan.interior_rows = 0;
+  plan.mapped_rows = 0;
+  plan.row_runs.reserve(static_cast<size_t>(3));
+
+  for (int l = 0; l < plan.out_total; ++l) {
+    const int begin = plan.row_ptr[static_cast<size_t>(l)];
+    const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
+    const int k0 = plan.kmin[static_cast<size_t>(l)];
+    const bool interior = is_direct_interior_row(plan, l);
+    append_row_run(plan.row_runs, l, interior);
+
+    if (interior) {
+      ++plan.interior_rows;
+      continue;
+    }
+
+    ++plan.mapped_rows;
+    for (int t = begin; t < endw; ++t) {
+      const size_t ti = static_cast<size_t>(t);
+      const int kt = k0 + (t - begin);
+      mapped_coeff_col(kt, plan, plan.coeff_src[ti], plan.coeff_sgn[ti]);
+    }
+  }
+}
+
 } // namespace
 
 // Build the reusable 1-D plan (window metadata + contiguous weights + pad map)
@@ -294,6 +396,8 @@ Plan1D make_plan_1d(int N, const LSParams& p)
       }
     }
   }
+
+  precompute_batched_row_map(plan);
 
   return plan;
 }
