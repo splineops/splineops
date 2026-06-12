@@ -6,6 +6,151 @@ This note tracks optimization ideas for `splineops.resize`, especially the nativ
 `_lsresize` backend. The goal is to preserve the exact algorithmic behavior while
 reducing runtime, memory movement, and repeated setup cost.
 
+## Weekend Wrap-Up: 2026-06-12
+
+The resize optimization pass now has three solid pillars:
+
+1. **Correctness baseline is stronger.**
+   - Fixed the finite-size spline IIR mirror initializer for short signals and
+     constant preservation.
+   - Added regressions for constants, native/Python parity, batched/native parity,
+     forced batched routing, and default-auto routing.
+   - Latest full-suite validation: `429 passed`.
+
+2. **Native default path is substantially faster for the target 2-D workloads.**
+   - Axis scheduling now processes shrinking axes first and skips pure
+     interpolation identity axes.
+   - Default thread scheduling is more conservative on SMT machines and avoids
+     launching a single worker thread for one-worker decisions.
+   - The native batched axis kernel now covers pure interpolation, projection, and
+     antialiasing.
+   - `LSRESIZE_BATCHED_AXIS` is default-auto when unset. Use
+     `LSRESIZE_BATCHED_AXIS=off` for the original line-by-line path and
+     `LSRESIZE_BATCHED_AXIS=1` to force batching.
+   - The native batched path skips the full extension buffer, uses direct
+     coefficient reads for interior rows, and uses exact source/sign mapping for
+     boundary rows.
+   - Native plans are cached by default with capacity 32. Set
+     `LSRESIZE_PLAN_CACHE_SIZE=0` to measure cold-plan behavior.
+   - Batched row-run metadata is now precomputed inside `Plan1D`, so repeated
+     same-plan calls reuse interior/boundary runs and boundary source/sign maps.
+
+3. **Python fallback is also faster and easier to benchmark.**
+   - `scripts/benchmark_resize_native.py` now supports
+     `--backend {native,python,both}`.
+   - Python fallback defaults are now `SPLINEOPS_BLOCK=256` and
+     `SPLINEOPS_ACCUM=support`.
+   - Python plan cache capacity defaults to 32 via
+     `SPLINEOPS_PLAN_CACHE_SIZE`, with compatibility for
+     `LSRESIZE_PLAN_CACHE_SIZE`.
+
+Current default knobs:
+
+| Area | Default | Override |
+| --- | --- | --- |
+| Native acceleration | auto via `SPLINEOPS_ACCEL=auto` | `always`, `never` |
+| Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
+| Native batch lines | `64` | `LSRESIZE_BATCH_LINES=<n>` |
+| Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
+| Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
+| Python block size | `256` | `SPLINEOPS_BLOCK=<n>` |
+| Python accumulator | `support` | `SPLINEOPS_ACCUM=einsum` or `mulsum` |
+| Python plan cache | enabled, capacity `32` | `SPLINEOPS_PLAN_CACHE_SIZE=<n>` |
+
+Measured progress so far:
+
+- Native default-auto versus explicit native off:
+  - saved sequential artifacts:
+    `/tmp/splineops_resize_auto_default_b64_seq.{json,csv}` and
+    `/tmp/splineops_resize_off_default_b64_seq.{json,csv}`
+  - default-auto with batch size 64 was faster than explicit off on every 2-D
+    standard case by median
+  - 2-D median speedup averaged about `2.15x`; the weakest 2-D standard case was
+    still about `1.57x`
+- Native cached row-run/interior-boundary split versus the committed baseline:
+  - baseline artifact:
+    `/tmp/splineops_resize_native_baseline_head_r8.{json,csv}`
+  - final artifact:
+    `/tmp/splineops_resize_native_after_plan_row_runs_final_r8.{json,csv}`
+  - default-thread medians improved in `15/18` standard cases overall and
+    `14/16` 2-D cases
+  - 2-D median speedup was about `1.12x` mean / `1.12x` median
+  - best-of timings improved in `15/18` cases with about `1.16x` mean /
+    `1.12x` median speedup
+- Native plan cache:
+  - mostly helps small/repeated workloads
+  - observed wins include about `1.17x` for 1-D length 64 cubic, `1.08x` for
+    16x16 cubic, `1.06x` for 32x32 cubic, and `1.02x` for 64x64
+    cubic-antialiasing on the local CPU
+- Python fallback:
+  - `support`/256 versus previous `mulsum`/64 won `18/18` standard cases
+  - mean speedup about `1.85x`, median speedup about `1.82x`
+  - saved artifact:
+    `/tmp/splineops_resize_python_support_block256.{json,csv}`
+
+Validation status:
+
+- Native editable rebuild: clean.
+- Direct batched-axis parity tests: `60 passed`.
+- Focused resize suite: `175 passed`.
+- Forced Python fallback focused suite: `175 passed`.
+- Full suite: `429 passed`.
+- `git diff --check`: clean on the latest implementation pass.
+
+### Full Optimization Roadmap
+
+The algorithm is now in a good exact, default-on state. The remaining high-upside
+work is mostly specialization, precision policy, and repeated-workload API
+design.
+
+1. **Specialized native preset kernels.**
+   - Target methods: `linear`, `cubic`, `linear-antialiasing`,
+     `cubic-antialiasing`.
+   - Replace generic degree-dependent loops in the hottest native paths with
+     compile-time support sizes and branch-free preset kernels.
+   - Keep the current generic path as the fallback for uncommon degree triples.
+   - Introduce behind a temporary feature flag first, then promote only cases
+     that win across saved standard/full benchmark artifacts.
+
+2. **Opt-in float32 internal mode.**
+   - Current native computation uses double internally even for float32 arrays.
+   - Add an experimental precision policy, for example an API option or an env
+     flag, that keeps float32 workloads in float32 scratch/accumulation where
+     accuracy is acceptable.
+   - Validate constant preservation, native/Python agreement thresholds, and
+     high-frequency inputs before making any default change.
+   - This likely has the largest upside for image workloads, but it changes
+     numerical behavior, so it must remain opt-in initially.
+
+3. **Public reusable `ResizePlan`.**
+   - The private native cache is useful but implicit. A public plan object would
+     make repeated same-shape workloads explicit:
+     `plan = ResizePlan(input_shape, zoom, method); out = plan.apply(x)`.
+   - Reuse axis order, per-axis `Plan1D`, row-run metadata, output shapes, and
+     possibly per-thread scratch.
+   - Best fit: video frames, registration loops, batch processing, and repeated
+     augmentation with fixed geometry.
+
+4. **Memory and temporary-buffer strategy.**
+   - Reuse ping-pong intermediate arrays across repeated calls through a plan.
+   - Explore fused final-axis writes or permutation-aware scheduling for
+     workloads where strided passes dominate.
+   - Consider tiling for large volumes where memory traffic, not arithmetic,
+     dominates.
+
+5. **Routing and scheduler calibration on more hardware.**
+   - Re-run standard/full artifacts on machines with different core counts,
+     cache sizes, and SMT behavior.
+   - Revisit `LSRESIZE_BATCH_LINES=64`, default-auto thresholds, and default
+     thread caps only after cross-machine artifacts show a consistent better
+     choice.
+
+6. **Benchmark hygiene before every default change.**
+   - Always save before/after JSON+CSV artifacts.
+   - Compare medians and best-of timings; short sub-3 ms cases can be noisy.
+   - Keep parity checks enabled for smoke/small profiles, and use
+     `--skip-checks` only for large timing sweeps.
+
 ## Handoff: 2026-06-12
 
 Work completed today:
