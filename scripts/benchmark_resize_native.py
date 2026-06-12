@@ -139,13 +139,17 @@ def set_batched_axis(value: str) -> None:
     if value == "env":
         return
     if value == "off":
-        os.environ.pop("LSRESIZE_BATCHED_AXIS", None)
+        os.environ["LSRESIZE_BATCHED_AXIS"] = "off"
     elif value == "on":
         os.environ["LSRESIZE_BATCHED_AXIS"] = "1"
     elif value == "auto":
         os.environ["LSRESIZE_BATCHED_AXIS"] = "auto"
     else:
         raise ValueError(f"Unsupported batched-axis setting: {value}")
+
+
+def batched_axis_label() -> str:
+    return os.environ.get("LSRESIZE_BATCHED_AXIS", "<default:auto>")
 
 
 def set_batch_lines(value: int | None) -> None:
@@ -425,7 +429,7 @@ def parse_args() -> argparse.Namespace:
         "--batched-axis",
         choices=("env", "off", "on", "auto"),
         default="env",
-        help="Control LSRESIZE_BATCHED_AXIS for this run.",
+        help="Control LSRESIZE_BATCHED_AXIS for this run; unset/env uses the native default auto router.",
     )
     parser.add_argument(
         "--batch-lines",
@@ -482,7 +486,7 @@ def main() -> int:
     print(f"threads={','.join(args.threads)}")
     print(
         "batched_axis="
-        f"{os.environ.get('LSRESIZE_BATCHED_AXIS', '<unset>')} "
+        f"{batched_axis_label()} "
         f"batch_lines={','.join('<unset>' if v is None else str(v) for v in batch_line_values)}"
     )
     print(f"python={platform.python_version()} numpy={np.__version__}")
@@ -522,7 +526,7 @@ def main() -> int:
                     method=case.method,
                     dtype=case.dtype,
                     threads=thread_value,
-                    batched_axis=os.environ.get("LSRESIZE_BATCHED_AXIS", "<unset>"),
+                    batched_axis=batched_axis_label(),
                     batch_lines=os.environ.get("LSRESIZE_BATCH_LINES", "<unset>"),
                     best_ms=min(samples) * 1000.0,
                     median_ms=statistics.median(samples) * 1000.0,
@@ -545,7 +549,8 @@ def main() -> int:
             "repeats": args.repeats,
             "warmups": args.warmups,
             "threads": args.threads,
-            "batched_axis": os.environ.get("LSRESIZE_BATCHED_AXIS"),
+            "batched_axis": batched_axis_label(),
+            "batched_axis_env": os.environ.get("LSRESIZE_BATCHED_AXIS"),
             "batch_lines": [None if v is None else int(v) for v in batch_line_values],
             "check_max_elements": args.check_max_elements,
             "atol": args.atol,

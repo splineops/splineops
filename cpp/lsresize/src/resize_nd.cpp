@@ -63,10 +63,16 @@ static inline BatchedAxisMode batched_axis_mode()
 {
   const char* value = std::getenv("LSRESIZE_BATCHED_AXIS");
   if (value == nullptr || value[0] == '\0') {
-    return BatchedAxisMode::Off;
+    return BatchedAxisMode::Auto;
   }
   if (env_equals_ci(value, "auto")) {
     return BatchedAxisMode::Auto;
+  }
+  if (value[0] == '0' ||
+      env_equals_ci(value, "off") ||
+      env_equals_ci(value, "false") ||
+      env_equals_ci(value, "no")) {
+    return BatchedAxisMode::Off;
   }
   if (value[0] == '1' ||
       value[0] == 't' ||
@@ -105,8 +111,8 @@ static inline bool should_use_batched_axis(
     return true;
   }
 
-  // Conservative opt-in: local benchmarks show stable wins for large 2-D
-  // passes, while 3-D/default-thread cases are still mixed.
+  // Conservative default: local benchmarks show stable wins for large 2-D
+  // passes, while 3-D cases are still mixed.
   if (in_shape.size() != 2) {
     return false;
   }

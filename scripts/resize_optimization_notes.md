@@ -12,8 +12,10 @@ Work completed today:
 
 - Extended the native batched axis kernel behind `LSRESIZE_BATCHED_AXIS=1` from
   pure interpolation to projection and antialiasing.
-- Added conservative opt-in automatic routing with `LSRESIZE_BATCHED_AXIS=auto`.
-  Default/unset behavior is unchanged.
+- Promoted conservative automatic routing to the default when
+  `LSRESIZE_BATCHED_AXIS` is unset. Use `LSRESIZE_BATCHED_AXIS=off` to
+  force the original line-by-line native path, and `LSRESIZE_BATCHED_AXIS=1`
+  to force the batched path everywhere.
 - Reworked the batched axis accumulator to skip materializing the full
   `[left pad | line | right pad]` extension buffer. Interior rows now read
   coefficient columns directly, and boundary/tail rows use a precomputed
@@ -46,7 +48,9 @@ Work completed today:
 Current changed files to expect in the working tree:
 
 - `cpp/lsresize/src/resize_nd.cpp`
+- `scripts/benchmark_resize_native.py`
 - `scripts/resize_optimization_notes.md`
+- `tests/test_02_03_resize_cpp.py`
 
 Validation run:
 
@@ -58,34 +62,38 @@ Validation run:
   tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_equal_degree_projection \
   tests/test_02_03_resize_cpp.py::test_batched_axis_auto_matches_default
 .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
-LSRESIZE_BATCHED_AXIS=auto .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
+LSRESIZE_BATCHED_AXIS=off .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
 LSRESIZE_BATCHED_AXIS=1 .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
 .venv/bin/python -m pytest -q
-LSRESIZE_BATCHED_AXIS=auto .venv/bin/python -m pytest -q
+.venv/bin/python -m py_compile scripts/benchmark_resize_native.py
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile smoke \
+  --threads 1,default \
+  --repeats 3 \
+  --warmups 1 \
+  --batched-axis env \
+  --skip-checks
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile smoke \
+  --threads 1,default \
+  --repeats 3 \
+  --warmups 1 \
+  --batched-axis off \
+  --skip-checks
 git diff --check
 ```
 
 Observed results:
 
-- New batched/auto parity tests: `60 passed`
-- Focused resize suite default: `175 passed`
-- Focused resize suite with `LSRESIZE_BATCHED_AXIS=auto`: `175 passed`
-- Focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
-- Full suite default: `429 passed`
-- Full suite with `LSRESIZE_BATCHED_AXIS=auto`: `429 passed`
-- After the interior/boundary split:
-  - batched/auto parity tests: `60 passed`
-  - focused resize suite default: `175 passed`
-  - focused resize suite with `LSRESIZE_BATCHED_AXIS=auto`: `175 passed`
+- After promoting auto routing to the unset default:
+  - `py_compile`: clean
+  - new batched/default-auto/off parity tests: `60 passed`
+  - focused resize suite default/unset: `175 passed`
+  - focused resize suite with `LSRESIZE_BATCHED_AXIS=off`: `175 passed`
   - focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
-  - full suite default: `429 passed`
-  - full suite with `LSRESIZE_BATCHED_AXIS=auto`: `429 passed`
-- After the pure-interpolation specialization:
-  - batched/auto parity tests: `60 passed`
-  - focused resize suite with `LSRESIZE_BATCHED_AXIS=auto`: `175 passed`
-  - focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
-  - full suite default: `429 passed`
-  - full suite with `LSRESIZE_BATCHED_AXIS=auto`: `429 passed`
+  - full suite default/unset: `429 passed`
+  - explicit `auto` is covered by `test_batched_axis_auto_matches_default`
+  - smoke benchmark reports unset/env mode as `batched_axis=<default:auto>`
 - `git diff --check`: clean
 
 Fresh local benchmark command:
@@ -198,10 +206,11 @@ Smoke `--batch-lines-sweep 8,16,32,64` observations:
 
 Important caveat:
 
-- Keep `LSRESIZE_BATCHED_AXIS` disabled by default for now.
-- Use `LSRESIZE_BATCHED_AXIS=auto` for opt-in performance runs. Auto currently
-  routes only sufficiently large 2-D axis passes and leaves 3-D on the original
-  path because 3-D forced-batched timings remain mixed.
+- `LSRESIZE_BATCHED_AXIS` is now default-auto. Unset and `auto` both route only
+  sufficiently large 2-D axis passes through batching and leave 3-D on the
+  original path because 3-D forced-batched timings remain mixed.
+- Use `LSRESIZE_BATCHED_AXIS=off` to force the original line-by-line path for
+  debugging, comparisons, and conservative deployments.
 - `LSRESIZE_BATCHED_AXIS=1` remains useful for stress/parity testing the
   batched implementation directly.
 
@@ -209,12 +218,9 @@ Suggested next steps:
 
 1. Run a saved standard/full `--batch-lines-sweep` artifact on the target CPU
    before changing the default batch size from 32.
-2. Consider enabling `LSRESIZE_BATCHED_AXIS=auto` in performance experiments or
-   downstream workloads, but keep package defaults unchanged until more target
-   hardware has been swept.
-3. Run a standard/full saved sweep with medians and CPU affinity before changing
-   `LSRESIZE_BATCHED_AXIS=auto` from opt-in to default.
-4. Consider fused resize/permutation writes for N-D cases where strided passes
+2. Run default-auto versus `LSRESIZE_BATCHED_AXIS=off` saved artifacts on the
+   target CPU before tuning the auto heuristic further.
+3. Consider fused resize/permutation writes for N-D cases where strided passes
    dominate.
 
 ## Handoff: 2026-06-11

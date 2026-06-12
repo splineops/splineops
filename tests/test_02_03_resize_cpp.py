@@ -113,7 +113,7 @@ def test_batched_axis_matches_default_pure_interpolation(monkeypatch, dtype, met
     arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
-    monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
     rz = _load_resize_module(force_reload=True)
     expected = rz.resize(arr, zoom_factors=zoom, method=method)
 
@@ -147,7 +147,7 @@ def test_batched_axis_matches_default_antialiasing(monkeypatch, dtype, method, s
     arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
-    monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
     rz = _load_resize_module(force_reload=True)
     expected = rz.resize(arr, zoom_factors=zoom, method=method)
 
@@ -180,7 +180,7 @@ def test_batched_axis_matches_default_equal_degree_projection(
     arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
-    monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
     rz = _load_resize_module(force_reload=True)
     expected = rz.resize_degrees(
         arr,
@@ -224,19 +224,23 @@ def test_batched_axis_auto_matches_default(monkeypatch, dtype, method, shape, zo
     arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
-    monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
     rz = _load_resize_module(force_reload=True)
     expected = rz.resize(arr, zoom_factors=zoom, method=method)
-
-    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
-    rz = _load_resize_module(force_reload=True)
-    actual = rz.resize(arr, zoom_factors=zoom, method=method)
 
     if method.endswith("-antialiasing"):
         atol = 3e-5 if dtype == np.float32 else 2e-9
     else:
         atol = 5e-6 if dtype == np.float32 else 5e-11
-    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+    for env_value in (None, "auto"):
+        if env_value is None:
+            monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+        else:
+            monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", env_value)
+        rz = _load_resize_module(force_reload=True)
+        actual = rz.resize(arr, zoom_factors=zoom, method=method)
+        assert np.allclose(actual, expected, atol=atol, rtol=atol)
 
 
 @pytest.mark.skipif(
