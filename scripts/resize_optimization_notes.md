@@ -44,13 +44,17 @@ Work completed today:
   - `--batch-lines-sweep`
   - per-result batched mode and batch-size metadata
   - per-case batch-size sweep summaries
+- Added workload-aware default scheduling in `parallel_utils.h`:
+  - explicit `LSRESIZE_NUM_THREADS` remains a hard override
+  - unset/default scheduling caps larger pools near a physical-core estimate
+    instead of always using every logical CPU
+  - one-worker decisions now run directly in the current thread instead of
+    launching a single `std::thread`
 
 Current changed files to expect in the working tree:
 
-- `cpp/lsresize/src/resize_nd.cpp`
-- `scripts/benchmark_resize_native.py`
+- `cpp/lsresize/src/parallel_utils.h`
 - `scripts/resize_optimization_notes.md`
-- `tests/test_02_03_resize_cpp.py`
 
 Validation run:
 
@@ -80,6 +84,24 @@ LSRESIZE_BATCHED_AXIS=1 .venv/bin/python -m pytest -q tests/test_02_02_resize.py
   --warmups 1 \
   --batched-axis off \
   --skip-checks
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --threads 1,2,4,8,16,default \
+  --repeats 3 \
+  --warmups 1 \
+  --batched-axis env \
+  --skip-checks \
+  --output-json /tmp/splineops_resize_scheduler_before_auto.json \
+  --output-csv /tmp/splineops_resize_scheduler_before_auto.csv
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --threads 8,16,default \
+  --repeats 5 \
+  --warmups 2 \
+  --batched-axis env \
+  --skip-checks \
+  --output-json /tmp/splineops_resize_scheduler_after_physicalcap.json \
+  --output-csv /tmp/splineops_resize_scheduler_after_physicalcap.csv
 git diff --check
 ```
 
@@ -94,6 +116,16 @@ Observed results:
   - full suite default/unset: `429 passed`
   - explicit `auto` is covered by `test_batched_axis_auto_matches_default`
   - smoke benchmark reports unset/env mode as `batched_axis=<default:auto>`
+- After the scheduler default-thread update:
+  - focused resize suite default/unset: `175 passed`
+  - focused resize suite with `LSRESIZE_BATCHED_AXIS=off`: `175 passed`
+  - focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
+  - full suite default/unset: `429 passed`
+  - final standard thread sweep saved to
+    `/tmp/splineops_resize_scheduler_after_physicalcap.{json,csv}`
+  - on the local 16-logical/8-core CPU, default scheduling now tracks the
+    8-thread/physical-core-style setting instead of the previous all-logical
+    default, while explicit `LSRESIZE_NUM_THREADS=16` remains available
 - `git diff --check`: clean
 
 Fresh local benchmark command:
@@ -213,6 +245,9 @@ Important caveat:
   debugging, comparisons, and conservative deployments.
 - `LSRESIZE_BATCHED_AXIS=1` remains useful for stress/parity testing the
   batched implementation directly.
+- Default thread scheduling is now conservative on SMT-style machines. Use
+  `LSRESIZE_NUM_THREADS=<n>` to force a particular thread count for benchmark
+  sweeps or deployments that benefit from all logical CPUs.
 
 Suggested next steps:
 
@@ -220,7 +255,9 @@ Suggested next steps:
    before changing the default batch size from 32.
 2. Run default-auto versus `LSRESIZE_BATCHED_AXIS=off` saved artifacts on the
    target CPU before tuning the auto heuristic further.
-3. Consider fused resize/permutation writes for N-D cases where strided passes
+3. Run a standard/full saved thread sweep on target hardware before changing
+   the default scheduler constants.
+4. Consider fused resize/permutation writes for N-D cases where strided passes
    dominate.
 
 ## Handoff: 2026-06-11
