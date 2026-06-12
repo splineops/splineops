@@ -36,12 +36,49 @@ static inline int64_t prod_elems(
   return p;
 }
 
-static inline bool env_flag_enabled(const char* name)
+enum class BatchedAxisMode {
+  Off,
+  On,
+  Auto
+};
+
+static inline char ascii_lower(char c)
 {
-  const char* value = std::getenv(name);
-  return value != nullptr &&
-         (value[0] == '1' || value[0] == 't' || value[0] == 'T' ||
-          value[0] == 'y' || value[0] == 'Y');
+  return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+}
+
+static inline bool env_equals_ci(const char* value, const char* token)
+{
+  if (value == nullptr) return false;
+  size_t i = 0;
+  for (; token[i] != '\0'; ++i) {
+    if (ascii_lower(value[i]) != token[i]) {
+      return false;
+    }
+  }
+  return value[i] == '\0';
+}
+
+static inline BatchedAxisMode batched_axis_mode()
+{
+  const char* value = std::getenv("LSRESIZE_BATCHED_AXIS");
+  if (value == nullptr || value[0] == '\0') {
+    return BatchedAxisMode::Off;
+  }
+  if (env_equals_ci(value, "auto")) {
+    return BatchedAxisMode::Auto;
+  }
+  if (value[0] == '1' ||
+      value[0] == 't' ||
+      value[0] == 'T' ||
+      value[0] == 'y' ||
+      value[0] == 'Y' ||
+      env_equals_ci(value, "on") ||
+      env_equals_ci(value, "true") ||
+      env_equals_ci(value, "yes")) {
+    return BatchedAxisMode::On;
+  }
+  return BatchedAxisMode::Off;
 }
 
 static inline int env_int_or_default(const char* name, int fallback)
@@ -52,6 +89,37 @@ static inline int env_int_or_default(const char* name, int fallback)
     }
   }
   return fallback;
+}
+
+static inline bool should_use_batched_axis(
+  BatchedAxisMode mode,
+  const std::vector<int64_t>& in_shape,
+  const LSParams& p,
+  const Plan1D& plan,
+  int64_t nlines)
+{
+  if (mode == BatchedAxisMode::Off) {
+    return false;
+  }
+  if (mode == BatchedAxisMode::On) {
+    return true;
+  }
+
+  // Conservative opt-in: local benchmarks show stable wins for large 2-D
+  // passes, while 3-D/default-thread cases are still mixed.
+  if (in_shape.size() != 2) {
+    return false;
+  }
+  if (p.interp_degree <= 0) {
+    return false;
+  }
+  if (nlines < 128) {
+    return false;
+  }
+  if (plan.N < 64 || plan.out_total < 64) {
+    return false;
+  }
+  return true;
 }
 
 static inline void line_offsets(
@@ -86,110 +154,57 @@ static inline void line_offsets(
   }
 }
 
-static double initial_causal_colmajor(
-  const std::vector<double>& coeff,
-  int B,
+static inline void mapped_coeff_col(
+  int k,
   int N,
-  int b,
-  double z,
-  double tol = 1e-10)
+  int length,
+  int LP,
+  const Plan1D& plan,
+  int& src,
+  double& sgn)
 {
-  if (N == 0) return 0.0;
-  if (N == 1) return coeff[static_cast<size_t>(b)];
-
-  size_t horizon = static_cast<size_t>(N);
-  if (tol > 0.0) {
-    horizon = std::min(
-        static_cast<size_t>(N),
-        static_cast<size_t>(2 + std::log(tol) / std::log(std::abs(z))));
-  }
-
-  if (horizon < static_cast<size_t>(N)) {
-    double sum = coeff[static_cast<size_t>(b)];
-    double p = z;
-    for (size_t n = 1; n < horizon; ++n) {
-      sum += p * coeff[n * static_cast<size_t>(B) + static_cast<size_t>(b)];
-      p *= z;
+  if (k < 0) {
+    if (LP <= 0 || plan.pad_src_idx.empty()) {
+      src = 0;
+      sgn = 1.0;
+      return;
     }
-    return sum;
+    const int pad_i = std::min(std::max(LP + k, 0), std::max(0, LP - 1));
+    src = std::min(
+        std::max(plan.pad_src_idx[static_cast<size_t>(pad_i)], 0),
+        std::max(0, N - 1));
+    sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(pad_i)]);
+    return;
   }
 
-  const double zn = std::pow(z, double(N - 1));
-  double sum = coeff[static_cast<size_t>(b)] +
-               zn * coeff[static_cast<size_t>(N - 1) *
-                          static_cast<size_t>(B) +
-                          static_cast<size_t>(b)];
-  double p1 = z;
-  double p2 = (zn * zn) / z;
-  for (int n = 1; n + 1 < N; ++n) {
-    sum += (p1 + p2) *
-           coeff[static_cast<size_t>(n) * static_cast<size_t>(B) +
-                 static_cast<size_t>(b)];
-    p1 *= z;
-    p2 /= z;
+  if (k < N) {
+    src = k;
+    sgn = 1.0;
+    return;
   }
 
-  return sum / (1.0 - (zn * zn));
-}
-
-static void get_interpolation_coefficients_colmajor(
-  std::vector<double>& coeff,
-  int B,
-  int N,
-  int deg)
-{
-  if (deg <= 1 || N <= 1 || B <= 0) return;
-
-  const auto& poles = spline_poles(deg);
-  double lambda = 1.0;
-  for (double z : poles) {
-    lambda *= (1.0 - z) * (1.0 - 1.0 / z);
-  }
-  for (double& v : coeff) {
-    v *= lambda;
+  const int last_k = std::max(0, length - 1);
+  const int ext_k = (k < length) ? k : last_k;
+  if (ext_k < N || plan.rp_src.empty()) {
+    src = std::min(std::max(ext_k, 0), std::max(0, N - 1));
+    sgn = 1.0;
+    return;
   }
 
-  const size_t Bs = static_cast<size_t>(B);
-  for (double z : poles) {
-    for (int b = 0; b < B; ++b) {
-      coeff[static_cast<size_t>(b)] =
-          initial_causal_colmajor(coeff, B, N, b, z);
-    }
-
-    for (int n = 1; n < N; ++n) {
-      double* cur = coeff.data() + static_cast<size_t>(n) * Bs;
-      const double* prev = coeff.data() + static_cast<size_t>(n - 1) * Bs;
-      for (int b = 0; b < B; ++b) {
-        cur[static_cast<size_t>(b)] += z * prev[static_cast<size_t>(b)];
-      }
-    }
-
-    double* last = coeff.data() + static_cast<size_t>(N - 1) * Bs;
-    const double* before_last = coeff.data() + static_cast<size_t>(N - 2) * Bs;
-    const double denom = z * z - 1.0;
-    for (int b = 0; b < B; ++b) {
-      last[static_cast<size_t>(b)] =
-          (z * before_last[static_cast<size_t>(b)] +
-           last[static_cast<size_t>(b)]) * z / denom;
-    }
-
-    for (int n = N - 2; n >= 0; --n) {
-      double* cur = coeff.data() + static_cast<size_t>(n) * Bs;
-      const double* next = coeff.data() + static_cast<size_t>(n + 1) * Bs;
-      for (int b = 0; b < B; ++b) {
-        cur[static_cast<size_t>(b)] =
-            z * (next[static_cast<size_t>(b)] - cur[static_cast<size_t>(b)]);
-      }
-    }
-  }
+  const int tail_i = std::min(
+      std::max(ext_k - N, 0),
+      static_cast<int>(plan.rp_src.size()) - 1);
+  src = std::min(
+      std::max(plan.rp_src[static_cast<size_t>(tail_i)], 0),
+      std::max(0, N - 1));
+  sgn = static_cast<int>(plan.rp_sign);
 }
 
 template <typename Scalar>
-static void resize_along_axis_batched_interp_t(
+static void resize_along_axis_batched_t(
   const Scalar* LS_RESTRICT in,
   Scalar* LS_RESTRICT out,
   const std::vector<int64_t>& in_shape,
-  const std::vector<int64_t>& out_shape,
   const std::vector<int64_t>& in_strides,
   const std::vector<int64_t>& out_strides,
   int axis,
@@ -201,31 +216,63 @@ static void resize_along_axis_batched_interp_t(
   const int D = static_cast<int>(in_shape.size());
   const int N = plan.N;
   const int outN = plan.outN;
+  const int out_total = plan.out_total;
   const int length = plan.length_total;
   const int LP = plan.left_pad;
-  const int RP = plan.right_pad;
-  const int full_len = LP + length + RP;
+  const int corr_degree = (p.analy_degree < 0)
+                        ? p.interp_degree
+                        : (p.analy_degree + p.synthe_degree + 1);
   const int batch_lines = std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", 32));
   const bool axis_contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+  const size_t nnz = plan.weights.size();
+  std::vector<char> row_is_interior(static_cast<size_t>(out_total), 0);
+  std::vector<int> coeff_src(nnz, 0);
+  std::vector<double> coeff_sgn(nnz, 1.0);
+  for (int l = 0; l < out_total; ++l) {
+    const int begin = plan.row_ptr[static_cast<size_t>(l)];
+    const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
+    const int k0 = plan.kmin[static_cast<size_t>(l)];
+    const int kmax = k0 + (endw - begin) - 1;
+    const bool interior = (begin == endw || (k0 >= 0 && kmax < N));
+    row_is_interior[static_cast<size_t>(l)] = interior ? 1 : 0;
+    for (int t = begin; t < endw; ++t) {
+      const int kt = k0 + (t - begin);
+      if (interior) {
+        coeff_src[static_cast<size_t>(t)] = kt;
+        coeff_sgn[static_cast<size_t>(t)] = 1.0;
+      } else {
+        mapped_coeff_col(
+            kt,
+            N,
+            length,
+            LP,
+            plan,
+            coeff_src[static_cast<size_t>(t)],
+            coeff_sgn[static_cast<size_t>(t)]);
+      }
+    }
+  }
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
     std::vector<int64_t> in_offsets(static_cast<size_t>(batch_lines));
     std::vector<int64_t> out_offsets(static_cast<size_t>(batch_lines));
     std::vector<double> coeff;
-    std::vector<double> ext_full;
     std::vector<double> y;
+    std::vector<double> average;
+    std::vector<double> filter_work;
     coeff.reserve(static_cast<size_t>(N) * static_cast<size_t>(batch_lines));
-    ext_full.reserve(static_cast<size_t>(full_len) * static_cast<size_t>(batch_lines));
-    y.reserve(static_cast<size_t>(outN) * static_cast<size_t>(batch_lines));
+    y.reserve(static_cast<size_t>(out_total) * static_cast<size_t>(batch_lines));
+    average.reserve(static_cast<size_t>(batch_lines));
+    filter_work.reserve(static_cast<size_t>(std::max(out_total, N)) *
+                        static_cast<size_t>(batch_lines));
 
     for (int64_t block = start; block < end; block += batch_lines) {
       const int B = static_cast<int>(std::min<int64_t>(batch_lines, end - block));
       const size_t Bs = static_cast<size_t>(B);
-      coeff.assign(static_cast<size_t>(N) * Bs, 0.0);
-      ext_full.assign(static_cast<size_t>(full_len) * Bs, 0.0);
-      y.assign(static_cast<size_t>(outN) * Bs, 0.0);
+      coeff.resize(static_cast<size_t>(N) * Bs);
+      y.assign(static_cast<size_t>(out_total) * Bs, 0.0);
 
       for (int b = 0; b < B; ++b) {
         int64_t in_off = 0;
@@ -259,62 +306,56 @@ static void resize_along_axis_batched_interp_t(
       }
 
       get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
-
-      for (int i = 0; i < LP; ++i) {
-        const int src = std::min(
-            std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0),
-            std::max(0, N - 1));
-        const double sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(i)]);
-        double* dst = ext_full.data() + static_cast<size_t>(i) * Bs;
-        const double* src_col = coeff.data() + static_cast<size_t>(src) * Bs;
-        for (int b = 0; b < B; ++b) {
-          dst[static_cast<size_t>(b)] = sgn * src_col[static_cast<size_t>(b)];
-        }
-      }
-
-      for (int n = 0; n < N; ++n) {
-        double* dst = ext_full.data() + static_cast<size_t>(LP + n) * Bs;
-        const double* src = coeff.data() + static_cast<size_t>(n) * Bs;
-        std::copy(src, src + B, dst);
-      }
-
-      const int rem = length - N;
-      if (rem > 0 && !plan.rp_src.empty()) {
-        const double sgn = static_cast<int>(plan.rp_sign);
-        for (int i = 0; i < rem; ++i) {
-          const int src = plan.rp_src[static_cast<size_t>(i)];
-          double* dst = ext_full.data() + static_cast<size_t>(LP + N + i) * Bs;
-          const double* src_col = coeff.data() + static_cast<size_t>(src) * Bs;
-          for (int b = 0; b < B; ++b) {
-            dst[static_cast<size_t>(b)] = sgn * src_col[static_cast<size_t>(b)];
-          }
-        }
-      }
-
-      if (RP > 0) {
-        const double* last = ext_full.data() + static_cast<size_t>(LP + length - 1) * Bs;
-        for (int i = 0; i < RP; ++i) {
-          double* dst = ext_full.data() + static_cast<size_t>(LP + length + i) * Bs;
-          std::copy(last, last + B, dst);
-        }
+      if (p.analy_degree >= 0) {
+        do_integ_colmajor(
+            coeff,
+            B,
+            N,
+            p.analy_degree + 1,
+            average,
+            filter_work);
       }
 
       const int* rp = plan.row_ptr.data();
       const double* ww = plan.weights.data();
-      for (int l = 0; l < outN; ++l) {
+      for (int l = 0; l < out_total; ++l) {
         const int begin = rp[static_cast<size_t>(l)];
         const int endw = rp[static_cast<size_t>(l) + 1];
-        const int k0 = plan.kmin[static_cast<size_t>(l)];
         double* y_col = y.data() + static_cast<size_t>(l) * Bs;
 
-        for (int t = begin; t < endw; ++t) {
-          const double w = ww[static_cast<size_t>(t)];
-          const int kt = k0 + (t - begin);
-          const double* v = ext_full.data() + static_cast<size_t>(LP + kt) * Bs;
-          for (int b = 0; b < B; ++b) {
-            y_col[static_cast<size_t>(b)] += w * v[static_cast<size_t>(b)];
+        if (row_is_interior[static_cast<size_t>(l)]) {
+          for (int t = begin; t < endw; ++t) {
+            const double w = ww[static_cast<size_t>(t)];
+            const int src = coeff_src[static_cast<size_t>(t)];
+            const double* v = coeff.data() + static_cast<size_t>(src) * Bs;
+            for (int b = 0; b < B; ++b) {
+              y_col[static_cast<size_t>(b)] += w * v[static_cast<size_t>(b)];
+            }
+          }
+        } else {
+          for (int t = begin; t < endw; ++t) {
+            const double w = ww[static_cast<size_t>(t)];
+            const int src = coeff_src[static_cast<size_t>(t)];
+            const double sgn = coeff_sgn[static_cast<size_t>(t)];
+            const double* v = coeff.data() + static_cast<size_t>(src) * Bs;
+            for (int b = 0; b < B; ++b) {
+              y_col[static_cast<size_t>(b)] +=
+                  w * (sgn * v[static_cast<size_t>(b)]);
+            }
           }
         }
+      }
+
+      if (p.analy_degree >= 0) {
+        do_diff_colmajor(y, B, out_total, p.analy_degree + 1, filter_work);
+        for (int l = 0; l < out_total; ++l) {
+          double* y_col = y.data() + static_cast<size_t>(l) * Bs;
+          for (int b = 0; b < B; ++b) {
+            y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+          }
+        }
+        get_interpolation_coefficients_colmajor(y, B, out_total, corr_degree);
+        get_samples_colmajor(y, B, out_total, p.synthe_degree, filter_work);
       }
 
       for (int b = 0; b < B; ++b) {
@@ -394,12 +435,16 @@ static void resize_along_axis_t(
   const int N_line = static_cast<int>(in_shape[static_cast<size_t>(axis)]);
   const Plan1D plan = make_plan_1d(N_line, p);
 
-  if (env_flag_enabled("LSRESIZE_BATCHED_AXIS") && p.analy_degree < 0) {
-    resize_along_axis_batched_interp_t(
+  if (should_use_batched_axis(
+          batched_axis_mode(),
+          in_shape,
+          p,
+          plan,
+          nlines)) {
+    resize_along_axis_batched_t(
         in,
         out,
         in_shape,
-        out_shape,
         in_strides,
         out_strides,
         axis,

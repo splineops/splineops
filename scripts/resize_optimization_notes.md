@@ -1,10 +1,194 @@
 # Resize Optimization Notes
 
-Date: 2026-06-11
+Date: 2026-06-12
 
 This note tracks optimization ideas for `splineops.resize`, especially the native
 `_lsresize` backend. The goal is to preserve the exact algorithmic behavior while
 reducing runtime, memory movement, and repeated setup cost.
+
+## Handoff: 2026-06-12
+
+Work completed today:
+
+- Extended the native batched axis kernel behind `LSRESIZE_BATCHED_AXIS=1` from
+  pure interpolation to projection and antialiasing.
+- Added conservative opt-in automatic routing with `LSRESIZE_BATCHED_AXIS=auto`.
+  Default/unset behavior is unchanged.
+- Reworked the batched axis accumulator to skip materializing the full
+  `[left pad | line | right pad]` extension buffer. Interior rows now read
+  coefficient columns directly, and boundary/tail rows use a precomputed
+  per-weight source/sign table.
+- Moved the col-major batched IIR prefilter into `cpp/lsresize/src/filters.*`
+  so the finite-size mirror initializer is shared instead of duplicated in
+  `resize_nd.cpp`.
+- Added batched native helpers for:
+  - `do_integ`
+  - `do_diff`
+  - output interpolation prefilter
+  - output sampling FIR
+- Added native parity regressions comparing the batched path against the
+  default native path for:
+  - pure `linear`, `quadratic`, and `cubic`
+  - `linear-antialiasing`, `quadratic-antialiasing`, and `cubic-antialiasing`
+  - equal-degree projection (`interp = analy = synthe`) for degrees 1, 2, 3
+- Added an `auto`-mode parity regression covering large 2-D cases and a 3-D
+  fallback case.
+- Extended `scripts/benchmark_resize_native.py` with:
+  - `--batched-axis {env,off,on,auto}`
+  - `--batch-lines-sweep`
+  - per-result batched mode and batch-size metadata
+  - per-case batch-size sweep summaries
+
+Current changed files to expect in the working tree:
+
+- `cpp/lsresize/src/filters.cpp`
+- `cpp/lsresize/src/filters.h`
+- `cpp/lsresize/src/resize_nd.cpp`
+- `scripts/benchmark_resize_native.py`
+- `tests/test_02_03_resize_cpp.py`
+- `scripts/resize_optimization_notes.md`
+
+Validation run:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_pure_interpolation \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_antialiasing \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_equal_degree_projection \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_auto_matches_default
+.venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
+LSRESIZE_BATCHED_AXIS=auto .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
+LSRESIZE_BATCHED_AXIS=1 .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
+.venv/bin/python -m pytest -q
+LSRESIZE_BATCHED_AXIS=auto .venv/bin/python -m pytest -q
+git diff --check
+```
+
+Observed results:
+
+- New batched/auto parity tests: `60 passed`
+- Focused resize suite default: `175 passed`
+- Focused resize suite with `LSRESIZE_BATCHED_AXIS=auto`: `175 passed`
+- Focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
+- Full suite default: `429 passed`
+- Full suite with `LSRESIZE_BATCHED_AXIS=auto`: `429 passed`
+- After the interior/boundary split:
+  - batched/auto parity tests: `60 passed`
+  - focused resize suite default: `175 passed`
+  - focused resize suite with `LSRESIZE_BATCHED_AXIS=auto`: `175 passed`
+  - focused resize suite with `LSRESIZE_BATCHED_AXIS=1`: `175 passed`
+  - full suite default: `429 passed`
+  - full suite with `LSRESIZE_BATCHED_AXIS=auto`: `429 passed`
+- `git diff --check`: clean
+
+Fresh local benchmark command:
+
+```bash
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --threads 1,default \
+  --repeats 3 \
+  --warmups 1 \
+  --batched-axis off \
+  --skip-checks
+
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --threads 1,default \
+  --repeats 3 \
+  --warmups 1 \
+  --batched-axis on \
+  --batch-lines 32 \
+  --skip-checks
+
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile smoke \
+  --threads 1,default \
+  --repeats 2 \
+  --warmups 1 \
+  --batched-axis on \
+  --batch-lines-sweep 8,16,32,64 \
+  --skip-checks
+
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --threads 1,default \
+  --repeats 3 \
+  --warmups 1 \
+  --batched-axis auto \
+  --skip-checks
+```
+
+Selected best-of timings from the forced batched run:
+
+| Case | Default path | Batched path | Speedup |
+| --- | ---: | ---: | ---: |
+| float32, 512x512, cubic-antialiasing, 1 thread | 31.42 ms | 13.22 ms | 2.38x |
+| float32, 1024x1024, cubic-antialiasing, 1 thread | 108.73 ms | 52.82 ms | 2.06x |
+| float64, 1024x1024, cubic-antialiasing, 1 thread | 110.56 ms | 49.70 ms | 2.22x |
+| float32, 1024x1024, cubic-antialiasing, default threads | 14.67 ms | 8.22 ms | 1.78x |
+| float64, 1024x1024, cubic-antialiasing, default threads | 11.29 ms | 9.17 ms | 1.23x |
+| float32, 3-D cubic down, default threads | 6.15 ms | 7.21 ms | 0.85x |
+
+Selected best-of timings from the auto-routing run:
+
+| Case | Default path | Auto path | Speedup |
+| --- | ---: | ---: | ---: |
+| float32, 512x512, cubic down, 1 thread | 12.38 ms | 4.91 ms | 2.52x |
+| float32, 512x512, cubic-antialiasing, 1 thread | 26.63 ms | 14.70 ms | 1.81x |
+| float32, 1024x1024, cubic-antialiasing, 1 thread | 119.30 ms | 41.60 ms | 2.87x |
+| float64, 1024x1024, cubic-antialiasing, 1 thread | 105.72 ms | 42.56 ms | 2.48x |
+| float32, 1024x1024, cubic-antialiasing, default threads | 10.76 ms | 7.83 ms | 1.37x |
+| float32, 3-D cubic down, default threads | 6.19 ms | 5.82 ms | skipped by auto, timing noise |
+
+Selected best-of timings after the interior/boundary split and precomputed
+source/sign table:
+
+| Case | Default path | Auto path | Speedup |
+| --- | ---: | ---: | ---: |
+| float32, 512x512, cubic down, 1 thread | 12.03 ms | 7.06 ms | 1.70x |
+| float32, 1024x1024, cubic down, 1 thread | 25.33 ms | 21.74 ms | 1.17x |
+| float32, 1024x1024, cubic down, default threads | 6.98 ms | 4.63 ms | 1.51x |
+| float32, 1024x1024, cubic-antialiasing, 1 thread | 80.82 ms | 42.71 ms | 1.89x |
+| float32, 1024x1024, cubic-antialiasing, default threads | 11.08 ms | 6.78 ms | 1.63x |
+| float64, 1024x1024, cubic-antialiasing, 1 thread | 110.87 ms | 36.20 ms | 3.06x |
+
+The focused repeat benchmark showed high best-time noise for the default path,
+so median times should be checked before overfitting the auto heuristic.
+
+Smoke `--batch-lines-sweep 8,16,32,64` observations:
+
+- Best batch size is workload/thread dependent.
+- After the no-extension-buffer split, the latest smoke sweep picked different
+  winners across cases: 8 for small single-thread pure cubic, 16 for some
+  default-thread pure/anisotropic cases, 32 for single-thread
+  cubic-antialiasing/anisotropic cases, and 64 for default-thread
+  cubic-antialiasing.
+- The current default of 32 remains a reasonable conservative default. Do not
+  change it without a saved standard/full sweep on the target CPU.
+
+Important caveat:
+
+- Keep `LSRESIZE_BATCHED_AXIS` disabled by default for now.
+- Use `LSRESIZE_BATCHED_AXIS=auto` for opt-in performance runs. Auto currently
+  routes only sufficiently large 2-D axis passes and leaves 3-D on the original
+  path because 3-D forced-batched timings remain mixed.
+- `LSRESIZE_BATCHED_AXIS=1` remains useful for stress/parity testing the
+  batched implementation directly.
+
+Suggested next steps:
+
+1. Run a saved standard/full `--batch-lines-sweep` artifact on the target CPU
+   before changing the default batch size from 32.
+2. Consider enabling `LSRESIZE_BATCHED_AXIS=auto` in performance experiments or
+   downstream workloads, but keep package defaults unchanged until more target
+   hardware has been swept.
+3. Specialize the pure-interpolation batched path further. The extension-buffer
+   removal helped antialiasing/projection most, while pure cubic interpolation
+   still has noisy margins on some 1-thread best-times.
+4. Consider fused resize/permutation writes for N-D cases where strided passes
+   dominate.
 
 ## Handoff: 2026-06-11
 
@@ -27,8 +211,8 @@ Current changed files to expect in the working tree:
 
 - `cpp/lsresize/src/resize_nd.cpp`
   - contains the feature-flagged batched pure-interpolation axis path
-  - current scope is `analy_degree < 0` only
-  - projection and antialiasing still use the existing line-by-line path
+  - note: this 2026-06-11 scope was superseded on 2026-06-12 with projection
+    and antialiasing support
 - `tests/test_02_03_resize_cpp.py`
   - includes parity tests comparing default native output against
     `LSRESIZE_BATCHED_AXIS=1`
@@ -62,13 +246,13 @@ Benchmark artifacts written under `/tmp`:
 - `/tmp/splineops_resize_batched_standard.json`
 - `/tmp/splineops_resize_batched_standard.csv`
 
-Important caveat:
+Important caveat as of 2026-06-11:
 
 - The batched path is promising for pure cubic interpolation, especially larger
   2-D cases, but it is disabled by default. Do not make it default yet.
-- Antialiasing/projection is not batched yet. Most `*-antialiasing` timings in
-  batched runs are still measuring the old path, apart from noise and scheduling
-  effects.
+- This caveat was superseded on 2026-06-12: antialiasing/projection is now
+  covered by the feature-flagged batched path, but the path remains disabled by
+  default pending routing/tuning.
 
 Suggested next steps tomorrow:
 
@@ -91,18 +275,10 @@ Suggested next steps tomorrow:
      --batch-lines 32
    ```
 
-2. Tune `LSRESIZE_BATCH_LINES` for pure interpolation. Early runs suggested 32
-   is good, but 8/16/64 should be compared systematically.
-3. If pure interpolation remains consistently faster, add an automatic routing
-   condition for safe pure-interpolation cases, or keep it behind the flag until
-   projection support is ready.
-4. Extend the batched design to projection/antialiasing:
-   - batched `do_integ`
-   - batched `do_diff`
-   - batched output prefilter and sampling FIR
-   - parity against default native path and Python fallback
-5. After projection parity passes, benchmark `cubic-antialiasing` specifically;
-   that is the method most relevant to the publication story.
+2. Tune `LSRESIZE_BATCH_LINES`; early runs suggested 32 is good, but 8/16/64
+   should be compared systematically.
+3. If batched interpolation and antialiasing remain consistently faster in a
+   subset of cases, add an automatic routing condition for those cases.
 
 ## Current Baseline
 
@@ -257,10 +433,10 @@ Prototype status:
 
 - Feature flag: `LSRESIZE_BATCHED_AXIS=1`.
 - Batch size override: `LSRESIZE_BATCH_LINES=<positive integer>`.
-- Current scope: pure interpolation only, i.e. `analy_degree < 0`.
-- Projection and antialiasing still use the existing line-by-line kernel.
-- Tests added compare flagged native output against default native output for
-  `linear`, `quadratic`, and `cubic` interpolation on 2-D and 3-D cases.
+- Current scope: pure interpolation plus projection/antialiasing.
+- Tests compare flagged native output against default native output for
+  interpolation, antialiasing presets, and equal-degree projection on 2-D and
+  3-D cases.
 
 Early local timings with `LSRESIZE_BATCHED_AXIS=1` and batch size 32:
 
@@ -270,6 +446,9 @@ Early local timings with `LSRESIZE_BATCHED_AXIS=1` and batch size 32:
 | float32, 1024x1024, cubic, default threads | 7.1 ms | 5.3 ms | side-by-side best-of |
 | float64, 512x512, cubic anisotropic, 1 thread | 6.6 ms | 3.3 ms | side-by-side best-of |
 | float64, 512x512, cubic anisotropic, default threads | 1.5 ms | 1.2 ms | side-by-side best-of |
+
+Later local timings after projection support was added are recorded in the
+2026-06-12 handoff above.
 
 ### 5. Interior/Boundary Split
 
@@ -341,15 +520,14 @@ single small 2-D images.
 
 ## Recommended Priority
 
-1. Add a reproducible benchmark harness.
+1. Add conservative automatic routing for the feature-flagged batched path.
 2. Add native plan cache or `ResizePlan`.
 3. Improve thread-count heuristic.
-4. Implement batched native axis kernel.
-5. Split interior and boundary kernels.
-6. Add specialized preset kernels.
-7. Add opt-in float32 internal mode.
-8. Explore tiled/fused memory strategies for large N-D workloads.
+4. Split interior and boundary kernels.
+5. Add specialized preset kernels.
+6. Add opt-in float32 internal mode.
+7. Explore tiled/fused memory strategies for large N-D workloads.
 
 The highest-upside exact redesign is the batched native axis kernel combined
 with an interior/boundary split. The lowest-risk next engineering step is a
-benchmark harness plus native plan reuse.
+batch-size/thread sweep followed by conservative routing.

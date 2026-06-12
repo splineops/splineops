@@ -235,4 +235,326 @@ void diff_as(std::vector<double>& c)
   c[0] *= 2.0;
 }
 
+// -----------------------------------------------------------------------------
+// Batched col-major helpers: C[n * B + b]
+// -----------------------------------------------------------------------------
+
+static double initial_causal_colmajor(
+  const std::vector<double>& c,
+  int B,
+  int N,
+  int b,
+  double z,
+  double tol = 1e-10)
+{
+  if (N == 0) return 0.0;
+  if (N == 1) return c[static_cast<size_t>(b)];
+
+  size_t horizon = static_cast<size_t>(N);
+  if (tol > 0.0) {
+    horizon = std::min(
+        static_cast<size_t>(N),
+        static_cast<size_t>(2 + std::log(tol) / std::log(std::abs(z))));
+  }
+
+  const size_t Bs = static_cast<size_t>(B);
+  const size_t bi = static_cast<size_t>(b);
+
+  if (horizon < static_cast<size_t>(N)) {
+    double sum = c[bi];
+    double p = z;
+    for (size_t n = 1; n < horizon; ++n) {
+      sum += p * c[n * Bs + bi];
+      p *= z;
+    }
+    return sum;
+  }
+
+  const double zn = std::pow(z, double(N - 1));
+  double sum = c[bi] + zn * c[static_cast<size_t>(N - 1) * Bs + bi];
+  double p1 = z;
+  double p2 = (zn * zn) / z;
+  for (int n = 1; n + 1 < N; ++n) {
+    sum += (p1 + p2) * c[static_cast<size_t>(n) * Bs + bi];
+    p1 *= z;
+    p2 /= z;
+  }
+
+  return sum / (1.0 - (zn * zn));
+}
+
+static inline int mirror_symmetric_index(int k, int N)
+{
+  if (N <= 1) return 0;
+  const int period = 2 * N - 2;
+  int t = k % period;
+  if (t < 0) t += period;
+  return (t >= N) ? (period - t) : t;
+}
+
+static void average_colmajor(
+  const std::vector<double>& c,
+  int B,
+  int N,
+  std::vector<double>& average)
+{
+  average.assign(static_cast<size_t>(B), 0.0);
+  if (B <= 0 || N <= 1) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  for (int n = 0; n < N; ++n) {
+    const double* col = c.data() + static_cast<size_t>(n) * Bs;
+    for (int b = 0; b < B; ++b) {
+      average[static_cast<size_t>(b)] += col[static_cast<size_t>(b)];
+    }
+  }
+
+  const double denom = 2.0 * static_cast<double>(N) - 2.0;
+  const double* first = c.data();
+  const double* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+  for (int b = 0; b < B; ++b) {
+    const size_t bi = static_cast<size_t>(b);
+    average[bi] = (2.0 * average[bi] - last[bi] - first[bi]) / denom;
+  }
+}
+
+static void integ_sa_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  const std::vector<double>& average)
+{
+  if (B <= 0 || N <= 0) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  double* first = c.data();
+  for (int b = 0; b < B; ++b) {
+    const size_t bi = static_cast<size_t>(b);
+    first[bi] = (first[bi] - average[bi]) * 0.5;
+  }
+
+  for (int n = 1; n < N; ++n) {
+    double* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const double* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      cur[bi] = cur[bi] - average[bi] + prev[bi];
+    }
+  }
+}
+
+static void integ_as_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  std::vector<double>& work)
+{
+  if (B <= 0 || N <= 0) return;
+
+  work.assign(static_cast<size_t>(B), 0.0);
+  const size_t Bs = static_cast<size_t>(B);
+  for (int n = 1; n < N; ++n) {
+    double* cur = c.data() + static_cast<size_t>(n) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      const double tmp = cur[bi];
+      cur[bi] = (n == 1) ? 0.0 : -work[bi];
+      work[bi] += tmp;
+    }
+  }
+}
+
+static void diff_sa_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  std::vector<double>& work)
+{
+  if (B <= 0 || N < 2) return;
+
+  work.assign(static_cast<size_t>(B), 0.0);
+  const size_t Bs = static_cast<size_t>(B);
+  const double* before_last = c.data() + static_cast<size_t>(N - 2) * Bs;
+  for (int b = 0; b < B; ++b) {
+    work[static_cast<size_t>(b)] = before_last[static_cast<size_t>(b)];
+  }
+
+  for (int n = 0; n + 1 < N; ++n) {
+    double* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const double* next = c.data() + static_cast<size_t>(n + 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      cur[static_cast<size_t>(b)] -= next[static_cast<size_t>(b)];
+    }
+  }
+
+  double* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+  for (int b = 0; b < B; ++b) {
+    last[static_cast<size_t>(b)] -= work[static_cast<size_t>(b)];
+  }
+}
+
+static void diff_as_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N)
+{
+  if (B <= 0 || N <= 0) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  if (N == 1) {
+    double* first = c.data();
+    for (int b = 0; b < B; ++b) {
+      first[static_cast<size_t>(b)] *= 2.0;
+    }
+    return;
+  }
+
+  for (int n = N - 1; n > 0; --n) {
+    double* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const double* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      cur[static_cast<size_t>(b)] -= prev[static_cast<size_t>(b)];
+    }
+  }
+
+  double* first = c.data();
+  for (int b = 0; b < B; ++b) {
+    first[static_cast<size_t>(b)] *= 2.0;
+  }
+}
+
+void get_interpolation_coefficients_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int deg)
+{
+  if (deg <= 1 || N <= 1 || B <= 0) return;
+
+  const auto& poles = spline_poles(deg);
+  double lambda = 1.0;
+  for (double z : poles) {
+    lambda *= (1.0 - z) * (1.0 - 1.0 / z);
+  }
+  for (double& v : c) {
+    v *= lambda;
+  }
+
+  const size_t Bs = static_cast<size_t>(B);
+  for (double z : poles) {
+    for (int b = 0; b < B; ++b) {
+      c[static_cast<size_t>(b)] = initial_causal_colmajor(c, B, N, b, z);
+    }
+
+    for (int n = 1; n < N; ++n) {
+      double* cur = c.data() + static_cast<size_t>(n) * Bs;
+      const double* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
+      for (int b = 0; b < B; ++b) {
+        cur[static_cast<size_t>(b)] += z * prev[static_cast<size_t>(b)];
+      }
+    }
+
+    double* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+    const double* before_last = c.data() + static_cast<size_t>(N - 2) * Bs;
+    const double denom = z * z - 1.0;
+    for (int b = 0; b < B; ++b) {
+      last[static_cast<size_t>(b)] =
+          (z * before_last[static_cast<size_t>(b)] +
+           last[static_cast<size_t>(b)]) * z / denom;
+    }
+
+    for (int n = N - 2; n >= 0; --n) {
+      double* cur = c.data() + static_cast<size_t>(n) * Bs;
+      const double* next = c.data() + static_cast<size_t>(n + 1) * Bs;
+      for (int b = 0; b < B; ++b) {
+        cur[static_cast<size_t>(b)] =
+            z * (next[static_cast<size_t>(b)] - cur[static_cast<size_t>(b)]);
+      }
+    }
+  }
+}
+
+void do_integ_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int nb,
+  std::vector<double>& average,
+  std::vector<double>& work)
+{
+  average.assign(static_cast<size_t>(std::max(B, 0)), 0.0);
+  if (B <= 0 || N <= 1 || nb <= 0) return;
+
+  if (nb >= 1) {
+    average_colmajor(c, B, N, average);
+    integ_sa_colmajor(c, B, N, average);
+  }
+  if (nb >= 2) {
+    integ_as_colmajor(c, B, N, work);
+  }
+  if (nb >= 3) {
+    average_colmajor(c, B, N, work);
+    integ_sa_colmajor(c, B, N, work);
+  }
+  if (nb >= 4) {
+    integ_as_colmajor(c, B, N, work);
+  }
+}
+
+void do_diff_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int nb,
+  std::vector<double>& work)
+{
+  if (B <= 0 || N <= 0 || nb <= 0) return;
+  if (nb == 1) { diff_as_colmajor(c, B, N); return; }
+  if (nb == 2) { diff_sa_colmajor(c, B, N, work); diff_as_colmajor(c, B, N); return; }
+  if (nb == 3) { diff_as_colmajor(c, B, N); diff_sa_colmajor(c, B, N, work); diff_as_colmajor(c, B, N); return; }
+  diff_sa_colmajor(c, B, N, work);
+  diff_as_colmajor(c, B, N);
+  diff_sa_colmajor(c, B, N, work);
+  diff_as_colmajor(c, B, N);
+}
+
+void get_samples_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int deg,
+  std::vector<double>& work)
+{
+  if (deg <= 1 || B <= 0 || N <= 0) return;
+
+  const auto& h = sampling_fir(deg);
+  if (h.empty()) return;
+
+  const size_t total = static_cast<size_t>(B) * static_cast<size_t>(N);
+  work.assign(total, 0.0);
+
+  const size_t Bs = static_cast<size_t>(B);
+  for (int n = 0; n < N; ++n) {
+    const double* center = c.data() + static_cast<size_t>(n) * Bs;
+    double* dst = work.data() + static_cast<size_t>(n) * Bs;
+    for (int b = 0; b < B; ++b) {
+      dst[static_cast<size_t>(b)] = h[0] * center[static_cast<size_t>(b)];
+    }
+
+    for (int j = 1; j < static_cast<int>(h.size()); ++j) {
+      const int left_idx = mirror_symmetric_index(n - j, N);
+      const int right_idx = mirror_symmetric_index(n + j, N);
+      const double* left = c.data() + static_cast<size_t>(left_idx) * Bs;
+      const double* right = c.data() + static_cast<size_t>(right_idx) * Bs;
+      const double hj = h[static_cast<size_t>(j)];
+      for (int b = 0; b < B; ++b) {
+        const size_t bi = static_cast<size_t>(b);
+        dst[bi] += hj * (left[bi] + right[bi]);
+      }
+    }
+  }
+
+  c.swap(work);
+}
+
 } // namespace lsresize

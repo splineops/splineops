@@ -127,6 +127,120 @@ def test_batched_axis_matches_default_pure_interpolation(monkeypatch, dtype, met
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping batched-axis compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "method",
+    ["linear-antialiasing", "quadratic-antialiasing", "cubic-antialiasing"],
+)
+@pytest.mark.parametrize(
+    "shape,zoom",
+    [
+        ((64, 48), (0.7, 1.3)),
+        ((48, 32), (0.5, 0.75)),
+        ((24, 20, 16), (0.5, 0.75, 1.25)),
+    ],
+)
+def test_batched_axis_matches_default_antialiasing(monkeypatch, dtype, method, shape, zoom):
+    rng = np.random.default_rng(124)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    atol = 3e-5 if dtype == np.float32 else 2e-9
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping batched-axis compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("degree", [1, 2, 3])
+@pytest.mark.parametrize(
+    "shape,zoom",
+    [
+        ((48, 40), (0.5, 1.25)),
+        ((32, 24), (1.7, 0.6)),
+        ((20, 18, 12), (0.75, 1.2, 0.5)),
+    ],
+)
+def test_batched_axis_matches_default_equal_degree_projection(
+    monkeypatch, dtype, degree, shape, zoom
+):
+    rng = np.random.default_rng(125)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize_degrees(
+        arr,
+        zoom_factors=zoom,
+        interp_degree=degree,
+        analy_degree=degree,
+        synthe_degree=degree,
+        inversable=False,
+    )
+
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize_degrees(
+        arr,
+        zoom_factors=zoom,
+        interp_degree=degree,
+        analy_degree=degree,
+        synthe_degree=degree,
+        inversable=False,
+    )
+
+    atol = 3e-5 if dtype == np.float32 else 2e-9
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping batched-axis auto compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "method,shape,zoom",
+    [
+        ("cubic", (256, 256), (0.37, 0.37)),
+        ("cubic-antialiasing", (256, 256), (0.37, 0.37)),
+        ("cubic", (32, 24, 16), (0.75, 1.25, 0.5)),
+    ],
+)
+def test_batched_axis_auto_matches_default(monkeypatch, dtype, method, shape, zoom):
+    rng = np.random.default_rng(126)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_BATCHED_AXIS", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    if method.endswith("-antialiasing"):
+        atol = 3e-5 if dtype == np.float32 else 2e-9
+    else:
+        atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping C++ vs Python compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])

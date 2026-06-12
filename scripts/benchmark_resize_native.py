@@ -70,6 +70,8 @@ class BenchResult:
     method: str
     dtype: str
     threads: str
+    batched_axis: str
+    batch_lines: str
     best_ms: float
     median_ms: float
     mean_ms: float
@@ -111,11 +113,46 @@ def parse_threads(value: str) -> list[str]:
     return threads
 
 
+def parse_positive_int_list(value: str) -> list[int]:
+    items: list[int] = []
+    for raw in value.split(","):
+        item = raw.strip()
+        if not item:
+            continue
+        parsed = int(item)
+        if parsed <= 0:
+            raise argparse.ArgumentTypeError("values must be positive integers")
+        items.append(parsed)
+    if not items:
+        raise argparse.ArgumentTypeError("at least one value is required")
+    return items
+
+
 def set_threads(value: str) -> None:
     if value == "default":
         os.environ.pop("LSRESIZE_NUM_THREADS", None)
     else:
         os.environ["LSRESIZE_NUM_THREADS"] = value
+
+
+def set_batched_axis(value: str) -> None:
+    if value == "env":
+        return
+    if value == "off":
+        os.environ.pop("LSRESIZE_BATCHED_AXIS", None)
+    elif value == "on":
+        os.environ["LSRESIZE_BATCHED_AXIS"] = "1"
+    elif value == "auto":
+        os.environ["LSRESIZE_BATCHED_AXIS"] = "auto"
+    else:
+        raise ValueError(f"Unsupported batched-axis setting: {value}")
+
+
+def set_batch_lines(value: int | None) -> None:
+    if value is None:
+        os.environ.pop("LSRESIZE_BATCH_LINES", None)
+    else:
+        os.environ["LSRESIZE_BATCH_LINES"] = str(value)
 
 
 def dtype_from_name(name: str) -> np.dtype:
@@ -323,11 +360,40 @@ def print_result(result: BenchResult) -> None:
         f"{result.case:30s} "
         f"{result.dtype:7s} "
         f"thr={result.threads:>7s} "
+        f"batch={result.batch_lines:>7s} "
+        f"mode={result.batched_axis:>5s} "
         f"best={result.best_ms:8.2f} ms "
         f"median={result.median_ms:8.2f} ms "
         f"out={str(result.output_shape):16s} "
         f"check={check}"
     )
+
+
+def print_batch_sweep_summary(results: list[BenchResult], batch_values: list[int | None]) -> None:
+    if len(batch_values) <= 1:
+        return
+
+    print("\nbatch-lines sweep summary")
+    groups: dict[tuple[str, str, str], list[BenchResult]] = {}
+    for result in results:
+        key = (result.case, result.dtype, result.threads)
+        groups.setdefault(key, []).append(result)
+
+    first_label = "<unset>" if batch_values[0] is None else str(batch_values[0])
+    for key in sorted(groups):
+        group = groups[key]
+        baseline = next((r for r in group if r.batch_lines == first_label), None)
+        if baseline is None:
+            baseline = group[0]
+        best = min(group, key=lambda r: r.best_ms)
+        speedup = baseline.best_ms / best.best_ms if best.best_ms > 0.0 else float("inf")
+        case, dtype, threads = key
+        print(
+            f"{case:30s} {dtype:7s} thr={threads:>7s} "
+            f"best_batch={best.batch_lines:>7s} "
+            f"best={best.best_ms:8.2f} ms "
+            f"speedup_vs_{baseline.batch_lines}={speedup:5.2f}x"
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -357,7 +423,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rtol", type=float, default=5e-5, help="Relative tolerance for parity checks.")
     parser.add_argument(
         "--batched-axis",
-        choices=("env", "off", "on"),
+        choices=("env", "off", "on", "auto"),
         default="env",
         help="Control LSRESIZE_BATCHED_AXIS for this run.",
     )
@@ -366,6 +432,15 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Set LSRESIZE_BATCH_LINES for batched-axis runs.",
+    )
+    parser.add_argument(
+        "--batch-lines-sweep",
+        type=parse_positive_int_list,
+        default=None,
+        help=(
+            "Comma-separated LSRESIZE_BATCH_LINES values to sweep. "
+            "When set, this overrides --batch-lines and runs each case for each value."
+        ),
     )
     parser.add_argument("--output-json", type=Path, default=None, help="Optional JSON output path.")
     parser.add_argument("--output-csv", type=Path, default=None, help="Optional CSV output path.")
@@ -388,13 +463,16 @@ def main() -> int:
     if args.batch_lines is not None and args.batch_lines <= 0:
         print("--batch-lines must be positive", file=sys.stderr)
         return 2
+    if args.batch_lines_sweep is not None and args.batched_axis == "off":
+        print("--batch-lines-sweep has no effect with --batched-axis off", file=sys.stderr)
+        return 2
 
-    if args.batched_axis == "on":
-        os.environ["LSRESIZE_BATCHED_AXIS"] = "1"
-    elif args.batched_axis == "off":
-        os.environ.pop("LSRESIZE_BATCHED_AXIS", None)
-    if args.batch_lines is not None:
-        os.environ["LSRESIZE_BATCH_LINES"] = str(args.batch_lines)
+    set_batched_axis(args.batched_axis)
+    batch_line_values = (
+        [int(v) for v in args.batch_lines_sweep]
+        if args.batch_lines_sweep is not None
+        else [args.batch_lines]
+    )
 
     cases = cases_for_profile(args.profile)
     results: list[BenchResult] = []
@@ -405,7 +483,7 @@ def main() -> int:
     print(
         "batched_axis="
         f"{os.environ.get('LSRESIZE_BATCHED_AXIS', '<unset>')} "
-        f"batch_lines={os.environ.get('LSRESIZE_BATCH_LINES', '<unset>')}"
+        f"batch_lines={','.join('<unset>' if v is None else str(v) for v in batch_line_values)}"
     )
     print(f"python={platform.python_version()} numpy={np.__version__}")
     print(f"platform={platform.platform()}")
@@ -416,44 +494,48 @@ def main() -> int:
         should_check = (not args.skip_checks) and (input_size <= args.check_max_elements)
 
         for thread_value in args.threads:
-            samples, native_out = time_native_case(
-                case,
-                threads=thread_value,
-                warmups=args.warmups,
-                repeats=args.repeats,
-            )
-
-            passed_check: bool | None = None
-            max_abs_diff: float | None = None
-            mean_abs_diff: float | None = None
-            if should_check:
-                passed_check, max_abs_diff, mean_abs_diff = check_against_python(
+            for batch_lines_value in batch_line_values:
+                set_batch_lines(batch_lines_value)
+                samples, native_out = time_native_case(
                     case,
-                    native_out,
-                    atol=args.atol,
-                    rtol=args.rtol,
+                    threads=thread_value,
+                    warmups=args.warmups,
+                    repeats=args.repeats,
                 )
 
-            result = BenchResult(
-                case=case.name,
-                shape=case.shape,
-                output_shape=tuple(int(v) for v in native_out.shape),
-                zoom=case.zoom,
-                method=case.method,
-                dtype=case.dtype,
-                threads=thread_value,
-                best_ms=min(samples) * 1000.0,
-                median_ms=statistics.median(samples) * 1000.0,
-                mean_ms=statistics.fmean(samples) * 1000.0,
-                repeats=args.repeats,
-                warmups=args.warmups,
-                checked=should_check,
-                max_abs_diff=max_abs_diff,
-                mean_abs_diff=mean_abs_diff,
-                passed_check=passed_check,
-            )
-            results.append(result)
-            print_result(result)
+                passed_check: bool | None = None
+                max_abs_diff: float | None = None
+                mean_abs_diff: float | None = None
+                if should_check:
+                    passed_check, max_abs_diff, mean_abs_diff = check_against_python(
+                        case,
+                        native_out,
+                        atol=args.atol,
+                        rtol=args.rtol,
+                    )
+
+                result = BenchResult(
+                    case=case.name,
+                    shape=case.shape,
+                    output_shape=tuple(int(v) for v in native_out.shape),
+                    zoom=case.zoom,
+                    method=case.method,
+                    dtype=case.dtype,
+                    threads=thread_value,
+                    batched_axis=os.environ.get("LSRESIZE_BATCHED_AXIS", "<unset>"),
+                    batch_lines=os.environ.get("LSRESIZE_BATCH_LINES", "<unset>"),
+                    best_ms=min(samples) * 1000.0,
+                    median_ms=statistics.median(samples) * 1000.0,
+                    mean_ms=statistics.fmean(samples) * 1000.0,
+                    repeats=args.repeats,
+                    warmups=args.warmups,
+                    checked=should_check,
+                    max_abs_diff=max_abs_diff,
+                    mean_abs_diff=mean_abs_diff,
+                    passed_check=passed_check,
+                )
+                results.append(result)
+                print_result(result)
 
     failed = [r for r in results if r.passed_check is False]
 
@@ -464,7 +546,7 @@ def main() -> int:
             "warmups": args.warmups,
             "threads": args.threads,
             "batched_axis": os.environ.get("LSRESIZE_BATCHED_AXIS"),
-            "batch_lines": os.environ.get("LSRESIZE_BATCH_LINES"),
+            "batch_lines": [None if v is None else int(v) for v in batch_line_values],
             "check_max_elements": args.check_max_elements,
             "atol": args.atol,
             "rtol": args.rtol,
@@ -485,6 +567,8 @@ def main() -> int:
     if failed:
         print(f"\n{len(failed)} parity check(s) failed.", file=sys.stderr)
         return 1
+
+    print_batch_sweep_summary(results, batch_line_values)
 
     return 0
 

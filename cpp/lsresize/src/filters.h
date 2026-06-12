@@ -98,4 +98,35 @@ void integ_as(const std::vector<double>& c, std::vector<double>& y);
 void diff_sa(std::vector<double>& c);
 void diff_as(std::vector<double>& c);
 
+// Batched helpers for blocks laid out as C[n * B + b], i.e. line position n
+// is contiguous across B independent lines. These preserve the scalar filter
+// order along each individual line while exposing the line batch to the compiler.
+void get_interpolation_coefficients_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int deg);
+
+void do_integ_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int nb,
+  std::vector<double>& average,
+  std::vector<double>& work);
+
+void do_diff_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int nb,
+  std::vector<double>& work);
+
+void get_samples_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int deg,
+  std::vector<double>& work);
+
 } // namespace lsresize
