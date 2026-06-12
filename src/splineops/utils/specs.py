@@ -119,6 +119,12 @@ def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
     # Perf-relevant env
     env_keys = (
         "SPLINEOPS_ACCEL",
+        "SPLINEOPS_ACCUM",
+        "SPLINEOPS_AUTOTUNE",
+        "SPLINEOPS_BLOCK",
+        "SPLINEOPS_PLAN_CACHE",
+        "SPLINEOPS_PLAN_CACHE_SIZE",
+        "SPLINEOPS_TILE_W",
         "LSRESIZE_NUM_THREADS",
         "LSRESIZE_PARALLEL_THRESHOLD",
         "LSRESIZE_PLAN_CACHE_SIZE",

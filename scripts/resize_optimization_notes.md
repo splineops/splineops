@@ -57,13 +57,27 @@ Work completed today:
   - `LSRESIZE_PLAN_CACHE_SIZE=0` disables the cache for measurements/debugging
 - Promoted the batched-axis default block size from 32 to 64 after a saved
   standard `--batch-lines-sweep` on the local target CPU.
+- Extended `scripts/benchmark_resize_native.py` beyond native-only measurements:
+  - `--backend {native,python,both}` selects the implementation under test
+  - Python rows report `<n/a>` for native thread/batch-line controls
+  - smoke parity can now compare native against Python and Python against native
+  - JSON metadata records the active Python fallback knobs
+- Tuned the pure-Python fallback defaults:
+  - `SPLINEOPS_BLOCK` default is now 256 instead of 64
+  - `SPLINEOPS_ACCUM` default is now `support`
+  - `SPLINEOPS_ACCUM=einsum` and `SPLINEOPS_ACCUM=mulsum` remain available for
+    comparison/debugging
+  - Python plan cache capacity now defaults to 32 via
+    `SPLINEOPS_PLAN_CACHE_SIZE`, with fallback compatibility for
+    `LSRESIZE_PLAN_CACHE_SIZE`
+  - `SPLINEOPS_PLAN_CACHE=0` or `SPLINEOPS_PLAN_CACHE_SIZE=0` disables the
+    Python plan cache
 
 Current changed files to expect in the working tree:
 
-- `cpp/lsresize/src/resize_1d.cpp`
-- `cpp/lsresize/src/resize_1d.h`
-- `cpp/lsresize/src/resize_nd.cpp`
+- `scripts/benchmark_resize_native.py`
 - `scripts/resize_optimization_notes.md`
+- `src/splineops/resize/_pycore/resize_nd.py`
 - `src/splineops/utils/specs.py`
 
 Validation run:
@@ -79,8 +93,18 @@ Validation run:
 LSRESIZE_BATCHED_AXIS=off .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
 LSRESIZE_BATCHED_AXIS=1 .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
 LSRESIZE_PLAN_CACHE_SIZE=0 .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
+SPLINEOPS_ACCEL=never .venv/bin/python -m pytest -q tests/test_02_02_resize.py tests/test_02_03_resize_cpp.py
 .venv/bin/python -m pytest -q
-.venv/bin/python -m py_compile scripts/benchmark_resize_native.py
+.venv/bin/python -m py_compile \
+  scripts/benchmark_resize_native.py \
+  src/splineops/resize/_pycore/resize_nd.py \
+  src/splineops/utils/specs.py
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile smoke \
+  --backend both \
+  --threads default \
+  --repeats 2 \
+  --warmups 1
 .venv/bin/python scripts/benchmark_resize_native.py \
   --profile smoke \
   --threads 1,default \
@@ -113,6 +137,15 @@ LSRESIZE_PLAN_CACHE_SIZE=0 .venv/bin/python -m pytest -q tests/test_02_02_resize
   --skip-checks \
   --output-json /tmp/splineops_resize_scheduler_after_physicalcap.json \
   --output-csv /tmp/splineops_resize_scheduler_after_physicalcap.csv
+.venv/bin/python scripts/benchmark_resize_native.py \
+  --profile standard \
+  --backend python \
+  --threads default \
+  --repeats 3 \
+  --warmups 1 \
+  --skip-checks \
+  --output-json /tmp/splineops_resize_python_support_block256.json \
+  --output-csv /tmp/splineops_resize_python_support_block256.csv
 .venv/bin/python scripts/benchmark_resize_native.py \
   --profile standard \
   --threads default \
@@ -185,6 +218,16 @@ Observed results:
   - default-auto with batch size 64 was faster than explicit off on every 2-D
     standard case by median; 2-D median speedup averaged about `2.15x`, with
     the weakest 2-D case still about `1.57x`
+- After Python fallback tuning:
+  - `py_compile`: clean for the benchmark script, Python core, and runtime specs
+  - smoke `--backend both`: native/Python parity passed for the smoke profile;
+    max absolute differences stayed at `1.19e-7` for float32 cubic and
+    `5.55e-16` for float64 cubic
+  - focused resize suite default/unset: `175 passed`
+  - focused resize suite with `SPLINEOPS_ACCEL=never`: `175 passed`
+  - full suite default/unset: `429 passed`
+  - standard Python benchmark saved to
+    `/tmp/splineops_resize_python_support_block256.{json,csv}`
 - `git diff --check`: clean
 
 Fresh local benchmark command:
@@ -296,6 +339,25 @@ Smoke/standard `--batch-lines-sweep` observations:
   sweep over 8, 16, 32, 64, and 128 picked 64 most often by median time.
   The native default is now 64. Re-run a saved target-CPU sweep before changing
   it again.
+
+Python fallback observations:
+
+- `SPLINEOPS_ACCUM=einsum` at the old block size 64 beat the previous
+  `mulsum`/64 default in 17/18 standard-profile cases, with `1.06x` mean
+  median speedup.
+- Raising the Python block size to 256 was the larger win. `einsum`/256 beat
+  `mulsum`/64 in 18/18 cases, with `1.67x` mean and `1.55x` median speedup.
+- Block size 512 was only marginally faster on average than 256 and regressed
+  several 2-D float32/linear cases, so 256 is the safer default.
+- The support-wise streaming accumulator beat `einsum`/256 in 18/18 cases,
+  with `1.12x` mean, `1.07x` median, `1.04x` minimum, and `1.32x` maximum
+  speedup.
+- Against the previous `mulsum`/64 default, `support`/256 beat 18/18 cases,
+  with `1.85x` mean and `1.82x` median speedup.
+- Saved Python artifacts:
+  - `/tmp/splineops_resize_python_mulsum_block64.{json,csv}`
+  - `/tmp/splineops_resize_python_einsum_block256.{json,csv}`
+  - `/tmp/splineops_resize_python_support_block256.{json,csv}`
 
 Important caveat:
 

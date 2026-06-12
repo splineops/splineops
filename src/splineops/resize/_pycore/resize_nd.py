@@ -25,21 +25,28 @@ def _bool_env(name: str, default_true: bool = True) -> bool:
     v = os.environ.get(name, "1" if default_true else "0").lower()
     return v not in ("0", "false", "no", "off")
 
-_BATCH  = max(1, _int_env("SPLINEOPS_BLOCK", 64))
-_ACCUM  = os.environ.get("SPLINEOPS_ACCUM", "mulsum").lower()
-if _ACCUM not in ("mulsum", "einsum"):
-    _ACCUM = "mulsum"
+_BATCH  = max(1, _int_env("SPLINEOPS_BLOCK", 256))
+_ACCUM  = os.environ.get("SPLINEOPS_ACCUM", "support").lower()
+if _ACCUM not in ("mulsum", "einsum", "support"):
+    _ACCUM = "support"
 _TILE_W = max(0, _int_env("SPLINEOPS_TILE_W", 0))
-_USE_PLAN_CACHE = _bool_env("SPLINEOPS_PLAN_CACHE", True)
+_PLAN_CACHE_SIZE = max(
+    0,
+    _int_env(
+        "SPLINEOPS_PLAN_CACHE_SIZE",
+        _int_env("LSRESIZE_PLAN_CACHE_SIZE", 32),
+    ),
+)
+_USE_PLAN_CACHE = _bool_env("SPLINEOPS_PLAN_CACHE", True) and (_PLAN_CACHE_SIZE > 0)
 
 # Auto-tuner (off by default)
 _AUTOTUNE        = _bool_env("SPLINEOPS_AUTOTUNE", False)
 _AT_REPEATS      = max(1, _int_env("SPLINEOPS_AT_REPEATS", 1))
 # Candidates (comma-separated envs if you want to change them)
 _AT_ACCUM_CHOICES = tuple(
-    a for a in os.environ.get("SPLINEOPS_AT_ACCUM", "mulsum,einsum").lower().split(",")
-    if a in ("mulsum", "einsum")
-) or ("mulsum", "einsum")
+    a for a in os.environ.get("SPLINEOPS_AT_ACCUM", "support,einsum,mulsum").lower().split(",")
+    if a in ("mulsum", "einsum", "support")
+) or ("support", "einsum", "mulsum")
 def _parse_list(name: str, default: str) -> list[int]:
     txt = os.environ.get(name, default)
     out = []
@@ -51,10 +58,10 @@ def _parse_list(name: str, default: str) -> list[int]:
     return out
 
 _AT_TILE_CHOICES  = [t for t in _parse_list("SPLINEOPS_AT_TILES", "0,64") if t >= 0]
-_AT_BATCH_CHOICES = [b for b in _parse_list("SPLINEOPS_AT_BATCH", "32,64,128") if b > 0]
+_AT_BATCH_CHOICES = [b for b in _parse_list("SPLINEOPS_AT_BATCH", "64,128,256,512") if b > 0]
 
 # Plan cache (reuse Plan1D across calls with same signature)
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=_PLAN_CACHE_SIZE)
 def _cached_plan(N: int, interp: int, analy: int, synthe: int, zoom: float, shift: float, inversable: bool):
     p = LSParams(interp_degree=interp, analy_degree=analy, synthe_degree=synthe,
                  zoom=zoom, shift=shift, inversable=inversable)
@@ -99,9 +106,11 @@ def _bench_block(Xb: np.ndarray, plan, p: LSParams, accum: str, tile_w: int) -> 
     extFullB = np.empty((B, full_len),     dtype=np.float64)
     yBlock   = np.empty((B, out_total),    dtype=np.float64)
 
-    use_tiling = (tile_w > 0) and (Wmax > tile_w)
+    use_tiling = (accum != "support") and (tile_w > 0) and (Wmax > tile_w)
     if use_tiling and Wmax > 0 and out_total > 0:
         gather_tile = np.empty((B, out_total, tile_w), dtype=np.float64)
+        tmp2D       = np.empty((B, out_total),         dtype=np.float64)
+    elif accum == "support" and Wmax > 0 and out_total > 0:
         tmp2D       = np.empty((B, out_total),         dtype=np.float64)
     else:
         gather3D    = np.empty((B, out_total, Wmax),   dtype=np.float64) if (Wmax > 0 and out_total > 0) else None
@@ -145,6 +154,12 @@ def _bench_block(Xb: np.ndarray, plan, p: LSParams, accum: str, tile_w: int) -> 
                         np.multiply(gather_tile[:, :, :t1w-t0w], wtile[None, :, :], out=gather_tile[:, :, :t1w-t0w])
                         np.sum(gather_tile[:, :, :t1w-t0w], axis=2, out=tmp2D)
                         yBlock[:, :] += tmp2D
+            elif accum == "support":
+                yBlock[:, :] = 0.0
+                for tw in range(Wmax):
+                    np.take(extFullB, plan.idx2d[:, tw], axis=1, out=tmp2D)
+                    np.multiply(tmp2D, plan.weights2d[None, :, tw], out=tmp2D)
+                    yBlock[:, :] += tmp2D
             else:
                 np.take(extFullB, plan.idx2d, axis=1, out=gather3D)
                 if accum == "einsum":
@@ -214,7 +229,7 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
       - process rows in blocks with vectorized prefilter/integration/diff
       - build extension / padded buffer once per block
       - gather via np.take(..., axis=1) into (B, out_total, win_len_max)
-      - accumulate with multiply+sum or einsum into (B, out_total)
+      - accumulate support-wise, with einsum, or with multiply+sum into (B, out_total)
     """
     a = np.asarray(arr, dtype=np.float64, order="C")
     N_line = a.shape[axis]
@@ -253,9 +268,11 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
     extFullB = np.empty((B_eff, full_len),     dtype=np.float64)
     yBlock   = np.empty((B_eff, out_total),    dtype=np.float64)
 
-    use_tiling = (tile_use > 0) and (Wmax > tile_use)
+    use_tiling = (accum_use != "support") and (tile_use > 0) and (Wmax > tile_use)
     if use_tiling:
         gather_tile = np.empty((B_eff, out_total, tile_use), dtype=np.float64)
+        tmp2D       = np.empty((B_eff, out_total),          dtype=np.float64)
+    elif accum_use == "support":
         tmp2D       = np.empty((B_eff, out_total),          dtype=np.float64)
     else:
         gather3D    = np.empty((B_eff, out_total, Wmax),    dtype=np.float64) if (Wmax > 0 and out_total > 0) else None
@@ -303,6 +320,12 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
                         np.multiply(gather_tile[:b, :, :t1-t0], wtile[None, :, :], out=gather_tile[:b, :, :t1-t0])
                         np.sum(gather_tile[:b, :, :t1-t0], axis=2, out=tmp2D[:b, :])
                         yBlock[:b, :] += tmp2D[:b, :]
+            elif accum_use == "support":
+                yBlock[:b, :] = 0.0
+                for tw in range(Wmax):
+                    np.take(extFullB[:b, :], plan.idx2d[:, tw], axis=1, out=tmp2D[:b, :])
+                    np.multiply(tmp2D[:b, :], plan.weights2d[None, :, tw], out=tmp2D[:b, :])
+                    yBlock[:b, :] += tmp2D[:b, :]
             else:
                 np.take(extFullB[:b, :], plan.idx2d, axis=1, out=gather3D[:b, :, :])   # (b, L, W)
                 if accum_use == "einsum":
