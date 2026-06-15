@@ -282,6 +282,38 @@ def test_batched_axis_auto_matches_default(monkeypatch, dtype, method, shape, zo
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping 2-D float interpolation compare",
+)
+@pytest.mark.parametrize(
+    "method,shape,zoom",
+    [
+        ("linear", (128, 96), (0.53, 1.27)),
+        ("linear", (96, 128), (1.31, 0.57)),
+    ],
+)
+def test_2d_float_interp_fast_path_matches_disabled(
+    monkeypatch, method, shape, zoom
+):
+    rng = np.random.default_rng(130)
+    arr = rng.random(shape, dtype=np.float32)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.setenv("LSRESIZE_2D_FLOAT_INTERP", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_2D_FLOAT_INTERP", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    assert actual.dtype == np.float32
+    assert np.allclose(actual, expected, atol=5e-6, rtol=5e-6)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping float32 internal compare",
 )
 @pytest.mark.parametrize(

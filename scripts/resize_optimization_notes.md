@@ -52,6 +52,7 @@ Current default knobs:
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
 | Native batch lines | `64` | `LSRESIZE_BATCH_LINES=<n>` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
+| Native 2-D float32 linear interpolation fast path | enabled | `LSRESIZE_2D_FLOAT_INTERP=0` |
 | Native internal precision | `float64` scratch/accumulation | `LSRESIZE_PRECISION=float32` for opt-in batched float32 |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
@@ -128,6 +129,29 @@ Measured progress so far:
     path, with about `1.43x` mean median speedup
   - random antialiasing/projection outputs still differ from the default 64-bit
     internal path, so the mode remains opt-in
+- Native exact 2-D `float32` linear interpolation fast path:
+  - implemented behind default-on `LSRESIZE_2D_FLOAT_INTERP`; set
+    `LSRESIZE_2D_FLOAT_INTERP=0` for A/B checks or conservative debugging
+  - scope is intentionally limited to pure 2-D `method="linear"` on `float32`
+    arrays with default 64-bit scratch/accumulation semantics
+  - precomputes the exact source/weight entries from `Plan1D` once per axis
+    pass, then uses direct row/column loops instead of generic sparse row-plan
+    traversal at every sample
+  - final local A/B artifact:
+    `/tmp/splineops_resize_linear_2d_float_interp_ab.json`
+  - with `LSRESIZE_BATCHED_AXIS=auto`, `--repeats 15` equivalent timing, and
+    same-process toggling of `LSRESIZE_2D_FLOAT_INTERP=0/1`, the fast path won
+    `12/12` selected 2-D `float32` linear medians
+  - single-thread median speedup across selected 512/1024 downsample,
+    anisotropic, and upsample cases: about `2.54x` mean / `2.51x` median
+  - default-thread median speedup across the same cases: about `1.79x` mean /
+    `1.85x` median
+  - observed `max_abs_diff` against the disabled path was `0.0` in that A/B
+    sweep
+  - a similar default-on cubic specialization was not kept because same-binary
+    A/B timings were mixed; exact cubic still spends most of its time in the
+    B-spline prefilter/evaluation path, unlike OpenCV's fixed-kernel cubic
+    interpolation
   - fixed-support preset accumulation now also covers the opt-in float32
     internal batched path; sequential A/B artifacts:
     `/tmp/splineops_resize_f32_preset_seq_on.{json,csv}` and
@@ -195,22 +219,27 @@ Measured progress so far:
 
 Validation status:
 
-- Native editable rebuild: clean.
+- Native editable rebuild after 2-D float32 linear fast path: clean.
 - Direct batched-axis parity tests: `68 passed`.
 - Opt-in float32 internal focused tests: `11 passed`.
-- Native resize module: `113 passed`.
-- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `113 passed`.
+- Native resize module: `115 passed`.
+- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `115 passed`.
+- Native resize module with `LSRESIZE_2D_FLOAT_INTERP=0`: `115 passed`.
 - Resize API suite: `95 passed`.
 - Resize API suite with `SPLINEOPS_ACCEL=never`: `95 passed`.
-- Focused resize suite: `208 passed`.
-- Full suite: `462 passed`.
-- Fresh external virtualenv focused resize suite: `208 passed`.
+- Focused resize suite: `210 passed`.
+- Full suite: `464 passed`.
+- Fresh external virtualenv editable rebuild after 2-D float32 linear fast path:
+  clean.
+- Fresh external virtualenv focused resize suite: `210 passed`.
 - Fresh external virtualenv native resize module with
-  `LSRESIZE_SPECIALIZED_PRESETS=0`: `113 passed`.
-- Fresh external virtualenv full suite: `462 passed`.
+  `LSRESIZE_SPECIALIZED_PRESETS=0`: `115 passed`.
+- Fresh external virtualenv full suite: `464 passed`.
 - Fresh external virtualenv quality smoke:
   `/tmp/splineops_resize_quality_fresh_quick.{json,csv}`.
 - Python compile checks for updated scripts/specs: clean.
+- 2-D float32 linear interpolation A/B:
+  `/tmp/splineops_resize_linear_2d_float_interp_ab.json`.
 - Standard quality sweep:
   `/tmp/splineops_resize_quality_standard.{json,csv}`.
 - Col-major filter quality smoke:

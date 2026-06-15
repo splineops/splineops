@@ -119,6 +119,11 @@ static inline bool specialized_presets_enabled()
   return env_flag_enabled_default_true("LSRESIZE_SPECIALIZED_PRESETS");
 }
 
+static inline bool fast_2d_float_interp_enabled()
+{
+  return env_flag_enabled_default_true("LSRESIZE_2D_FLOAT_INTERP");
+}
+
 static inline bool float32_internal_enabled()
 {
   const char* value = std::getenv("LSRESIZE_PRECISION");
@@ -1036,6 +1041,285 @@ static inline void accumulate_row_runs_colmajor(
   }
 }
 
+static inline double accumulate_float_line_plan_row(
+  const float* LS_RESTRICT line,
+  int64_t stride,
+  const Plan1D& plan,
+  const double* LS_RESTRICT weights,
+  int l,
+  bool interior)
+{
+  const int begin = plan.row_ptr[static_cast<size_t>(l)];
+  const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
+  double acc = 0.0;
+
+  if (interior) {
+    const int k0 = plan.kmin[static_cast<size_t>(l)];
+    for (int t = begin; t < endw; ++t) {
+      const int src = k0 + (t - begin);
+      acc += weights[static_cast<size_t>(t)] *
+             static_cast<double>(line[static_cast<int64_t>(src) * stride]);
+    }
+    return acc;
+  }
+
+  const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
+  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  for (int t = begin; t < endw; ++t) {
+    const size_t ti = static_cast<size_t>(t);
+    const int src = coeff_src[ti];
+    acc += weights[ti] * coeff_sgn[ti] *
+           static_cast<double>(line[static_cast<int64_t>(src) * stride]);
+  }
+  return acc;
+}
+
+static inline bool build_direct_linear_plan(
+  const Plan1D& plan,
+  std::vector<unsigned char>& count,
+  std::vector<int>& src0,
+  std::vector<int>& src1,
+  std::vector<int>& src2,
+  std::vector<double>& w0,
+  std::vector<double>& w1,
+  std::vector<double>& w2)
+{
+  const int outN = plan.outN;
+  count.assign(static_cast<size_t>(outN), 0);
+  src0.assign(static_cast<size_t>(outN), 0);
+  src1.assign(static_cast<size_t>(outN), 0);
+  src2.assign(static_cast<size_t>(outN), 0);
+  w0.assign(static_cast<size_t>(outN), 0.0);
+  w1.assign(static_cast<size_t>(outN), 0.0);
+  w2.assign(static_cast<size_t>(outN), 0.0);
+
+  const double* LS_RESTRICT weights = plan.weights.data();
+  const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
+  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+
+  for (int l = 0; l < outN; ++l) {
+    const size_t li = static_cast<size_t>(l);
+    const int begin = plan.row_ptr[li];
+    const int endw = plan.row_ptr[li + 1];
+    const int m = endw - begin;
+    if (m < 0 || m > 3) {
+      return false;
+    }
+
+    count[li] = static_cast<unsigned char>(m);
+    const int k0 = plan.kmin[li];
+    const int kmax = k0 + m - 1;
+    const bool interior = (m == 0 || (k0 >= 0 && kmax < plan.N));
+
+    int src[3] = {0, 0, 0};
+    double ww[3] = {0.0, 0.0, 0.0};
+    for (int j = 0; j < m; ++j) {
+      const int t = begin + j;
+      const size_t ti = static_cast<size_t>(t);
+      if (interior) {
+        src[j] = k0 + j;
+        ww[j] = weights[ti];
+      } else {
+        src[j] = coeff_src[ti];
+        ww[j] = weights[ti] * coeff_sgn[ti];
+      }
+    }
+
+    src0[li] = src[0];
+    src1[li] = src[1];
+    src2[li] = src[2];
+    w0[li] = ww[0];
+    w1[li] = ww[1];
+    w2[li] = ww[2];
+  }
+
+  return true;
+}
+
+static void resize_along_axis_2d_float_linear_direct(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  int axis,
+  const Plan1D& plan,
+  int64_t nlines)
+{
+  const int64_t in_w = in_shape[1];
+  const int64_t out_w = out_shape[1];
+  std::vector<unsigned char> count;
+  std::vector<int> src0;
+  std::vector<int> src1;
+  std::vector<int> src2;
+  std::vector<double> w0;
+  std::vector<double> w1;
+  std::vector<double> w2;
+
+  if (!build_direct_linear_plan(plan, count, src0, src1, src2, w0, w1, w2)) {
+    const double* LS_RESTRICT weights = plan.weights.data();
+    auto fallback = [&](int64_t start, int64_t end) {
+      if (axis == 1) {
+        for (int64_t row = start; row < end; ++row) {
+          const float* LS_RESTRICT src = in + row * in_w;
+          float* LS_RESTRICT dst = out + row * out_w;
+          for (const RowRun1D& run : plan.row_runs) {
+            const bool interior = (run.interior != 0);
+            for (int l = run.begin; l < run.end; ++l) {
+              dst[static_cast<size_t>(l)] = static_cast<float>(
+                  accumulate_float_line_plan_row(
+                      src,
+                      1,
+                      plan,
+                      weights,
+                      l,
+                      interior));
+            }
+          }
+        }
+        return;
+      }
+
+      for (const RowRun1D& run : plan.row_runs) {
+        const bool interior = (run.interior != 0);
+        for (int l = run.begin; l < run.end; ++l) {
+          float* LS_RESTRICT dst =
+              out + static_cast<int64_t>(l) * out_w + start;
+          for (int64_t col = start; col < end; ++col) {
+            dst[static_cast<size_t>(col - start)] = static_cast<float>(
+                accumulate_float_line_plan_row(
+                    in + col,
+                    in_w,
+                    plan,
+                    weights,
+                    l,
+                    interior));
+          }
+        }
+      }
+    };
+
+    run_parallel_or_serial(nlines, plan, fallback);
+    return;
+  }
+
+  const unsigned char* LS_RESTRICT c = count.data();
+  const int* LS_RESTRICT s0 = src0.data();
+  const int* LS_RESTRICT s1 = src1.data();
+  const int* LS_RESTRICT s2 = src2.data();
+  const double* LS_RESTRICT a0 = w0.data();
+  const double* LS_RESTRICT a1 = w1.data();
+  const double* LS_RESTRICT a2 = w2.data();
+
+  auto worker = [&](int64_t start, int64_t end) {
+    if (axis == 1) {
+      for (int64_t row = start; row < end; ++row) {
+        const float* LS_RESTRICT src = in + row * in_w;
+        float* LS_RESTRICT dst = out + row * out_w;
+        for (int l = 0; l < plan.outN; ++l) {
+          const size_t li = static_cast<size_t>(l);
+          double acc = 0.0;
+          switch (c[li]) {
+            case 3:
+              acc = a0[li] * static_cast<double>(src[static_cast<size_t>(s0[li])]);
+              acc += a1[li] * static_cast<double>(src[static_cast<size_t>(s1[li])]);
+              acc += a2[li] * static_cast<double>(src[static_cast<size_t>(s2[li])]);
+              break;
+            case 2:
+              acc = a0[li] * static_cast<double>(src[static_cast<size_t>(s0[li])]);
+              acc += a1[li] * static_cast<double>(src[static_cast<size_t>(s1[li])]);
+              break;
+            case 1:
+              acc = a0[li] * static_cast<double>(src[static_cast<size_t>(s0[li])]);
+              break;
+            default:
+              break;
+          }
+          dst[li] = static_cast<float>(acc);
+        }
+      }
+      return;
+    }
+
+    for (int l = 0; l < plan.outN; ++l) {
+      const size_t li = static_cast<size_t>(l);
+      float* LS_RESTRICT dst = out + static_cast<int64_t>(l) * out_w + start;
+      const float* LS_RESTRICT row0 =
+          in + static_cast<int64_t>(s0[li]) * in_w + start;
+      const float* LS_RESTRICT row1 =
+          in + static_cast<int64_t>(s1[li]) * in_w + start;
+      const float* LS_RESTRICT row2 =
+          in + static_cast<int64_t>(s2[li]) * in_w + start;
+      switch (c[li]) {
+        case 3:
+          for (int64_t col = start; col < end; ++col) {
+            const size_t ci = static_cast<size_t>(col - start);
+            double acc = a0[li] * static_cast<double>(row0[ci]);
+            acc += a1[li] * static_cast<double>(row1[ci]);
+            acc += a2[li] * static_cast<double>(row2[ci]);
+            dst[ci] = static_cast<float>(acc);
+          }
+          break;
+        case 2:
+          for (int64_t col = start; col < end; ++col) {
+            const size_t ci = static_cast<size_t>(col - start);
+            double acc = a0[li] * static_cast<double>(row0[ci]);
+            acc += a1[li] * static_cast<double>(row1[ci]);
+            dst[ci] = static_cast<float>(acc);
+          }
+          break;
+        case 1:
+          for (int64_t col = start; col < end; ++col) {
+            const size_t ci = static_cast<size_t>(col - start);
+            dst[ci] = static_cast<float>(
+                a0[li] * static_cast<double>(row0[ci]));
+          }
+          break;
+        default:
+          for (int64_t col = start; col < end; ++col) {
+            dst[static_cast<size_t>(col - start)] = 0.0f;
+          }
+          break;
+        }
+    }
+  };
+
+  run_parallel_or_serial(nlines, plan, worker);
+}
+
+static inline bool can_use_2d_float_interp_fast_path(
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  int axis,
+  const LSParams& p)
+{
+  return fast_2d_float_interp_enabled() &&
+         in_shape.size() == 2 &&
+         out_shape.size() == 2 &&
+         (axis == 0 || axis == 1) &&
+         p.analy_degree < 0 &&
+         p.synthe_degree == p.interp_degree &&
+         p.interp_degree == 1;
+}
+
+static void resize_along_axis_2d_float_linear_fast(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  int axis,
+  const Plan1D& plan,
+  int64_t nlines)
+{
+  resize_along_axis_2d_float_linear_direct(
+      in,
+      out,
+      in_shape,
+      out_shape,
+      axis,
+      plan,
+      nlines);
+}
+
 template <typename Scalar>
 static void resize_along_axis_batched_interp_t(
   const Scalar* LS_RESTRICT in,
@@ -1653,7 +1937,20 @@ static void resize_along_axis_t(
           plan,
           nlines)) {
     if constexpr (std::is_same_v<Scalar, float>) {
-      if (float32_internal_enabled()) {
+      const bool use_float32_internal = float32_internal_enabled();
+      if (!use_float32_internal &&
+          can_use_2d_float_interp_fast_path(in_shape, out_shape, axis, p)) {
+        resize_along_axis_2d_float_linear_fast(
+            in,
+            out,
+            in_shape,
+            out_shape,
+            axis,
+            plan,
+            nlines);
+        return;
+      }
+      if (use_float32_internal) {
         if (p.analy_degree < 0) {
           resize_along_axis_batched_interp_f32_internal(
               in,
