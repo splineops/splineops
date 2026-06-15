@@ -152,6 +152,12 @@ Measured progress so far:
     splineops was faster than SciPy on `14/15` comparable standard-profile
     cases on this CPU, while OpenCV was faster on `11/13` 2-D cases but uses
     different image-resize semantics in this comparison
+  - latest full-profile local library comparison artifact:
+    `/tmp/splineops_resize_libraries_full_20260615.{json,csv}`;
+    splineops was faster than SciPy on `20/21` comparable rows and faster than
+    skimage on `21/21`; OpenCV was faster on `16/18` 2-D rows but had median
+    relative-L2 delta about `2.61e-01` versus splineops, and PyTorch was not
+    installed in this virtual environment
 - Native exact linear interpolation fast paths:
   - implemented behind default-on `LSRESIZE_LINEAR_INTERP`; older
     `LSRESIZE_2D_LINEAR_INTERP` and `LSRESIZE_2D_FLOAT_INTERP` remain accepted
