@@ -110,28 +110,36 @@ Measured progress so far:
   - scope is intentionally limited to native batched passes over `float32`
     arrays; default and `float64` workloads still use the existing 64-bit
     internal path
-  - local standard-profile artifacts:
+  - original local standard-profile artifacts:
     `/tmp/splineops_resize_float32_internal_default.{json,csv}` and
     `/tmp/splineops_resize_float32_internal_f32.{json,csv}`
   - on selected 2-D `float32` cases (`--threads 1,default`, `--repeats 5`,
     `--warmups 2`), the opt-in path won `15/16` medians and `16/16` best-of
     timings, with about `1.52x` mean median speedup
-  - interpolation-only differences versus the default 64-bit internal path were
-    at float32 rounding scale in spot checks; antialiasing/projection cases
-    showed larger but bounded drift, including constant-array boundary drift up
-    to about `4e-4` locally, so the mode remains opt-in
+  - the projection path is now DC-centered before the float32 recursive filters
+    and adds the DC component back on output; this preserves constant arrays in
+    projection/antialiasing spot checks while keeping the computation in
+    `float32` scratch space
+  - centered sequential standard-profile artifacts:
+    `/tmp/splineops_resize_float32_centered_seq_default.{json,csv}` and
+    `/tmp/splineops_resize_float32_centered_seq_f32.{json,csv}`
+  - on selected 2-D `float32` cases, the centered opt-in path won `16/16`
+    medians and `16/16` best-of timings versus the default 64-bit internal
+    path, with about `1.43x` mean median speedup
+  - random antialiasing/projection outputs still differ from the default 64-bit
+    internal path, so the mode remains opt-in
 
 Validation status:
 
 - Native editable rebuild: clean.
 - Direct batched-axis parity tests: `60 passed`.
-- Opt-in float32 internal focused tests: `9 passed`.
-- Native resize module: `103 passed`.
-- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `103 passed`.
+- Opt-in float32 internal focused tests: `11 passed`.
+- Native resize module: `105 passed`.
+- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `105 passed`.
 - Resize API suite: `81 passed`.
 - Resize API suite with `SPLINEOPS_ACCEL=never`: `81 passed`.
-- Focused resize suite: `184 passed`.
-- Full suite: `438 passed`.
+- Focused resize suite: `186 passed`.
+- Full suite: `440 passed`.
 - Python compile checks for updated scripts/specs: clean.
 - `git diff --check`: clean on the latest implementation pass.
 
@@ -156,12 +164,14 @@ design.
 2. **Opt-in float32 internal mode.**
    - Status: implemented for native batched `float32` axis passes behind
      `LSRESIZE_PRECISION=float32`.
+   - The projection path is DC-centered to remove the observed constant-array
+     boundary drift from the pure float32 recursive filters.
    - The default path still computes with 64-bit scratch/accumulation.
    - Validation covers default-precision parity, opt-in agreement thresholds,
-     and bounded constant drift.
-   - Remaining deeper stage: test high-frequency image workloads and explore a
-     hybrid projection filter that keeps the speed benefit while reducing
-     antialiasing boundary drift.
+     and constant preservation for projection presets.
+   - Remaining deeper stage: test high-frequency image workloads and decide
+     whether a public API precision option is warranted beyond the environment
+     flag.
    - Keep the mode opt-in unless a future accuracy study supports changing the
      default precision policy.
 

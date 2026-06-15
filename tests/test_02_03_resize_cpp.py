@@ -290,8 +290,16 @@ def test_float32_internal_matches_default_precision(
     not _has_cpp(),
     reason="Native extension not available: skipping float32 constant preservation",
 )
-@pytest.mark.parametrize("method", ["cubic", "cubic-antialiasing"])
-def test_float32_internal_constant_drift_is_bounded(monkeypatch, method):
+@pytest.mark.parametrize(
+    "method,atol",
+    [
+        ("cubic", 1e-6),
+        ("linear-antialiasing", 1e-7),
+        ("quadratic-antialiasing", 1e-7),
+        ("cubic-antialiasing", 1e-7),
+    ],
+)
+def test_float32_internal_preserves_constant_arrays(monkeypatch, method, atol):
     arr = np.full((97, 89), 3.25, dtype=np.float32)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
@@ -301,7 +309,7 @@ def test_float32_internal_constant_drift_is_bounded(monkeypatch, method):
     actual = rz.resize(arr, zoom_factors=(0.53, 1.37), method=method)
 
     assert actual.dtype == np.float32
-    assert np.allclose(actual, 3.25, atol=5e-4, rtol=0.0)
+    assert np.allclose(actual, 3.25, atol=atol, rtol=0.0)
 
 
 @pytest.mark.skipif(

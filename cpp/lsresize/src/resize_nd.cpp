@@ -1189,17 +1189,20 @@ static void resize_along_axis_batched_f32_internal(
     std::vector<float> y;
     std::vector<float> average;
     std::vector<float> filter_work;
+    std::vector<float> line_dc;
     coeff.reserve(static_cast<size_t>(N) * static_cast<size_t>(batch_lines));
     y.reserve(static_cast<size_t>(out_total) * static_cast<size_t>(batch_lines));
     average.reserve(static_cast<size_t>(batch_lines));
     filter_work.reserve(static_cast<size_t>(std::max(out_total, N)) *
                         static_cast<size_t>(batch_lines));
+    line_dc.reserve(static_cast<size_t>(batch_lines));
 
     for (int64_t block = start; block < end; block += batch_lines) {
       const int B = static_cast<int>(std::min<int64_t>(batch_lines, end - block));
       const size_t Bs = static_cast<size_t>(B);
       coeff.resize(static_cast<size_t>(N) * Bs);
       y.resize(static_cast<size_t>(out_total) * Bs);
+      line_dc.resize(Bs);
 
       for (int b = 0; b < B; ++b) {
         int64_t in_off = 0;
@@ -1228,6 +1231,29 @@ static void resize_along_axis_batched_f32_internal(
           for (int n = 0; n < N; ++n) {
             coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
                 in[in_off + static_cast<int64_t>(n) * stride];
+          }
+        }
+      }
+
+      // The projection pipeline is linear and should preserve constants. Run
+      // it on a DC-centered residual so float32 recursive filters do not turn a
+      // constant line into small boundary drift.
+      bool has_dc = false;
+      for (int b = 0; b < B; ++b) {
+        const size_t bi = static_cast<size_t>(b);
+        float dc = coeff[bi];
+        if (!std::isfinite(dc)) {
+          dc = 0.0f;
+        }
+        line_dc[bi] = dc;
+        has_dc = has_dc || (dc != 0.0f);
+      }
+      if (has_dc) {
+        for (int n = 0; n < N; ++n) {
+          float* col = coeff.data() + static_cast<size_t>(n) * Bs;
+          for (int b = 0; b < B; ++b) {
+            const size_t bi = static_cast<size_t>(b);
+            col[bi] -= line_dc[bi];
           }
         }
       }
@@ -1265,17 +1291,18 @@ static void resize_along_axis_batched_f32_internal(
 
       for (int b = 0; b < B; ++b) {
         const int64_t out_off = out_offsets[static_cast<size_t>(b)];
+        const float dc = line_dc[static_cast<size_t>(b)];
         if (axis_contig_out) {
           float* dst = out + out_off;
           for (int l = 0; l < outN; ++l) {
             dst[static_cast<size_t>(l)] =
-                y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)];
+                y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)] + dc;
           }
         } else {
           const int64_t stride = out_strides[static_cast<size_t>(axis)];
           for (int l = 0; l < outN; ++l) {
             out[out_off + static_cast<int64_t>(l) * stride] =
-                y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)];
+                y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)] + dc;
           }
         }
       }
