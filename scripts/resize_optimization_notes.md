@@ -6,6 +6,10 @@ This note tracks optimization ideas for `splineops.resize`, especially the nativ
 `_lsresize` backend. The goal is to preserve the exact algorithmic behavior while
 reducing runtime, memory movement, and repeated setup cost.
 
+For a concise project-level summary, see
+`scripts/resize_optimization_progress.md`. This file remains the detailed
+engineering ledger with artifacts, experiments, handoffs, and roadmap notes.
+
 ## Weekend Wrap-Up: 2026-06-12
 
 The resize optimization pass now has three solid pillars:
