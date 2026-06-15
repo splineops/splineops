@@ -158,6 +158,12 @@ Measured progress so far:
     skimage on `21/21`; OpenCV was faster on `16/18` 2-D rows but had median
     relative-L2 delta about `2.61e-01` versus splineops, and PyTorch was not
     installed in this virtual environment
+  - latest full-profile local library comparison with PyTorch installed:
+    `/tmp/splineops_resize_libraries_full_torch_20260615.{json,csv}`;
+    PyTorch `2.12.0+cpu` was faster on `8/19` supported rows, with median
+    speed `0.79x` versus splineops and median relative-L2 delta `1.59e-05`;
+    the most actionable close-output PyTorch win was
+    `3d_linear_down_random_f32` (`2.22x`, `rel_l2=2.59e-06`)
 - Native exact linear interpolation fast paths:
   - implemented behind default-on `LSRESIZE_LINEAR_INTERP`; older
     `LSRESIZE_2D_LINEAR_INTERP` and `LSRESIZE_2D_FLOAT_INTERP` remain accepted
