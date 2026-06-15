@@ -52,7 +52,8 @@ Current default knobs:
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
 | Native batch lines | `64` | `LSRESIZE_BATCH_LINES=<n>` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
-| Native 2-D float32 linear interpolation fast path | enabled | `LSRESIZE_2D_FLOAT_INTERP=0` |
+| Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
+| Native fused 2-D linear path | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |
 | Native internal precision | `float64` scratch/accumulation | `LSRESIZE_PRECISION=float32` for opt-in batched float32 |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
@@ -129,29 +130,52 @@ Measured progress so far:
     path, with about `1.43x` mean median speedup
   - random antialiasing/projection outputs still differ from the default 64-bit
     internal path, so the mode remains opt-in
-- Native exact 2-D `float32` linear interpolation fast path:
-  - implemented behind default-on `LSRESIZE_2D_FLOAT_INTERP`; set
-    `LSRESIZE_2D_FLOAT_INTERP=0` for A/B checks or conservative debugging
-  - scope is intentionally limited to pure 2-D `method="linear"` on `float32`
-    arrays with default 64-bit scratch/accumulation semantics
-  - precomputes the exact source/weight entries from `Plan1D` once per axis
-    pass, then uses direct row/column loops instead of generic sparse row-plan
-    traversal at every sample
-  - final local A/B artifact:
-    `/tmp/splineops_resize_linear_2d_float_interp_ab.json`
-  - with `LSRESIZE_BATCHED_AXIS=auto`, `--repeats 15` equivalent timing, and
-    same-process toggling of `LSRESIZE_2D_FLOAT_INTERP=0/1`, the fast path won
-    `12/12` selected 2-D `float32` linear medians
-  - single-thread median speedup across selected 512/1024 downsample,
-    anisotropic, and upsample cases: about `2.54x` mean / `2.51x` median
-  - default-thread median speedup across the same cases: about `1.79x` mean /
-    `1.85x` median
-  - observed `max_abs_diff` against the disabled path was `0.0` in that A/B
-    sweep
-  - a similar default-on cubic specialization was not kept because same-binary
-    A/B timings were mixed; exact cubic still spends most of its time in the
-    B-spline prefilter/evaluation path, unlike OpenCV's fixed-kernel cubic
-    interpolation
+- Native exact linear interpolation fast paths:
+  - implemented behind default-on `LSRESIZE_LINEAR_INTERP`; older
+    `LSRESIZE_2D_LINEAR_INTERP` and `LSRESIZE_2D_FLOAT_INTERP` remain accepted
+    as compatibility aliases when the new knob is unset
+  - scope is pure `method="linear"`; `LSRESIZE_PRECISION=float32` keeps using
+    the existing opt-in float32-internal batched path
+  - the N-D direct path precomputes exact source/weight entries from `Plan1D`
+    once per axis pass and avoids generic line buffers, spline prefilter calls,
+    and sparse row-plan traversal at every sample
+  - the direct linear path now uses storage-matched accumulator weights:
+    `float32` arrays use float weights/accumulation in the exact direct linear
+    kernel, while `float64` arrays keep double weights/accumulation
+  - the fused 2-D path is default-on whenever both 2-D axes are active for pure
+    linear interpolation; it evaluates the exact separable linear plan directly
+    into the final output and avoids the intermediate ping-pong array
+  - the fused 2-D inner loop hoists the output-row support branch out of the
+    column loop, which materially improves the common 2-tap row case
+  - final native A/B artifacts:
+    `/tmp/splineops_resize_native_linear_final_current.{json,csv}` and
+    `/tmp/splineops_resize_native_linear_final_current_disabled.{json,csv}`
+  - on the expanded native standard profile, the fast paths won all pure
+    linear medians except one noisy default-thread 2-D anisotropic row:
+    2-D rows won `12/12` single-thread and `11/12` default-thread; 3-D rows
+    won `2/2` single-thread and `2/2` default-thread
+  - 2-D pure linear median speedup versus `LSRESIZE_LINEAR_INTERP=0`: about
+    `5.45x` mean / `3.93x` median single-thread, and `3.16x` mean / `3.25x`
+    median default-thread
+  - 3-D pure linear median speedup versus `LSRESIZE_LINEAR_INTERP=0`: about
+    `1.87x` mean / median single-thread, and `1.63x` mean / median
+    default-thread
+  - selected fused 2-D downsample rows improved strongly, for example
+    `2d_linear_down_1024_float32` single-thread `4.81 ms -> 0.42 ms`
+    (`11.44x`) and `2d_linear_down_1024_float64` single-thread
+    `4.87 ms -> 0.56 ms` (`8.69x`)
+  - latest cross-library standard artifact:
+    `/tmp/splineops_resize_libraries_linear_final_current.{json,csv}`
+  - in that run, SciPy was faster on only `1/15` standard rows and skimage on
+    `0/15`; splineops was effectively tied with OpenCV on the 2-D float32
+    linear downsample row (`0.206 ms` vs `0.202 ms`) and faster on the 2-D
+    float64 linear downsample row (`0.234 ms` vs `0.249 ms`)
+  - OpenCV remained faster on most 2-D rows overall, but its median relative-L2
+    delta versus splineops was about `2.22e-01`, reflecting different
+    coordinate, boundary, kernel, and antialiasing semantics
+  - exact cubic was not fused because it requires the B-spline IIR prefilter as
+    part of the exact splineops semantics; OpenCV's cubic path is a fixed-kernel
+    interpolation with much larger output deltas
   - fixed-support preset accumulation now also covers the opt-in float32
     internal batched path; sequential A/B artifacts:
     `/tmp/splineops_resize_f32_preset_seq_on.{json,csv}` and
@@ -219,27 +243,32 @@ Measured progress so far:
 
 Validation status:
 
-- Native editable rebuild after 2-D float32 linear fast path: clean.
+- Native editable rebuild after general exact linear/fused 2-D fast paths:
+  clean.
 - Direct batched-axis parity tests: `68 passed`.
 - Opt-in float32 internal focused tests: `11 passed`.
-- Native resize module: `115 passed`.
-- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `115 passed`.
-- Native resize module with `LSRESIZE_2D_FLOAT_INTERP=0`: `115 passed`.
+- Native resize module: `130 passed`.
+- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `130 passed`.
+- Native resize module with `LSRESIZE_LINEAR_INTERP=0`: `130 passed`.
+- Native resize module with `LSRESIZE_FUSED_2D_LINEAR=0`: `130 passed`.
 - Resize API suite: `95 passed`.
 - Resize API suite with `SPLINEOPS_ACCEL=never`: `95 passed`.
-- Focused resize suite: `210 passed`.
-- Full suite: `464 passed`.
-- Fresh external virtualenv editable rebuild after 2-D float32 linear fast path:
-  clean.
-- Fresh external virtualenv focused resize suite: `210 passed`.
+- Focused resize suite: `225 passed`.
+- Full suite: `479 passed`.
+- Fresh external virtualenv editable rebuild after general exact linear/fused
+  2-D fast paths: clean.
+- Fresh external virtualenv focused resize suite: `225 passed`.
 - Fresh external virtualenv native resize module with
-  `LSRESIZE_SPECIALIZED_PRESETS=0`: `115 passed`.
-- Fresh external virtualenv full suite: `464 passed`.
+  `LSRESIZE_SPECIALIZED_PRESETS=0`: `130 passed`.
+- Fresh external virtualenv full suite: `479 passed`.
 - Fresh external virtualenv quality smoke:
   `/tmp/splineops_resize_quality_fresh_quick.{json,csv}`.
 - Python compile checks for updated scripts/specs: clean.
-- 2-D float32 linear interpolation A/B:
-  `/tmp/splineops_resize_linear_2d_float_interp_ab.json`.
+- Native linear/fused A/B:
+  `/tmp/splineops_resize_native_linear_final_current.{json,csv}` and
+  `/tmp/splineops_resize_native_linear_final_current_disabled.{json,csv}`.
+- Cross-library standard comparison after general linear/fused path:
+  `/tmp/splineops_resize_libraries_linear_final_current.{json,csv}`.
 - Standard quality sweep:
   `/tmp/splineops_resize_quality_standard.{json,csv}`.
 - Col-major filter quality smoke:

@@ -10,6 +10,8 @@
 #include <cmath>       // std::abs
 #include <functional>  // std::multiplies
 #include <stdexcept>
+#include <cstdlib>
+#include <type_traits>
 
 #include "../lsresize/src/resize_nd.h"
 #include "../lsresize/src/utils.h"
@@ -187,6 +189,81 @@ static void validate_degrees(
     }
 }
 
+static inline char ascii_lower(char c)
+{
+    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+}
+
+static inline bool env_equals_ci(const char* value, const char* token)
+{
+    if (value == nullptr) {
+        return false;
+    }
+    size_t i = 0;
+    for (; token[i] != '\0'; ++i) {
+        if (ascii_lower(value[i]) != token[i]) {
+            return false;
+        }
+    }
+    return value[i] == '\0';
+}
+
+static inline bool env_flag_enabled_default_true(const char* name)
+{
+    const char* value = std::getenv(name);
+    if (value == nullptr || value[0] == '\0') {
+        return true;
+    }
+    if (value[0] == '0' ||
+        env_equals_ci(value, "off") ||
+        env_equals_ci(value, "false") ||
+        env_equals_ci(value, "no")) {
+        return false;
+    }
+    return true;
+}
+
+static inline bool linear_interp_enabled()
+{
+    const char* value = std::getenv("LSRESIZE_LINEAR_INTERP");
+    if (value != nullptr && value[0] != '\0') {
+        return env_flag_enabled_default_true("LSRESIZE_LINEAR_INTERP");
+    }
+    value = std::getenv("LSRESIZE_2D_LINEAR_INTERP");
+    if (value != nullptr && value[0] != '\0') {
+        return env_flag_enabled_default_true("LSRESIZE_2D_LINEAR_INTERP");
+    }
+    return env_flag_enabled_default_true("LSRESIZE_2D_FLOAT_INTERP");
+}
+
+static inline bool fused_2d_linear_enabled()
+{
+    return env_flag_enabled_default_true("LSRESIZE_FUSED_2D_LINEAR");
+}
+
+static inline bool batched_axis_not_off()
+{
+    const char* value = std::getenv("LSRESIZE_BATCHED_AXIS");
+    if (value == nullptr || value[0] == '\0') {
+        return true;
+    }
+    return !(value[0] == '0' ||
+             env_equals_ci(value, "off") ||
+             env_equals_ci(value, "false") ||
+             env_equals_ci(value, "no"));
+}
+
+static inline bool float32_internal_enabled()
+{
+    const char* value = std::getenv("LSRESIZE_PRECISION");
+    if (value == nullptr || value[0] == '\0') {
+        return false;
+    }
+    return env_equals_ci(value, "float32") ||
+           env_equals_ci(value, "single") ||
+           env_equals_ci(value, "f32");
+}
+
 // Axis-level dispatch: choose float32 vs float64 kernel
 template <typename T> struct AxisDispatch;
 
@@ -215,6 +292,139 @@ struct AxisDispatch<float> {
         lsresize::resize_along_axis_f32(in, out, in_shape, out_shape, axis, p);
     }
 };
+
+template <typename T>
+static inline bool can_use_fused_2d_linear(
+    const std::vector<int64>& in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<int>& active_axes,
+    int interp_degree,
+    int analy_degree,
+    int synthe_degree)
+{
+    if (!linear_interp_enabled() ||
+        !fused_2d_linear_enabled() ||
+        !batched_axis_not_off()) {
+        return false;
+    }
+    if constexpr (std::is_same_v<T, float>) {
+        if (float32_internal_enabled()) {
+            return false;
+        }
+    }
+    return in_shape.size() == 2 &&
+           out_shape.size() == 2 &&
+           active_axes.size() == 2 &&
+           interp_degree == 1 &&
+           analy_degree < 0 &&
+           synthe_degree == interp_degree;
+}
+
+template <typename T>
+static py::array_t<T, py::array::c_style | py::array::forcecast>
+checked_preplanned_input(
+    py::array input,
+    const std::vector<int64>& expected_in_shape);
+
+template <typename T>
+void resize_nd_impl_fused_2d_linear_to(
+    const py::array_t<T, py::array::c_style | py::array::forcecast>& in_arr,
+    T* out_data,
+    const std::vector<int64>& in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<double>& zoom_factors,
+    bool inversable)
+{
+    lsresize::LSParams p0;
+    p0.interp_degree = 1;
+    p0.analy_degree = -1;
+    p0.synthe_degree = 1;
+    p0.zoom = zoom_factors[0];
+    p0.shift = 0.0;
+    p0.inversable = inversable;
+
+    lsresize::LSParams p1 = p0;
+    p1.zoom = zoom_factors[1];
+
+    if constexpr (std::is_same_v<T, float>) {
+        lsresize::resize_2d_linear_f32(
+            static_cast<const float*>(in_arr.data()),
+            static_cast<float*>(out_data),
+            in_shape,
+            out_shape,
+            p0,
+            p1);
+    } else {
+        lsresize::resize_2d_linear(
+            static_cast<const double*>(in_arr.data()),
+            static_cast<double*>(out_data),
+            in_shape,
+            out_shape,
+            p0,
+            p1);
+    }
+}
+
+template <typename T>
+py::array_t<T> resize_nd_impl_fused_2d_linear(
+    const py::array_t<T, py::array::c_style | py::array::forcecast>& in_arr,
+    const std::vector<int64>& in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<double>& zoom_factors,
+    bool inversable)
+{
+    std::vector<py::ssize_t> out_shape_ssize(
+        out_shape.begin(), out_shape.end());
+    py::array_t<T> out(out_shape_ssize);
+
+    resize_nd_impl_fused_2d_linear_to<T>(
+        in_arr,
+        static_cast<T*>(out.mutable_data()),
+        in_shape,
+        out_shape,
+        zoom_factors,
+        inversable);
+
+    return out;
+}
+
+template <typename T>
+py::array resize_nd_impl_fused_2d_linear_into(
+    py::array input,
+    py::array output,
+    const std::vector<int64>& expected_in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<double>& zoom_factors,
+    bool inversable)
+{
+    auto in_arr = checked_preplanned_input<T>(input, expected_in_shape);
+    py::array_t<T, py::array::c_style> out_arr(output);
+    if (!out_arr.writeable()) {
+        throw std::runtime_error(
+            "resize_nd: output must be writeable");
+    }
+    if (out_arr.ndim() != static_cast<py::ssize_t>(out_shape.size())) {
+        throw std::runtime_error(
+            "resize_nd: output ndim does not match plan output ndim");
+    }
+    for (int ax = 0; ax < out_arr.ndim(); ++ax) {
+        const int64 got = static_cast<int64>(out_arr.shape(ax));
+        const int64 expected = out_shape[static_cast<size_t>(ax)];
+        if (got != expected) {
+            throw std::runtime_error(
+                "resize_nd: output shape does not match plan output_shape");
+        }
+    }
+
+    resize_nd_impl_fused_2d_linear_to<T>(
+        in_arr,
+        static_cast<T*>(out_arr.mutable_data()),
+        expected_in_shape,
+        out_shape,
+        zoom_factors,
+        inversable);
+    return output;
+}
 
 // Templated ND resize over storage scalar T (float or double).
 // Internal math remains in double (handled inside lsresize::resize_along_axis_*).
@@ -531,6 +741,21 @@ py::array_t<T> resize_nd_impl(
             zoom_factors,
             analy_degree);
 
+    if (can_use_fused_2d_linear<T>(
+            in_shape,
+            out_shape,
+            active_axes,
+            interp_degree,
+            analy_degree,
+            synthe_degree)) {
+        return resize_nd_impl_fused_2d_linear<T>(
+            in_arr,
+            in_shape,
+            out_shape,
+            zoom_factors,
+            inversable);
+    }
+
     return resize_nd_impl_planned<T>(
         in_arr,
         in_shape,
@@ -613,6 +838,21 @@ public:
     {
         py::dtype dt = input.dtype();
         if (dt.is(py::dtype::of<float>())) {
+            if (can_use_fused_2d_linear<float>(
+                    input_shape_,
+                    output_shape_,
+                    active_axes_,
+                    interp_degree_,
+                    analy_degree_,
+                    synthe_degree_)) {
+                auto in_arr = checked_preplanned_input<float>(input, input_shape_);
+                return resize_nd_impl_fused_2d_linear<float>(
+                    in_arr,
+                    input_shape_,
+                    output_shape_,
+                    zoom_factors_,
+                    inversable_);
+            }
             return resize_nd_impl_preplanned<float>(
                 input,
                 input_shape_,
@@ -624,6 +864,21 @@ public:
                 pass_params_,
                 prev_f32_,
                 scratch_f32_);
+        }
+        if (can_use_fused_2d_linear<double>(
+                input_shape_,
+                output_shape_,
+                active_axes_,
+                interp_degree_,
+                analy_degree_,
+                synthe_degree_)) {
+            auto in_arr = checked_preplanned_input<double>(input, input_shape_);
+            return resize_nd_impl_fused_2d_linear<double>(
+                in_arr,
+                input_shape_,
+                output_shape_,
+                zoom_factors_,
+                inversable_);
         }
         return resize_nd_impl_preplanned<double>(
             input,
@@ -642,6 +897,21 @@ public:
     {
         py::dtype dt = input.dtype();
         if (dt.is(py::dtype::of<float>())) {
+            if (can_use_fused_2d_linear<float>(
+                    input_shape_,
+                    output_shape_,
+                    active_axes_,
+                    interp_degree_,
+                    analy_degree_,
+                    synthe_degree_)) {
+                return resize_nd_impl_fused_2d_linear_into<float>(
+                    input,
+                    output,
+                    input_shape_,
+                    output_shape_,
+                    zoom_factors_,
+                    inversable_);
+            }
             return resize_nd_impl_preplanned_into<float>(
                 input,
                 output,
@@ -654,6 +924,21 @@ public:
                 pass_params_,
                 prev_f32_,
                 scratch_f32_);
+        }
+        if (can_use_fused_2d_linear<double>(
+                input_shape_,
+                output_shape_,
+                active_axes_,
+                interp_degree_,
+                analy_degree_,
+                synthe_degree_)) {
+            return resize_nd_impl_fused_2d_linear_into<double>(
+                input,
+                output,
+                input_shape_,
+                output_shape_,
+                zoom_factors_,
+                inversable_);
         }
         return resize_nd_impl_preplanned_into<double>(
             input,

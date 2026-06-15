@@ -119,8 +119,16 @@ static inline bool specialized_presets_enabled()
   return env_flag_enabled_default_true("LSRESIZE_SPECIALIZED_PRESETS");
 }
 
-static inline bool fast_2d_float_interp_enabled()
+static inline bool fast_linear_interp_enabled()
 {
+  const char* value = std::getenv("LSRESIZE_LINEAR_INTERP");
+  if (value != nullptr && value[0] != '\0') {
+    return env_flag_enabled_default_true("LSRESIZE_LINEAR_INTERP");
+  }
+  value = std::getenv("LSRESIZE_2D_LINEAR_INTERP");
+  if (value != nullptr && value[0] != '\0') {
+    return env_flag_enabled_default_true("LSRESIZE_2D_LINEAR_INTERP");
+  }
   return env_flag_enabled_default_true("LSRESIZE_2D_FLOAT_INTERP");
 }
 
@@ -1041,8 +1049,9 @@ static inline void accumulate_row_runs_colmajor(
   }
 }
 
-static inline double accumulate_float_line_plan_row(
-  const float* LS_RESTRICT line,
+template <typename Scalar>
+static inline double accumulate_scalar_line_plan_row(
+  const Scalar* LS_RESTRICT line,
   int64_t stride,
   const Plan1D& plan,
   const double* LS_RESTRICT weights,
@@ -1074,15 +1083,16 @@ static inline double accumulate_float_line_plan_row(
   return acc;
 }
 
+template <typename Weight>
 static inline bool build_direct_linear_plan(
   const Plan1D& plan,
   std::vector<unsigned char>& count,
   std::vector<int>& src0,
   std::vector<int>& src1,
   std::vector<int>& src2,
-  std::vector<double>& w0,
-  std::vector<double>& w1,
-  std::vector<double>& w2)
+  std::vector<Weight>& w0,
+  std::vector<Weight>& w1,
+  std::vector<Weight>& w2)
 {
   const int outN = plan.outN;
   count.assign(static_cast<size_t>(outN), 0);
@@ -1128,17 +1138,18 @@ static inline bool build_direct_linear_plan(
     src0[li] = src[0];
     src1[li] = src[1];
     src2[li] = src[2];
-    w0[li] = ww[0];
-    w1[li] = ww[1];
-    w2[li] = ww[2];
+    w0[li] = static_cast<Weight>(ww[0]);
+    w1[li] = static_cast<Weight>(ww[1]);
+    w2[li] = static_cast<Weight>(ww[2]);
   }
 
   return true;
 }
 
-static void resize_along_axis_2d_float_linear_direct(
-  const float* LS_RESTRICT in,
-  float* LS_RESTRICT out,
+template <typename Scalar>
+static void resize_along_axis_2d_linear_direct(
+  const Scalar* LS_RESTRICT in,
+  Scalar* LS_RESTRICT out,
   const std::vector<int64_t>& in_shape,
   const std::vector<int64_t>& out_shape,
   int axis,
@@ -1147,26 +1158,27 @@ static void resize_along_axis_2d_float_linear_direct(
 {
   const int64_t in_w = in_shape[1];
   const int64_t out_w = out_shape[1];
+  using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
   std::vector<unsigned char> count;
   std::vector<int> src0;
   std::vector<int> src1;
   std::vector<int> src2;
-  std::vector<double> w0;
-  std::vector<double> w1;
-  std::vector<double> w2;
+  std::vector<Accum> w0;
+  std::vector<Accum> w1;
+  std::vector<Accum> w2;
 
   if (!build_direct_linear_plan(plan, count, src0, src1, src2, w0, w1, w2)) {
     const double* LS_RESTRICT weights = plan.weights.data();
     auto fallback = [&](int64_t start, int64_t end) {
       if (axis == 1) {
         for (int64_t row = start; row < end; ++row) {
-          const float* LS_RESTRICT src = in + row * in_w;
-          float* LS_RESTRICT dst = out + row * out_w;
+          const Scalar* LS_RESTRICT src = in + row * in_w;
+          Scalar* LS_RESTRICT dst = out + row * out_w;
           for (const RowRun1D& run : plan.row_runs) {
             const bool interior = (run.interior != 0);
             for (int l = run.begin; l < run.end; ++l) {
-              dst[static_cast<size_t>(l)] = static_cast<float>(
-                  accumulate_float_line_plan_row(
+              dst[static_cast<size_t>(l)] = static_cast<Scalar>(
+                  accumulate_scalar_line_plan_row(
                       src,
                       1,
                       plan,
@@ -1182,11 +1194,11 @@ static void resize_along_axis_2d_float_linear_direct(
       for (const RowRun1D& run : plan.row_runs) {
         const bool interior = (run.interior != 0);
         for (int l = run.begin; l < run.end; ++l) {
-          float* LS_RESTRICT dst =
+          Scalar* LS_RESTRICT dst =
               out + static_cast<int64_t>(l) * out_w + start;
           for (int64_t col = start; col < end; ++col) {
-            dst[static_cast<size_t>(col - start)] = static_cast<float>(
-                accumulate_float_line_plan_row(
+            dst[static_cast<size_t>(col - start)] = static_cast<Scalar>(
+                accumulate_scalar_line_plan_row(
                     in + col,
                     in_w,
                     plan,
@@ -1206,35 +1218,35 @@ static void resize_along_axis_2d_float_linear_direct(
   const int* LS_RESTRICT s0 = src0.data();
   const int* LS_RESTRICT s1 = src1.data();
   const int* LS_RESTRICT s2 = src2.data();
-  const double* LS_RESTRICT a0 = w0.data();
-  const double* LS_RESTRICT a1 = w1.data();
-  const double* LS_RESTRICT a2 = w2.data();
+  const Accum* LS_RESTRICT a0 = w0.data();
+  const Accum* LS_RESTRICT a1 = w1.data();
+  const Accum* LS_RESTRICT a2 = w2.data();
 
   auto worker = [&](int64_t start, int64_t end) {
     if (axis == 1) {
       for (int64_t row = start; row < end; ++row) {
-        const float* LS_RESTRICT src = in + row * in_w;
-        float* LS_RESTRICT dst = out + row * out_w;
+        const Scalar* LS_RESTRICT src = in + row * in_w;
+        Scalar* LS_RESTRICT dst = out + row * out_w;
         for (int l = 0; l < plan.outN; ++l) {
           const size_t li = static_cast<size_t>(l);
-          double acc = 0.0;
+          Accum acc = Accum(0);
           switch (c[li]) {
             case 3:
-              acc = a0[li] * static_cast<double>(src[static_cast<size_t>(s0[li])]);
-              acc += a1[li] * static_cast<double>(src[static_cast<size_t>(s1[li])]);
-              acc += a2[li] * static_cast<double>(src[static_cast<size_t>(s2[li])]);
+              acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
+              acc += a1[li] * static_cast<Accum>(src[static_cast<size_t>(s1[li])]);
+              acc += a2[li] * static_cast<Accum>(src[static_cast<size_t>(s2[li])]);
               break;
             case 2:
-              acc = a0[li] * static_cast<double>(src[static_cast<size_t>(s0[li])]);
-              acc += a1[li] * static_cast<double>(src[static_cast<size_t>(s1[li])]);
+              acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
+              acc += a1[li] * static_cast<Accum>(src[static_cast<size_t>(s1[li])]);
               break;
             case 1:
-              acc = a0[li] * static_cast<double>(src[static_cast<size_t>(s0[li])]);
+              acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
               break;
             default:
               break;
           }
-          dst[li] = static_cast<float>(acc);
+          dst[li] = static_cast<Scalar>(acc);
         }
       }
       return;
@@ -1242,41 +1254,41 @@ static void resize_along_axis_2d_float_linear_direct(
 
     for (int l = 0; l < plan.outN; ++l) {
       const size_t li = static_cast<size_t>(l);
-      float* LS_RESTRICT dst = out + static_cast<int64_t>(l) * out_w + start;
-      const float* LS_RESTRICT row0 =
+      Scalar* LS_RESTRICT dst = out + static_cast<int64_t>(l) * out_w + start;
+      const Scalar* LS_RESTRICT row0 =
           in + static_cast<int64_t>(s0[li]) * in_w + start;
-      const float* LS_RESTRICT row1 =
+      const Scalar* LS_RESTRICT row1 =
           in + static_cast<int64_t>(s1[li]) * in_w + start;
-      const float* LS_RESTRICT row2 =
+      const Scalar* LS_RESTRICT row2 =
           in + static_cast<int64_t>(s2[li]) * in_w + start;
       switch (c[li]) {
         case 3:
           for (int64_t col = start; col < end; ++col) {
             const size_t ci = static_cast<size_t>(col - start);
-            double acc = a0[li] * static_cast<double>(row0[ci]);
-            acc += a1[li] * static_cast<double>(row1[ci]);
-            acc += a2[li] * static_cast<double>(row2[ci]);
-            dst[ci] = static_cast<float>(acc);
+            Accum acc = a0[li] * static_cast<Accum>(row0[ci]);
+            acc += a1[li] * static_cast<Accum>(row1[ci]);
+            acc += a2[li] * static_cast<Accum>(row2[ci]);
+            dst[ci] = static_cast<Scalar>(acc);
           }
           break;
         case 2:
           for (int64_t col = start; col < end; ++col) {
             const size_t ci = static_cast<size_t>(col - start);
-            double acc = a0[li] * static_cast<double>(row0[ci]);
-            acc += a1[li] * static_cast<double>(row1[ci]);
-            dst[ci] = static_cast<float>(acc);
+            Accum acc = a0[li] * static_cast<Accum>(row0[ci]);
+            acc += a1[li] * static_cast<Accum>(row1[ci]);
+            dst[ci] = static_cast<Scalar>(acc);
           }
           break;
         case 1:
           for (int64_t col = start; col < end; ++col) {
             const size_t ci = static_cast<size_t>(col - start);
-            dst[ci] = static_cast<float>(
-                a0[li] * static_cast<double>(row0[ci]));
+            dst[ci] = static_cast<Scalar>(
+                a0[li] * static_cast<Accum>(row0[ci]));
           }
           break;
         default:
           for (int64_t col = start; col < end; ++col) {
-            dst[static_cast<size_t>(col - start)] = 0.0f;
+            dst[static_cast<size_t>(col - start)] = static_cast<Scalar>(0);
           }
           break;
         }
@@ -1286,31 +1298,157 @@ static void resize_along_axis_2d_float_linear_direct(
   run_parallel_or_serial(nlines, plan, worker);
 }
 
-static inline bool can_use_2d_float_interp_fast_path(
+template <typename Scalar>
+static void resize_along_axis_linear_direct(
+  const Scalar* LS_RESTRICT in,
+  Scalar* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& in_strides,
+  const std::vector<int64_t>& out_strides,
+  int axis,
+  const Plan1D& plan,
+  const std::vector<int>& bases,
+  int64_t nlines)
+{
+  const int D = static_cast<int>(in_shape.size());
+  using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
+  std::vector<unsigned char> count;
+  std::vector<int> src0;
+  std::vector<int> src1;
+  std::vector<int> src2;
+  std::vector<Accum> w0;
+  std::vector<Accum> w1;
+  std::vector<Accum> w2;
+
+  if (!build_direct_linear_plan(plan, count, src0, src1, src2, w0, w1, w2)) {
+    const double* LS_RESTRICT weights = plan.weights.data();
+    auto fallback = [&](int64_t start, int64_t end) {
+      std::vector<int64_t> idx(static_cast<size_t>(D), 0);
+      for (int64_t line = start; line < end; ++line) {
+        int64_t in_off = 0;
+        int64_t out_off = 0;
+        line_offsets(
+            line,
+            axis,
+            bases,
+            in_shape,
+            in_strides,
+            out_strides,
+            idx,
+            in_off,
+            out_off);
+        const Scalar* LS_RESTRICT src = in + in_off;
+        const int64_t in_stride = in_strides[static_cast<size_t>(axis)];
+        const int64_t out_stride = out_strides[static_cast<size_t>(axis)];
+        Scalar* LS_RESTRICT dst = out + out_off;
+        for (const RowRun1D& run : plan.row_runs) {
+          const bool interior = (run.interior != 0);
+          for (int l = run.begin; l < run.end; ++l) {
+            dst[static_cast<int64_t>(l) * out_stride] = static_cast<Scalar>(
+                accumulate_scalar_line_plan_row(
+                    src,
+                    in_stride,
+                    plan,
+                    weights,
+                    l,
+                    interior));
+          }
+        }
+      }
+    };
+
+    run_parallel_or_serial(nlines, plan, fallback);
+    return;
+  }
+
+  const unsigned char* LS_RESTRICT c = count.data();
+  const int* LS_RESTRICT s0 = src0.data();
+  const int* LS_RESTRICT s1 = src1.data();
+  const int* LS_RESTRICT s2 = src2.data();
+  const Accum* LS_RESTRICT a0 = w0.data();
+  const Accum* LS_RESTRICT a1 = w1.data();
+  const Accum* LS_RESTRICT a2 = w2.data();
+
+  auto worker = [&](int64_t start, int64_t end) {
+    std::vector<int64_t> idx(static_cast<size_t>(D), 0);
+    for (int64_t line = start; line < end; ++line) {
+      int64_t in_off = 0;
+      int64_t out_off = 0;
+      line_offsets(
+          line,
+          axis,
+          bases,
+          in_shape,
+          in_strides,
+          out_strides,
+          idx,
+          in_off,
+          out_off);
+      const Scalar* LS_RESTRICT src = in + in_off;
+      Scalar* LS_RESTRICT dst = out + out_off;
+      const int64_t in_stride = in_strides[static_cast<size_t>(axis)];
+      const int64_t out_stride = out_strides[static_cast<size_t>(axis)];
+
+      for (int l = 0; l < plan.outN; ++l) {
+        const size_t li = static_cast<size_t>(l);
+        Accum acc = Accum(0);
+        switch (c[li]) {
+          case 3:
+            acc = a0[li] *
+                  static_cast<Accum>(src[static_cast<int64_t>(s0[li]) * in_stride]);
+            acc += a1[li] *
+                   static_cast<Accum>(src[static_cast<int64_t>(s1[li]) * in_stride]);
+            acc += a2[li] *
+                   static_cast<Accum>(src[static_cast<int64_t>(s2[li]) * in_stride]);
+            break;
+          case 2:
+            acc = a0[li] *
+                  static_cast<Accum>(src[static_cast<int64_t>(s0[li]) * in_stride]);
+            acc += a1[li] *
+                   static_cast<Accum>(src[static_cast<int64_t>(s1[li]) * in_stride]);
+            break;
+          case 1:
+            acc = a0[li] *
+                  static_cast<Accum>(src[static_cast<int64_t>(s0[li]) * in_stride]);
+            break;
+          default:
+            break;
+        }
+        dst[static_cast<int64_t>(l) * out_stride] = static_cast<Scalar>(acc);
+      }
+    }
+  };
+
+  run_parallel_or_serial(nlines, plan, worker);
+}
+
+static inline bool can_use_linear_interp_fast_path(
   const std::vector<int64_t>& in_shape,
   const std::vector<int64_t>& out_shape,
   int axis,
   const LSParams& p)
 {
-  return fast_2d_float_interp_enabled() &&
-         in_shape.size() == 2 &&
-         out_shape.size() == 2 &&
-         (axis == 0 || axis == 1) &&
+  return fast_linear_interp_enabled() &&
+         !in_shape.empty() &&
+         in_shape.size() == out_shape.size() &&
+         axis >= 0 &&
+         axis < static_cast<int>(in_shape.size()) &&
          p.analy_degree < 0 &&
          p.synthe_degree == p.interp_degree &&
          p.interp_degree == 1;
 }
 
-static void resize_along_axis_2d_float_linear_fast(
-  const float* LS_RESTRICT in,
-  float* LS_RESTRICT out,
+template <typename Scalar>
+static void resize_along_axis_2d_linear_fast(
+  const Scalar* LS_RESTRICT in,
+  Scalar* LS_RESTRICT out,
   const std::vector<int64_t>& in_shape,
   const std::vector<int64_t>& out_shape,
   int axis,
   const Plan1D& plan,
   int64_t nlines)
 {
-  resize_along_axis_2d_float_linear_direct(
+  resize_along_axis_2d_linear_direct(
       in,
       out,
       in_shape,
@@ -1930,17 +2068,38 @@ static void resize_along_axis_t(
   const auto plan_handle = get_plan_1d_cached(N_line, p);
   const Plan1D& plan = *plan_handle;
 
-  if (should_use_batched_axis(
-          batched_axis_mode(),
-          in_shape,
-          p,
-          plan,
-          nlines)) {
+  const BatchedAxisMode axis_mode = batched_axis_mode();
+
+  if (axis_mode != BatchedAxisMode::Off &&
+      can_use_linear_interp_fast_path(in_shape, out_shape, axis, p)) {
     if constexpr (std::is_same_v<Scalar, float>) {
-      const bool use_float32_internal = float32_internal_enabled();
-      if (!use_float32_internal &&
-          can_use_2d_float_interp_fast_path(in_shape, out_shape, axis, p)) {
-        resize_along_axis_2d_float_linear_fast(
+      if (!float32_internal_enabled()) {
+        if (in_shape.size() == 2) {
+          resize_along_axis_2d_linear_fast(
+              in,
+              out,
+              in_shape,
+              out_shape,
+              axis,
+              plan,
+              nlines);
+        } else {
+          resize_along_axis_linear_direct(
+              in,
+              out,
+              in_shape,
+              in_strides,
+              out_strides,
+              axis,
+              plan,
+              bases,
+              nlines);
+        }
+        return;
+      }
+    } else if constexpr (std::is_same_v<Scalar, double>) {
+      if (in_shape.size() == 2) {
+        resize_along_axis_2d_linear_fast(
             in,
             out,
             in_shape,
@@ -1948,8 +2107,30 @@ static void resize_along_axis_t(
             axis,
             plan,
             nlines);
-        return;
+      } else {
+        resize_along_axis_linear_direct(
+            in,
+            out,
+            in_shape,
+            in_strides,
+            out_strides,
+            axis,
+            plan,
+            bases,
+            nlines);
       }
+      return;
+    }
+  }
+
+  if (should_use_batched_axis(
+          axis_mode,
+          in_shape,
+          p,
+          plan,
+          nlines)) {
+    if constexpr (std::is_same_v<Scalar, float>) {
+      const bool use_float32_internal = float32_internal_enabled();
       if (use_float32_internal) {
         if (p.analy_degree < 0) {
           resize_along_axis_batched_interp_f32_internal(
@@ -2113,6 +2294,233 @@ static void resize_along_axis_t(
   run_parallel_or_serial(nlines, plan, worker);
 }
 
+template <typename Scalar>
+static void resize_2d_linear_t(
+  const Scalar* LS_RESTRICT in,
+  Scalar* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1)
+{
+  const int64_t in_h = in_shape[0];
+  const int64_t in_w = in_shape[1];
+  const int64_t out_h = out_shape[0];
+  const int64_t out_w = out_shape[1];
+  using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
+
+  const auto row_plan_handle =
+      get_plan_1d_cached(static_cast<int>(in_h), p0);
+  const auto col_plan_handle =
+      get_plan_1d_cached(static_cast<int>(in_w), p1);
+  const Plan1D& row_plan = *row_plan_handle;
+  const Plan1D& col_plan = *col_plan_handle;
+
+  std::vector<unsigned char> row_count;
+  std::vector<int> row_src0;
+  std::vector<int> row_src1;
+  std::vector<int> row_src2;
+  std::vector<Accum> row_w0;
+  std::vector<Accum> row_w1;
+  std::vector<Accum> row_w2;
+  std::vector<unsigned char> col_count;
+  std::vector<int> col_src0;
+  std::vector<int> col_src1;
+  std::vector<int> col_src2;
+  std::vector<Accum> col_w0;
+  std::vector<Accum> col_w1;
+  std::vector<Accum> col_w2;
+
+  const bool have_row_plan = build_direct_linear_plan(
+      row_plan,
+      row_count,
+      row_src0,
+      row_src1,
+      row_src2,
+      row_w0,
+      row_w1,
+      row_w2);
+  const bool have_col_plan = build_direct_linear_plan(
+      col_plan,
+      col_count,
+      col_src0,
+      col_src1,
+      col_src2,
+      col_w0,
+      col_w1,
+      col_w2);
+  if (!have_row_plan || !have_col_plan) {
+    std::vector<Scalar> tmp(
+        static_cast<size_t>(out_h) * static_cast<size_t>(in_w));
+    std::vector<int64_t> mid_shape = {out_h, in_w};
+    resize_along_axis_2d_linear_direct(
+        in, tmp.data(), in_shape, mid_shape, 0, row_plan, in_w);
+    resize_along_axis_2d_linear_direct(
+        tmp.data(), out, mid_shape, out_shape, 1, col_plan, out_h);
+    return;
+  }
+
+  const unsigned char* LS_RESTRICT rc = row_count.data();
+  const int* LS_RESTRICT rs0 = row_src0.data();
+  const int* LS_RESTRICT rs1 = row_src1.data();
+  const int* LS_RESTRICT rs2 = row_src2.data();
+  const Accum* LS_RESTRICT rw0 = row_w0.data();
+  const Accum* LS_RESTRICT rw1 = row_w1.data();
+  const Accum* LS_RESTRICT rw2 = row_w2.data();
+  const unsigned char* LS_RESTRICT cc = col_count.data();
+  const int* LS_RESTRICT cs0 = col_src0.data();
+  const int* LS_RESTRICT cs1 = col_src1.data();
+  const int* LS_RESTRICT cs2 = col_src2.data();
+  const Accum* LS_RESTRICT cw0 = col_w0.data();
+  const Accum* LS_RESTRICT cw1 = col_w1.data();
+  const Accum* LS_RESTRICT cw2 = col_w2.data();
+
+  auto worker = [&](int64_t start, int64_t end) {
+    for (int64_t r = start; r < end; ++r) {
+      const size_t ri = static_cast<size_t>(r);
+      const Scalar* LS_RESTRICT row0 =
+          in + static_cast<int64_t>(rs0[ri]) * in_w;
+      const Scalar* LS_RESTRICT row1 =
+          in + static_cast<int64_t>(rs1[ri]) * in_w;
+      const Scalar* LS_RESTRICT row2 =
+          in + static_cast<int64_t>(rs2[ri]) * in_w;
+      const int nr = static_cast<int>(rc[ri]);
+      Scalar* LS_RESTRICT dst = out + r * out_w;
+      const Accum wr0 = rw0[ri];
+      const Accum wr1 = rw1[ri];
+      const Accum wr2 = rw2[ri];
+
+      if (nr == 2) {
+        for (int64_t c = 0; c < out_w; ++c) {
+          const size_t ci = static_cast<size_t>(c);
+          const int c0 = cs0[ci];
+          const int c1 = cs1[ci];
+          const int c2 = cs2[ci];
+          const Accum wc0 = cw0[ci];
+          const Accum wc1 = cw1[ci];
+          const Accum wc2 = cw2[ci];
+          Accum acc = Accum(0);
+          switch (cc[ci]) {
+            case 3:
+              acc = wr0 * (
+                  wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]) +
+                  wc2 * static_cast<Accum>(row0[static_cast<size_t>(c2)]));
+              acc += wr1 * (
+                  wc0 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row1[static_cast<size_t>(c1)]) +
+                  wc2 * static_cast<Accum>(row1[static_cast<size_t>(c2)]));
+              break;
+            case 2:
+              acc = wr0 * (
+                  wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]));
+              acc += wr1 * (
+                  wc0 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row1[static_cast<size_t>(c1)]));
+              break;
+            case 1:
+              acc = wc0 * (
+                  wr0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                  wr1 * static_cast<Accum>(row1[static_cast<size_t>(c0)]));
+              break;
+            default:
+              break;
+          }
+          dst[ci] = static_cast<Scalar>(acc);
+        }
+        continue;
+      }
+
+      if (nr == 1) {
+        for (int64_t c = 0; c < out_w; ++c) {
+          const size_t ci = static_cast<size_t>(c);
+          const int c0 = cs0[ci];
+          const int c1 = cs1[ci];
+          const int c2 = cs2[ci];
+          const Accum wc0 = cw0[ci];
+          const Accum wc1 = cw1[ci];
+          const Accum wc2 = cw2[ci];
+          Accum acc = Accum(0);
+          switch (cc[ci]) {
+            case 3:
+              acc = wr0 * (
+                  wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]) +
+                  wc2 * static_cast<Accum>(row0[static_cast<size_t>(c2)]));
+              break;
+            case 2:
+              acc = wr0 * (
+                  wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]));
+              break;
+            case 1:
+              acc = wr0 * wc0 *
+                    static_cast<Accum>(row0[static_cast<size_t>(c0)]);
+              break;
+            default:
+              break;
+          }
+          dst[ci] = static_cast<Scalar>(acc);
+        }
+        continue;
+      }
+
+      if (nr == 3) {
+        for (int64_t c = 0; c < out_w; ++c) {
+          const size_t ci = static_cast<size_t>(c);
+          const int c0 = cs0[ci];
+          const int c1 = cs1[ci];
+          const int c2 = cs2[ci];
+          const Accum wc0 = cw0[ci];
+          const Accum wc1 = cw1[ci];
+          const Accum wc2 = cw2[ci];
+          Accum acc = Accum(0);
+          switch (cc[ci]) {
+            case 3:
+              acc = wr0 * (
+                  wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]) +
+                  wc2 * static_cast<Accum>(row0[static_cast<size_t>(c2)]));
+              acc += wr1 * (
+                  wc0 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row1[static_cast<size_t>(c1)]) +
+                  wc2 * static_cast<Accum>(row1[static_cast<size_t>(c2)]));
+              acc += wr2 * (
+                  wc0 * static_cast<Accum>(row2[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row2[static_cast<size_t>(c1)]) +
+                  wc2 * static_cast<Accum>(row2[static_cast<size_t>(c2)]));
+              break;
+            case 2:
+              acc = wr0 * (
+                  wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]));
+              acc += wr1 * (
+                  wc0 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row1[static_cast<size_t>(c1)]));
+              acc += wr2 * (
+                  wc0 * static_cast<Accum>(row2[static_cast<size_t>(c0)]) +
+                  wc1 * static_cast<Accum>(row2[static_cast<size_t>(c1)]));
+              break;
+            case 1:
+              acc = wc0 * (
+                  wr0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                  wr1 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
+                  wr2 * static_cast<Accum>(row2[static_cast<size_t>(c0)]));
+              break;
+            default:
+              break;
+          }
+          dst[ci] = static_cast<Scalar>(acc);
+        }
+        continue;
+      }
+    }
+  };
+
+  run_parallel_or_serial(out_h, row_plan, worker);
+}
+
 // -----------------------------------------------------------------------------
 // Public entry points
 // -----------------------------------------------------------------------------
@@ -2137,6 +2545,28 @@ void resize_along_axis_f32(
   const LSParams& p)
 {
   resize_along_axis_t<float>(in, out, in_shape, out_shape, axis, p);
+}
+
+void resize_2d_linear(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1)
+{
+  resize_2d_linear_t<double>(in, out, in_shape, out_shape, p0, p1);
+}
+
+void resize_2d_linear_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1)
+{
+  resize_2d_linear_t<float>(in, out, in_shape, out_shape, p0, p1);
 }
 
 } // namespace lsresize

@@ -282,33 +282,120 @@ def test_batched_axis_auto_matches_default(monkeypatch, dtype, method, shape, zo
 
 @pytest.mark.skipif(
     not _has_cpp(),
-    reason="Native extension not available: skipping 2-D float interpolation compare",
+    reason="Native extension not available: skipping 2-D linear interpolation compare",
 )
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
 @pytest.mark.parametrize(
-    "method,shape,zoom",
+    "shape,zoom",
     [
-        ("linear", (128, 96), (0.53, 1.27)),
-        ("linear", (96, 128), (1.31, 0.57)),
+        ((96, 80), (0.5, 0.5)),
+        ((128, 96), (0.53, 1.27)),
+        ((96, 128), (1.31, 0.57)),
+        ((64, 72), (1.4, 1.25)),
     ],
 )
-def test_2d_float_interp_fast_path_matches_disabled(
-    monkeypatch, method, shape, zoom
+def test_2d_linear_interp_fast_path_matches_disabled(
+    monkeypatch, dtype, shape, zoom
 ):
     rng = np.random.default_rng(130)
-    arr = rng.random(shape, dtype=np.float32)
+    arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
     monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
     monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert actual.dtype == dtype
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping fused 2-D linear compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "shape,zoom",
+    [
+        ((96, 80), (0.5, 0.5)),
+        ((96, 80), (1.4, 1.25)),
+        ((96, 80), (0.55, 1.3)),
+    ],
+)
+def test_2d_linear_fused_path_matches_axis_direct(monkeypatch, dtype, shape, zoom):
+    rng = np.random.default_rng(133)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "1")
+    monkeypatch.setenv("LSRESIZE_FUSED_2D_LINEAR", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    monkeypatch.setenv("LSRESIZE_FUSED_2D_LINEAR", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert actual.dtype == dtype
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping N-D linear interpolation compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_nd_linear_interp_fast_path_matches_disabled(monkeypatch, dtype):
+    rng = np.random.default_rng(132)
+    arr = rng.random((24, 20, 16), dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=(0.75, 1.2, 0.5), method="linear")
+
+    monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=(0.75, 1.2, 0.5), method="linear")
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert actual.dtype == dtype
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping legacy 2-D linear flag compare",
+)
+def test_2d_linear_interp_legacy_float_flag_disables_fast_path(monkeypatch):
+    rng = np.random.default_rng(131)
+    arr = rng.random((128, 96), dtype=np.float32)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.delenv("LSRESIZE_LINEAR_INTERP", raising=False)
+    monkeypatch.delenv("LSRESIZE_2D_LINEAR_INTERP", raising=False)
     monkeypatch.setenv("LSRESIZE_2D_FLOAT_INTERP", "0")
     rz = _load_resize_module(force_reload=True)
-    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+    expected = rz.resize(arr, zoom_factors=(0.53, 1.27), method="linear")
 
     monkeypatch.setenv("LSRESIZE_2D_FLOAT_INTERP", "1")
     rz = _load_resize_module(force_reload=True)
-    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+    actual = rz.resize(arr, zoom_factors=(0.53, 1.27), method="linear")
 
-    assert actual.dtype == np.float32
     assert np.allclose(actual, expected, atol=5e-6, rtol=5e-6)
 
 

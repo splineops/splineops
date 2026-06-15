@@ -168,6 +168,18 @@ def native_knobs() -> dict[str, str]:
             "LSRESIZE_SPECIALIZED_PRESETS",
             "<default:on>",
         ),
+        "LSRESIZE_LINEAR_INTERP": os.environ.get(
+            "LSRESIZE_LINEAR_INTERP",
+            "<default:on>",
+        ),
+        "LSRESIZE_FUSED_2D_LINEAR": os.environ.get(
+            "LSRESIZE_FUSED_2D_LINEAR",
+            "<default:on>",
+        ),
+        "LSRESIZE_2D_LINEAR_INTERP": os.environ.get(
+            "LSRESIZE_2D_LINEAR_INTERP",
+            "<default:on>",
+        ),
         "LSRESIZE_2D_FLOAT_INTERP": os.environ.get(
             "LSRESIZE_2D_FLOAT_INTERP",
             "<default:on>",
@@ -306,6 +318,13 @@ def standard_cases() -> list[BenchCase]:
             cases.extend(
                 [
                     BenchCase(
+                        f"2d_linear_down_{shape[0]}_{dtype}",
+                        shape,
+                        (0.37, 0.37),
+                        "linear",
+                        dtype,
+                    ),
+                    BenchCase(
                         f"2d_cubic_down_{shape[0]}_{dtype}",
                         shape,
                         (0.37, 0.37),
@@ -327,16 +346,32 @@ def standard_cases() -> list[BenchCase]:
                         dtype,
                     ),
                     BenchCase(
+                        f"2d_linear_aniso_{shape[0]}_{dtype}",
+                        shape,
+                        (1.0, 0.37),
+                        "linear",
+                        dtype,
+                    ),
+                    BenchCase(
                         f"2d_cubic_aniso_{shape[0]}_{dtype}",
                         shape,
                         (1.0, 0.37),
                         "cubic",
                         dtype,
                     ),
+                    BenchCase(
+                        f"2d_linear_up_{shape[0]}_{dtype}",
+                        shape,
+                        (1.25, 1.25),
+                        "linear",
+                        dtype,
+                    ),
                 ]
             )
     cases.extend(
         [
+            BenchCase("3d_linear_down_f32", (128, 128, 32), (0.5, 0.5, 0.5), "linear", "float32"),
+            BenchCase("3d_linear_aniso_f32", (128, 128, 32), (1.0, 0.5, 1.0), "linear", "float32"),
             BenchCase("3d_cubic_down_f32", (128, 128, 32), (0.5, 0.5, 0.5), "cubic", "float32"),
             BenchCase("3d_cubic_aniso_f32", (128, 128, 32), (1.0, 0.5, 1.0), "cubic", "float32"),
         ]

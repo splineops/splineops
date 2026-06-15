@@ -30,4 +30,20 @@ void resize_along_axis_f32(
     int axis,
     const LSParams& p);
 
+void resize_2d_linear(
+    const double* LS_RESTRICT in,
+    double* LS_RESTRICT out,
+    const std::vector<int64_t>& in_shape,
+    const std::vector<int64_t>& out_shape,
+    const LSParams& p0,
+    const LSParams& p1);
+
+void resize_2d_linear_f32(
+    const float* LS_RESTRICT in,
+    float* LS_RESTRICT out,
+    const std::vector<int64_t>& in_shape,
+    const std::vector<int64_t>& out_shape,
+    const LSParams& p0,
+    const LSParams& p1);
+
 } // namespace lsresize

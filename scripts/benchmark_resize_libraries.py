@@ -295,6 +295,12 @@ def smoke_cases() -> list[LibraryCase]:
 
 def standard_cases() -> list[LibraryCase]:
     return smoke_cases() + [
+        LibraryCase("2d_linear_down_random_f32", (512, 512), (0.37, 0.37), "linear", "float32", "random"),
+        LibraryCase("2d_linear_aniso_random_f32", (512, 512), (1.0, 0.37), "linear", "float32", "random"),
+        LibraryCase("2d_linear_up_sinusoid_f32", (512, 512), (1.25, 1.25), "linear", "float32", "sinusoid"),
+        LibraryCase("2d_linear_down_random_f64", (512, 512), (0.37, 0.37), "linear", "float64", "random"),
+        LibraryCase("2d_linear_aniso_random_f64", (512, 512), (1.0, 0.37), "linear", "float64", "random"),
+        LibraryCase("2d_linear_up_sinusoid_f64", (512, 512), (1.25, 1.25), "linear", "float64", "sinusoid"),
         LibraryCase("2d_cubic_up_sinusoid_f32", (256, 256), (1.7, 1.7), "cubic", "float32", "sinusoid"),
         LibraryCase(
             "2d_linear_aa_down_random_f32",
@@ -327,6 +333,9 @@ def standard_cases() -> list[LibraryCase]:
 
 def full_cases() -> list[LibraryCase]:
     return standard_cases() + [
+        LibraryCase("2d_linear_down_random_f32_large", (1024, 1024), (0.37, 0.37), "linear", "float32", "random"),
+        LibraryCase("2d_linear_aniso_random_f32_large", (1024, 1024), (1.0, 0.37), "linear", "float32", "random"),
+        LibraryCase("2d_linear_up_sinusoid_f32_large", (1024, 1024), (1.25, 1.25), "linear", "float32", "sinusoid"),
         LibraryCase("2d_cubic_down_random_f64", (1024, 1024), (0.37, 0.37), "cubic", "float64", "random"),
         LibraryCase(
             "2d_cubic_aa_down_random_f64_large",
