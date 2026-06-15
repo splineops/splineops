@@ -176,6 +176,18 @@ Measured progress so far:
     and `LSRESIZE_PRECISION=float32`
   - added `scripts/benchmark_resize_plan.py` for repeated same-shape
     `ResizePlan` workloads with fresh-output and reused-output timings
+  - added `scripts/benchmark_resize_libraries.py` for systematic timing and
+    quality comparisons against optional external libraries such as SciPy,
+    scikit-image, OpenCV, and PyTorch
+  - library comparison artifacts:
+    `/tmp/splineops_resize_libraries_smoke.{json,csv}` and
+    `/tmp/splineops_resize_libraries_standard.{json,csv}`
+  - local standard library comparison, single-threaded where controllable:
+    SciPy matched splineops closely on non-antialiasing linear/cubic cases but
+    was slower on most standard rows; OpenCV was faster on 2-D rows but uses
+    different interpolation/antialiasing semantics and showed much larger
+    deltas versus splineops; PyTorch was not installed in the local venv and
+    was reported as skipped
   - added a manual GitHub Actions workflow,
     `.github/workflows/resize-benchmark.yml`, to collect native benchmark,
     quality, and plan-reuse artifacts on CI hardware without gating PRs on
@@ -209,6 +221,10 @@ Validation status:
   `/tmp/splineops_resize_plan_smoke.{json,csv}`.
 - ResizePlan reuse standard:
   `/tmp/splineops_resize_plan_standard.{json,csv}`.
+- Cross-library resize smoke:
+  `/tmp/splineops_resize_libraries_smoke.{json,csv}`.
+- Cross-library resize standard:
+  `/tmp/splineops_resize_libraries_standard.{json,csv}`.
 - `git diff --check`: clean on the latest implementation pass.
 
 ### Full Optimization Roadmap
@@ -277,6 +293,9 @@ design.
    - Compare medians and best-of timings; short sub-3 ms cases can be noisy.
    - Keep parity checks enabled for smoke/small profiles, and use
      `--skip-checks` only for large timing sweeps.
+   - For cross-library comparisons, report both timing and quality deltas
+     because coordinate, boundary, and antialiasing semantics differ between
+     libraries.
 
 ## Handoff: 2026-06-12
 
