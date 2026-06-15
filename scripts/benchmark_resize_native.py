@@ -188,7 +188,10 @@ def native_knobs() -> dict[str, str]:
             "LSRESIZE_2D_FLOAT_INTERP",
             "<default:on>",
         ),
-        "LSRESIZE_PRECISION": os.environ.get("LSRESIZE_PRECISION", "<default:float64>"),
+        "LSRESIZE_PRECISION": os.environ.get(
+            "LSRESIZE_PRECISION",
+            "<default:auto-f32-2d-interp-else-float64>",
+        ),
         "LSRESIZE_NUM_THREADS": os.environ.get("LSRESIZE_NUM_THREADS", "<default:auto>"),
         "LSRESIZE_PLAN_CACHE_SIZE": os.environ.get("LSRESIZE_PLAN_CACHE_SIZE", "<default:32>"),
     }

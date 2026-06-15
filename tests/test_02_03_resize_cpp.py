@@ -494,6 +494,66 @@ def test_float32_internal_preserves_constant_arrays(monkeypatch, method, atol):
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping float32 auto precision",
+)
+@pytest.mark.parametrize("method", ["quadratic", "cubic"])
+def test_float32_auto_precision_for_2d_pure_interpolation(monkeypatch, method):
+    rng = np.random.default_rng(128)
+    arr = rng.random((129, 97), dtype=np.float32)
+    zoom = (0.61, 1.33)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    automatic = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_PRECISION", "float32")
+    rz = _load_resize_module(force_reload=True)
+    forced_f32 = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_PRECISION", "float64")
+    rz = _load_resize_module(force_reload=True)
+    forced_f64 = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    max_abs = float(
+        np.max(np.abs(automatic.astype(np.float64) - forced_f64.astype(np.float64)))
+    )
+    assert automatic.dtype == np.float32
+    assert np.array_equal(automatic, forced_f32)
+    assert np.allclose(automatic, forced_f64, atol=2e-6, rtol=0.0), (
+        f"{method} automatic float32 internals max|Δ|={max_abs:.3e}"
+    )
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping float32 auto precision",
+)
+@pytest.mark.parametrize("method", ["linear-antialiasing", "cubic-antialiasing"])
+def test_float32_auto_precision_keeps_projection_default(monkeypatch, method):
+    rng = np.random.default_rng(129)
+    arr = rng.random((128, 96), dtype=np.float32)
+    zoom = (0.6, 1.4)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    automatic = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_PRECISION", "float64")
+    rz = _load_resize_module(force_reload=True)
+    forced_f64 = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    assert automatic.dtype == np.float32
+    assert np.array_equal(automatic, forced_f64)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping C++ vs Python compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -635,7 +695,7 @@ def test_float32_internal_preserves_constant_arrays(monkeypatch, method, atol):
             "cubic",
             (512, 512),
             (0.5, 0.5),
-            2e-7,
+            8e-7,
         ),
         (
             "Interpolation (linear)",
@@ -679,8 +739,8 @@ def test_cpp_vs_python_equality(
     # Disable optional Python-side autotuning for reproducible timings
     monkeypatch.setenv("SPLINEOPS_AUTOTUNE", "0")
 
-    # This parity test defines the default precision contract. The opt-in
-    # float32 native path has dedicated coverage above with looser tolerances.
+    # This parity test defines the default precision contract. Automatic and
+    # opt-in float32 native paths have dedicated coverage above.
     monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
 
     rng = np.random.default_rng(0)

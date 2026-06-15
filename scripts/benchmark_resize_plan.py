@@ -189,7 +189,10 @@ def write_json(path: Path, results: list[PlanBenchResult]) -> None:
             "python": sys.version.split()[0],
             "numpy": np.__version__,
             "platform": platform.platform(),
-            "LSRESIZE_PRECISION": os.environ.get("LSRESIZE_PRECISION", "<default:float64>"),
+            "LSRESIZE_PRECISION": os.environ.get(
+                "LSRESIZE_PRECISION",
+                "<default:auto-f32-2d-interp-else-float64>",
+            ),
             "LSRESIZE_BATCHED_AXIS": os.environ.get("LSRESIZE_BATCHED_AXIS", "<unset>"),
         },
         "results": [asdict(r) for r in results],

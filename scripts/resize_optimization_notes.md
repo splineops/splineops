@@ -55,7 +55,7 @@ Current default knobs:
 | Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
 | Native fused 2-D linear path | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |
 | Native AVX2 2-D linear upsample path | enabled on supported x86 | `LSRESIZE_AVX2_LINEAR=0` |
-| Native internal precision | `float64` scratch/accumulation | `LSRESIZE_PRECISION=float32` for opt-in batched float32 |
+| Native internal precision | `float32` internals for 2-D `float32` pure quadratic/cubic interpolation; `float64` otherwise | `LSRESIZE_PRECISION=float32` to force batched float32 internals; non-empty non-f32 values keep the conservative path |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
 | Python block size | `256` | `SPLINEOPS_BLOCK=<n>` |
@@ -111,8 +111,7 @@ Measured progress so far:
 - Opt-in native float32 internals:
   - enabled with `LSRESIZE_PRECISION=float32` (also accepts `single` and `f32`)
   - scope is intentionally limited to native batched passes over `float32`
-    arrays; default and `float64` workloads still use the existing 64-bit
-    internal path
+    arrays; `float64` workloads still use the existing 64-bit internal path
   - original local standard-profile artifacts:
     `/tmp/splineops_resize_float32_internal_default.{json,csv}` and
     `/tmp/splineops_resize_float32_internal_f32.{json,csv}`
@@ -131,6 +130,28 @@ Measured progress so far:
     path, with about `1.43x` mean median speedup
   - random antialiasing/projection outputs still differ from the default 64-bit
     internal path, so the mode remains opt-in
+- Automatic native float32 internals for 2-D pure interpolation:
+  - default precision policy now uses the existing float32-internal batched
+    path for 2-D `float32` pure quadratic/cubic interpolation when
+    `LSRESIZE_PRECISION` is unset
+  - linear interpolation keeps using the exact linear fast paths by default;
+    antialiasing/projection stays on the conservative 64-bit internal path
+    unless `LSRESIZE_PRECISION=float32` is explicitly requested
+  - local standard-profile A/B artifacts:
+    `/tmp/splineops_resize_native_auto_f32_interp_on.{json,csv}` and
+    `/tmp/splineops_resize_native_auto_f32_interp_forced64.{json,csv}`
+  - with `--threads 1`, `--repeats 9`, `--warmups 3`, the 2-D `float32`
+    cubic interpolation medians improved by about `1.37x` to `1.48x`
+    versus forced 64-bit internals, with about `1.42x` mean median speedup
+  - local quality artifact:
+    `/tmp/splineops_resize_quality_auto_f32_interp_standard.{json,csv}`;
+    explicit float32 still shows measurable antialiasing/projection drift, so
+    those modes remain opt-in
+  - local library comparison artifact:
+    `/tmp/splineops_resize_libraries_auto_f32_interp_standard.{json,csv}`;
+    splineops was faster than SciPy on `14/15` comparable standard-profile
+    cases on this CPU, while OpenCV was faster on `11/13` 2-D cases but uses
+    different image-resize semantics in this comparison
 - Native exact linear interpolation fast paths:
   - implemented behind default-on `LSRESIZE_LINEAR_INTERP`; older
     `LSRESIZE_2D_LINEAR_INTERP` and `LSRESIZE_2D_FLOAT_INTERP` remain accepted

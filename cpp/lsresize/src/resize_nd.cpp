@@ -151,6 +151,28 @@ static inline bool float32_internal_enabled()
          env_equals_ci(value, "f32");
 }
 
+static inline bool float32_internal_auto_enabled(
+  const std::vector<int64_t>& in_shape,
+  const LSParams& p)
+{
+  const char* value = std::getenv("LSRESIZE_PRECISION");
+  if (value != nullptr && value[0] != '\0') {
+    return false;
+  }
+  return in_shape.size() == 2 &&
+         p.analy_degree < 0 &&
+         p.synthe_degree == p.interp_degree &&
+         (p.interp_degree == 2 || p.interp_degree == 3);
+}
+
+static inline bool float32_internal_enabled_for(
+  const std::vector<int64_t>& in_shape,
+  const LSParams& p)
+{
+  return float32_internal_enabled() ||
+         float32_internal_auto_enabled(in_shape, p);
+}
+
 static inline bool avx2_linear_enabled()
 {
 #if LSRESIZE_GNU_X86_TARGETS
@@ -2274,7 +2296,8 @@ static void resize_along_axis_t(
           plan,
           nlines)) {
     if constexpr (std::is_same_v<Scalar, float>) {
-      const bool use_float32_internal = float32_internal_enabled();
+      const bool use_float32_internal =
+          float32_internal_enabled_for(in_shape, p);
       if (use_float32_internal) {
         if (p.analy_degree < 0) {
           resize_along_axis_batched_interp_f32_internal(
