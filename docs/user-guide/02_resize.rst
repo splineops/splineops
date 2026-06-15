@@ -367,9 +367,9 @@ Internally, :ref:`resize <api-resize>` uses two cooperating backends:
   - constructs a single contiguous **extended buffer** per line that contains
     the mirrored input samples, so the inner loop only sees simple pointer
     arithmetic and dot products,
-  - evaluates all spline sums in **double precision**, using small dense
-    dot products that can exploit SIMD instructions (AVX2, AVX-512, NEON)
-    when available,
+  - evaluates spline sums in **double precision by default**, using small
+    dense dot products that can exploit SIMD instructions (AVX2, AVX-512,
+    NEON) when available,
   - and **parallelizes over independent lines** with a lightweight
     multithreading pool whenever the estimated workload is large enough.
 
@@ -384,9 +384,14 @@ Internally, :ref:`resize <api-resize>` uses two cooperating backends:
   environments where the C++ extension cannot be built; it is numerically
   equivalent but typically slower.
 
-Both backends perform all spline computations in 64-bit floating point; input
-and output arrays keep their original dtype (or a user-specified dtype), with
-casting only at the boundary of each axis pass.
+Both backends perform spline computations in 64-bit floating point by default;
+input and output arrays keep their original dtype (or a user-specified dtype),
+with casting only at the boundary of each axis pass. The native backend also
+has an experimental opt-in fast path for batched ``float32`` workloads via
+``LSRESIZE_PRECISION=float32``. That mode keeps the selected native batched
+axis pass in ``float32`` scratch space for speed, so it can differ slightly
+from the default 64-bit internal result and should be treated as an explicit
+performance/precision tradeoff.
 
 Conceptually, :ref:`resize <api-resize>` is configured by three spline degrees:
 

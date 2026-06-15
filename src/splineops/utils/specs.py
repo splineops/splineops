@@ -130,6 +130,7 @@ def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
         "LSRESIZE_NUM_THREADS",
         "LSRESIZE_PARALLEL_THRESHOLD",
         "LSRESIZE_PLAN_CACHE_SIZE",
+        "LSRESIZE_PRECISION",
         "LSRESIZE_SPECIALIZED_PRESETS",
         "OMP_NUM_THREADS",
         "OMP_DYNAMIC",

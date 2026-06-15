@@ -52,6 +52,7 @@ Current default knobs:
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
 | Native batch lines | `64` | `LSRESIZE_BATCH_LINES=<n>` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
+| Native internal precision | `float64` scratch/accumulation | `LSRESIZE_PRECISION=float32` for opt-in batched float32 |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
 | Python block size | `256` | `SPLINEOPS_BLOCK=<n>` |
@@ -98,14 +99,40 @@ Measured progress so far:
   - with `--threads 1,default`, `--repeats 5`, `--warmups 2`,
     specialization won `30/36` medians and `33/36` best-of timings, with about
     `1.15x` mean median speedup across the standard profile
+  - full-profile A/B artifacts:
+    `/tmp/splineops_resize_full_specialized_on.{json,csv}` and
+    `/tmp/splineops_resize_full_specialized_off.{json,csv}`
+  - with `--threads 1,2,4,8,default`, `--repeats 3`, `--warmups 1`,
+    specialization won `92/130` medians and `100/130` best-of timings, with
+    about `1.13x` mean median speedup across the full profile
+- Opt-in native float32 internals:
+  - enabled with `LSRESIZE_PRECISION=float32` (also accepts `single` and `f32`)
+  - scope is intentionally limited to native batched passes over `float32`
+    arrays; default and `float64` workloads still use the existing 64-bit
+    internal path
+  - local standard-profile artifacts:
+    `/tmp/splineops_resize_float32_internal_default.{json,csv}` and
+    `/tmp/splineops_resize_float32_internal_f32.{json,csv}`
+  - on selected 2-D `float32` cases (`--threads 1,default`, `--repeats 5`,
+    `--warmups 2`), the opt-in path won `15/16` medians and `16/16` best-of
+    timings, with about `1.52x` mean median speedup
+  - interpolation-only differences versus the default 64-bit internal path were
+    at float32 rounding scale in spot checks; antialiasing/projection cases
+    showed larger but bounded drift, including constant-array boundary drift up
+    to about `4e-4` locally, so the mode remains opt-in
 
 Validation status:
 
 - Native editable rebuild: clean.
 - Direct batched-axis parity tests: `60 passed`.
-- Focused resize suite: `175 passed`.
-- Forced Python fallback focused suite: `175 passed`.
-- Full suite: `429 passed`.
+- Opt-in float32 internal focused tests: `9 passed`.
+- Native resize module: `103 passed`.
+- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `103 passed`.
+- Resize API suite: `81 passed`.
+- Resize API suite with `SPLINEOPS_ACCEL=never`: `81 passed`.
+- Focused resize suite: `184 passed`.
+- Full suite: `438 passed`.
+- Python compile checks for updated scripts/specs: clean.
 - `git diff --check`: clean on the latest implementation pass.
 
 ### Full Optimization Roadmap
@@ -127,14 +154,16 @@ design.
      `LSRESIZE_SPECIALIZED_PRESETS=0` for A/B checks.
 
 2. **Opt-in float32 internal mode.**
-   - Current native computation uses double internally even for float32 arrays.
-   - Add an experimental precision policy, for example an API option or an env
-     flag, that keeps float32 workloads in float32 scratch/accumulation where
-     accuracy is acceptable.
-   - Validate constant preservation, native/Python agreement thresholds, and
-     high-frequency inputs before making any default change.
-   - This likely has the largest upside for image workloads, but it changes
-     numerical behavior, so it must remain opt-in initially.
+   - Status: implemented for native batched `float32` axis passes behind
+     `LSRESIZE_PRECISION=float32`.
+   - The default path still computes with 64-bit scratch/accumulation.
+   - Validation covers default-precision parity, opt-in agreement thresholds,
+     and bounded constant drift.
+   - Remaining deeper stage: test high-frequency image workloads and explore a
+     hybrid projection filter that keeps the speed benefit while reducing
+     antialiasing boundary drift.
+   - Keep the mode opt-in unless a future accuracy study supports changing the
+     default precision policy.
 
 3. **Public reusable `ResizePlan`.**
    - The private native cache is useful but implicit. A public plan object would

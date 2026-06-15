@@ -107,6 +107,12 @@ void get_interpolation_coefficients_colmajor(
   int N,
   int deg);
 
+void get_interpolation_coefficients_colmajor_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  int deg);
+
 void do_integ_colmajor(
   std::vector<double>& c,
   int B,
@@ -115,6 +121,14 @@ void do_integ_colmajor(
   std::vector<double>& average,
   std::vector<double>& work);
 
+void do_integ_colmajor_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  int nb,
+  std::vector<float>& average,
+  std::vector<float>& work);
+
 void do_diff_colmajor(
   std::vector<double>& c,
   int B,
@@ -122,11 +136,25 @@ void do_diff_colmajor(
   int nb,
   std::vector<double>& work);
 
+void do_diff_colmajor_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  int nb,
+  std::vector<float>& work);
+
 void get_samples_colmajor(
   std::vector<double>& c,
   int B,
   int N,
   int deg,
   std::vector<double>& work);
+
+void get_samples_colmajor_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  int deg,
+  std::vector<float>& work);
 
 } // namespace lsresize

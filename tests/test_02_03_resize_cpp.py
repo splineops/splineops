@@ -113,6 +113,7 @@ def test_batched_axis_matches_default_pure_interpolation(monkeypatch, dtype, met
     arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
     monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
     rz = _load_resize_module(force_reload=True)
     expected = rz.resize(arr, zoom_factors=zoom, method=method)
@@ -147,6 +148,7 @@ def test_batched_axis_matches_default_antialiasing(monkeypatch, dtype, method, s
     arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
     monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
     rz = _load_resize_module(force_reload=True)
     expected = rz.resize(arr, zoom_factors=zoom, method=method)
@@ -180,6 +182,7 @@ def test_batched_axis_matches_default_equal_degree_projection(
     arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
     monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
     rz = _load_resize_module(force_reload=True)
     expected = rz.resize_degrees(
@@ -224,6 +227,7 @@ def test_batched_axis_auto_matches_default(monkeypatch, dtype, method, shape, zo
     arr = rng.random(shape, dtype=dtype)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
     monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
     rz = _load_resize_module(force_reload=True)
     expected = rz.resize(arr, zoom_factors=zoom, method=method)
@@ -241,6 +245,63 @@ def test_batched_axis_auto_matches_default(monkeypatch, dtype, method, shape, zo
         rz = _load_resize_module(force_reload=True)
         actual = rz.resize(arr, zoom_factors=zoom, method=method)
         assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping float32 internal compare",
+)
+@pytest.mark.parametrize(
+    "method,shape,zoom,atol",
+    [
+        ("linear", (128, 96), (0.6, 1.4), 8e-7),
+        ("cubic", (128, 96), (0.6, 1.4), 2e-6),
+        ("linear-antialiasing", (128, 96), (0.6, 1.4), 2e-4),
+        ("cubic-antialiasing", (128, 96), (0.6, 1.4), 6e-4),
+        ("quadratic-antialiasing", (128, 96), (0.6, 1.4), 6e-4),
+        ("cubic", (33,), (1.7,), 2e-6),
+        ("cubic-antialiasing", (20, 18, 12), (0.75, 1.2, 0.5), 2e-4),
+    ],
+)
+def test_float32_internal_matches_default_precision(
+    monkeypatch, method, shape, zoom, atol
+):
+    rng = np.random.default_rng(127)
+    arr = rng.random(shape, dtype=np.float32)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_PRECISION", "float32")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    max_abs = float(np.max(np.abs(actual.astype(np.float64) - expected.astype(np.float64))))
+    assert actual.dtype == np.float32
+    assert np.allclose(actual, expected, atol=atol, rtol=0.0), (
+        f"{method} float32 internals max|Δ|={max_abs:.3e} exceeds atol={atol}"
+    )
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping float32 constant preservation",
+)
+@pytest.mark.parametrize("method", ["cubic", "cubic-antialiasing"])
+def test_float32_internal_constant_drift_is_bounded(monkeypatch, method):
+    arr = np.full((97, 89), 3.25, dtype=np.float32)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.setenv("LSRESIZE_PRECISION", "float32")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=(0.53, 1.37), method=method)
+
+    assert actual.dtype == np.float32
+    assert np.allclose(actual, 3.25, atol=5e-4, rtol=0.0)
 
 
 @pytest.mark.skipif(
@@ -429,6 +490,10 @@ def test_cpp_vs_python_equality(
 
     # Disable optional Python-side autotuning for reproducible timings
     monkeypatch.setenv("SPLINEOPS_AUTOTUNE", "0")
+
+    # This parity test defines the default precision contract. The opt-in
+    # float32 native path has dedicated coverage above with looser tolerances.
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
 
     rng = np.random.default_rng(0)
     arr = rng.random(shape, dtype=dtype)
