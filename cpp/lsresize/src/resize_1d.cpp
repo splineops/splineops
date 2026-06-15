@@ -229,6 +229,94 @@ static void precompute_batched_row_map(Plan1D& plan)
   }
 }
 
+static void precompute_direct_linear_map(Plan1D& plan, const LSParams& p)
+{
+  plan.direct_linear_ok = false;
+  plan.direct_linear_count.clear();
+  plan.direct_linear_src0.clear();
+  plan.direct_linear_src1.clear();
+  plan.direct_linear_src2.clear();
+  plan.direct_linear_w0.clear();
+  plan.direct_linear_w1.clear();
+  plan.direct_linear_w2.clear();
+  plan.direct_linear_w0_f32.clear();
+  plan.direct_linear_w1_f32.clear();
+  plan.direct_linear_w2_f32.clear();
+
+  if (p.analy_degree >= 0 ||
+      p.synthe_degree != p.interp_degree ||
+      p.interp_degree != 1) {
+    return;
+  }
+
+  const int outN = plan.outN;
+  plan.direct_linear_count.assign(static_cast<size_t>(outN), 0);
+  plan.direct_linear_src0.assign(static_cast<size_t>(outN), 0);
+  plan.direct_linear_src1.assign(static_cast<size_t>(outN), 0);
+  plan.direct_linear_src2.assign(static_cast<size_t>(outN), 0);
+  plan.direct_linear_w0.assign(static_cast<size_t>(outN), 0.0);
+  plan.direct_linear_w1.assign(static_cast<size_t>(outN), 0.0);
+  plan.direct_linear_w2.assign(static_cast<size_t>(outN), 0.0);
+  plan.direct_linear_w0_f32.assign(static_cast<size_t>(outN), 0.0f);
+  plan.direct_linear_w1_f32.assign(static_cast<size_t>(outN), 0.0f);
+  plan.direct_linear_w2_f32.assign(static_cast<size_t>(outN), 0.0f);
+
+  const double* weights = plan.weights.data();
+  const int* coeff_src = plan.coeff_src.data();
+  const double* coeff_sgn = plan.coeff_sgn.data();
+
+  for (int l = 0; l < outN; ++l) {
+    const size_t li = static_cast<size_t>(l);
+    const int begin = plan.row_ptr[li];
+    const int endw = plan.row_ptr[li + 1];
+    const int m = endw - begin;
+    if (m < 0 || m > 3) {
+      plan.direct_linear_count.clear();
+      plan.direct_linear_src0.clear();
+      plan.direct_linear_src1.clear();
+      plan.direct_linear_src2.clear();
+      plan.direct_linear_w0.clear();
+      plan.direct_linear_w1.clear();
+      plan.direct_linear_w2.clear();
+      plan.direct_linear_w0_f32.clear();
+      plan.direct_linear_w1_f32.clear();
+      plan.direct_linear_w2_f32.clear();
+      return;
+    }
+
+    plan.direct_linear_count[li] = static_cast<unsigned char>(m);
+    const int k0 = plan.kmin[li];
+    const int kmax = k0 + m - 1;
+    const bool interior = (m == 0 || (k0 >= 0 && kmax < plan.N));
+
+    int src[3] = {0, 0, 0};
+    double w[3] = {0.0, 0.0, 0.0};
+    for (int j = 0; j < m; ++j) {
+      const int t = begin + j;
+      const size_t ti = static_cast<size_t>(t);
+      if (interior) {
+        src[j] = k0 + j;
+        w[j] = weights[ti];
+      } else {
+        src[j] = coeff_src[ti];
+        w[j] = weights[ti] * coeff_sgn[ti];
+      }
+    }
+
+    plan.direct_linear_src0[li] = src[0];
+    plan.direct_linear_src1[li] = src[1];
+    plan.direct_linear_src2[li] = src[2];
+    plan.direct_linear_w0[li] = w[0];
+    plan.direct_linear_w1[li] = w[1];
+    plan.direct_linear_w2[li] = w[2];
+    plan.direct_linear_w0_f32[li] = static_cast<float>(w[0]);
+    plan.direct_linear_w1_f32[li] = static_cast<float>(w[1]);
+    plan.direct_linear_w2_f32[li] = static_cast<float>(w[2]);
+  }
+
+  plan.direct_linear_ok = true;
+}
+
 } // namespace
 
 // Build the reusable 1-D plan (window metadata + contiguous weights + pad map)
@@ -398,6 +486,7 @@ Plan1D make_plan_1d(int N, const LSParams& p)
   }
 
   precompute_batched_row_map(plan);
+  precompute_direct_linear_map(plan, p);
 
   return plan;
 }

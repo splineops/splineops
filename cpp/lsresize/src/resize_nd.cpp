@@ -1162,76 +1162,52 @@ static inline double accumulate_scalar_line_plan_row(
 }
 
 template <typename Weight>
-static inline bool build_direct_linear_plan(
-  const Plan1D& plan,
-  std::vector<unsigned char>& count,
-  std::vector<int>& src0,
-  std::vector<int>& src1,
-  std::vector<int>& src2,
-  std::vector<Weight>& w0,
-  std::vector<Weight>& w1,
-  std::vector<Weight>& w2)
+struct DirectLinearPlanView {
+  bool ok = false;
+  const unsigned char* LS_RESTRICT count = nullptr;
+  const int* LS_RESTRICT src0 = nullptr;
+  const int* LS_RESTRICT src1 = nullptr;
+  const int* LS_RESTRICT src2 = nullptr;
+  const Weight* LS_RESTRICT w0 = nullptr;
+  const Weight* LS_RESTRICT w1 = nullptr;
+  const Weight* LS_RESTRICT w2 = nullptr;
+};
+
+template <typename Weight>
+static inline DirectLinearPlanView<Weight> direct_linear_plan_view(
+  const Plan1D& plan)
 {
-  const int outN = plan.outN;
-  count.assign(static_cast<size_t>(outN), 0);
-  src0.assign(static_cast<size_t>(outN), 0);
-  src1.assign(static_cast<size_t>(outN), 0);
-  src2.assign(static_cast<size_t>(outN), 0);
-  w0.assign(static_cast<size_t>(outN), 0.0);
-  w1.assign(static_cast<size_t>(outN), 0.0);
-  w2.assign(static_cast<size_t>(outN), 0.0);
-
-  const double* LS_RESTRICT weights = plan.weights.data();
-  const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
-  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
-
-  for (int l = 0; l < outN; ++l) {
-    const size_t li = static_cast<size_t>(l);
-    const int begin = plan.row_ptr[li];
-    const int endw = plan.row_ptr[li + 1];
-    const int m = endw - begin;
-    if (m < 0 || m > 3) {
-      return false;
-    }
-
-    count[li] = static_cast<unsigned char>(m);
-    const int k0 = plan.kmin[li];
-    const int kmax = k0 + m - 1;
-    const bool interior = (m == 0 || (k0 >= 0 && kmax < plan.N));
-
-    int src[3] = {0, 0, 0};
-    double ww[3] = {0.0, 0.0, 0.0};
-    for (int j = 0; j < m; ++j) {
-      const int t = begin + j;
-      const size_t ti = static_cast<size_t>(t);
-      if (interior) {
-        src[j] = k0 + j;
-        ww[j] = weights[ti];
-      } else {
-        src[j] = coeff_src[ti];
-        ww[j] = weights[ti] * coeff_sgn[ti];
-      }
-    }
-
-    src0[li] = src[0];
-    src1[li] = src[1];
-    src2[li] = src[2];
-    w0[li] = static_cast<Weight>(ww[0]);
-    w1[li] = static_cast<Weight>(ww[1]);
-    w2[li] = static_cast<Weight>(ww[2]);
+  DirectLinearPlanView<Weight> view;
+  if (!plan.direct_linear_ok) {
+    return view;
   }
 
-  return true;
+  view.ok = true;
+  view.count = plan.direct_linear_count.data();
+  view.src0 = plan.direct_linear_src0.data();
+  view.src1 = plan.direct_linear_src1.data();
+  view.src2 = plan.direct_linear_src2.data();
+  if constexpr (std::is_same_v<Weight, float>) {
+    view.w0 = plan.direct_linear_w0_f32.data();
+    view.w1 = plan.direct_linear_w1_f32.data();
+    view.w2 = plan.direct_linear_w2_f32.data();
+  } else {
+    view.w0 = plan.direct_linear_w0.data();
+    view.w1 = plan.direct_linear_w1.data();
+    view.w2 = plan.direct_linear_w2.data();
+  }
+  return view;
 }
 
 static inline std::pair<int64_t, int64_t> longest_count_run(
-  const std::vector<unsigned char>& count,
+  const unsigned char* LS_RESTRICT count,
+  int64_t n,
   unsigned char target)
 {
   int64_t best_begin = 0;
   int64_t best_end = 0;
   int64_t run_begin = -1;
-  for (int64_t i = 0; i < static_cast<int64_t>(count.size()); ++i) {
+  for (int64_t i = 0; i < n; ++i) {
     if (count[static_cast<size_t>(i)] == target) {
       if (run_begin < 0) {
         run_begin = i;
@@ -1244,12 +1220,21 @@ static inline std::pair<int64_t, int64_t> longest_count_run(
     }
     run_begin = -1;
   }
-  const int64_t n = static_cast<int64_t>(count.size());
   if (run_begin >= 0 && n - run_begin > best_end - best_begin) {
     best_begin = run_begin;
     best_end = n;
   }
   return {best_begin, best_end};
+}
+
+static inline std::pair<int64_t, int64_t> longest_count_run(
+  const std::vector<unsigned char>& count,
+  unsigned char target)
+{
+  return longest_count_run(
+      count.data(),
+      static_cast<int64_t>(count.size()),
+      target);
 }
 
 #if LSRESIZE_GNU_X86_TARGETS
@@ -1333,15 +1318,9 @@ static void resize_along_axis_2d_linear_direct(
   const int64_t in_w = in_shape[1];
   const int64_t out_w = out_shape[1];
   using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
-  std::vector<unsigned char> count;
-  std::vector<int> src0;
-  std::vector<int> src1;
-  std::vector<int> src2;
-  std::vector<Accum> w0;
-  std::vector<Accum> w1;
-  std::vector<Accum> w2;
+  const auto direct = direct_linear_plan_view<Accum>(plan);
 
-  if (!build_direct_linear_plan(plan, count, src0, src1, src2, w0, w1, w2)) {
+  if (!direct.ok) {
     const double* LS_RESTRICT weights = plan.weights.data();
     auto fallback = [&](int64_t start, int64_t end) {
       if (axis == 1) {
@@ -1388,14 +1367,14 @@ static void resize_along_axis_2d_linear_direct(
     return;
   }
 
-  const unsigned char* LS_RESTRICT c = count.data();
-  const int* LS_RESTRICT s0 = src0.data();
-  const int* LS_RESTRICT s1 = src1.data();
-  const int* LS_RESTRICT s2 = src2.data();
-  const Accum* LS_RESTRICT a0 = w0.data();
-  const Accum* LS_RESTRICT a1 = w1.data();
-  const Accum* LS_RESTRICT a2 = w2.data();
-  const auto count2_run = longest_count_run(count, 2);
+  const unsigned char* LS_RESTRICT c = direct.count;
+  const int* LS_RESTRICT s0 = direct.src0;
+  const int* LS_RESTRICT s1 = direct.src1;
+  const int* LS_RESTRICT s2 = direct.src2;
+  const Accum* LS_RESTRICT a0 = direct.w0;
+  const Accum* LS_RESTRICT a1 = direct.w1;
+  const Accum* LS_RESTRICT a2 = direct.w2;
+  const auto count2_run = longest_count_run(c, plan.outN, 2);
   const int64_t count2_begin = count2_run.first;
   const int64_t count2_end = count2_run.second;
   const bool use_avx2_axis1 =
@@ -1512,15 +1491,9 @@ static void resize_along_axis_linear_direct(
 {
   const int D = static_cast<int>(in_shape.size());
   using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
-  std::vector<unsigned char> count;
-  std::vector<int> src0;
-  std::vector<int> src1;
-  std::vector<int> src2;
-  std::vector<Accum> w0;
-  std::vector<Accum> w1;
-  std::vector<Accum> w2;
+  const auto direct = direct_linear_plan_view<Accum>(plan);
 
-  if (!build_direct_linear_plan(plan, count, src0, src1, src2, w0, w1, w2)) {
+  if (!direct.ok) {
     const double* LS_RESTRICT weights = plan.weights.data();
     auto fallback = [&](int64_t start, int64_t end) {
       std::vector<int64_t> idx(static_cast<size_t>(D), 0);
@@ -1561,13 +1534,13 @@ static void resize_along_axis_linear_direct(
     return;
   }
 
-  const unsigned char* LS_RESTRICT c = count.data();
-  const int* LS_RESTRICT s0 = src0.data();
-  const int* LS_RESTRICT s1 = src1.data();
-  const int* LS_RESTRICT s2 = src2.data();
-  const Accum* LS_RESTRICT a0 = w0.data();
-  const Accum* LS_RESTRICT a1 = w1.data();
-  const Accum* LS_RESTRICT a2 = w2.data();
+  const unsigned char* LS_RESTRICT c = direct.count;
+  const int* LS_RESTRICT s0 = direct.src0;
+  const int* LS_RESTRICT s1 = direct.src1;
+  const int* LS_RESTRICT s2 = direct.src2;
+  const Accum* LS_RESTRICT a0 = direct.w0;
+  const Accum* LS_RESTRICT a1 = direct.w1;
+  const Accum* LS_RESTRICT a2 = direct.w2;
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(static_cast<size_t>(D), 0);
@@ -2621,40 +2594,9 @@ static void resize_2d_linear_t(
   const Plan1D& row_plan = *row_plan_handle;
   const Plan1D& col_plan = *col_plan_handle;
 
-  std::vector<unsigned char> row_count;
-  std::vector<int> row_src0;
-  std::vector<int> row_src1;
-  std::vector<int> row_src2;
-  std::vector<Accum> row_w0;
-  std::vector<Accum> row_w1;
-  std::vector<Accum> row_w2;
-  std::vector<unsigned char> col_count;
-  std::vector<int> col_src0;
-  std::vector<int> col_src1;
-  std::vector<int> col_src2;
-  std::vector<Accum> col_w0;
-  std::vector<Accum> col_w1;
-  std::vector<Accum> col_w2;
-
-  const bool have_row_plan = build_direct_linear_plan(
-      row_plan,
-      row_count,
-      row_src0,
-      row_src1,
-      row_src2,
-      row_w0,
-      row_w1,
-      row_w2);
-  const bool have_col_plan = build_direct_linear_plan(
-      col_plan,
-      col_count,
-      col_src0,
-      col_src1,
-      col_src2,
-      col_w0,
-      col_w1,
-      col_w2);
-  if (!have_row_plan || !have_col_plan) {
+  const auto row_direct = direct_linear_plan_view<Accum>(row_plan);
+  const auto col_direct = direct_linear_plan_view<Accum>(col_plan);
+  if (!row_direct.ok || !col_direct.ok) {
     std::vector<Scalar> tmp(
         static_cast<size_t>(out_h) * static_cast<size_t>(in_w));
     std::vector<int64_t> mid_shape = {out_h, in_w};
@@ -2665,21 +2607,21 @@ static void resize_2d_linear_t(
     return;
   }
 
-  const unsigned char* LS_RESTRICT rc = row_count.data();
-  const int* LS_RESTRICT rs0 = row_src0.data();
-  const int* LS_RESTRICT rs1 = row_src1.data();
-  const int* LS_RESTRICT rs2 = row_src2.data();
-  const Accum* LS_RESTRICT rw0 = row_w0.data();
-  const Accum* LS_RESTRICT rw1 = row_w1.data();
-  const Accum* LS_RESTRICT rw2 = row_w2.data();
-  const unsigned char* LS_RESTRICT cc = col_count.data();
-  const int* LS_RESTRICT cs0 = col_src0.data();
-  const int* LS_RESTRICT cs1 = col_src1.data();
-  const int* LS_RESTRICT cs2 = col_src2.data();
-  const Accum* LS_RESTRICT cw0 = col_w0.data();
-  const Accum* LS_RESTRICT cw1 = col_w1.data();
-  const Accum* LS_RESTRICT cw2 = col_w2.data();
-  const auto col2_run = longest_count_run(col_count, 2);
+  const unsigned char* LS_RESTRICT rc = row_direct.count;
+  const int* LS_RESTRICT rs0 = row_direct.src0;
+  const int* LS_RESTRICT rs1 = row_direct.src1;
+  const int* LS_RESTRICT rs2 = row_direct.src2;
+  const Accum* LS_RESTRICT rw0 = row_direct.w0;
+  const Accum* LS_RESTRICT rw1 = row_direct.w1;
+  const Accum* LS_RESTRICT rw2 = row_direct.w2;
+  const unsigned char* LS_RESTRICT cc = col_direct.count;
+  const int* LS_RESTRICT cs0 = col_direct.src0;
+  const int* LS_RESTRICT cs1 = col_direct.src1;
+  const int* LS_RESTRICT cs2 = col_direct.src2;
+  const Accum* LS_RESTRICT cw0 = col_direct.w0;
+  const Accum* LS_RESTRICT cw1 = col_direct.w1;
+  const Accum* LS_RESTRICT cw2 = col_direct.w2;
+  const auto col2_run = longest_count_run(cc, out_w, 2);
   const int64_t col2_begin = col2_run.first;
   const int64_t col2_end = col2_run.second;
   const bool all_axes_grow = (out_h > in_h) && (out_w > in_w);
@@ -2903,36 +2845,11 @@ static void resize_3d_linear_t(
   const Plan1D& plan1 = *plan1_handle;
   const Plan1D& plan2 = *plan2_handle;
 
-  std::vector<unsigned char> count0;
-  std::vector<int> src00;
-  std::vector<int> src01;
-  std::vector<int> src02;
-  std::vector<Accum> w00;
-  std::vector<Accum> w01;
-  std::vector<Accum> w02;
-  std::vector<unsigned char> count1;
-  std::vector<int> src10;
-  std::vector<int> src11;
-  std::vector<int> src12;
-  std::vector<Accum> w10;
-  std::vector<Accum> w11;
-  std::vector<Accum> w12;
-  std::vector<unsigned char> count2;
-  std::vector<int> src20;
-  std::vector<int> src21;
-  std::vector<int> src22;
-  std::vector<Accum> w20;
-  std::vector<Accum> w21;
-  std::vector<Accum> w22;
+  const auto direct0 = direct_linear_plan_view<Accum>(plan0);
+  const auto direct1 = direct_linear_plan_view<Accum>(plan1);
+  const auto direct2 = direct_linear_plan_view<Accum>(plan2);
 
-  const bool have_plan0 = build_direct_linear_plan(
-      plan0, count0, src00, src01, src02, w00, w01, w02);
-  const bool have_plan1 = build_direct_linear_plan(
-      plan1, count1, src10, src11, src12, w10, w11, w12);
-  const bool have_plan2 = build_direct_linear_plan(
-      plan2, count2, src20, src21, src22, w20, w21, w22);
-
-  if (!have_plan0 || !have_plan1 || !have_plan2) {
+  if (!direct0.ok || !direct1.ok || !direct2.ok) {
     std::vector<int64_t> shape1 = {out_n0, in_n1, in_n2};
     std::vector<int64_t> shape2 = {out_n0, out_n1, in_n2};
     std::vector<Scalar> tmp1(
@@ -2949,27 +2866,27 @@ static void resize_3d_linear_t(
     return;
   }
 
-  const unsigned char* LS_RESTRICT c0 = count0.data();
-  const int* LS_RESTRICT s00 = src00.data();
-  const int* LS_RESTRICT s01 = src01.data();
-  const int* LS_RESTRICT s02 = src02.data();
-  const Accum* LS_RESTRICT a00 = w00.data();
-  const Accum* LS_RESTRICT a01 = w01.data();
-  const Accum* LS_RESTRICT a02 = w02.data();
-  const unsigned char* LS_RESTRICT c1 = count1.data();
-  const int* LS_RESTRICT s10 = src10.data();
-  const int* LS_RESTRICT s11 = src11.data();
-  const int* LS_RESTRICT s12 = src12.data();
-  const Accum* LS_RESTRICT a10 = w10.data();
-  const Accum* LS_RESTRICT a11 = w11.data();
-  const Accum* LS_RESTRICT a12 = w12.data();
-  const unsigned char* LS_RESTRICT c2 = count2.data();
-  const int* LS_RESTRICT s20 = src20.data();
-  const int* LS_RESTRICT s21 = src21.data();
-  const int* LS_RESTRICT s22 = src22.data();
-  const Accum* LS_RESTRICT a20 = w20.data();
-  const Accum* LS_RESTRICT a21 = w21.data();
-  const Accum* LS_RESTRICT a22 = w22.data();
+  const unsigned char* LS_RESTRICT c0 = direct0.count;
+  const int* LS_RESTRICT s00 = direct0.src0;
+  const int* LS_RESTRICT s01 = direct0.src1;
+  const int* LS_RESTRICT s02 = direct0.src2;
+  const Accum* LS_RESTRICT a00 = direct0.w0;
+  const Accum* LS_RESTRICT a01 = direct0.w1;
+  const Accum* LS_RESTRICT a02 = direct0.w2;
+  const unsigned char* LS_RESTRICT c1 = direct1.count;
+  const int* LS_RESTRICT s10 = direct1.src0;
+  const int* LS_RESTRICT s11 = direct1.src1;
+  const int* LS_RESTRICT s12 = direct1.src2;
+  const Accum* LS_RESTRICT a10 = direct1.w0;
+  const Accum* LS_RESTRICT a11 = direct1.w1;
+  const Accum* LS_RESTRICT a12 = direct1.w2;
+  const unsigned char* LS_RESTRICT c2 = direct2.count;
+  const int* LS_RESTRICT s20 = direct2.src0;
+  const int* LS_RESTRICT s21 = direct2.src1;
+  const int* LS_RESTRICT s22 = direct2.src2;
+  const Accum* LS_RESTRICT a20 = direct2.w0;
+  const Accum* LS_RESTRICT a21 = direct2.w1;
+  const Accum* LS_RESTRICT a22 = direct2.w2;
 
   auto worker = [&](int64_t start, int64_t end) {
     int src0[3];

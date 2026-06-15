@@ -63,6 +63,20 @@ struct Plan1D {
   std::vector<double>   coeff_sgn;
   int                   interior_rows = 0;
   int                   mapped_rows = 0;
+
+  // Compact exact-linear map for direct/fused interpolation kernels. These are
+  // populated only for pure linear interpolation plans with support <= 3.
+  bool direct_linear_ok = false;
+  std::vector<unsigned char> direct_linear_count;
+  std::vector<int>           direct_linear_src0;
+  std::vector<int>           direct_linear_src1;
+  std::vector<int>           direct_linear_src2;
+  std::vector<double>        direct_linear_w0;
+  std::vector<double>        direct_linear_w1;
+  std::vector<double>        direct_linear_w2;
+  std::vector<float>         direct_linear_w0_f32;
+  std::vector<float>         direct_linear_w1_f32;
+  std::vector<float>         direct_linear_w2_f32;
 };
 
 // Per-thread reusable workspace to avoid per-line allocations

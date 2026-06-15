@@ -241,6 +241,26 @@ Measured progress so far:
   - the `(0, 2)` and `(1, 2)` two-axis patterns stay on the separable direct
     linear path by default because local A/B showed no win for `(0, 2)` and a
     regression for `(1, 2)` when forced through the fused evaluator
+  - direct linear source/weight metadata is now precomputed inside `Plan1D`
+    for pure linear interpolation and reused by all direct/fused linear
+    kernels; this removes the per-call compact-plan rebuild from one-shot
+    cached plans and `ResizePlan.apply`
+  - direct-plan-cache native artifact:
+    `/tmp/splineops_resize_native_direct_plan_cache_final.{json,csv}`;
+    versus the previous final-policy artifact, selected setup-sensitive rows
+    improved by median: `2d_linear_down_1024_float32` `0.508 ms -> 0.427 ms`
+    (`1.19x`), `2d_linear_aniso_1024_float32` `0.761 ms -> 0.692 ms`
+    (`1.10x`), and `3d_linear_two_axis01_f32` `1.084 ms -> 1.064 ms`
+    (`1.02x`)
+  - a branch-split experiment for the fused 3-D axis-2 2-tap interior was
+    measured and reverted because it regressed the important `(0, 1)` two-axis
+    route (`3d_linear_two_axis01_f32`) without a durable all-axis win
+  - post-direct-plan-cache full PyTorch comparison artifact:
+    `/tmp/splineops_resize_libraries_full_torch_direct_plan_cache_20260615.{json,csv}`;
+    splineops was faster than SciPy on `20/21` supported full-profile rows,
+    faster than skimage on `21/21`, faster than PyTorch on `12/19`, and faster
+    than OpenCV on `6/18` comparable 2-D rows; `3d_linear_down_random_f32`
+    stayed in splineops' favor at `0.341 ms` versus PyTorch `0.575 ms`
   - post-fused-3-D full PyTorch comparison artifact:
     `/tmp/splineops_resize_libraries_full_torch_fused3d_20260615.{json,csv}`;
     the close-output `3d_linear_down_random_f32` row improved from `1.310 ms`
@@ -412,6 +432,12 @@ Validation status:
 - Focused resize suite after final fused 3-D policy: `243 passed`.
 - Full suite after final fused 3-D policy: `497 passed`.
 - `scripts/benchmark_resize_native.py` py-compile after final policy: clean.
+- Native editable rebuild after direct linear plan-cache metadata: clean.
+- Focused direct/fused linear checks after direct plan cache: `30 passed`.
+- Focused resize suite after direct plan cache: `243 passed`.
+- Full suite after direct plan cache: `497 passed`.
+- `scripts/benchmark_resize_plan.py` and `scripts/benchmark_resize_native.py`
+  py-compile after direct plan cache: clean.
 - `git diff --check`: clean on the latest implementation pass.
 
 ### Full Optimization Roadmap

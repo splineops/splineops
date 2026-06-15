@@ -63,6 +63,8 @@ def bench_cases(profile: str) -> list[PlanBenchCase]:
     if profile != "standard":
         raise ValueError(f"unknown profile {profile!r}")
     return smoke + [
+        PlanBenchCase("2d_linear_down_f32", (512, 512), (0.37, 0.37), "linear", "float32"),
+        PlanBenchCase("2d_linear_aniso_f32", (512, 512), (1.0, 0.37), "linear", "float32"),
         PlanBenchCase("2d_cubic_aniso_f32", (512, 512), (1.0, 0.37), "cubic", "float32"),
         PlanBenchCase(
             "2d_linear_aa_down_f32",
@@ -77,6 +79,20 @@ def bench_cases(profile: str) -> list[PlanBenchCase]:
             (96, 96, 24),
             (1.0, 0.5, 1.0),
             "cubic",
+            "float32",
+        ),
+        PlanBenchCase(
+            "3d_linear_down_f32",
+            (128, 128, 32),
+            (0.5, 0.5, 0.5),
+            "linear",
+            "float32",
+        ),
+        PlanBenchCase(
+            "3d_linear_two_axis01_f32",
+            (128, 128, 32),
+            (0.5, 0.5, 1.0),
+            "linear",
             "float32",
         ),
     ]
