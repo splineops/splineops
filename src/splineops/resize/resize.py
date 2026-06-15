@@ -22,14 +22,17 @@ import numpy as np
 import numpy.typing as npt
 
 from splineops.resize._pycore.engine import python_resize as _python_fallback_resize
+from splineops.resize._pycore.utils import calculate_final_size_1d as _calculate_final_size_1d
 
 # Attempt to import the native acceleration module (optional)
 try:
     from splineops._lsresize import resize_nd as _resize_nd_cpp  # type: ignore[attr-defined]
+    from splineops._lsresize import ResizePlan as _ResizePlanCpp  # type: ignore[attr-defined]
     _HAS_CPP = True
 except Exception:  # pragma: no cover - if extension isn't built
     _HAS_CPP = False
     _resize_nd_cpp = None  # type: ignore[assignment]
+    _ResizePlanCpp = None  # type: ignore[assignment]
 
 # Environment switch: "auto" (default), "never", "always"
 _ACCEL_ENV = os.environ.get("SPLINEOPS_ACCEL", "auto").lower()
@@ -110,6 +113,225 @@ def _validate_degrees(
         )
 
     return int(interp_degree), int(analy_degree), int(synthe_degree)
+
+
+def _normalize_shape(input_shape: Sequence[int]) -> tuple[int, ...]:
+    shape = tuple(int(n) for n in input_shape)
+    if len(shape) == 0:
+        raise ValueError("'input_shape' must describe at least one dimension")
+    if any(n <= 0 for n in shape):
+        raise ValueError("'input_shape' entries must be positive")
+    return shape
+
+
+def _resolve_zoom_for_shape(
+    input_shape: Sequence[int],
+    *,
+    zoom_factors: Optional[Union[float, Sequence[float]]] = None,
+    output_size: Optional[Tuple[int, ...]] = None,
+) -> tuple[float, ...]:
+    shape = tuple(int(n) for n in input_shape)
+    if output_size is not None:
+        if len(output_size) != len(shape):
+            raise ValueError("'output_size' length must match 'input_shape' length")
+        if any(int(n) <= 0 for n in output_size):
+            raise ValueError("'output_size' entries must be positive")
+        return tuple(float(new) / float(old) for new, old in zip(output_size, shape))
+    if zoom_factors is None:
+        raise ValueError("Either 'output_size' or 'zoom_factors' must be provided.")
+    if isinstance(zoom_factors, (int, float)):
+        zoom = tuple([float(zoom_factors)] * len(shape))
+    else:
+        zoom = tuple(float(z) for z in zoom_factors)
+    if len(zoom) != len(shape):
+        raise ValueError("'zoom_factors' length must match 'input_shape' length")
+    if any(z <= 0.0 for z in zoom):
+        raise ValueError("'zoom_factors' entries must be positive")
+    return zoom
+
+
+def _output_shape_for_plan(
+    input_shape: Sequence[int],
+    zoom_factors: Sequence[float],
+    inversable: bool,
+) -> tuple[int, ...]:
+    out = []
+    for n, z in zip(input_shape, zoom_factors):
+        _, out_n = _calculate_final_size_1d(bool(inversable), int(n), float(z))
+        out.append(int(out_n))
+    return tuple(out)
+
+
+class ResizePlan:
+    """
+    Reusable resize plan for repeated same-shape workloads.
+
+    A plan fixes the input shape, target geometry, spline degrees, and size
+    policy once, then applies that geometry to many arrays with the same shape.
+    When the native extension is available and acceleration is not disabled,
+    the plan uses the native backend and reuses its cached per-axis metadata.
+    Otherwise it falls back to the pure-Python resize implementation.
+    """
+
+    __slots__ = (
+        "input_shape",
+        "output_shape",
+        "zoom_factors",
+        "interp_degree",
+        "analy_degree",
+        "synthe_degree",
+        "inversable",
+        "method",
+        "_native_plan",
+    )
+
+    def __init__(
+        self,
+        input_shape: Sequence[int],
+        *,
+        zoom_factors: Optional[Union[float, Sequence[float]]] = None,
+        output_size: Optional[Tuple[int, ...]] = None,
+        method: str = "cubic",
+        inversable: bool = False,
+    ) -> None:
+        if method not in METHOD_MAP:
+            valid = ", ".join(sorted(METHOD_MAP))
+            raise ValueError(f"Unknown method '{method}'. Valid options: {valid}")
+        interp_degree, analy_degree, synthe_degree = METHOD_MAP[method]
+        self._init_degrees(
+            input_shape,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            interp_degree=interp_degree,
+            analy_degree=analy_degree,
+            synthe_degree=synthe_degree,
+            inversable=inversable,
+            method=method,
+        )
+
+    @classmethod
+    def from_degrees(
+        cls,
+        input_shape: Sequence[int],
+        *,
+        zoom_factors: Optional[Union[float, Sequence[float]]] = None,
+        output_size: Optional[Tuple[int, ...]] = None,
+        interp_degree: int = 3,
+        analy_degree: int = -1,
+        synthe_degree: Optional[int] = None,
+        inversable: bool = False,
+    ) -> "ResizePlan":
+        """Create a plan using explicit spline degrees."""
+        if synthe_degree is None:
+            synthe_degree = interp_degree
+        obj = cls.__new__(cls)
+        obj._init_degrees(
+            input_shape,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            interp_degree=interp_degree,
+            analy_degree=analy_degree,
+            synthe_degree=synthe_degree,
+            inversable=inversable,
+            method=None,
+        )
+        return obj
+
+    def _init_degrees(
+        self,
+        input_shape: Sequence[int],
+        *,
+        zoom_factors: Optional[Union[float, Sequence[float]]],
+        output_size: Optional[Tuple[int, ...]],
+        interp_degree: int,
+        analy_degree: int,
+        synthe_degree: int,
+        inversable: bool,
+        method: Optional[str],
+    ) -> None:
+        interp_degree, analy_degree, synthe_degree = _validate_degrees(
+            interp_degree, analy_degree, synthe_degree
+        )
+        shape = _normalize_shape(input_shape)
+        zoom = _resolve_zoom_for_shape(
+            shape,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+        )
+
+        self.input_shape = shape
+        self.output_shape = _output_shape_for_plan(shape, zoom, inversable)
+        self.zoom_factors = zoom
+        self.interp_degree = interp_degree
+        self.analy_degree = analy_degree
+        self.synthe_degree = synthe_degree
+        self.inversable = bool(inversable)
+        self.method = method
+
+        use_cpp = _HAS_CPP and (_ACCEL_ENV != "never")
+        if use_cpp:
+            self._native_plan = _ResizePlanCpp(  # type: ignore[misc,operator]
+                list(self.input_shape),
+                list(self.zoom_factors),
+                int(self.interp_degree),
+                int(self.analy_degree),
+                int(self.synthe_degree),
+                bool(self.inversable),
+            )
+            self.output_shape = tuple(int(n) for n in self._native_plan.output_shape)
+        else:
+            self._native_plan = None
+
+    def apply(
+        self,
+        data: npt.NDArray,
+        output: Optional[Union[npt.NDArray, np.dtype]] = None,
+    ) -> npt.NDArray:
+        """Apply the planned resize to an array with ``input_shape``."""
+        arr = np.asarray(data, order="C")
+        if tuple(arr.shape) != self.input_shape:
+            raise ValueError(
+                f"input has shape {arr.shape}, expected {self.input_shape}"
+            )
+
+        if self._native_plan is not None:
+            output_data = self._native_plan.apply(arr)
+        else:
+            output_data = _python_fallback_resize(
+                arr,
+                self.zoom_factors,
+                interp_degree=self.interp_degree,
+                analy_degree=self.analy_degree,
+                synthe_degree=self.synthe_degree,
+                inversable=self.inversable,
+            )
+
+        if output is not None:
+            if isinstance(output, np.ndarray):
+                if tuple(output.shape) != tuple(output_data.shape):
+                    raise ValueError(
+                        f"'output' has shape {output.shape}, expected {output_data.shape}"
+                    )
+                np.copyto(output, output_data.astype(output.dtype, copy=False))
+                return output
+            return np.asarray(output_data, dtype=output)
+
+        return output_data
+
+    __call__ = apply
+
+    def __repr__(self) -> str:
+        label = f"method={self.method!r}" if self.method is not None else (
+            "degrees="
+            f"({self.interp_degree}, {self.analy_degree}, {self.synthe_degree})"
+        )
+        return (
+            "ResizePlan("
+            f"input_shape={self.input_shape}, "
+            f"output_shape={self.output_shape}, "
+            f"zoom_factors={self.zoom_factors}, "
+            f"{label})"
+        )
 
 
 def resize_degrees(

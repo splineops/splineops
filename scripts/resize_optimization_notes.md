@@ -128,6 +128,27 @@ Measured progress so far:
     path, with about `1.43x` mean median speedup
   - random antialiasing/projection outputs still differ from the default 64-bit
     internal path, so the mode remains opt-in
+  - fixed-support preset accumulation now also covers the opt-in float32
+    internal batched path; sequential A/B artifacts:
+    `/tmp/splineops_resize_f32_preset_seq_on.{json,csv}` and
+    `/tmp/splineops_resize_f32_preset_seq_off.{json,csv}`
+  - on selected 2-D `float32` cases, the float32 preset dispatch won `12/16`
+    medians and `15/16` best-of timings versus the generic float32 accumulator,
+    with about `1.05x` median speedup
+- Public reusable `ResizePlan`:
+  - added as `splineops.resize.ResizePlan`
+  - native-backed plans precompute input/output shape, zoom factors, axis order,
+    and active axes once; native per-axis `Plan1D` metadata is still reused by
+    the existing process-local cache
+  - pure-Python fallback remains available when `SPLINEOPS_ACCEL=never` or the
+    native extension is unavailable
+- Quality and benchmark automation:
+  - added `scripts/benchmark_resize_quality.py` for constant, ramp, impulse,
+    checkerboard, sinusoid, and random comparisons between default internals
+    and `LSRESIZE_PRECISION=float32`
+  - added a manual GitHub Actions workflow,
+    `.github/workflows/resize-benchmark.yml`, to collect native benchmark and
+    quality artifacts on CI hardware without gating PRs on noisy timings
 
 Validation status:
 
@@ -136,11 +157,19 @@ Validation status:
 - Opt-in float32 internal focused tests: `11 passed`.
 - Native resize module: `105 passed`.
 - Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `105 passed`.
-- Resize API suite: `81 passed`.
+- Resize API suite: `90 passed`.
 - Resize API suite with `SPLINEOPS_ACCEL=never`: `81 passed`.
-- Focused resize suite: `186 passed`.
-- Full suite: `440 passed`.
+- Focused resize suite: `195 passed`.
+- Full suite: `449 passed`.
+- Fresh external virtualenv focused resize suite: `195 passed`.
+- Fresh external virtualenv native resize module with
+  `LSRESIZE_SPECIALIZED_PRESETS=0`: `105 passed`.
+- Fresh external virtualenv full suite: `449 passed`.
+- Fresh external virtualenv quality smoke:
+  `/tmp/splineops_resize_quality_fresh_quick.{json,csv}`.
 - Python compile checks for updated scripts/specs: clean.
+- Standard quality sweep:
+  `/tmp/splineops_resize_quality_standard.{json,csv}`.
 - `git diff --check`: clean on the latest implementation pass.
 
 ### Full Optimization Roadmap
@@ -176,11 +205,12 @@ design.
      default precision policy.
 
 3. **Public reusable `ResizePlan`.**
-   - The private native cache is useful but implicit. A public plan object would
-     make repeated same-shape workloads explicit:
+   - Status: implemented as `splineops.resize.ResizePlan`.
+   - The plan object makes repeated same-shape workloads explicit:
      `plan = ResizePlan(input_shape, zoom, method); out = plan.apply(x)`.
-   - Reuse axis order, per-axis `Plan1D`, row-run metadata, output shapes, and
-     possibly per-thread scratch.
+   - Native-backed plans precompute axis order, active axes, output shapes, and
+     geometry parameters, while per-axis `Plan1D` metadata remains reused by the
+     native process-local cache.
    - Best fit: video frames, registration loops, batch processing, and repeated
      augmentation with fixed geometry.
 

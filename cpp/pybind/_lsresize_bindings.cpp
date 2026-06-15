@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>       // std::abs
 #include <functional>  // std::multiplies
+#include <stdexcept>
 
 #include "../lsresize/src/resize_nd.h"
 #include "../lsresize/src/utils.h"
@@ -85,6 +86,71 @@ static std::vector<int> choose_axis_order(
     return axes;
 }
 
+static std::vector<int64> compute_output_shape(
+    const std::vector<int64>& in_shape,
+    const std::vector<double>& zoom_factors,
+    bool inversable)
+{
+    if (zoom_factors.size() != in_shape.size()) {
+        throw std::runtime_error(
+            "zoom_factors length must match input_shape length");
+    }
+
+    std::vector<int64> out_shape = in_shape;
+    for (int ax = 0; ax < static_cast<int>(in_shape.size()); ++ax) {
+        int workN = 0;
+        int outN = 0;
+        lsresize::calculate_final_size_1d(
+            inversable,
+            static_cast<int>(in_shape[static_cast<size_t>(ax)]),
+            zoom_factors[static_cast<size_t>(ax)],
+            workN,
+            outN);
+        out_shape[static_cast<size_t>(ax)] = outN;
+    }
+    return out_shape;
+}
+
+static std::vector<int> choose_active_axes(
+    const std::vector<int>& axis_order,
+    const std::vector<int64>& in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<double>& zoom_factors,
+    int analy_degree)
+{
+    std::vector<int> active_axes;
+    active_axes.reserve(axis_order.size());
+    for (int ax : axis_order) {
+        const bool identity_axis =
+            (analy_degree < 0) &&
+            (out_shape[static_cast<size_t>(ax)] ==
+             in_shape[static_cast<size_t>(ax)]) &&
+            (std::abs(zoom_factors[static_cast<size_t>(ax)] - 1.0) <= 1e-12);
+        if (!identity_axis) {
+            active_axes.push_back(ax);
+        }
+    }
+    return active_axes;
+}
+
+static py::tuple vec_i64_to_tuple(const std::vector<int64>& values)
+{
+    py::tuple out(values.size());
+    for (size_t i = 0; i < values.size(); ++i) {
+        out[i] = py::int_(values[i]);
+    }
+    return out;
+}
+
+static py::tuple vec_double_to_tuple(const std::vector<double>& values)
+{
+    py::tuple out(values.size());
+    for (size_t i = 0; i < values.size(); ++i) {
+        out[i] = py::float_(values[i]);
+    }
+    return out;
+}
+
 // Restrict and sanity-check the degrees coming from Python.
 // We treat 3 as the hard ceiling for robustness:
 //
@@ -153,9 +219,12 @@ struct AxisDispatch<float> {
 // Templated ND resize over storage scalar T (float or double).
 // Internal math remains in double (handled inside lsresize::resize_along_axis_*).
 template <typename T>
-py::array_t<T> resize_nd_impl(
+py::array_t<T> resize_nd_impl_planned(
     py::array input,
-    std::vector<double> zoom_factors,
+    const std::vector<int64>& expected_in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<double>& zoom_factors,
+    const std::vector<int>& active_axes,
     int interp_degree,
     int analy_degree,
     int synthe_degree,
@@ -170,26 +239,18 @@ py::array_t<T> resize_nd_impl(
     }
 
     const int D = static_cast<int>(in_arr.ndim());
-    if (static_cast<int>(zoom_factors.size()) != D) {
+    if (static_cast<int>(expected_in_shape.size()) != D) {
         throw std::runtime_error(
-            "resize_nd: zoom_factors length must match ndim");
+            "resize_nd: input ndim does not match plan ndim");
     }
 
-    // Shapes (int64 for C++ core)
-    std::vector<int64> in_shape  = shape_to_vec_i64(in_arr);
-    std::vector<int64> out_shape = in_shape;
-
-    // Compute final per-axis output size
     for (int ax = 0; ax < D; ++ax) {
-        int workN = 0;
-        int outN  = 0;
-        lsresize::calculate_final_size_1d(
-            inversable,
-            static_cast<int>(in_shape[static_cast<size_t>(ax)]),
-            zoom_factors[static_cast<size_t>(ax)],
-            workN,
-            outN);
-        out_shape[static_cast<size_t>(ax)] = outN;
+        const int64 got = static_cast<int64>(in_arr.shape(ax));
+        const int64 expected = expected_in_shape[static_cast<size_t>(ax)];
+        if (got != expected) {
+            throw std::runtime_error(
+                "resize_nd: input shape does not match plan input_shape");
+        }
     }
 
     // Allocate final output (written on the LAST axis pass)
@@ -203,24 +264,11 @@ py::array_t<T> resize_nd_impl(
     //  - Last pass writes directly into out.mutable_data()
     std::vector<T> prev;     // holds current intermediate result
     std::vector<T> scratch;  // temporary buffer for next pass
-    std::vector<int64> cur_shape = in_shape;
-    const std::vector<int> axis_order = choose_axis_order(in_shape, out_shape);
-    std::vector<int> active_axes;
-    active_axes.reserve(axis_order.size());
-    for (int ax : axis_order) {
-        const bool identity_axis =
-            (analy_degree < 0) &&
-            (out_shape[static_cast<size_t>(ax)] ==
-             in_shape[static_cast<size_t>(ax)]) &&
-            (std::abs(zoom_factors[static_cast<size_t>(ax)] - 1.0) <= 1e-12);
-        if (!identity_axis) {
-            active_axes.push_back(ax);
-        }
-    }
+    std::vector<int64> cur_shape = expected_in_shape;
 
     if (active_axes.empty()) {
         const int64 total = std::accumulate(
-            in_shape.begin(), in_shape.end(),
+            expected_in_shape.begin(), expected_in_shape.end(),
             static_cast<int64>(1),
             std::multiplies<int64>());
         std::copy(
@@ -288,6 +336,131 @@ py::array_t<T> resize_nd_impl(
     return out;
 }
 
+template <typename T>
+py::array_t<T> resize_nd_impl(
+    py::array input,
+    std::vector<double> zoom_factors,
+    int interp_degree,
+    int analy_degree,
+    int synthe_degree,
+    bool inversable)
+{
+    py::array_t<T, py::array::c_style | py::array::forcecast> in_arr(input);
+    if (in_arr.ndim() <= 0) {
+        throw std::runtime_error(
+            "resize_nd: input must be at least 1-D");
+    }
+
+    const std::vector<int64> in_shape = shape_to_vec_i64(in_arr);
+    const std::vector<int64> out_shape =
+        compute_output_shape(in_shape, zoom_factors, inversable);
+    const std::vector<int> axis_order =
+        choose_axis_order(in_shape, out_shape);
+    const std::vector<int> active_axes =
+        choose_active_axes(
+            axis_order,
+            in_shape,
+            out_shape,
+            zoom_factors,
+            analy_degree);
+
+    return resize_nd_impl_planned<T>(
+        in_arr,
+        in_shape,
+        out_shape,
+        zoom_factors,
+        active_axes,
+        interp_degree,
+        analy_degree,
+        synthe_degree,
+        inversable);
+}
+
+class ResizePlanNative {
+public:
+    ResizePlanNative(
+        std::vector<int64> input_shape,
+        std::vector<double> zoom_factors,
+        int interp_degree,
+        int analy_degree,
+        int synthe_degree,
+        bool inversable)
+        : input_shape_(std::move(input_shape)),
+          zoom_factors_(std::move(zoom_factors)),
+          interp_degree_(interp_degree),
+          analy_degree_(analy_degree),
+          synthe_degree_(synthe_degree),
+          inversable_(inversable)
+    {
+        validate_degrees(interp_degree_, analy_degree_, synthe_degree_);
+        if (input_shape_.empty()) {
+            throw std::runtime_error(
+                "ResizePlan: input_shape must be at least 1-D");
+        }
+        for (int64 n : input_shape_) {
+            if (n <= 0) {
+                throw std::runtime_error(
+                    "ResizePlan: input_shape entries must be positive");
+            }
+        }
+        output_shape_ =
+            compute_output_shape(input_shape_, zoom_factors_, inversable_);
+        axis_order_ = choose_axis_order(input_shape_, output_shape_);
+        active_axes_ = choose_active_axes(
+            axis_order_,
+            input_shape_,
+            output_shape_,
+            zoom_factors_,
+            analy_degree_);
+    }
+
+    py::array apply(py::array input) const
+    {
+        py::dtype dt = input.dtype();
+        if (dt.is(py::dtype::of<float>())) {
+            return resize_nd_impl_planned<float>(
+                input,
+                input_shape_,
+                output_shape_,
+                zoom_factors_,
+                active_axes_,
+                interp_degree_,
+                analy_degree_,
+                synthe_degree_,
+                inversable_);
+        }
+        return resize_nd_impl_planned<double>(
+            input,
+            input_shape_,
+            output_shape_,
+            zoom_factors_,
+            active_axes_,
+            interp_degree_,
+            analy_degree_,
+            synthe_degree_,
+            inversable_);
+    }
+
+    py::tuple input_shape() const { return vec_i64_to_tuple(input_shape_); }
+    py::tuple output_shape() const { return vec_i64_to_tuple(output_shape_); }
+    py::tuple zoom_factors() const { return vec_double_to_tuple(zoom_factors_); }
+    int interp_degree() const { return interp_degree_; }
+    int analy_degree() const { return analy_degree_; }
+    int synthe_degree() const { return synthe_degree_; }
+    bool inversable() const { return inversable_; }
+
+private:
+    std::vector<int64> input_shape_;
+    std::vector<int64> output_shape_;
+    std::vector<double> zoom_factors_;
+    std::vector<int> axis_order_;
+    std::vector<int> active_axes_;
+    int interp_degree_;
+    int analy_degree_;
+    int synthe_degree_;
+    bool inversable_;
+};
+
 // Python-visible dispatcher: chooses float32 vs float64 pipeline
 static py::array resize_nd(
     py::array input,
@@ -335,4 +508,27 @@ PYBIND11_MODULE(_lsresize, m) {
           py::arg("analy_degree"),
           py::arg("synthe_degree"),
           py::arg("inversable"));
+
+    py::class_<ResizePlanNative>(m, "ResizePlan")
+        .def(py::init<
+             std::vector<int64>,
+             std::vector<double>,
+             int,
+             int,
+             int,
+             bool>(),
+             py::arg("input_shape"),
+             py::arg("zoom_factors"),
+             py::arg("interp_degree"),
+             py::arg("analy_degree"),
+             py::arg("synthe_degree"),
+             py::arg("inversable"))
+        .def("apply", &ResizePlanNative::apply, py::arg("input"))
+        .def_property_readonly("input_shape", &ResizePlanNative::input_shape)
+        .def_property_readonly("output_shape", &ResizePlanNative::output_shape)
+        .def_property_readonly("zoom_factors", &ResizePlanNative::zoom_factors)
+        .def_property_readonly("interp_degree", &ResizePlanNative::interp_degree)
+        .def_property_readonly("analy_degree", &ResizePlanNative::analy_degree)
+        .def_property_readonly("synthe_degree", &ResizePlanNative::synthe_degree)
+        .def_property_readonly("inversable", &ResizePlanNative::inversable);
 }

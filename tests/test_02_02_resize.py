@@ -1,10 +1,90 @@
 # splineops/tests/test_02_02_resize.py
 import numpy as np
 import pytest
-from splineops.resize import resize, resize_degrees
+from splineops.resize import ResizePlan, resize, resize_degrees
 
 # Map numeric degree -> preset name
 _DEGREE_TO_NAME = {0: "fast", 1: "linear", 2: "quadratic", 3: "cubic"}
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "method,shape,zoom",
+    [
+        ("cubic", (64, 48), (0.7, 1.3)),
+        ("linear-antialiasing", (64, 48), (0.7, 1.3)),
+        ("cubic-antialiasing", (24, 20, 16), (0.75, 1.2, 0.5)),
+    ],
+)
+def test_resize_plan_matches_resize(dtype, method, shape, zoom):
+    rng = np.random.default_rng(202)
+    x = rng.random(shape, dtype=dtype)
+
+    plan = ResizePlan(x.shape, zoom_factors=zoom, method=method)
+    expected = resize(x, zoom_factors=zoom, method=method)
+    actual = plan.apply(x)
+
+    assert plan.input_shape == tuple(shape)
+    assert plan.output_shape == tuple(expected.shape)
+    assert plan.zoom_factors == tuple(float(z) for z in zoom)
+    assert actual.dtype == expected.dtype
+    assert np.allclose(actual, expected, atol=0.0, rtol=0.0)
+
+
+def test_resize_plan_from_degrees_matches_resize_degrees():
+    rng = np.random.default_rng(203)
+    x = rng.random((48, 40), dtype=np.float64)
+
+    plan = ResizePlan.from_degrees(
+        x.shape,
+        zoom_factors=(0.5, 1.25),
+        interp_degree=3,
+        analy_degree=3,
+        synthe_degree=3,
+    )
+    expected = resize_degrees(
+        x,
+        zoom_factors=(0.5, 1.25),
+        interp_degree=3,
+        analy_degree=3,
+        synthe_degree=3,
+    )
+
+    assert plan.method is None
+    assert plan.output_shape == expected.shape
+    assert np.allclose(plan(x), expected, atol=0.0, rtol=0.0)
+
+
+def test_resize_plan_output_and_shape_validation():
+    rng = np.random.default_rng(204)
+    x = rng.random((32, 24), dtype=np.float32)
+    plan = ResizePlan(x.shape, output_size=(16, 36), method="linear")
+    expected = resize(x, output_size=(16, 36), method="linear")
+
+    out = np.empty(expected.shape, dtype=np.float64)
+    returned = plan.apply(x, output=out)
+
+    assert returned is out
+    assert out.dtype == np.float64
+    assert np.allclose(out, expected.astype(np.float64), atol=0.0, rtol=0.0)
+    with pytest.raises(ValueError, match="expected"):
+        plan.apply(x[:10])
+
+
+def test_resize_plan_python_fallback_matches_resize(monkeypatch):
+    import importlib
+    import sys
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "never")
+    name = "splineops.resize.resize"
+    rz = importlib.reload(sys.modules[name])
+
+    rng = np.random.default_rng(205)
+    x = rng.random((40, 32), dtype=np.float32)
+    plan = rz.ResizePlan(x.shape, zoom_factors=(0.65, 1.4), method="cubic")
+    expected = rz.resize(x, zoom_factors=(0.65, 1.4), method="cubic")
+
+    assert np.allclose(plan.apply(x), expected, atol=0.0, rtol=0.0)
 
 
 def _apply_resize(

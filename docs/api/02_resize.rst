@@ -27,6 +27,16 @@ This exposes the underlying Muñoz/Unser projection framework directly
 
 .. autofunction:: splineops.resize.resize_degrees
 
+Reusable plans
+--------------
+
+For repeated same-shape workloads, use
+:class:`~splineops.resize.ResizePlan` to resolve the target geometry once and
+apply it to multiple arrays.
+
+.. autoclass:: splineops.resize.ResizePlan
+   :members:
+
 
 See also
 --------

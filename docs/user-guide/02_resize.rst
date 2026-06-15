@@ -393,6 +393,16 @@ axis pass in ``float32`` scratch space for speed, so it can differ slightly
 from the default 64-bit internal result and should be treated as an explicit
 performance/precision tradeoff.
 
+Repeated same-shape workloads can use :class:`~splineops.resize.ResizePlan` to
+resolve the resize geometry once and then apply it to many arrays:
+
+.. code-block:: python
+
+   from splineops.resize import ResizePlan
+
+   plan = ResizePlan((512, 512), zoom_factors=(0.5, 0.5), method="cubic")
+   resized = plan(frame)
+
 Conceptually, :ref:`resize <api-resize>` is configured by three spline degrees:
 
 * the **interpolation degree**, which sets the underlying spline model,

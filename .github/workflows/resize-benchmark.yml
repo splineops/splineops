@@ -1,0 +1,74 @@
+name: Resize benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "benchmark profile"
+        required: true
+        default: "standard"
+        type: choice
+        options:
+          - smoke
+          - standard
+      repeats:
+        description: "timing repeats"
+        required: true
+        default: "5"
+
+jobs:
+  resize-benchmark:
+    runs-on: ubuntu-latest
+
+    env:
+      SPLINEOPS_ACCEL: always
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[tests]'
+
+      - name: Native resize benchmark
+        run: |
+          python scripts/benchmark_resize_native.py \
+            --profile "${{ inputs.profile }}" \
+            --backend native \
+            --threads 1,default \
+            --repeats "${{ inputs.repeats }}" \
+            --warmups 2 \
+            --batched-axis auto \
+            --skip-checks \
+            --output-json resize-native.json \
+            --output-csv resize-native.csv
+
+      - name: Float32 quality sweep
+        run: |
+          python scripts/benchmark_resize_quality.py \
+            --profile quick \
+            --output-json resize-quality.json \
+            --output-csv resize-quality.csv
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: resize-benchmark-${{ github.sha }}
+          path: |
+            resize-native.json
+            resize-native.csv
+            resize-quality.json
+            resize-quality.csv
+          if-no-files-found: error
