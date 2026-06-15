@@ -236,6 +236,29 @@ Measured progress so far:
   - antialiasing rows, where the fused projection diff applies most directly,
     won `13/16` medians and `12/16` best-of timings, with about `1.12x` mean
     median speedup
+- Native batched filter and offset cleanup:
+  - precomputes the finite causal-initializer horizon once per pole/axis pass
+    instead of recalculating the same logarithms for every line in a batch
+  - avoids redundant integration average-buffer initialization on normal
+    projection paths
+  - uses a direct 2-D axis-pass offset calculation in the batched native
+    kernels instead of generic N-D index unraveling
+  - local standard-profile A/B artifacts:
+    `/tmp/splineops_resize_projection_next_baseline.{json,csv}` and
+    `/tmp/splineops_resize_projection_next_fast_r2.{json,csv}`
+  - with `--threads 1`, `--repeats 9`, `--warmups 3`, 2-D
+    antialiasing/projection rows won `8/8` medians, with about `1.05x` mean
+    and `1.03x` median speedup
+  - the same pass improved all 2-D pure cubic standard rows (`8/8` medians),
+    with about `1.15x` mean and median speedup, because cubic interpolation
+    also uses the batched prefilter and 2-D offset path
+  - local quality artifact:
+    `/tmp/splineops_resize_quality_projection_next_fast_standard.{json,csv}`;
+    default-vs-explicit-float32 quality deltas were unchanged from the prior
+    precision-policy run
+  - local plan-reuse and library artifacts:
+    `/tmp/splineops_resize_plan_projection_next_fast_standard.{json,csv}` and
+    `/tmp/splineops_resize_libraries_projection_next_fast_standard.{json,csv}`
 - Public reusable `ResizePlan`:
   - added as `splineops.resize.ResizePlan`
   - native-backed plans precompute input/output shape, zoom factors, axis order,
@@ -327,6 +350,10 @@ Validation status:
   `/tmp/splineops_resize_libraries_smoke.{json,csv}`.
 - Cross-library resize standard:
   `/tmp/splineops_resize_libraries_standard.{json,csv}`.
+- Native editable rebuild after batched filter/offset cleanup: clean.
+- Native resize module after batched filter/offset cleanup: `138 passed`.
+- Focused ResizePlan parity after batched filter/offset cleanup: `10 passed`.
+- Full suite after batched filter/offset cleanup: `487 passed`.
 - `git diff --check`: clean on the latest implementation pass.
 
 ### Full Optimization Roadmap

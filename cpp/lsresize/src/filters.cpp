@@ -245,17 +245,10 @@ static double initial_causal_colmajor(
   int N,
   int b,
   double z,
-  double tol = 1e-10)
+  size_t horizon)
 {
   if (N == 0) return 0.0;
   if (N == 1) return c[static_cast<size_t>(b)];
-
-  size_t horizon = static_cast<size_t>(N);
-  if (tol > 0.0) {
-    horizon = std::min(
-        static_cast<size_t>(N),
-        static_cast<size_t>(2 + std::log(tol) / std::log(std::abs(z))));
-  }
 
   const size_t Bs = static_cast<size_t>(B);
   const size_t bi = static_cast<size_t>(b);
@@ -281,6 +274,20 @@ static double initial_causal_colmajor(
   }
 
   return sum / (1.0 - (zn * zn));
+}
+
+static inline size_t initial_causal_horizon_colmajor(
+  int N,
+  double z,
+  double tol = 1e-10)
+{
+  size_t horizon = static_cast<size_t>(std::max(N, 0));
+  if (N > 0 && tol > 0.0) {
+    horizon = std::min(
+        static_cast<size_t>(N),
+        static_cast<size_t>(2 + std::log(tol) / std::log(std::abs(z))));
+  }
+  return horizon;
 }
 
 static inline int mirror_symmetric_index(int k, int N)
@@ -558,8 +565,10 @@ void get_interpolation_coefficients_colmajor(
 
   const size_t Bs = static_cast<size_t>(B);
   for (double z : poles) {
+    const size_t horizon = initial_causal_horizon_colmajor(N, z);
     for (int b = 0; b < B; ++b) {
-      c[static_cast<size_t>(b)] = initial_causal_colmajor(c, B, N, b, z);
+      c[static_cast<size_t>(b)] =
+          initial_causal_colmajor(c, B, N, b, z, horizon);
     }
 
     for (int n = 1; n < N; ++n) {
@@ -598,8 +607,14 @@ void do_integ_colmajor(
   std::vector<double>& average,
   std::vector<double>& work)
 {
-  average.assign(static_cast<size_t>(std::max(B, 0)), 0.0);
-  if (B <= 0 || N <= 1 || nb <= 0) return;
+  if (B <= 0) {
+    average.clear();
+    return;
+  }
+  if (N <= 1 || nb <= 0) {
+    average.assign(static_cast<size_t>(B), 0.0);
+    return;
+  }
 
   if (nb >= 1) {
     average_colmajor(c, B, N, average);
@@ -683,17 +698,10 @@ static float initial_causal_colmajor_f32(
   int N,
   int b,
   float z,
-  float tol = 1e-10f)
+  size_t horizon)
 {
   if (N == 0) return 0.0f;
   if (N == 1) return c[static_cast<size_t>(b)];
-
-  size_t horizon = static_cast<size_t>(N);
-  if (tol > 0.0f) {
-    horizon = std::min(
-        static_cast<size_t>(N),
-        static_cast<size_t>(2 + std::log(tol) / std::log(std::abs(z))));
-  }
 
   const size_t Bs = static_cast<size_t>(B);
   const size_t bi = static_cast<size_t>(b);
@@ -719,6 +727,20 @@ static float initial_causal_colmajor_f32(
   }
 
   return sum / (1.0f - (zn * zn));
+}
+
+static inline size_t initial_causal_horizon_colmajor_f32(
+  int N,
+  float z,
+  float tol = 1e-10f)
+{
+  size_t horizon = static_cast<size_t>(std::max(N, 0));
+  if (N > 0 && tol > 0.0f) {
+    horizon = std::min(
+        static_cast<size_t>(N),
+        static_cast<size_t>(2 + std::log(tol) / std::log(std::abs(z))));
+  }
+  return horizon;
 }
 
 static void average_colmajor_f32(
@@ -873,8 +895,10 @@ void get_interpolation_coefficients_colmajor_f32(
   const size_t Bs = static_cast<size_t>(B);
   for (double zd : poles) {
     const float z = static_cast<float>(zd);
+    const size_t horizon = initial_causal_horizon_colmajor_f32(N, z);
     for (int b = 0; b < B; ++b) {
-      c[static_cast<size_t>(b)] = initial_causal_colmajor_f32(c, B, N, b, z);
+      c[static_cast<size_t>(b)] =
+          initial_causal_colmajor_f32(c, B, N, b, z, horizon);
     }
 
     for (int n = 1; n < N; ++n) {
@@ -913,8 +937,14 @@ void do_integ_colmajor_f32(
   std::vector<float>& average,
   std::vector<float>& work)
 {
-  average.assign(static_cast<size_t>(std::max(B, 0)), 0.0f);
-  if (B <= 0 || N <= 1 || nb <= 0) return;
+  if (B <= 0) {
+    average.clear();
+    return;
+  }
+  if (N <= 1 || nb <= 0) {
+    average.assign(static_cast<size_t>(B), 0.0f);
+    return;
+  }
 
   if (nb >= 1) {
     average_colmajor_f32(c, B, N, average);

@@ -273,6 +273,40 @@ static inline void line_offsets(
   }
 }
 
+static inline void axis_pass_line_offsets(
+  int64_t line,
+  int axis,
+  const std::vector<int>& bases,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& in_strides,
+  const std::vector<int64_t>& out_strides,
+  std::vector<int64_t>& idx,
+  int64_t& in_off,
+  int64_t& out_off)
+{
+  if (in_shape.size() == 2) {
+    if (axis == 0) {
+      in_off = line;
+      out_off = line;
+    } else {
+      in_off = line * in_strides[0];
+      out_off = line * out_strides[0];
+    }
+    return;
+  }
+
+  line_offsets(
+      line,
+      axis,
+      bases,
+      in_shape,
+      in_strides,
+      out_strides,
+      idx,
+      in_off,
+      out_off);
+}
+
 static inline void accumulate_interior_row_colmajor(
   const double* LS_RESTRICT coeff,
   size_t Bs,
@@ -1667,7 +1701,7 @@ static void resize_along_axis_batched_interp_t(
       for (int b = 0; b < B; ++b) {
         int64_t in_off = 0;
         int64_t out_off = 0;
-        line_offsets(
+        axis_pass_line_offsets(
             block + b,
             axis,
             bases,
@@ -1817,7 +1851,7 @@ static void resize_along_axis_batched_t(
       for (int b = 0; b < B; ++b) {
         int64_t in_off = 0;
         int64_t out_off = 0;
-        line_offsets(
+        axis_pass_line_offsets(
             block + b,
             axis,
             bases,
@@ -1942,7 +1976,7 @@ static void resize_along_axis_batched_interp_f32_internal(
       for (int b = 0; b < B; ++b) {
         int64_t in_off = 0;
         int64_t out_off = 0;
-        line_offsets(
+        axis_pass_line_offsets(
             block + b,
             axis,
             bases,
@@ -2074,7 +2108,7 @@ static void resize_along_axis_batched_f32_internal(
       for (int b = 0; b < B; ++b) {
         int64_t in_off = 0;
         int64_t out_off = 0;
-        line_offsets(
+        axis_pass_line_offsets(
             block + b,
             axis,
             bases,
