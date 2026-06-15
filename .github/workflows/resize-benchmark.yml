@@ -62,6 +62,16 @@ jobs:
             --output-json resize-quality.json \
             --output-csv resize-quality.csv
 
+      - name: ResizePlan reuse benchmark
+        run: |
+          python scripts/benchmark_resize_plan.py \
+            --profile "${{ inputs.profile }}" \
+            --frames 8 \
+            --repeats "${{ inputs.repeats }}" \
+            --warmups 2 \
+            --output-json resize-plan.json \
+            --output-csv resize-plan.csv
+
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -71,4 +81,6 @@ jobs:
             resize-native.csv
             resize-quality.json
             resize-quality.csv
+            resize-plan.json
+            resize-plan.csv
           if-no-files-found: error

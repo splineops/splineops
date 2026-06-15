@@ -337,6 +337,173 @@ py::array_t<T> resize_nd_impl_planned(
 }
 
 template <typename T>
+void resize_nd_impl_preplanned_to(
+    const py::array_t<T, py::array::c_style | py::array::forcecast>& in_arr,
+    T* final_out,
+    const std::vector<int64>& expected_in_shape,
+    const std::vector<int>& active_axes,
+    const std::vector<std::vector<int64>>& pass_in_shapes,
+    const std::vector<std::vector<int64>>& pass_out_shapes,
+    const std::vector<int64>& pass_output_elems,
+    const std::vector<lsresize::LSParams>& pass_params,
+    std::vector<T>& prev,
+    std::vector<T>& scratch)
+{
+    if (active_axes.empty()) {
+        const int64 total = std::accumulate(
+            expected_in_shape.begin(), expected_in_shape.end(),
+            static_cast<int64>(1),
+            std::multiplies<int64>());
+        std::copy(
+            static_cast<const T*>(in_arr.data()),
+            static_cast<const T*>(in_arr.data()) + total,
+            final_out);
+        return;
+    }
+
+    const int n_passes = static_cast<int>(active_axes.size());
+    for (int pass = 0; pass < n_passes; ++pass) {
+        const bool first_pass = (pass == 0);
+        const bool last_pass = (pass == n_passes - 1);
+
+        const T* in_ptr = first_pass
+            ? static_cast<const T*>(in_arr.data())
+            : prev.data();
+        T* out_ptr = nullptr;
+
+        if (last_pass) {
+            out_ptr = final_out;
+        } else {
+            scratch.resize(static_cast<size_t>(
+                pass_output_elems[static_cast<size_t>(pass)]));
+            out_ptr = scratch.data();
+        }
+
+        AxisDispatch<T>::apply(
+            in_ptr,
+            out_ptr,
+            pass_in_shapes[static_cast<size_t>(pass)],
+            pass_out_shapes[static_cast<size_t>(pass)],
+            active_axes[static_cast<size_t>(pass)],
+            pass_params[static_cast<size_t>(pass)]);
+
+        if (!last_pass) {
+            prev.swap(scratch);
+        }
+    }
+}
+
+template <typename T>
+static py::array_t<T, py::array::c_style | py::array::forcecast>
+checked_preplanned_input(
+    py::array input,
+    const std::vector<int64>& expected_in_shape)
+{
+    py::array_t<T, py::array::c_style | py::array::forcecast> in_arr(input);
+    if (in_arr.ndim() <= 0)
+    {
+        throw std::runtime_error(
+            "resize_nd: input must be at least 1-D");
+    }
+
+    const int D = static_cast<int>(in_arr.ndim());
+    if (static_cast<int>(expected_in_shape.size()) != D) {
+        throw std::runtime_error(
+            "resize_nd: input ndim does not match plan ndim");
+    }
+
+    for (int ax = 0; ax < D; ++ax) {
+        const int64 got = static_cast<int64>(in_arr.shape(ax));
+        const int64 expected = expected_in_shape[static_cast<size_t>(ax)];
+        if (got != expected) {
+            throw std::runtime_error(
+                "resize_nd: input shape does not match plan input_shape");
+        }
+    }
+
+    return in_arr;
+}
+
+template <typename T>
+py::array_t<T> resize_nd_impl_preplanned(
+    py::array input,
+    const std::vector<int64>& expected_in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<int>& active_axes,
+    const std::vector<std::vector<int64>>& pass_in_shapes,
+    const std::vector<std::vector<int64>>& pass_out_shapes,
+    const std::vector<int64>& pass_output_elems,
+    const std::vector<lsresize::LSParams>& pass_params,
+    std::vector<T>& prev,
+    std::vector<T>& scratch)
+{
+    auto in_arr = checked_preplanned_input<T>(input, expected_in_shape);
+    std::vector<py::ssize_t> out_shape_ssize(
+        out_shape.begin(), out_shape.end());
+    py::array_t<T> out(out_shape_ssize);
+
+    resize_nd_impl_preplanned_to<T>(
+        in_arr,
+        static_cast<T*>(out.mutable_data()),
+        expected_in_shape,
+        active_axes,
+        pass_in_shapes,
+        pass_out_shapes,
+        pass_output_elems,
+        pass_params,
+        prev,
+        scratch);
+    return out;
+}
+
+template <typename T>
+py::array resize_nd_impl_preplanned_into(
+    py::array input,
+    py::array output,
+    const std::vector<int64>& expected_in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<int>& active_axes,
+    const std::vector<std::vector<int64>>& pass_in_shapes,
+    const std::vector<std::vector<int64>>& pass_out_shapes,
+    const std::vector<int64>& pass_output_elems,
+    const std::vector<lsresize::LSParams>& pass_params,
+    std::vector<T>& prev,
+    std::vector<T>& scratch)
+{
+    auto in_arr = checked_preplanned_input<T>(input, expected_in_shape);
+    py::array_t<T, py::array::c_style> out_arr(output);
+    if (!out_arr.writeable()) {
+        throw std::runtime_error(
+            "resize_nd: output must be writeable");
+    }
+    if (out_arr.ndim() != static_cast<py::ssize_t>(out_shape.size())) {
+        throw std::runtime_error(
+            "resize_nd: output ndim does not match plan output ndim");
+    }
+    for (int ax = 0; ax < out_arr.ndim(); ++ax) {
+        const int64 got = static_cast<int64>(out_arr.shape(ax));
+        const int64 expected = out_shape[static_cast<size_t>(ax)];
+        if (got != expected) {
+            throw std::runtime_error(
+                "resize_nd: output shape does not match plan output_shape");
+        }
+    }
+
+    resize_nd_impl_preplanned_to<T>(
+        in_arr,
+        static_cast<T*>(out_arr.mutable_data()),
+        expected_in_shape,
+        active_axes,
+        pass_in_shapes,
+        pass_out_shapes,
+        pass_output_elems,
+        pass_params,
+        prev,
+        scratch);
+    return output;
+}
+
+template <typename T>
 py::array_t<T> resize_nd_impl(
     py::array input,
     std::vector<double> zoom_factors,
@@ -412,33 +579,94 @@ public:
             output_shape_,
             zoom_factors_,
             analy_degree_);
+
+        std::vector<int64> cur_shape = input_shape_;
+        pass_in_shapes_.reserve(active_axes_.size());
+        pass_out_shapes_.reserve(active_axes_.size());
+        pass_output_elems_.reserve(active_axes_.size());
+        pass_params_.reserve(active_axes_.size());
+        for (int ax : active_axes_) {
+            std::vector<int64> next_shape = cur_shape;
+            next_shape[static_cast<size_t>(ax)] =
+                output_shape_[static_cast<size_t>(ax)];
+            pass_in_shapes_.push_back(cur_shape);
+            pass_out_shapes_.push_back(next_shape);
+            pass_output_elems_.push_back(std::accumulate(
+                next_shape.begin(), next_shape.end(),
+                static_cast<int64>(1),
+                std::multiplies<int64>()));
+
+            lsresize::LSParams p;
+            p.interp_degree = interp_degree_;
+            p.analy_degree = analy_degree_;
+            p.synthe_degree = synthe_degree_;
+            p.zoom = zoom_factors_[static_cast<size_t>(ax)];
+            p.shift = 0.0;
+            p.inversable = inversable_;
+            pass_params_.push_back(p);
+
+            cur_shape.swap(next_shape);
+        }
     }
 
-    py::array apply(py::array input) const
+    py::array apply(py::array input)
     {
         py::dtype dt = input.dtype();
         if (dt.is(py::dtype::of<float>())) {
-            return resize_nd_impl_planned<float>(
+            return resize_nd_impl_preplanned<float>(
                 input,
                 input_shape_,
                 output_shape_,
-                zoom_factors_,
                 active_axes_,
-                interp_degree_,
-                analy_degree_,
-                synthe_degree_,
-                inversable_);
+                pass_in_shapes_,
+                pass_out_shapes_,
+                pass_output_elems_,
+                pass_params_,
+                prev_f32_,
+                scratch_f32_);
         }
-        return resize_nd_impl_planned<double>(
+        return resize_nd_impl_preplanned<double>(
             input,
             input_shape_,
             output_shape_,
-            zoom_factors_,
             active_axes_,
-            interp_degree_,
-            analy_degree_,
-            synthe_degree_,
-            inversable_);
+            pass_in_shapes_,
+            pass_out_shapes_,
+            pass_output_elems_,
+            pass_params_,
+            prev_f64_,
+            scratch_f64_);
+    }
+
+    py::array apply_into(py::array input, py::array output)
+    {
+        py::dtype dt = input.dtype();
+        if (dt.is(py::dtype::of<float>())) {
+            return resize_nd_impl_preplanned_into<float>(
+                input,
+                output,
+                input_shape_,
+                output_shape_,
+                active_axes_,
+                pass_in_shapes_,
+                pass_out_shapes_,
+                pass_output_elems_,
+                pass_params_,
+                prev_f32_,
+                scratch_f32_);
+        }
+        return resize_nd_impl_preplanned_into<double>(
+            input,
+            output,
+            input_shape_,
+            output_shape_,
+            active_axes_,
+            pass_in_shapes_,
+            pass_out_shapes_,
+            pass_output_elems_,
+            pass_params_,
+            prev_f64_,
+            scratch_f64_);
     }
 
     py::tuple input_shape() const { return vec_i64_to_tuple(input_shape_); }
@@ -455,6 +683,14 @@ private:
     std::vector<double> zoom_factors_;
     std::vector<int> axis_order_;
     std::vector<int> active_axes_;
+    std::vector<std::vector<int64>> pass_in_shapes_;
+    std::vector<std::vector<int64>> pass_out_shapes_;
+    std::vector<int64> pass_output_elems_;
+    std::vector<lsresize::LSParams> pass_params_;
+    std::vector<float> prev_f32_;
+    std::vector<float> scratch_f32_;
+    std::vector<double> prev_f64_;
+    std::vector<double> scratch_f64_;
     int interp_degree_;
     int analy_degree_;
     int synthe_degree_;
@@ -524,6 +760,10 @@ PYBIND11_MODULE(_lsresize, m) {
              py::arg("synthe_degree"),
              py::arg("inversable"))
         .def("apply", &ResizePlanNative::apply, py::arg("input"))
+        .def("apply_into",
+             &ResizePlanNative::apply_into,
+             py::arg("input"),
+             py::arg("output"))
         .def_property_readonly("input_shape", &ResizePlanNative::input_shape)
         .def_property_readonly("output_shape", &ResizePlanNative::output_shape)
         .def_property_readonly("zoom_factors", &ResizePlanNative::zoom_factors)

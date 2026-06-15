@@ -138,17 +138,33 @@ Measured progress so far:
 - Public reusable `ResizePlan`:
   - added as `splineops.resize.ResizePlan`
   - native-backed plans precompute input/output shape, zoom factors, axis order,
-    and active axes once; native per-axis `Plan1D` metadata is still reused by
-    the existing process-local cache
+    active axes, per-pass shapes, per-pass output sizes, and per-axis resize
+    parameters once; native per-axis `Plan1D` metadata is still reused by the
+    existing process-local cache
+  - repeated native plan calls now reuse float32/float64 ping-pong intermediate
+    buffers instead of allocating them on every call
+  - `ResizePlan.apply(..., output=out)` writes directly into a matching
+    C-contiguous native output buffer when it is safe to do so; mismatched
+    dtypes, non-contiguous outputs, and input/output aliases keep the previous
+    temporary-and-copy semantics
+  - standard plan benchmark artifacts:
+    `/tmp/splineops_resize_plan_standard.{json,csv}`
+  - on the local standard profile, plan reuse preserved exact output parity;
+    median speedups versus one-shot `resize` ranged from about `1.00x` to
+    `1.08x` for fresh output and from about `0.98x` to `1.15x` with a reused
+    output buffer
   - pure-Python fallback remains available when `SPLINEOPS_ACCEL=never` or the
     native extension is unavailable
 - Quality and benchmark automation:
   - added `scripts/benchmark_resize_quality.py` for constant, ramp, impulse,
     checkerboard, sinusoid, and random comparisons between default internals
     and `LSRESIZE_PRECISION=float32`
+  - added `scripts/benchmark_resize_plan.py` for repeated same-shape
+    `ResizePlan` workloads with fresh-output and reused-output timings
   - added a manual GitHub Actions workflow,
-    `.github/workflows/resize-benchmark.yml`, to collect native benchmark and
-    quality artifacts on CI hardware without gating PRs on noisy timings
+    `.github/workflows/resize-benchmark.yml`, to collect native benchmark,
+    quality, and plan-reuse artifacts on CI hardware without gating PRs on
+    noisy timings
 
 Validation status:
 
@@ -157,19 +173,23 @@ Validation status:
 - Opt-in float32 internal focused tests: `11 passed`.
 - Native resize module: `105 passed`.
 - Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `105 passed`.
-- Resize API suite: `90 passed`.
-- Resize API suite with `SPLINEOPS_ACCEL=never`: `81 passed`.
-- Focused resize suite: `195 passed`.
-- Full suite: `449 passed`.
-- Fresh external virtualenv focused resize suite: `195 passed`.
+- Resize API suite: `95 passed`.
+- Resize API suite with `SPLINEOPS_ACCEL=never`: `95 passed`.
+- Focused resize suite: `200 passed`.
+- Full suite: `454 passed`.
+- Fresh external virtualenv focused resize suite: `200 passed`.
 - Fresh external virtualenv native resize module with
   `LSRESIZE_SPECIALIZED_PRESETS=0`: `105 passed`.
-- Fresh external virtualenv full suite: `449 passed`.
+- Fresh external virtualenv full suite: `454 passed`.
 - Fresh external virtualenv quality smoke:
   `/tmp/splineops_resize_quality_fresh_quick.{json,csv}`.
 - Python compile checks for updated scripts/specs: clean.
 - Standard quality sweep:
   `/tmp/splineops_resize_quality_standard.{json,csv}`.
+- ResizePlan reuse smoke:
+  `/tmp/splineops_resize_plan_smoke.{json,csv}`.
+- ResizePlan reuse standard:
+  `/tmp/splineops_resize_plan_standard.{json,csv}`.
 - `git diff --check`: clean on the latest implementation pass.
 
 ### Full Optimization Roadmap
@@ -208,14 +228,18 @@ design.
    - Status: implemented as `splineops.resize.ResizePlan`.
    - The plan object makes repeated same-shape workloads explicit:
      `plan = ResizePlan(input_shape, zoom, method); out = plan.apply(x)`.
-   - Native-backed plans precompute axis order, active axes, output shapes, and
-     geometry parameters, while per-axis `Plan1D` metadata remains reused by the
-     native process-local cache.
+   - Native-backed plans precompute axis order, active axes, output shapes,
+     per-pass geometry, and per-axis parameters, while per-axis `Plan1D`
+     metadata remains reused by the native process-local cache.
+   - Native-backed plans reuse intermediate ping-pong scratch buffers across
+     calls and can write directly into a compatible user-provided output array.
    - Best fit: video frames, registration loops, batch processing, and repeated
      augmentation with fixed geometry.
 
 4. **Memory and temporary-buffer strategy.**
-   - Reuse ping-pong intermediate arrays across repeated calls through a plan.
+   - Status: first stage implemented for reusable native plans.
+   - Remaining deeper stage: reduce temporary traffic inside the axis kernels,
+     where antialiasing/projection workloads still spend most of their time.
    - Explore fused final-axis writes or permutation-aware scheduling for
      workloads where strided passes dominate.
    - Consider tiling for large volumes where memory traffic, not arithmetic,

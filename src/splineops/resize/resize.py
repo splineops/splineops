@@ -294,6 +294,27 @@ class ResizePlan:
                 f"input has shape {arr.shape}, expected {self.input_shape}"
             )
 
+        if isinstance(output, np.ndarray):
+            if tuple(output.shape) != self.output_shape:
+                raise ValueError(
+                    f"'output' has shape {output.shape}, expected {self.output_shape}"
+                )
+
+            if self._native_plan is not None and hasattr(self._native_plan, "apply_into"):
+                native_dtype = (
+                    np.dtype(np.float32)
+                    if arr.dtype == np.dtype(np.float32)
+                    else np.dtype(np.float64)
+                )
+                can_write_native_direct = (
+                    output.dtype == native_dtype
+                    and output.flags.c_contiguous
+                    and output.flags.writeable
+                    and not np.may_share_memory(arr, output)
+                )
+                if can_write_native_direct:
+                    return self._native_plan.apply_into(arr, output)
+
         if self._native_plan is not None:
             output_data = self._native_plan.apply(arr)
         else:
@@ -308,10 +329,6 @@ class ResizePlan:
 
         if output is not None:
             if isinstance(output, np.ndarray):
-                if tuple(output.shape) != tuple(output_data.shape):
-                    raise ValueError(
-                        f"'output' has shape {output.shape}, expected {output_data.shape}"
-                    )
                 np.copyto(output, output_data.astype(output.dtype, copy=False))
                 return output
             return np.asarray(output_data, dtype=output)

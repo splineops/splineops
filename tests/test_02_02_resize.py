@@ -55,6 +55,28 @@ def test_resize_plan_from_degrees_matches_resize_degrees():
     assert np.allclose(plan(x), expected, atol=0.0, rtol=0.0)
 
 
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_resize_plan_reuses_scratch_without_leaking_data(dtype):
+    rng = np.random.default_rng(206)
+    plan = ResizePlan(
+        (128, 96),
+        zoom_factors=(0.57, 1.31),
+        method="cubic-antialiasing",
+    )
+
+    for _ in range(5):
+        x = rng.random((128, 96), dtype=dtype)
+        expected = resize(
+            x,
+            zoom_factors=(0.57, 1.31),
+            method="cubic-antialiasing",
+        )
+        actual = plan(x)
+
+        assert actual.dtype == expected.dtype
+        assert np.allclose(actual, expected, atol=0.0, rtol=0.0)
+
+
 def test_resize_plan_output_and_shape_validation():
     rng = np.random.default_rng(204)
     x = rng.random((32, 24), dtype=np.float32)
@@ -67,8 +89,45 @@ def test_resize_plan_output_and_shape_validation():
     assert returned is out
     assert out.dtype == np.float64
     assert np.allclose(out, expected.astype(np.float64), atol=0.0, rtol=0.0)
+    with pytest.raises(ValueError, match="'output' has shape"):
+        plan.apply(x, output=np.empty((1, 1), dtype=np.float32))
     with pytest.raises(ValueError, match="expected"):
         plan.apply(x[:10])
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_resize_plan_writes_matching_output_buffer(dtype):
+    rng = np.random.default_rng(207)
+    x = rng.random((96, 72), dtype=dtype)
+    plan = ResizePlan(
+        x.shape,
+        zoom_factors=(0.58, 1.27),
+        method="cubic-antialiasing",
+    )
+    expected = resize(
+        x,
+        zoom_factors=(0.58, 1.27),
+        method="cubic-antialiasing",
+    )
+
+    out = np.empty(expected.shape, dtype=expected.dtype)
+    returned = plan.apply(x, output=out)
+
+    assert returned is out
+    assert out.dtype == expected.dtype
+    assert np.allclose(out, expected, atol=0.0, rtol=0.0)
+
+
+def test_resize_plan_output_alias_matches_temp_semantics():
+    rng = np.random.default_rng(208)
+    x = rng.random((64,), dtype=np.float32)
+    plan = ResizePlan(x.shape, zoom_factors=(1.0,), method="cubic-antialiasing")
+    expected = plan.apply(x.copy())
+
+    returned = plan.apply(x, output=x)
+
+    assert returned is x
+    assert np.allclose(x, expected, atol=0.0, rtol=0.0)
 
 
 def test_resize_plan_python_fallback_matches_resize(monkeypatch):
