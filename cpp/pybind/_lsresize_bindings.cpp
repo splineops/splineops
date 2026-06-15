@@ -241,6 +241,11 @@ static inline bool fused_2d_linear_enabled()
     return env_flag_enabled_default_true("LSRESIZE_FUSED_2D_LINEAR");
 }
 
+static inline bool fused_3d_linear_enabled()
+{
+    return env_flag_enabled_default_true("LSRESIZE_FUSED_3D_LINEAR");
+}
+
 static inline bool batched_axis_not_off()
 {
     const char* value = std::getenv("LSRESIZE_BATCHED_AXIS");
@@ -315,6 +320,33 @@ static inline bool can_use_fused_2d_linear(
     return in_shape.size() == 2 &&
            out_shape.size() == 2 &&
            active_axes.size() == 2 &&
+           interp_degree == 1 &&
+           analy_degree < 0 &&
+           synthe_degree == interp_degree;
+}
+
+template <typename T>
+static inline bool can_use_fused_3d_linear(
+    const std::vector<int64>& in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<int>& active_axes,
+    int interp_degree,
+    int analy_degree,
+    int synthe_degree)
+{
+    if (!linear_interp_enabled() ||
+        !fused_3d_linear_enabled() ||
+        !batched_axis_not_off()) {
+        return false;
+    }
+    if constexpr (std::is_same_v<T, float>) {
+        if (float32_internal_enabled()) {
+            return false;
+        }
+    }
+    return in_shape.size() == 3 &&
+           out_shape.size() == 3 &&
+           active_axes.size() == 3 &&
            interp_degree == 1 &&
            analy_degree < 0 &&
            synthe_degree == interp_degree;
@@ -417,6 +449,110 @@ py::array resize_nd_impl_fused_2d_linear_into(
     }
 
     resize_nd_impl_fused_2d_linear_to<T>(
+        in_arr,
+        static_cast<T*>(out_arr.mutable_data()),
+        expected_in_shape,
+        out_shape,
+        zoom_factors,
+        inversable);
+    return output;
+}
+
+template <typename T>
+void resize_nd_impl_fused_3d_linear_to(
+    const py::array_t<T, py::array::c_style | py::array::forcecast>& in_arr,
+    T* out_data,
+    const std::vector<int64>& in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<double>& zoom_factors,
+    bool inversable)
+{
+    lsresize::LSParams p0;
+    p0.interp_degree = 1;
+    p0.analy_degree = -1;
+    p0.synthe_degree = 1;
+    p0.zoom = zoom_factors[0];
+    p0.shift = 0.0;
+    p0.inversable = inversable;
+
+    lsresize::LSParams p1 = p0;
+    p1.zoom = zoom_factors[1];
+    lsresize::LSParams p2 = p0;
+    p2.zoom = zoom_factors[2];
+
+    if constexpr (std::is_same_v<T, float>) {
+        lsresize::resize_3d_linear_f32(
+            static_cast<const float*>(in_arr.data()),
+            static_cast<float*>(out_data),
+            in_shape,
+            out_shape,
+            p0,
+            p1,
+            p2);
+    } else {
+        lsresize::resize_3d_linear(
+            static_cast<const double*>(in_arr.data()),
+            static_cast<double*>(out_data),
+            in_shape,
+            out_shape,
+            p0,
+            p1,
+            p2);
+    }
+}
+
+template <typename T>
+py::array_t<T> resize_nd_impl_fused_3d_linear(
+    const py::array_t<T, py::array::c_style | py::array::forcecast>& in_arr,
+    const std::vector<int64>& in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<double>& zoom_factors,
+    bool inversable)
+{
+    std::vector<py::ssize_t> out_shape_ssize(
+        out_shape.begin(), out_shape.end());
+    py::array_t<T> out(out_shape_ssize);
+
+    resize_nd_impl_fused_3d_linear_to<T>(
+        in_arr,
+        static_cast<T*>(out.mutable_data()),
+        in_shape,
+        out_shape,
+        zoom_factors,
+        inversable);
+
+    return out;
+}
+
+template <typename T>
+py::array resize_nd_impl_fused_3d_linear_into(
+    py::array input,
+    py::array output,
+    const std::vector<int64>& expected_in_shape,
+    const std::vector<int64>& out_shape,
+    const std::vector<double>& zoom_factors,
+    bool inversable)
+{
+    auto in_arr = checked_preplanned_input<T>(input, expected_in_shape);
+    py::array_t<T, py::array::c_style> out_arr(output);
+    if (!out_arr.writeable()) {
+        throw std::runtime_error(
+            "resize_nd: output must be writeable");
+    }
+    if (out_arr.ndim() != static_cast<py::ssize_t>(out_shape.size())) {
+        throw std::runtime_error(
+            "resize_nd: output ndim does not match plan output ndim");
+    }
+    for (int ax = 0; ax < out_arr.ndim(); ++ax) {
+        const int64 got = static_cast<int64>(out_arr.shape(ax));
+        const int64 expected = out_shape[static_cast<size_t>(ax)];
+        if (got != expected) {
+            throw std::runtime_error(
+                "resize_nd: output shape does not match plan output_shape");
+        }
+    }
+
+    resize_nd_impl_fused_3d_linear_to<T>(
         in_arr,
         static_cast<T*>(out_arr.mutable_data()),
         expected_in_shape,
@@ -756,6 +892,21 @@ py::array_t<T> resize_nd_impl(
             inversable);
     }
 
+    if (can_use_fused_3d_linear<T>(
+            in_shape,
+            out_shape,
+            active_axes,
+            interp_degree,
+            analy_degree,
+            synthe_degree)) {
+        return resize_nd_impl_fused_3d_linear<T>(
+            in_arr,
+            in_shape,
+            out_shape,
+            zoom_factors,
+            inversable);
+    }
+
     return resize_nd_impl_planned<T>(
         in_arr,
         in_shape,
@@ -853,6 +1004,21 @@ public:
                     zoom_factors_,
                     inversable_);
             }
+            if (can_use_fused_3d_linear<float>(
+                    input_shape_,
+                    output_shape_,
+                    active_axes_,
+                    interp_degree_,
+                    analy_degree_,
+                    synthe_degree_)) {
+                auto in_arr = checked_preplanned_input<float>(input, input_shape_);
+                return resize_nd_impl_fused_3d_linear<float>(
+                    in_arr,
+                    input_shape_,
+                    output_shape_,
+                    zoom_factors_,
+                    inversable_);
+            }
             return resize_nd_impl_preplanned<float>(
                 input,
                 input_shape_,
@@ -874,6 +1040,21 @@ public:
                 synthe_degree_)) {
             auto in_arr = checked_preplanned_input<double>(input, input_shape_);
             return resize_nd_impl_fused_2d_linear<double>(
+                in_arr,
+                input_shape_,
+                output_shape_,
+                zoom_factors_,
+                inversable_);
+        }
+        if (can_use_fused_3d_linear<double>(
+                input_shape_,
+                output_shape_,
+                active_axes_,
+                interp_degree_,
+                analy_degree_,
+                synthe_degree_)) {
+            auto in_arr = checked_preplanned_input<double>(input, input_shape_);
+            return resize_nd_impl_fused_3d_linear<double>(
                 in_arr,
                 input_shape_,
                 output_shape_,
@@ -912,6 +1093,21 @@ public:
                     zoom_factors_,
                     inversable_);
             }
+            if (can_use_fused_3d_linear<float>(
+                    input_shape_,
+                    output_shape_,
+                    active_axes_,
+                    interp_degree_,
+                    analy_degree_,
+                    synthe_degree_)) {
+                return resize_nd_impl_fused_3d_linear_into<float>(
+                    input,
+                    output,
+                    input_shape_,
+                    output_shape_,
+                    zoom_factors_,
+                    inversable_);
+            }
             return resize_nd_impl_preplanned_into<float>(
                 input,
                 output,
@@ -933,6 +1129,21 @@ public:
                 analy_degree_,
                 synthe_degree_)) {
             return resize_nd_impl_fused_2d_linear_into<double>(
+                input,
+                output,
+                input_shape_,
+                output_shape_,
+                zoom_factors_,
+                inversable_);
+        }
+        if (can_use_fused_3d_linear<double>(
+                input_shape_,
+                output_shape_,
+                active_axes_,
+                interp_degree_,
+                analy_degree_,
+                synthe_degree_)) {
+            return resize_nd_impl_fused_3d_linear_into<double>(
                 input,
                 output,
                 input_shape_,

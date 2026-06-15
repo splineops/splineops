@@ -2873,6 +2873,166 @@ static void resize_2d_linear_t(
   run_parallel_or_serial(out_h, row_plan, worker);
 }
 
+template <typename Scalar>
+static void resize_3d_linear_t(
+  const Scalar* LS_RESTRICT in,
+  Scalar* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1,
+  const LSParams& p2)
+{
+  const int64_t in_n0 = in_shape[0];
+  const int64_t in_n1 = in_shape[1];
+  const int64_t in_n2 = in_shape[2];
+  const int64_t out_n0 = out_shape[0];
+  const int64_t out_n1 = out_shape[1];
+  const int64_t out_n2 = out_shape[2];
+  const int64_t in_s0 = in_n1 * in_n2;
+  const int64_t in_s1 = in_n2;
+  using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
+
+  const auto plan0_handle =
+      get_plan_1d_cached(static_cast<int>(in_n0), p0);
+  const auto plan1_handle =
+      get_plan_1d_cached(static_cast<int>(in_n1), p1);
+  const auto plan2_handle =
+      get_plan_1d_cached(static_cast<int>(in_n2), p2);
+  const Plan1D& plan0 = *plan0_handle;
+  const Plan1D& plan1 = *plan1_handle;
+  const Plan1D& plan2 = *plan2_handle;
+
+  std::vector<unsigned char> count0;
+  std::vector<int> src00;
+  std::vector<int> src01;
+  std::vector<int> src02;
+  std::vector<Accum> w00;
+  std::vector<Accum> w01;
+  std::vector<Accum> w02;
+  std::vector<unsigned char> count1;
+  std::vector<int> src10;
+  std::vector<int> src11;
+  std::vector<int> src12;
+  std::vector<Accum> w10;
+  std::vector<Accum> w11;
+  std::vector<Accum> w12;
+  std::vector<unsigned char> count2;
+  std::vector<int> src20;
+  std::vector<int> src21;
+  std::vector<int> src22;
+  std::vector<Accum> w20;
+  std::vector<Accum> w21;
+  std::vector<Accum> w22;
+
+  const bool have_plan0 = build_direct_linear_plan(
+      plan0, count0, src00, src01, src02, w00, w01, w02);
+  const bool have_plan1 = build_direct_linear_plan(
+      plan1, count1, src10, src11, src12, w10, w11, w12);
+  const bool have_plan2 = build_direct_linear_plan(
+      plan2, count2, src20, src21, src22, w20, w21, w22);
+
+  if (!have_plan0 || !have_plan1 || !have_plan2) {
+    std::vector<int64_t> shape1 = {out_n0, in_n1, in_n2};
+    std::vector<int64_t> shape2 = {out_n0, out_n1, in_n2};
+    std::vector<Scalar> tmp1(
+        static_cast<size_t>(out_n0) *
+        static_cast<size_t>(in_n1) *
+        static_cast<size_t>(in_n2));
+    std::vector<Scalar> tmp2(
+        static_cast<size_t>(out_n0) *
+        static_cast<size_t>(out_n1) *
+        static_cast<size_t>(in_n2));
+    resize_along_axis_t(in, tmp1.data(), in_shape, shape1, 0, p0);
+    resize_along_axis_t(tmp1.data(), tmp2.data(), shape1, shape2, 1, p1);
+    resize_along_axis_t(tmp2.data(), out, shape2, out_shape, 2, p2);
+    return;
+  }
+
+  const unsigned char* LS_RESTRICT c0 = count0.data();
+  const int* LS_RESTRICT s00 = src00.data();
+  const int* LS_RESTRICT s01 = src01.data();
+  const int* LS_RESTRICT s02 = src02.data();
+  const Accum* LS_RESTRICT a00 = w00.data();
+  const Accum* LS_RESTRICT a01 = w01.data();
+  const Accum* LS_RESTRICT a02 = w02.data();
+  const unsigned char* LS_RESTRICT c1 = count1.data();
+  const int* LS_RESTRICT s10 = src10.data();
+  const int* LS_RESTRICT s11 = src11.data();
+  const int* LS_RESTRICT s12 = src12.data();
+  const Accum* LS_RESTRICT a10 = w10.data();
+  const Accum* LS_RESTRICT a11 = w11.data();
+  const Accum* LS_RESTRICT a12 = w12.data();
+  const unsigned char* LS_RESTRICT c2 = count2.data();
+  const int* LS_RESTRICT s20 = src20.data();
+  const int* LS_RESTRICT s21 = src21.data();
+  const int* LS_RESTRICT s22 = src22.data();
+  const Accum* LS_RESTRICT a20 = w20.data();
+  const Accum* LS_RESTRICT a21 = w21.data();
+  const Accum* LS_RESTRICT a22 = w22.data();
+
+  auto worker = [&](int64_t start, int64_t end) {
+    int src0[3];
+    int src1[3];
+    int src2[3];
+    Accum wt0[3];
+    Accum wt1[3];
+    Accum wt2[3];
+
+    for (int64_t line = start; line < end; ++line) {
+      const int64_t o0 = line / out_n1;
+      const int64_t o1 = line - o0 * out_n1;
+      const size_t i0 = static_cast<size_t>(o0);
+      const size_t i1 = static_cast<size_t>(o1);
+      const int n0 = static_cast<int>(c0[i0]);
+      const int n1 = static_cast<int>(c1[i1]);
+
+      src0[0] = s00[i0];
+      src0[1] = s01[i0];
+      src0[2] = s02[i0];
+      wt0[0] = a00[i0];
+      wt0[1] = a01[i0];
+      wt0[2] = a02[i0];
+      src1[0] = s10[i1];
+      src1[1] = s11[i1];
+      src1[2] = s12[i1];
+      wt1[0] = a10[i1];
+      wt1[1] = a11[i1];
+      wt1[2] = a12[i1];
+
+      Scalar* LS_RESTRICT dst = out + line * out_n2;
+      for (int64_t o2 = 0; o2 < out_n2; ++o2) {
+        const size_t i2 = static_cast<size_t>(o2);
+        const int n2 = static_cast<int>(c2[i2]);
+        src2[0] = s20[i2];
+        src2[1] = s21[i2];
+        src2[2] = s22[i2];
+        wt2[0] = a20[i2];
+        wt2[1] = a21[i2];
+        wt2[2] = a22[i2];
+
+        Accum acc = Accum(0);
+        for (int j0 = 0; j0 < n0; ++j0) {
+          const int64_t base0 = static_cast<int64_t>(src0[j0]) * in_s0;
+          const Accum wj0 = wt0[j0];
+          for (int j1 = 0; j1 < n1; ++j1) {
+            const int64_t base1 =
+                base0 + static_cast<int64_t>(src1[j1]) * in_s1;
+            const Accum wj01 = wj0 * wt1[j1];
+            for (int j2 = 0; j2 < n2; ++j2) {
+              acc += wj01 * wt2[j2] * static_cast<Accum>(
+                  in[base1 + static_cast<int64_t>(src2[j2])]);
+            }
+          }
+        }
+        dst[static_cast<size_t>(o2)] = static_cast<Scalar>(acc);
+      }
+    }
+  };
+
+  run_parallel_or_serial(out_n0 * out_n1, plan2, worker);
+}
+
 // -----------------------------------------------------------------------------
 // Public entry points
 // -----------------------------------------------------------------------------
@@ -2919,6 +3079,30 @@ void resize_2d_linear_f32(
   const LSParams& p1)
 {
   resize_2d_linear_t<float>(in, out, in_shape, out_shape, p0, p1);
+}
+
+void resize_3d_linear(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1,
+  const LSParams& p2)
+{
+  resize_3d_linear_t<double>(in, out, in_shape, out_shape, p0, p1, p2);
+}
+
+void resize_3d_linear_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1,
+  const LSParams& p2)
+{
+  resize_3d_linear_t<float>(in, out, in_shape, out_shape, p0, p1, p2);
 }
 
 } // namespace lsresize

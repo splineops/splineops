@@ -352,6 +352,39 @@ def test_2d_linear_fused_path_matches_axis_direct(monkeypatch, dtype, shape, zoo
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping fused 3-D linear compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "shape,zoom",
+    [
+        ((32, 28, 20), (0.6, 0.75, 0.5)),
+        ((24, 20, 18), (1.2, 0.7, 0.8)),
+    ],
+)
+def test_3d_linear_fused_path_matches_axis_direct(monkeypatch, dtype, shape, zoom):
+    rng = np.random.default_rng(135)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "1")
+    monkeypatch.setenv("LSRESIZE_FUSED_3D_LINEAR", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    monkeypatch.setenv("LSRESIZE_FUSED_3D_LINEAR", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert actual.dtype == dtype
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping AVX2 2-D linear compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])

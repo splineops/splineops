@@ -54,6 +54,7 @@ Current default knobs:
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
 | Native fused 2-D linear path | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |
+| Native fused 3-D linear path | enabled | `LSRESIZE_FUSED_3D_LINEAR=0` |
 | Native AVX2 2-D linear upsample path | enabled on supported x86 | `LSRESIZE_AVX2_LINEAR=0` |
 | Native internal precision | `float32` internals for 2-D `float32` pure quadratic/cubic interpolation; `float64` otherwise | `LSRESIZE_PRECISION=float32` to force batched float32 internals; non-empty non-f32 values keep the conservative path |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
@@ -214,6 +215,22 @@ Measured progress so far:
     `2d_linear_down_1024_float32` single-thread `4.81 ms -> 0.42 ms`
     (`11.44x`) and `2d_linear_down_1024_float64` single-thread
     `4.87 ms -> 0.56 ms` (`8.69x`)
+  - exact fused 3-D linear interpolation is implemented behind default-on
+    `LSRESIZE_FUSED_3D_LINEAR`; it evaluates the three direct linear plans into
+    the final output for all-axes-active 3-D pure linear workloads, avoiding
+    two intermediate arrays and two extra full-volume passes
+  - 3-D linear fused A/B artifacts:
+    `/tmp/splineops_resize_native_fused3d_linear_on.{json,csv}` and
+    `/tmp/splineops_resize_native_fused3d_linear_off.{json,csv}`
+  - on the native standard profile (`--threads 1`, `--repeats 9`,
+    `--warmups 3`), `3d_linear_down_f32` improved from `2.287 ms` to
+    `1.101 ms` median (`2.08x`), while the single-axis 3-D linear aniso row
+    stayed on the existing direct axis path
+  - post-fused-3-D full PyTorch comparison artifact:
+    `/tmp/splineops_resize_libraries_full_torch_fused3d_20260615.{json,csv}`;
+    the close-output `3d_linear_down_random_f32` row improved from `1.310 ms`
+    to `0.747 ms` for splineops in the full library profile, reducing
+    PyTorch's lead on that row from `2.22x` to `1.26x`
   - latest cross-library standard artifact:
     `/tmp/splineops_resize_libraries_avx2_axis1_standard.{json,csv}`
   - in that run, SciPy was faster on only `1/15` standard rows and skimage on
@@ -366,6 +383,9 @@ Validation status:
 - Native resize module after batched filter/offset cleanup: `138 passed`.
 - Focused ResizePlan parity after batched filter/offset cleanup: `10 passed`.
 - Full suite after batched filter/offset cleanup: `487 passed`.
+- Native editable rebuild after fused 3-D linear path: clean.
+- Focused resize suite after fused 3-D linear path: `237 passed`.
+- Full suite after fused 3-D linear path: `491 passed`.
 - `git diff --check`: clean on the latest implementation pass.
 
 ### Full Optimization Roadmap

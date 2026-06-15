@@ -46,4 +46,22 @@ void resize_2d_linear_f32(
     const LSParams& p0,
     const LSParams& p1);
 
+void resize_3d_linear(
+    const double* LS_RESTRICT in,
+    double* LS_RESTRICT out,
+    const std::vector<int64_t>& in_shape,
+    const std::vector<int64_t>& out_shape,
+    const LSParams& p0,
+    const LSParams& p1,
+    const LSParams& p2);
+
+void resize_3d_linear_f32(
+    const float* LS_RESTRICT in,
+    float* LS_RESTRICT out,
+    const std::vector<int64_t>& in_shape,
+    const std::vector<int64_t>& out_shape,
+    const LSParams& p0,
+    const LSParams& p1,
+    const LSParams& p2);
+
 } // namespace lsresize
