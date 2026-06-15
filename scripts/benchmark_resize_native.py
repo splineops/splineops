@@ -382,6 +382,9 @@ def standard_cases() -> list[BenchCase]:
     cases.extend(
         [
             BenchCase("3d_linear_down_f32", (128, 128, 32), (0.5, 0.5, 0.5), "linear", "float32"),
+            BenchCase("3d_linear_two_axis01_f32", (128, 128, 32), (0.5, 0.5, 1.0), "linear", "float32"),
+            BenchCase("3d_linear_two_axis02_f32", (128, 128, 32), (0.5, 1.0, 0.5), "linear", "float32"),
+            BenchCase("3d_linear_two_axis12_f32", (128, 128, 32), (1.0, 0.5, 0.5), "linear", "float32"),
             BenchCase("3d_linear_aniso_f32", (128, 128, 32), (1.0, 0.5, 1.0), "linear", "float32"),
             BenchCase("3d_cubic_down_f32", (128, 128, 32), (0.5, 0.5, 0.5), "cubic", "float32"),
             BenchCase("3d_cubic_aniso_f32", (128, 128, 32), (1.0, 0.5, 1.0), "cubic", "float32"),

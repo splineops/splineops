@@ -360,6 +360,9 @@ def test_2d_linear_fused_path_matches_axis_direct(monkeypatch, dtype, shape, zoo
     [
         ((32, 28, 20), (0.6, 0.75, 0.5)),
         ((24, 20, 18), (1.2, 0.7, 0.8)),
+        ((28, 24, 20), (0.6, 0.7, 1.0)),
+        ((28, 24, 20), (1.0, 0.7, 0.5)),
+        ((28, 24, 20), (0.6, 1.0, 1.25)),
     ],
 )
 def test_3d_linear_fused_path_matches_axis_direct(monkeypatch, dtype, shape, zoom):

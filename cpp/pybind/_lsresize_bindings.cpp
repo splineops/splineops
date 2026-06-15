@@ -344,9 +344,21 @@ static inline bool can_use_fused_3d_linear(
             return false;
         }
     }
+    bool active0 = false;
+    bool active1 = false;
+    bool active2 = false;
+    for (int ax : active_axes) {
+        active0 = active0 || (ax == 0);
+        active1 = active1 || (ax == 1);
+        active2 = active2 || (ax == 2);
+    }
+    const bool supported_active_axes =
+        (active0 && active1 && active2) ||
+        (active_axes.size() == 2 && active0 && active1);
+
     return in_shape.size() == 3 &&
            out_shape.size() == 3 &&
-           active_axes.size() == 3 &&
+           supported_active_axes &&
            interp_degree == 1 &&
            analy_degree < 0 &&
            synthe_degree == interp_degree;

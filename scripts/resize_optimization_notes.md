@@ -216,9 +216,10 @@ Measured progress so far:
     (`11.44x`) and `2d_linear_down_1024_float64` single-thread
     `4.87 ms -> 0.56 ms` (`8.69x`)
   - exact fused 3-D linear interpolation is implemented behind default-on
-    `LSRESIZE_FUSED_3D_LINEAR`; it evaluates the three direct linear plans into
-    the final output for all-axes-active 3-D pure linear workloads, avoiding
-    two intermediate arrays and two extra full-volume passes
+    `LSRESIZE_FUSED_3D_LINEAR`; it evaluates direct linear plans into the final
+    output for all-axes-active 3-D pure linear workloads and the measured-winning
+    two-axis `(0, 1)` pattern, avoiding intermediate arrays and extra
+    full-volume passes
   - 3-D linear fused A/B artifacts:
     `/tmp/splineops_resize_native_fused3d_linear_on.{json,csv}` and
     `/tmp/splineops_resize_native_fused3d_linear_off.{json,csv}`
@@ -226,11 +227,31 @@ Measured progress so far:
     `--warmups 3`), `3d_linear_down_f32` improved from `2.287 ms` to
     `1.101 ms` median (`2.08x`), while the single-axis 3-D linear aniso row
     stayed on the existing direct axis path
+  - the fused 3-D scalar inner loop now has fixed-support `2x2`, `1x2`, and
+    `2x1` specializations to remove the generic support loops from common
+    linear rows
+  - final two-axis policy artifacts:
+    `/tmp/splineops_resize_native_fused3d_two_axis_supported_off.{json,csv}`
+    and
+    `/tmp/splineops_resize_native_fused3d_two_axis_final_policy_on.{json,csv}`
+  - on the final policy A/B (`--threads 1`, `--repeats 9`, `--warmups 3`),
+    `3d_linear_down_f32` improved from `2.263 ms` to `0.452 ms` median
+    (`5.00x`), and `3d_linear_two_axis01_f32` improved from `1.912 ms` to
+    `1.084 ms` median (`1.76x`)
+  - the `(0, 2)` and `(1, 2)` two-axis patterns stay on the separable direct
+    linear path by default because local A/B showed no win for `(0, 2)` and a
+    regression for `(1, 2)` when forced through the fused evaluator
   - post-fused-3-D full PyTorch comparison artifact:
     `/tmp/splineops_resize_libraries_full_torch_fused3d_20260615.{json,csv}`;
     the close-output `3d_linear_down_random_f32` row improved from `1.310 ms`
     to `0.747 ms` for splineops in the full library profile, reducing
     PyTorch's lead on that row from `2.22x` to `1.26x`
+  - final full PyTorch comparison artifact:
+    `/tmp/splineops_resize_libraries_full_torch_fused3d_final_policy_20260615.{json,csv}`;
+    `3d_linear_down_random_f32` improved further to `0.347 ms` for splineops
+    versus `0.579 ms` for PyTorch, flipping that close-output row in favor of
+    splineops; overall PyTorch was faster on `7/19` supported full-profile rows
+    with median speed `0.70x` versus splineops
   - latest cross-library standard artifact:
     `/tmp/splineops_resize_libraries_avx2_axis1_standard.{json,csv}`
   - in that run, SciPy was faster on only `1/15` standard rows and skimage on
@@ -386,6 +407,11 @@ Validation status:
 - Native editable rebuild after fused 3-D linear path: clean.
 - Focused resize suite after fused 3-D linear path: `237 passed`.
 - Full suite after fused 3-D linear path: `491 passed`.
+- Native editable rebuild after fused 3-D linear fixed-support policy: clean.
+- Focused fused 3-D checks after final policy: `12 passed`.
+- Focused resize suite after final fused 3-D policy: `243 passed`.
+- Full suite after final fused 3-D policy: `497 passed`.
+- `scripts/benchmark_resize_native.py` py-compile after final policy: clean.
 - `git diff --check`: clean on the latest implementation pass.
 
 ### Full Optimization Roadmap

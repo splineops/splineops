@@ -3001,6 +3001,197 @@ static void resize_3d_linear_t(
       wt1[2] = a12[i1];
 
       Scalar* LS_RESTRICT dst = out + line * out_n2;
+      if (n0 == 2 && n1 == 2) {
+        const Scalar* LS_RESTRICT p00 =
+            in + static_cast<int64_t>(src0[0]) * in_s0 +
+            static_cast<int64_t>(src1[0]) * in_s1;
+        const Scalar* LS_RESTRICT p01 =
+            in + static_cast<int64_t>(src0[0]) * in_s0 +
+            static_cast<int64_t>(src1[1]) * in_s1;
+        const Scalar* LS_RESTRICT p10 =
+            in + static_cast<int64_t>(src0[1]) * in_s0 +
+            static_cast<int64_t>(src1[0]) * in_s1;
+        const Scalar* LS_RESTRICT p11 =
+            in + static_cast<int64_t>(src0[1]) * in_s0 +
+            static_cast<int64_t>(src1[1]) * in_s1;
+        const Accum w00 = wt0[0] * wt1[0];
+        const Accum w01 = wt0[0] * wt1[1];
+        const Accum w10 = wt0[1] * wt1[0];
+        const Accum w11 = wt0[1] * wt1[1];
+
+        for (int64_t o2 = 0; o2 < out_n2; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          Accum acc = Accum(0);
+          switch (c2[i2]) {
+            case 3: {
+              const int z0 = s20[i2];
+              const int z1 = s21[i2];
+              const int z2 = s22[i2];
+              const Accum wz0 = a20[i2];
+              const Accum wz1 = a21[i2];
+              const Accum wz2 = a22[i2];
+              acc = wz0 * (
+                  w00 * static_cast<Accum>(p00[z0]) +
+                  w01 * static_cast<Accum>(p01[z0]) +
+                  w10 * static_cast<Accum>(p10[z0]) +
+                  w11 * static_cast<Accum>(p11[z0]));
+              acc += wz1 * (
+                  w00 * static_cast<Accum>(p00[z1]) +
+                  w01 * static_cast<Accum>(p01[z1]) +
+                  w10 * static_cast<Accum>(p10[z1]) +
+                  w11 * static_cast<Accum>(p11[z1]));
+              acc += wz2 * (
+                  w00 * static_cast<Accum>(p00[z2]) +
+                  w01 * static_cast<Accum>(p01[z2]) +
+                  w10 * static_cast<Accum>(p10[z2]) +
+                  w11 * static_cast<Accum>(p11[z2]));
+              break;
+            }
+            case 2: {
+              const int z0 = s20[i2];
+              const int z1 = s21[i2];
+              const Accum wz0 = a20[i2];
+              const Accum wz1 = a21[i2];
+              acc = wz0 * (
+                  w00 * static_cast<Accum>(p00[z0]) +
+                  w01 * static_cast<Accum>(p01[z0]) +
+                  w10 * static_cast<Accum>(p10[z0]) +
+                  w11 * static_cast<Accum>(p11[z0]));
+              acc += wz1 * (
+                  w00 * static_cast<Accum>(p00[z1]) +
+                  w01 * static_cast<Accum>(p01[z1]) +
+                  w10 * static_cast<Accum>(p10[z1]) +
+                  w11 * static_cast<Accum>(p11[z1]));
+              break;
+            }
+            case 1: {
+              const int z0 = s20[i2];
+              const Accum wz0 = a20[i2];
+              acc = wz0 * (
+                  w00 * static_cast<Accum>(p00[z0]) +
+                  w01 * static_cast<Accum>(p01[z0]) +
+                  w10 * static_cast<Accum>(p10[z0]) +
+                  w11 * static_cast<Accum>(p11[z0]));
+              break;
+            }
+            default:
+              break;
+          }
+          dst[i2] = static_cast<Scalar>(acc);
+        }
+        continue;
+      }
+
+      if (n0 == 1 && n1 == 2) {
+        const Scalar* LS_RESTRICT p0 =
+            in + static_cast<int64_t>(src0[0]) * in_s0 +
+            static_cast<int64_t>(src1[0]) * in_s1;
+        const Scalar* LS_RESTRICT p1 =
+            in + static_cast<int64_t>(src0[0]) * in_s0 +
+            static_cast<int64_t>(src1[1]) * in_s1;
+        const Accum w0 = wt0[0] * wt1[0];
+        const Accum w1 = wt0[0] * wt1[1];
+
+        for (int64_t o2 = 0; o2 < out_n2; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          Accum acc = Accum(0);
+          switch (c2[i2]) {
+            case 3: {
+              const int z0 = s20[i2];
+              const int z1 = s21[i2];
+              const int z2 = s22[i2];
+              acc = a20[i2] * (
+                  w0 * static_cast<Accum>(p0[z0]) +
+                  w1 * static_cast<Accum>(p1[z0]));
+              acc += a21[i2] * (
+                  w0 * static_cast<Accum>(p0[z1]) +
+                  w1 * static_cast<Accum>(p1[z1]));
+              acc += a22[i2] * (
+                  w0 * static_cast<Accum>(p0[z2]) +
+                  w1 * static_cast<Accum>(p1[z2]));
+              break;
+            }
+            case 2: {
+              const int z0 = s20[i2];
+              const int z1 = s21[i2];
+              acc = a20[i2] * (
+                  w0 * static_cast<Accum>(p0[z0]) +
+                  w1 * static_cast<Accum>(p1[z0]));
+              acc += a21[i2] * (
+                  w0 * static_cast<Accum>(p0[z1]) +
+                  w1 * static_cast<Accum>(p1[z1]));
+              break;
+            }
+            case 1: {
+              const int z0 = s20[i2];
+              acc = a20[i2] * (
+                  w0 * static_cast<Accum>(p0[z0]) +
+                  w1 * static_cast<Accum>(p1[z0]));
+              break;
+            }
+            default:
+              break;
+          }
+          dst[i2] = static_cast<Scalar>(acc);
+        }
+        continue;
+      }
+
+      if (n0 == 2 && n1 == 1) {
+        const Scalar* LS_RESTRICT p0 =
+            in + static_cast<int64_t>(src0[0]) * in_s0 +
+            static_cast<int64_t>(src1[0]) * in_s1;
+        const Scalar* LS_RESTRICT p1 =
+            in + static_cast<int64_t>(src0[1]) * in_s0 +
+            static_cast<int64_t>(src1[0]) * in_s1;
+        const Accum w0 = wt0[0] * wt1[0];
+        const Accum w1 = wt0[1] * wt1[0];
+
+        for (int64_t o2 = 0; o2 < out_n2; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          Accum acc = Accum(0);
+          switch (c2[i2]) {
+            case 3: {
+              const int z0 = s20[i2];
+              const int z1 = s21[i2];
+              const int z2 = s22[i2];
+              acc = a20[i2] * (
+                  w0 * static_cast<Accum>(p0[z0]) +
+                  w1 * static_cast<Accum>(p1[z0]));
+              acc += a21[i2] * (
+                  w0 * static_cast<Accum>(p0[z1]) +
+                  w1 * static_cast<Accum>(p1[z1]));
+              acc += a22[i2] * (
+                  w0 * static_cast<Accum>(p0[z2]) +
+                  w1 * static_cast<Accum>(p1[z2]));
+              break;
+            }
+            case 2: {
+              const int z0 = s20[i2];
+              const int z1 = s21[i2];
+              acc = a20[i2] * (
+                  w0 * static_cast<Accum>(p0[z0]) +
+                  w1 * static_cast<Accum>(p1[z0]));
+              acc += a21[i2] * (
+                  w0 * static_cast<Accum>(p0[z1]) +
+                  w1 * static_cast<Accum>(p1[z1]));
+              break;
+            }
+            case 1: {
+              const int z0 = s20[i2];
+              acc = a20[i2] * (
+                  w0 * static_cast<Accum>(p0[z0]) +
+                  w1 * static_cast<Accum>(p1[z0]));
+              break;
+            }
+            default:
+              break;
+          }
+          dst[i2] = static_cast<Scalar>(acc);
+        }
+        continue;
+      }
+
       for (int64_t o2 = 0; o2 < out_n2; ++o2) {
         const size_t i2 = static_cast<size_t>(o2);
         const int n2 = static_cast<int>(c2[i2]);
