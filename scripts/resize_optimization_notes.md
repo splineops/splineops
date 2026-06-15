@@ -51,6 +51,7 @@ Current default knobs:
 | Native acceleration | auto via `SPLINEOPS_ACCEL=auto` | `always`, `never` |
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
 | Native batch lines | `64` | `LSRESIZE_BATCH_LINES=<n>` |
+| Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
 | Python block size | `256` | `SPLINEOPS_BLOCK=<n>` |
@@ -87,6 +88,16 @@ Measured progress so far:
   - mean speedup about `1.85x`, median speedup about `1.82x`
   - saved artifact:
     `/tmp/splineops_resize_python_support_block256.{json,csv}`
+- Native fixed-support preset specialization:
+  - implemented for the batched native path for `linear`, `cubic`,
+    `linear-antialiasing`, and `cubic-antialiasing`
+  - `LSRESIZE_SPECIALIZED_PRESETS=0` disables it for A/B checks
+  - local standard-profile A/B artifacts:
+    `/tmp/splineops_resize_specialized_on.{json,csv}` and
+    `/tmp/splineops_resize_specialized_off.{json,csv}`
+  - with `--threads 1,default`, `--repeats 5`, `--warmups 2`,
+    specialization won `30/36` medians and `33/36` best-of timings, with about
+    `1.15x` mean median speedup across the standard profile
 
 Validation status:
 
@@ -104,13 +115,16 @@ work is mostly specialization, precision policy, and repeated-workload API
 design.
 
 1. **Specialized native preset kernels.**
+   - Status: first fixed-support specialization is implemented in the batched
+     native accumulator for the common preset triples.
    - Target methods: `linear`, `cubic`, `linear-antialiasing`,
      `cubic-antialiasing`.
-   - Replace generic degree-dependent loops in the hottest native paths with
-     compile-time support sizes and branch-free preset kernels.
+   - Remaining deeper stage: specialize more of the full pipeline, including
+     degree-specific IIR/filter/projection code, not just the accumulation
+     kernel.
    - Keep the current generic path as the fallback for uncommon degree triples.
-   - Introduce behind a temporary feature flag first, then promote only cases
-     that win across saved standard/full benchmark artifacts.
+   - Continue to keep the generic path available through
+     `LSRESIZE_SPECIALIZED_PRESETS=0` for A/B checks.
 
 2. **Opt-in float32 internal mode.**
    - Current native computation uses double internally even for float32 arrays.

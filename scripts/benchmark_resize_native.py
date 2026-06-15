@@ -160,6 +160,19 @@ def batched_axis_label() -> str:
     return os.environ.get("LSRESIZE_BATCHED_AXIS", "<default:auto>")
 
 
+def native_knobs() -> dict[str, str]:
+    return {
+        "LSRESIZE_BATCHED_AXIS": os.environ.get("LSRESIZE_BATCHED_AXIS", "<default:auto>"),
+        "LSRESIZE_BATCH_LINES": os.environ.get("LSRESIZE_BATCH_LINES", "<default:64>"),
+        "LSRESIZE_SPECIALIZED_PRESETS": os.environ.get(
+            "LSRESIZE_SPECIALIZED_PRESETS",
+            "<default:on>",
+        ),
+        "LSRESIZE_NUM_THREADS": os.environ.get("LSRESIZE_NUM_THREADS", "<default:auto>"),
+        "LSRESIZE_PLAN_CACHE_SIZE": os.environ.get("LSRESIZE_PLAN_CACHE_SIZE", "<default:32>"),
+    }
+
+
 def python_knobs() -> dict[str, str]:
     return {
         "SPLINEOPS_BLOCK": os.environ.get("SPLINEOPS_BLOCK", "<default:256>"),
@@ -543,6 +556,7 @@ def main() -> int:
         f"{batched_axis_label()} "
         f"batch_lines={','.join('<unset>' if v is None else str(v) for v in native_batch_line_values)}"
     )
+    print("native_knobs=" + " ".join(f"{k}={v}" for k, v in native_knobs().items()))
     print("python_knobs=" + " ".join(f"{k}={v}" for k, v in python_knobs().items()))
     print(f"python={platform.python_version()} numpy={np.__version__}")
     print(f"platform={platform.platform()}")
@@ -627,6 +641,7 @@ def main() -> int:
             "batched_axis": batched_axis_label(),
             "batched_axis_env": os.environ.get("LSRESIZE_BATCHED_AXIS"),
             "batch_lines": [None if v is None else int(v) for v in native_batch_line_values],
+            "native_knobs": native_knobs(),
             "python_knobs": python_knobs(),
             "check_max_elements": args.check_max_elements,
             "atol": args.atol,
