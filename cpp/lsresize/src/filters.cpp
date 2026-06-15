@@ -292,6 +292,122 @@ static inline int mirror_symmetric_index(int k, int N)
   return (t >= N) ? (period - t) : t;
 }
 
+template <typename Scalar>
+static void symmetric_fir_half2_colmajor(
+  const std::vector<Scalar>& c,
+  int B,
+  int N,
+  double h0d,
+  double h1d,
+  std::vector<Scalar>& s)
+{
+  const size_t total =
+      static_cast<size_t>(std::max(B, 0)) *
+      static_cast<size_t>(std::max(N, 0));
+  s.resize(total);
+  if (B <= 0 || N <= 0) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  const Scalar h0 = static_cast<Scalar>(h0d);
+  const Scalar h1 = static_cast<Scalar>(h1d);
+
+  if (N == 1) {
+    const Scalar* src = c.data();
+    Scalar* dst = s.data();
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      dst[bi] = h0 * src[bi] + h1 * (src[bi] + src[bi]);
+    }
+    return;
+  }
+
+  {
+    const Scalar* c0 = c.data();
+    const Scalar* c1 = c.data() + Bs;
+    Scalar* dst = s.data();
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      dst[bi] = h0 * c0[bi] + h1 * (c1[bi] + c1[bi]);
+    }
+  }
+
+  for (int n = 1; n + 1 < N; ++n) {
+    const Scalar* left = c.data() + static_cast<size_t>(n - 1) * Bs;
+    const Scalar* center = c.data() + static_cast<size_t>(n) * Bs;
+    const Scalar* right = c.data() + static_cast<size_t>(n + 1) * Bs;
+    Scalar* dst = s.data() + static_cast<size_t>(n) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      dst[bi] = h0 * center[bi] + h1 * (left[bi] + right[bi]);
+    }
+  }
+
+  {
+    const Scalar* cn = c.data() + static_cast<size_t>(N - 1) * Bs;
+    const Scalar* cp = c.data() + static_cast<size_t>(N - 2) * Bs;
+    Scalar* dst = s.data() + static_cast<size_t>(N - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      dst[bi] = h0 * cn[bi] + h1 * (cp[bi] + cp[bi]);
+    }
+  }
+}
+
+template <typename Scalar>
+static void diff_sa_as_colmajor_pair(
+  std::vector<Scalar>& c,
+  int B,
+  int N,
+  std::vector<Scalar>& work)
+{
+  if (B <= 0 || N <= 0) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  if (N == 1) {
+    Scalar* first = c.data();
+    for (int b = 0; b < B; ++b) {
+      first[static_cast<size_t>(b)] *= static_cast<Scalar>(2);
+    }
+    return;
+  }
+
+  work.resize(Bs);
+  const Scalar* first = c.data();
+  for (int b = 0; b < B; ++b) {
+    work[static_cast<size_t>(b)] = first[static_cast<size_t>(b)];
+  }
+
+  {
+    Scalar* row0 = c.data();
+    const Scalar* row1 = c.data() + Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      const Scalar d0 = work[bi] - row1[bi];
+      row0[bi] = d0 * static_cast<Scalar>(2);
+    }
+  }
+
+  for (int n = 1; n + 1 < N; ++n) {
+    Scalar* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const Scalar* next = c.data() + static_cast<size_t>(n + 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      const Scalar orig_cur = cur[bi];
+      cur[bi] = (orig_cur - next[bi]) - (work[bi] - orig_cur);
+      work[bi] = orig_cur;
+    }
+  }
+
+  {
+    Scalar* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      const Scalar orig_last = last[bi];
+      last[bi] = (orig_last - work[bi]) - (work[bi] - orig_last);
+    }
+  }
+}
+
 static void average_colmajor(
   const std::vector<double>& c,
   int B,
@@ -510,12 +626,10 @@ void do_diff_colmajor(
 {
   if (B <= 0 || N <= 0 || nb <= 0) return;
   if (nb == 1) { diff_as_colmajor(c, B, N); return; }
-  if (nb == 2) { diff_sa_colmajor(c, B, N, work); diff_as_colmajor(c, B, N); return; }
-  if (nb == 3) { diff_as_colmajor(c, B, N); diff_sa_colmajor(c, B, N, work); diff_as_colmajor(c, B, N); return; }
-  diff_sa_colmajor(c, B, N, work);
-  diff_as_colmajor(c, B, N);
-  diff_sa_colmajor(c, B, N, work);
-  diff_as_colmajor(c, B, N);
+  if (nb == 2) { diff_sa_as_colmajor_pair(c, B, N, work); return; }
+  if (nb == 3) { diff_as_colmajor(c, B, N); diff_sa_as_colmajor_pair(c, B, N, work); return; }
+  diff_sa_as_colmajor_pair(c, B, N, work);
+  diff_sa_as_colmajor_pair(c, B, N, work);
 }
 
 void get_samples_colmajor(
@@ -530,8 +644,14 @@ void get_samples_colmajor(
   const auto& h = sampling_fir(deg);
   if (h.empty()) return;
 
+  if (h.size() == 2) {
+    symmetric_fir_half2_colmajor(c, B, N, h[0], h[1], work);
+    c.swap(work);
+    return;
+  }
+
   const size_t total = static_cast<size_t>(B) * static_cast<size_t>(N);
-  work.assign(total, 0.0);
+  work.resize(total);
 
   const size_t Bs = static_cast<size_t>(B);
   for (int n = 0; n < N; ++n) {
@@ -821,12 +941,10 @@ void do_diff_colmajor_f32(
 {
   if (B <= 0 || N <= 0 || nb <= 0) return;
   if (nb == 1) { diff_as_colmajor_f32(c, B, N); return; }
-  if (nb == 2) { diff_sa_colmajor_f32(c, B, N, work); diff_as_colmajor_f32(c, B, N); return; }
-  if (nb == 3) { diff_as_colmajor_f32(c, B, N); diff_sa_colmajor_f32(c, B, N, work); diff_as_colmajor_f32(c, B, N); return; }
-  diff_sa_colmajor_f32(c, B, N, work);
-  diff_as_colmajor_f32(c, B, N);
-  diff_sa_colmajor_f32(c, B, N, work);
-  diff_as_colmajor_f32(c, B, N);
+  if (nb == 2) { diff_sa_as_colmajor_pair(c, B, N, work); return; }
+  if (nb == 3) { diff_as_colmajor_f32(c, B, N); diff_sa_as_colmajor_pair(c, B, N, work); return; }
+  diff_sa_as_colmajor_pair(c, B, N, work);
+  diff_sa_as_colmajor_pair(c, B, N, work);
 }
 
 void get_samples_colmajor_f32(
@@ -841,8 +959,14 @@ void get_samples_colmajor_f32(
   const auto& h = sampling_fir(deg);
   if (h.empty()) return;
 
+  if (h.size() == 2) {
+    symmetric_fir_half2_colmajor(c, B, N, h[0], h[1], work);
+    c.swap(work);
+    return;
+  }
+
   const size_t total = static_cast<size_t>(B) * static_cast<size_t>(N);
-  work.assign(total, 0.0f);
+  work.resize(total);
 
   const size_t Bs = static_cast<size_t>(B);
   for (int n = 0; n < N; ++n) {

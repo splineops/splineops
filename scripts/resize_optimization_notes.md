@@ -135,6 +135,21 @@ Measured progress so far:
   - on selected 2-D `float32` cases, the float32 preset dispatch won `12/16`
     medians and `15/16` best-of timings versus the generic float32 accumulator,
     with about `1.05x` median speedup
+- Native col-major projection filters:
+  - fused the common batched `diff_sa` + `diff_as` pair into one col-major pass
+    for both default double-internal and opt-in float32-internal paths
+  - specialized half-length-2 col-major sampling FIR, avoiding per-row mirror
+    modulo work and work-buffer zero-fill for the supported public synthesis
+    degrees
+  - standard native benchmark artifacts:
+    `/tmp/splineops_resize_sampling_fir_baseline.{json,csv}` and
+    `/tmp/splineops_resize_colmajor_filters_fast.{json,csv}`
+  - on local standard native timings (`--threads 1,default`, `--repeats 5`,
+    `--warmups 2`, `--batched-axis auto`), the combined filter pass won `24/36`
+    medians and `23/36` best-of timings overall
+  - antialiasing rows, where the fused projection diff applies most directly,
+    won `13/16` medians and `12/16` best-of timings, with about `1.12x` mean
+    median speedup
 - Public reusable `ResizePlan`:
   - added as `splineops.resize.ResizePlan`
   - native-backed plans precompute input/output shape, zoom factors, axis order,
@@ -169,23 +184,27 @@ Measured progress so far:
 Validation status:
 
 - Native editable rebuild: clean.
-- Direct batched-axis parity tests: `60 passed`.
+- Direct batched-axis parity tests: `68 passed`.
 - Opt-in float32 internal focused tests: `11 passed`.
-- Native resize module: `105 passed`.
-- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `105 passed`.
+- Native resize module: `113 passed`.
+- Native resize module with `LSRESIZE_SPECIALIZED_PRESETS=0`: `113 passed`.
 - Resize API suite: `95 passed`.
 - Resize API suite with `SPLINEOPS_ACCEL=never`: `95 passed`.
-- Focused resize suite: `200 passed`.
-- Full suite: `454 passed`.
-- Fresh external virtualenv focused resize suite: `200 passed`.
+- Focused resize suite: `208 passed`.
+- Full suite: `462 passed`.
+- Fresh external virtualenv focused resize suite: `208 passed`.
 - Fresh external virtualenv native resize module with
-  `LSRESIZE_SPECIALIZED_PRESETS=0`: `105 passed`.
-- Fresh external virtualenv full suite: `454 passed`.
+  `LSRESIZE_SPECIALIZED_PRESETS=0`: `113 passed`.
+- Fresh external virtualenv full suite: `462 passed`.
 - Fresh external virtualenv quality smoke:
   `/tmp/splineops_resize_quality_fresh_quick.{json,csv}`.
 - Python compile checks for updated scripts/specs: clean.
 - Standard quality sweep:
   `/tmp/splineops_resize_quality_standard.{json,csv}`.
+- Col-major filter quality smoke:
+  `/tmp/splineops_resize_quality_colmajor_filters_quick.{json,csv}`.
+- Col-major filter native benchmark:
+  `/tmp/splineops_resize_colmajor_filters_fast.{json,csv}`.
 - ResizePlan reuse smoke:
   `/tmp/splineops_resize_plan_smoke.{json,csv}`.
 - ResizePlan reuse standard:
@@ -199,13 +218,14 @@ work is mostly specialization, precision policy, and repeated-workload API
 design.
 
 1. **Specialized native preset kernels.**
-   - Status: first fixed-support specialization is implemented in the batched
-     native accumulator for the common preset triples.
+   - Status: fixed-support specialization is implemented in the batched native
+     accumulator for the common preset triples, and the common col-major
+     projection filter sequence now has a fused pass.
    - Target methods: `linear`, `cubic`, `linear-antialiasing`,
      `cubic-antialiasing`.
    - Remaining deeper stage: specialize more of the full pipeline, including
-     degree-specific IIR/filter/projection code, not just the accumulation
-     kernel.
+     degree-specific IIR code and broader projection sequences, not just the
+     accumulation and first diff/filter pieces.
    - Keep the current generic path as the fallback for uncommon degree triples.
    - Continue to keep the generic path available through
      `LSRESIZE_SPECIALIZED_PRESETS=0` for A/B checks.

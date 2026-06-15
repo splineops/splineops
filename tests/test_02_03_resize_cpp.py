@@ -163,6 +163,39 @@ def test_batched_axis_matches_default_antialiasing(monkeypatch, dtype, method, s
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping short-axis compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "method,shape,zoom",
+    [
+        ("cubic-antialiasing", (1, 32), (1.0, 0.73)),
+        ("cubic-antialiasing", (2, 32), (1.0, 0.73)),
+        ("quadratic-antialiasing", (3, 40), (1.0, 0.61)),
+        ("cubic-antialiasing", (32, 2), (0.73, 1.0)),
+    ],
+)
+def test_batched_axis_matches_default_short_projection_axes(
+    monkeypatch, dtype, method, shape, zoom
+):
+    rng = np.random.default_rng(129)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "off")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    assert np.allclose(actual, expected, atol=0.0, rtol=0.0)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping batched-axis compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
