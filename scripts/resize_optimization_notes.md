@@ -54,6 +54,7 @@ Current default knobs:
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
 | Native fused 2-D linear path | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |
+| Native AVX2 2-D linear upsample path | enabled on supported x86 | `LSRESIZE_AVX2_LINEAR=0` |
 | Native internal precision | `float64` scratch/accumulation | `LSRESIZE_PRECISION=float32` for opt-in batched float32 |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
@@ -147,6 +148,22 @@ Measured progress so far:
     into the final output and avoids the intermediate ping-pong array
   - the fused 2-D inner loop hoists the output-row support branch out of the
     column loop, which materially improves the common 2-tap row case
+  - the exact 2-D linear paths now have runtime-dispatched AVX2/FMA row kernels
+    for `float32` and `float64` on GNU/Clang x86 builds; they remain scalar on
+    unsupported CPUs and can be disabled with `LSRESIZE_AVX2_LINEAR=0`
+  - the fused all-axis upsample path uses an AVX2 row kernel for the common
+    2-row/2-column support region; the single-axis 2-D path uses a smaller
+    horizontal AVX2 kernel for the common 2-column support region
+  - the fused AVX2 path is intentionally gated to all-axis growth because local
+    A/B runs showed four-gather fused rows winning on upsample rows but not on
+    downsample/aniso rows on the i7-7820X test machine
+  - latest AVX2 native A/B artifacts:
+    `/tmp/splineops_resize_native_avx2_axis1_on.{json,csv}` and
+    `/tmp/splineops_resize_native_avx2_axis1_off.{json,csv}`
+  - in that A/B, pure 2-D linear medians won `8/12` rows with about `1.41x`
+    mean speedup; 2-D linear upsample rows won `4/4` with about `2.00x` mean
+    speedup, and 2-D linear anisotropic rows won `4/4` with about `1.28x` mean
+    speedup
   - final native A/B artifacts:
     `/tmp/splineops_resize_native_linear_final_current.{json,csv}` and
     `/tmp/splineops_resize_native_linear_final_current_disabled.{json,csv}`
@@ -165,11 +182,11 @@ Measured progress so far:
     (`11.44x`) and `2d_linear_down_1024_float64` single-thread
     `4.87 ms -> 0.56 ms` (`8.69x`)
   - latest cross-library standard artifact:
-    `/tmp/splineops_resize_libraries_linear_final_current.{json,csv}`
+    `/tmp/splineops_resize_libraries_avx2_axis1_standard.{json,csv}`
   - in that run, SciPy was faster on only `1/15` standard rows and skimage on
-    `0/15`; splineops was effectively tied with OpenCV on the 2-D float32
-    linear downsample row (`0.206 ms` vs `0.202 ms`) and faster on the 2-D
-    float64 linear downsample row (`0.234 ms` vs `0.249 ms`)
+    `0/15`; splineops beat OpenCV on both standard 2-D linear anisotropic rows
+    (`0.191 ms` vs `0.227 ms` for `float32`, `0.300 ms` vs `0.329 ms` for
+    `float64`) and was effectively tied on 2-D random linear downsample
   - OpenCV remained faster on most 2-D rows overall, but its median relative-L2
     delta versus splineops was about `2.22e-01`, reflecting different
     coordinate, boundary, kernel, and antialiasing semantics
@@ -255,6 +272,10 @@ Validation status:
 - Resize API suite with `SPLINEOPS_ACCEL=never`: `95 passed`.
 - Focused resize suite: `225 passed`.
 - Full suite: `479 passed`.
+- Native editable rebuild after AVX2 linear kernels: clean.
+- Focused resize suite after AVX2 linear kernels: `229 passed`.
+- Native resize module with `LSRESIZE_AVX2_LINEAR=0`: `134 passed`.
+- Full suite after AVX2 linear kernels: `483 passed`.
 - Fresh external virtualenv editable rebuild after general exact linear/fused
   2-D fast paths: clean.
 - Fresh external virtualenv focused resize suite: `225 passed`.
@@ -269,6 +290,8 @@ Validation status:
   `/tmp/splineops_resize_native_linear_final_current_disabled.{json,csv}`.
 - Cross-library standard comparison after general linear/fused path:
   `/tmp/splineops_resize_libraries_linear_final_current.{json,csv}`.
+- Cross-library standard comparison after AVX2 linear kernels:
+  `/tmp/splineops_resize_libraries_avx2_axis1_standard.{json,csv}`.
 - Standard quality sweep:
   `/tmp/splineops_resize_quality_standard.{json,csv}`.
 - Col-major filter quality smoke:

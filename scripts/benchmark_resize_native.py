@@ -176,6 +176,10 @@ def native_knobs() -> dict[str, str]:
             "LSRESIZE_FUSED_2D_LINEAR",
             "<default:on>",
         ),
+        "LSRESIZE_AVX2_LINEAR": os.environ.get(
+            "LSRESIZE_AVX2_LINEAR",
+            "<default:on-if-supported>",
+        ),
         "LSRESIZE_2D_LINEAR_INTERP": os.environ.get(
             "LSRESIZE_2D_LINEAR_INTERP",
             "<default:on>",

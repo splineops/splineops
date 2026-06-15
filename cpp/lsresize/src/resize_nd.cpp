@@ -14,6 +14,14 @@
 #include <cstring>   // std::memcpy
 #include <type_traits>
 
+#if (defined(__x86_64__) || defined(__i386__)) && \
+    (defined(__GNUC__) || defined(__clang__))
+  #include <immintrin.h>
+  #define LSRESIZE_GNU_X86_TARGETS 1
+#else
+  #define LSRESIZE_GNU_X86_TARGETS 0
+#endif
+
 namespace lsresize {
 
 static std::vector<int64_t> strides_from_shape(
@@ -141,6 +149,20 @@ static inline bool float32_internal_enabled()
   return env_equals_ci(value, "float32") ||
          env_equals_ci(value, "single") ||
          env_equals_ci(value, "f32");
+}
+
+static inline bool avx2_linear_enabled()
+{
+#if LSRESIZE_GNU_X86_TARGETS
+  if (!env_flag_enabled_default_true("LSRESIZE_AVX2_LINEAR")) {
+    return false;
+  }
+  __builtin_cpu_init();
+  return __builtin_cpu_supports("avx2") &&
+         __builtin_cpu_supports("fma");
+#else
+  return false;
+#endif
 }
 
 static inline int specialized_preset_max_support(const LSParams& p)
@@ -1146,6 +1168,102 @@ static inline bool build_direct_linear_plan(
   return true;
 }
 
+static inline std::pair<int64_t, int64_t> longest_count_run(
+  const std::vector<unsigned char>& count,
+  unsigned char target)
+{
+  int64_t best_begin = 0;
+  int64_t best_end = 0;
+  int64_t run_begin = -1;
+  for (int64_t i = 0; i < static_cast<int64_t>(count.size()); ++i) {
+    if (count[static_cast<size_t>(i)] == target) {
+      if (run_begin < 0) {
+        run_begin = i;
+      }
+      continue;
+    }
+    if (run_begin >= 0 && i - run_begin > best_end - best_begin) {
+      best_begin = run_begin;
+      best_end = i;
+    }
+    run_begin = -1;
+  }
+  const int64_t n = static_cast<int64_t>(count.size());
+  if (run_begin >= 0 && n - run_begin > best_end - best_begin) {
+    best_begin = run_begin;
+    best_end = n;
+  }
+  return {best_begin, best_end};
+}
+
+#if LSRESIZE_GNU_X86_TARGETS
+__attribute__((target("avx2,fma")))
+static void resize_linear_axis1_col2_f32_avx2(
+  const float* LS_RESTRICT src,
+  float* LS_RESTRICT dst,
+  int64_t begin,
+  int64_t end,
+  const int* LS_RESTRICT s0,
+  const int* LS_RESTRICT s1,
+  const float* LS_RESTRICT w0,
+  const float* LS_RESTRICT w1)
+{
+  int64_t l = begin;
+  for (; l + 8 <= end; l += 8) {
+    const size_t li = static_cast<size_t>(l);
+    const __m256i idx0 =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(s0 + li));
+    const __m256i idx1 =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(s1 + li));
+    const __m256 w0v = _mm256_loadu_ps(w0 + li);
+    const __m256 w1v = _mm256_loadu_ps(w1 + li);
+    const __m256 v0 = _mm256_i32gather_ps(src, idx0, 4);
+    const __m256 v1 = _mm256_i32gather_ps(src, idx1, 4);
+    const __m256 acc = _mm256_fmadd_ps(w1v, v1, _mm256_mul_ps(w0v, v0));
+    _mm256_storeu_ps(dst + li, acc);
+  }
+
+  for (; l < end; ++l) {
+    const size_t li = static_cast<size_t>(l);
+    dst[li] = w0[li] * src[static_cast<size_t>(s0[li])] +
+              w1[li] * src[static_cast<size_t>(s1[li])];
+  }
+}
+
+__attribute__((target("avx2,fma")))
+static void resize_linear_axis1_col2_f64_avx2(
+  const double* LS_RESTRICT src,
+  double* LS_RESTRICT dst,
+  int64_t begin,
+  int64_t end,
+  const int* LS_RESTRICT s0,
+  const int* LS_RESTRICT s1,
+  const double* LS_RESTRICT w0,
+  const double* LS_RESTRICT w1)
+{
+  int64_t l = begin;
+  for (; l + 4 <= end; l += 4) {
+    const size_t li = static_cast<size_t>(l);
+    const __m128i idx0 =
+        _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + li));
+    const __m128i idx1 =
+        _mm_loadu_si128(reinterpret_cast<const __m128i*>(s1 + li));
+    const __m256d w0v = _mm256_loadu_pd(w0 + li);
+    const __m256d w1v = _mm256_loadu_pd(w1 + li);
+    const __m256d v0 = _mm256_i32gather_pd(src, idx0, 8);
+    const __m256d v1 = _mm256_i32gather_pd(src, idx1, 8);
+    const __m256d acc = _mm256_fmadd_pd(w1v, v1, _mm256_mul_pd(w0v, v0));
+    _mm256_storeu_pd(dst + li, acc);
+  }
+
+  for (; l < end; ++l) {
+    const size_t li = static_cast<size_t>(l);
+    dst[li] = w0[li] * src[static_cast<size_t>(s0[li])] +
+              w1[li] * src[static_cast<size_t>(s1[li])];
+  }
+}
+#endif
+
 template <typename Scalar>
 static void resize_along_axis_2d_linear_direct(
   const Scalar* LS_RESTRICT in,
@@ -1221,33 +1339,59 @@ static void resize_along_axis_2d_linear_direct(
   const Accum* LS_RESTRICT a0 = w0.data();
   const Accum* LS_RESTRICT a1 = w1.data();
   const Accum* LS_RESTRICT a2 = w2.data();
+  const auto count2_run = longest_count_run(count, 2);
+  const int64_t count2_begin = count2_run.first;
+  const int64_t count2_end = count2_run.second;
+  const bool use_avx2_axis1 =
+      axis == 1 &&
+      avx2_linear_enabled() &&
+      (count2_end - count2_begin >= 16);
 
   auto worker = [&](int64_t start, int64_t end) {
     if (axis == 1) {
       for (int64_t row = start; row < end; ++row) {
         const Scalar* LS_RESTRICT src = in + row * in_w;
         Scalar* LS_RESTRICT dst = out + row * out_w;
-        for (int l = 0; l < plan.outN; ++l) {
-          const size_t li = static_cast<size_t>(l);
-          Accum acc = Accum(0);
-          switch (c[li]) {
-            case 3:
-              acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
-              acc += a1[li] * static_cast<Accum>(src[static_cast<size_t>(s1[li])]);
-              acc += a2[li] * static_cast<Accum>(src[static_cast<size_t>(s2[li])]);
-              break;
-            case 2:
-              acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
-              acc += a1[li] * static_cast<Accum>(src[static_cast<size_t>(s1[li])]);
-              break;
-            case 1:
-              acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
-              break;
-            default:
-              break;
+        auto scalar_axis1 = [&](int64_t l_begin, int64_t l_end) {
+          for (int64_t l = l_begin; l < l_end; ++l) {
+            const size_t li = static_cast<size_t>(l);
+            Accum acc = Accum(0);
+            switch (c[li]) {
+              case 3:
+                acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
+                acc += a1[li] * static_cast<Accum>(src[static_cast<size_t>(s1[li])]);
+                acc += a2[li] * static_cast<Accum>(src[static_cast<size_t>(s2[li])]);
+                break;
+              case 2:
+                acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
+                acc += a1[li] * static_cast<Accum>(src[static_cast<size_t>(s1[li])]);
+                break;
+              case 1:
+                acc = a0[li] * static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
+                break;
+              default:
+                break;
+            }
+            dst[li] = static_cast<Scalar>(acc);
           }
-          dst[li] = static_cast<Scalar>(acc);
+        };
+
+#if LSRESIZE_GNU_X86_TARGETS
+        if (use_avx2_axis1) {
+          scalar_axis1(0, count2_begin);
+          if constexpr (std::is_same_v<Scalar, float>) {
+            resize_linear_axis1_col2_f32_avx2(
+                src, dst, count2_begin, count2_end, s0, s1, a0, a1);
+          } else if constexpr (std::is_same_v<Scalar, double>) {
+            resize_linear_axis1_col2_f64_avx2(
+                src, dst, count2_begin, count2_end, s0, s1, a0, a1);
+          }
+          scalar_axis1(count2_end, plan.outN);
+          continue;
         }
+#endif
+
+        scalar_axis1(0, plan.outN);
       }
       return;
     }
@@ -2294,6 +2438,110 @@ static void resize_along_axis_t(
   run_parallel_or_serial(nlines, plan, worker);
 }
 
+#if LSRESIZE_GNU_X86_TARGETS
+__attribute__((target("avx2,fma")))
+static void resize_2d_linear_row_n2_col2_f32_avx2(
+  const float* LS_RESTRICT row0,
+  const float* LS_RESTRICT row1,
+  float* LS_RESTRICT dst,
+  int64_t begin,
+  int64_t end,
+  const int* LS_RESTRICT cs0,
+  const int* LS_RESTRICT cs1,
+  const float* LS_RESTRICT cw0,
+  const float* LS_RESTRICT cw1,
+  float wr0,
+  float wr1)
+{
+  const __m256 vwr0 = _mm256_set1_ps(wr0);
+  const __m256 vwr1 = _mm256_set1_ps(wr1);
+  int64_t c = begin;
+  for (; c + 8 <= end; c += 8) {
+    const size_t ci = static_cast<size_t>(c);
+    const __m256i idx0 =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cs0 + ci));
+    const __m256i idx1 =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cs1 + ci));
+    const __m256 wc0v = _mm256_loadu_ps(cw0 + ci);
+    const __m256 wc1v = _mm256_loadu_ps(cw1 + ci);
+
+    const __m256 r00 = _mm256_i32gather_ps(row0, idx0, 4);
+    const __m256 r01 = _mm256_i32gather_ps(row0, idx1, 4);
+    const __m256 r10 = _mm256_i32gather_ps(row1, idx0, 4);
+    const __m256 r11 = _mm256_i32gather_ps(row1, idx1, 4);
+
+    const __m256 h0 = _mm256_fmadd_ps(wc1v, r01, _mm256_mul_ps(wc0v, r00));
+    const __m256 h1 = _mm256_fmadd_ps(wc1v, r11, _mm256_mul_ps(wc0v, r10));
+    const __m256 acc = _mm256_fmadd_ps(vwr1, h1, _mm256_mul_ps(vwr0, h0));
+    _mm256_storeu_ps(dst + ci, acc);
+  }
+
+  for (; c < end; ++c) {
+    const size_t ci = static_cast<size_t>(c);
+    const int c0 = cs0[ci];
+    const int c1 = cs1[ci];
+    const float h0 =
+        cw0[ci] * row0[static_cast<size_t>(c0)] +
+        cw1[ci] * row0[static_cast<size_t>(c1)];
+    const float h1 =
+        cw0[ci] * row1[static_cast<size_t>(c0)] +
+        cw1[ci] * row1[static_cast<size_t>(c1)];
+    dst[ci] = wr0 * h0 + wr1 * h1;
+  }
+}
+
+__attribute__((target("avx2,fma")))
+static void resize_2d_linear_row_n2_col2_f64_avx2(
+  const double* LS_RESTRICT row0,
+  const double* LS_RESTRICT row1,
+  double* LS_RESTRICT dst,
+  int64_t begin,
+  int64_t end,
+  const int* LS_RESTRICT cs0,
+  const int* LS_RESTRICT cs1,
+  const double* LS_RESTRICT cw0,
+  const double* LS_RESTRICT cw1,
+  double wr0,
+  double wr1)
+{
+  const __m256d vwr0 = _mm256_set1_pd(wr0);
+  const __m256d vwr1 = _mm256_set1_pd(wr1);
+  int64_t c = begin;
+  for (; c + 4 <= end; c += 4) {
+    const size_t ci = static_cast<size_t>(c);
+    const __m128i idx0 =
+        _mm_loadu_si128(reinterpret_cast<const __m128i*>(cs0 + ci));
+    const __m128i idx1 =
+        _mm_loadu_si128(reinterpret_cast<const __m128i*>(cs1 + ci));
+    const __m256d wc0v = _mm256_loadu_pd(cw0 + ci);
+    const __m256d wc1v = _mm256_loadu_pd(cw1 + ci);
+
+    const __m256d r00 = _mm256_i32gather_pd(row0, idx0, 8);
+    const __m256d r01 = _mm256_i32gather_pd(row0, idx1, 8);
+    const __m256d r10 = _mm256_i32gather_pd(row1, idx0, 8);
+    const __m256d r11 = _mm256_i32gather_pd(row1, idx1, 8);
+
+    const __m256d h0 = _mm256_fmadd_pd(wc1v, r01, _mm256_mul_pd(wc0v, r00));
+    const __m256d h1 = _mm256_fmadd_pd(wc1v, r11, _mm256_mul_pd(wc0v, r10));
+    const __m256d acc = _mm256_fmadd_pd(vwr1, h1, _mm256_mul_pd(vwr0, h0));
+    _mm256_storeu_pd(dst + ci, acc);
+  }
+
+  for (; c < end; ++c) {
+    const size_t ci = static_cast<size_t>(c);
+    const int c0 = cs0[ci];
+    const int c1 = cs1[ci];
+    const double h0 =
+        cw0[ci] * row0[static_cast<size_t>(c0)] +
+        cw1[ci] * row0[static_cast<size_t>(c1)];
+    const double h1 =
+        cw0[ci] * row1[static_cast<size_t>(c0)] +
+        cw1[ci] * row1[static_cast<size_t>(c1)];
+    dst[ci] = wr0 * h0 + wr1 * h1;
+  }
+}
+#endif
+
 template <typename Scalar>
 static void resize_2d_linear_t(
   const Scalar* LS_RESTRICT in,
@@ -2374,6 +2622,14 @@ static void resize_2d_linear_t(
   const Accum* LS_RESTRICT cw0 = col_w0.data();
   const Accum* LS_RESTRICT cw1 = col_w1.data();
   const Accum* LS_RESTRICT cw2 = col_w2.data();
+  const auto col2_run = longest_count_run(col_count, 2);
+  const int64_t col2_begin = col2_run.first;
+  const int64_t col2_end = col2_run.second;
+  const bool all_axes_grow = (out_h > in_h) && (out_w > in_w);
+  const bool use_avx2_linear =
+      all_axes_grow &&
+      avx2_linear_enabled() &&
+      (col2_end - col2_begin >= 16);
 
   auto worker = [&](int64_t start, int64_t end) {
     for (int64_t r = start; r < end; ++r) {
@@ -2391,44 +2647,83 @@ static void resize_2d_linear_t(
       const Accum wr2 = rw2[ri];
 
       if (nr == 2) {
-        for (int64_t c = 0; c < out_w; ++c) {
-          const size_t ci = static_cast<size_t>(c);
-          const int c0 = cs0[ci];
-          const int c1 = cs1[ci];
-          const int c2 = cs2[ci];
-          const Accum wc0 = cw0[ci];
-          const Accum wc1 = cw1[ci];
-          const Accum wc2 = cw2[ci];
-          Accum acc = Accum(0);
-          switch (cc[ci]) {
-            case 3:
-              acc = wr0 * (
-                  wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
-                  wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]) +
-                  wc2 * static_cast<Accum>(row0[static_cast<size_t>(c2)]));
-              acc += wr1 * (
-                  wc0 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
-                  wc1 * static_cast<Accum>(row1[static_cast<size_t>(c1)]) +
-                  wc2 * static_cast<Accum>(row1[static_cast<size_t>(c2)]));
-              break;
-            case 2:
-              acc = wr0 * (
-                  wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
-                  wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]));
-              acc += wr1 * (
-                  wc0 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
-                  wc1 * static_cast<Accum>(row1[static_cast<size_t>(c1)]));
-              break;
-            case 1:
-              acc = wc0 * (
-                  wr0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
-                  wr1 * static_cast<Accum>(row1[static_cast<size_t>(c0)]));
-              break;
-            default:
-              break;
+        auto scalar_n2 = [&](int64_t c_begin, int64_t c_end) {
+          for (int64_t c = c_begin; c < c_end; ++c) {
+            const size_t ci = static_cast<size_t>(c);
+            const int c0 = cs0[ci];
+            const int c1 = cs1[ci];
+            const int c2 = cs2[ci];
+            const Accum wc0 = cw0[ci];
+            const Accum wc1 = cw1[ci];
+            const Accum wc2 = cw2[ci];
+            Accum acc = Accum(0);
+            switch (cc[ci]) {
+              case 3:
+                acc = wr0 * (
+                    wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                    wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]) +
+                    wc2 * static_cast<Accum>(row0[static_cast<size_t>(c2)]));
+                acc += wr1 * (
+                    wc0 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
+                    wc1 * static_cast<Accum>(row1[static_cast<size_t>(c1)]) +
+                    wc2 * static_cast<Accum>(row1[static_cast<size_t>(c2)]));
+                break;
+              case 2:
+                acc = wr0 * (
+                    wc0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                    wc1 * static_cast<Accum>(row0[static_cast<size_t>(c1)]));
+                acc += wr1 * (
+                    wc0 * static_cast<Accum>(row1[static_cast<size_t>(c0)]) +
+                    wc1 * static_cast<Accum>(row1[static_cast<size_t>(c1)]));
+                break;
+              case 1:
+                acc = wc0 * (
+                    wr0 * static_cast<Accum>(row0[static_cast<size_t>(c0)]) +
+                    wr1 * static_cast<Accum>(row1[static_cast<size_t>(c0)]));
+                break;
+              default:
+                break;
+            }
+            dst[ci] = static_cast<Scalar>(acc);
           }
-          dst[ci] = static_cast<Scalar>(acc);
+        };
+
+#if LSRESIZE_GNU_X86_TARGETS
+        if (use_avx2_linear) {
+          scalar_n2(0, col2_begin);
+          if constexpr (std::is_same_v<Scalar, float>) {
+            resize_2d_linear_row_n2_col2_f32_avx2(
+                row0,
+                row1,
+                dst,
+                col2_begin,
+                col2_end,
+                cs0,
+                cs1,
+                cw0,
+                cw1,
+                wr0,
+                wr1);
+          } else if constexpr (std::is_same_v<Scalar, double>) {
+            resize_2d_linear_row_n2_col2_f64_avx2(
+                row0,
+                row1,
+                dst,
+                col2_begin,
+                col2_end,
+                cs0,
+                cs1,
+                cw0,
+                cw1,
+                wr0,
+                wr1);
+          }
+          scalar_n2(col2_end, out_w);
+          continue;
         }
+#endif
+
+        scalar_n2(0, out_w);
         continue;
       }
 

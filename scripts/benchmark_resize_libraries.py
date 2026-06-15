@@ -712,6 +712,10 @@ def main() -> int:
             "backends": args.backends,
             "LSRESIZE_NUM_THREADS": os.environ.get("LSRESIZE_NUM_THREADS", "<default>"),
             "LSRESIZE_BATCHED_AXIS": os.environ.get("LSRESIZE_BATCHED_AXIS", "<default:auto>"),
+            "LSRESIZE_AVX2_LINEAR": os.environ.get(
+                "LSRESIZE_AVX2_LINEAR",
+                "<default:on-if-supported>",
+            ),
             "coordinate_note": (
                 "Backends use different coordinate, boundary, and antialiasing semantics; "
                 "quality metrics are deltas against splineops, not parity checks."
