@@ -732,6 +732,14 @@ def main() -> int:
                 "LSRESIZE_GATHER_PREFILTER_SCALE",
                 "<default:on>",
             ),
+            "LSRESIZE_2D_PROJECTION_BATCH_TUNE": os.environ.get(
+                "LSRESIZE_2D_PROJECTION_BATCH_TUNE",
+                "<default:on>",
+            ),
+            "LSRESIZE_ROWWISE_INITIAL_CAUSAL": os.environ.get(
+                "LSRESIZE_ROWWISE_INITIAL_CAUSAL",
+                "<default:on>",
+            ),
             "LSRESIZE_3D_AXIS1_DIRECT_SCATTER": os.environ.get(
                 "LSRESIZE_3D_AXIS1_DIRECT_SCATTER",
                 "<default:on>",

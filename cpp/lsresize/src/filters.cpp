@@ -1,10 +1,51 @@
 // splineops/cpp/lsresize/src/filters.cpp
 #include "filters.h"
 #include <algorithm>
+#include <cstdlib>
 #include <numeric>
 #include <stdexcept>
 
 namespace lsresize {
+
+namespace {
+
+bool env_equals_ci_local(const char* value, const char* expected)
+{
+  if (value == nullptr || expected == nullptr) {
+    return false;
+  }
+  while (*value != '\0' && *expected != '\0') {
+    char a = *value;
+    char b = *expected;
+    if (a >= 'A' && a <= 'Z') a = static_cast<char>(a - 'A' + 'a');
+    if (b >= 'A' && b <= 'Z') b = static_cast<char>(b - 'A' + 'a');
+    if (a != b) {
+      return false;
+    }
+    ++value;
+    ++expected;
+  }
+  return *value == '\0' && *expected == '\0';
+}
+
+bool env_flag_enabled_default_true_local(const char* name)
+{
+  const char* value = std::getenv(name);
+  if (value == nullptr || value[0] == '\0') {
+    return true;
+  }
+  return !(value[0] == '0' ||
+           env_equals_ci_local(value, "off") ||
+           env_equals_ci_local(value, "false") ||
+           env_equals_ci_local(value, "no"));
+}
+
+bool rowwise_initial_causal_enabled()
+{
+  return env_flag_enabled_default_true_local("LSRESIZE_ROWWISE_INITIAL_CAUSAL");
+}
+
+} // namespace
 
 double initial_causal(
   const std::vector<double>& c, 
@@ -962,9 +1003,22 @@ static void apply_interpolation_pole_colmajor_f32(
   size_t horizon)
 {
   const size_t Bs = static_cast<size_t>(B);
-  for (int b = 0; b < B; ++b) {
-    c[static_cast<size_t>(b)] =
-        initial_causal_colmajor_scalar_f32(c, B, N, b, z, horizon);
+  if (rowwise_initial_causal_enabled() &&
+      horizon < static_cast<size_t>(N)) {
+    float* first = c.data();
+    float p = z;
+    for (size_t n = 1; n < horizon; ++n) {
+      const float* row = c.data() + n * Bs;
+      for (int b = 0; b < B; ++b) {
+        first[static_cast<size_t>(b)] += p * row[static_cast<size_t>(b)];
+      }
+      p *= z;
+    }
+  } else {
+    for (int b = 0; b < B; ++b) {
+      c[static_cast<size_t>(b)] =
+          initial_causal_colmajor_scalar_f32(c, B, N, b, z, horizon);
+    }
   }
 
   for (int n = 1; n < N; ++n) {

@@ -57,6 +57,8 @@ Current default knobs:
 | Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
 | Native gather-prefilter scaling | enabled | `LSRESIZE_GATHER_PREFILTER_SCALE=0` |
+| Native 2-D projection batch tuning | enabled | `LSRESIZE_2D_PROJECTION_BATCH_TUNE=0` |
+| Native float32 row-wise initial causal setup | enabled | `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0` |
 | Native 3-D axis-1 direct scatter | enabled for large pure quadratic/cubic interpolation passes | `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
@@ -1471,3 +1473,84 @@ git diff --check
 
 Latest validation result: focused parity `18 passed`, full suite
 `527 passed`; script py-compile and `git diff --check` clean.
+
+## Handoff: 2026-06-16 Row-Wise Prefilter Setup And Projection Batches
+
+Accepted changes after the fused gather-prefilter scale pass:
+
+- Added a default-on row-wise finite-horizon initial-causal setup for the
+  float32 col-major interpolation prefilter. This keeps the same recursive
+  spline pole math but initializes the first coefficient row by walking
+  coefficient rows contiguously instead of striding one line at a time. It is
+  controllable with `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0`.
+- Kept the double-internal prefilter on the scalar initializer after A/B showed
+  the row-wise version was useful mainly for float32 pure interpolation and
+  noisy for double-internal projection paths.
+- Added a guarded 2-D projection batch-size heuristic behind
+  `LSRESIZE_2D_PROJECTION_BATCH_TUNE=0`: 2-D linear antialiasing uses batch
+  `32`, and large 2-D cubic antialiasing uses batch `96`; pure interpolation
+  and 3-D cubic behavior are unchanged.
+
+Fresh profiles after the previous commit:
+
+- `/tmp/splineops_profile_post_fused_scale_2d_cubic_down_2048_f32_thr1_20260616.log`
+- `/tmp/splineops_profile_post_fused_scale_2d_cubic_aa_down_2048_f32_thr1_20260616.log`
+- `/tmp/splineops_profile_post_fused_scale_3d_cubic_down_large_f32_thr1_20260616.log`
+- `/tmp/splineops_profile_post_fused_scale_3d_cubic_aniso_large_f32_thr1_20260616.log`
+
+New A/B artifacts:
+
+- Projection batch tuning:
+  `/tmp/splineops_ab_projection_batch_tune_20260616.csv`
+  - median `1.033x`, mean `1.041x`, 16 wins and 7 losses across 30 2-D
+    projection rows, no failed checks
+  - default scheduler: median `1.053x`, mean `1.047x`
+  - linear-antialiasing rows were stronger than cubic-antialiasing rows:
+    median `1.093x` versus `1.005x`
+- Float32 row-wise initial-causal setup:
+  `/tmp/splineops_ab_rowwise_initial_causal_f32_20260616.csv`
+  - median `1.093x`, mean `1.144x`, 8 wins and 1 loss across 12 focused
+    float32 cubic rows, no failed checks
+  - default scheduler: median `1.177x`, mean `1.203x`, 4 wins and 0 losses
+
+Fresh final artifacts after this pass:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_rowwise_projection_batch_20260616.csv`
+  - 43 overlaps, median native/Python speedup `27.32x`, mean `28.39x`
+  - antialiasing median native/Python speedup `20.07x`
+  - best native thread counts: `1:8`, `8:22`, `default:13`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_rowwise_projection_batch_20260616.csv`
+  - SciPy faster in `0/21`; exact-ish SciPy rows are all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `15/18`, with different coordinate/AA semantics
+  - Torch faster in `7/19`; exact-ish Torch rows are all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_rowwise_projection_batch_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows are all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `16/18`, with different coordinate/AA semantics
+  - Torch faster in `11/19`; exact-ish Torch rows faster in `4/8`
+- Legacy Java 2-D reference rerun:
+  `/tmp/splineops_legacy_java_full_rowwise_projection_batch_20260616.csv`
+  - 14 overlaps against current splineops default library artifact, median
+    speedup `10.15x`, mean `12.44x`
+
+Validation:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py -k 'rowwise_initial_causal or projection_batch_tune or gather_prefilter_scale or row_gather or direct_scatter'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m py_compile \
+  scripts/benchmark_resize_native.py \
+  scripts/benchmark_resize_libraries.py \
+  scripts/benchmark_resize_ab.py \
+  scripts/summarize_resize_benchmarks.py
+git diff --check
+```
+
+Latest validation result: focused parity `28 passed`, full suite
+`537 passed`; script py-compile and `git diff --check` clean.

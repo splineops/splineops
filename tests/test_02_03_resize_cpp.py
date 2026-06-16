@@ -353,6 +353,73 @@ def test_gather_prefilter_scale_matches_prefilter_scale(
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping projection batch tune compare",
+)
+@pytest.mark.parametrize(
+    "dtype,method,shape,zoom,atol",
+    [
+        (np.float32, "linear-antialiasing", (128, 96), (0.57, 0.63), 5e-6),
+        (np.float64, "linear-antialiasing", (128, 96), (0.57, 0.63), 5e-12),
+        (np.float32, "cubic-antialiasing", (1024, 64), (0.5, 0.75), 3e-5),
+        (np.float64, "cubic-antialiasing", (1024, 64), (0.5, 0.75), 2e-9),
+    ],
+)
+def test_projection_batch_tune_matches_default_batch(
+    monkeypatch, dtype, method, shape, zoom, atol
+):
+    rng = np.random.default_rng(143)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.setenv("LSRESIZE_2D_PROJECTION_BATCH_TUNE", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.delenv("LSRESIZE_2D_PROJECTION_BATCH_TUNE", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping row-wise initial-causal compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "method,shape,zoom",
+    [
+        ("cubic", (160, 128), (0.61, 1.17)),
+        ("cubic-antialiasing", (128, 96), (0.57, 0.63)),
+        ("cubic", (32, 28, 24), (0.75, 1.25, 1.0)),
+    ],
+)
+def test_rowwise_initial_causal_matches_scalar_initial_causal(
+    monkeypatch, dtype, method, shape, zoom
+):
+    rng = np.random.default_rng(145)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.setenv("LSRESIZE_ROWWISE_INITIAL_CAUSAL", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.delenv("LSRESIZE_ROWWISE_INITIAL_CAUSAL", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    atol = 3e-5 if method.endswith("-antialiasing") and dtype == np.float32 else 5e-6
+    if dtype == np.float64:
+        atol = 2e-9 if method.endswith("-antialiasing") else 5e-11
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping direct scatter compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])

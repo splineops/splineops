@@ -138,6 +138,11 @@ static inline bool gather_prefilter_scale_enabled()
   return env_flag_enabled_default_true("LSRESIZE_GATHER_PREFILTER_SCALE");
 }
 
+static inline bool projection_batch_tune_enabled()
+{
+  return env_flag_enabled_default_true("LSRESIZE_2D_PROJECTION_BATCH_TUNE");
+}
+
 static inline bool direct_3d_axis1_scatter_enabled()
 {
   return env_flag_enabled_default_true("LSRESIZE_3D_AXIS1_DIRECT_SCATTER");
@@ -266,6 +271,20 @@ static inline bool is_pure_quadratic_or_cubic_interp(const LSParams& p)
          (p.interp_degree == 2 || p.interp_degree == 3);
 }
 
+static inline bool is_linear_antialiasing_projection(const LSParams& p)
+{
+  return p.interp_degree == 1 &&
+         p.analy_degree == 0 &&
+         p.synthe_degree == 1;
+}
+
+static inline bool is_cubic_antialiasing_projection(const LSParams& p)
+{
+  return p.interp_degree == 3 &&
+         p.analy_degree == 1 &&
+         p.synthe_degree == 3;
+}
+
 static inline bool should_use_direct_3d_axis1_scatter(
   const std::vector<int64_t>& in_shape,
   const LSParams& p,
@@ -328,6 +347,17 @@ static inline int adaptive_batch_lines_for(
       is_pure_quadratic_or_cubic_interp(p) &&
       p.zoom < 1.0 - 1e-12) {
     return 16;
+  }
+  if (projection_batch_tune_enabled() &&
+      in_shape.size() == 2 &&
+      p.zoom < 1.0 - 1e-12) {
+    if (is_linear_antialiasing_projection(p)) {
+      return 32;
+    }
+    if (is_cubic_antialiasing_projection(p) &&
+        std::max(in_shape[0], in_shape[1]) >= 1024) {
+      return 96;
+    }
   }
 
   return kDefaultBatchLines;

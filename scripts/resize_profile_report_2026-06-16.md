@@ -43,6 +43,11 @@ percentages.
   float32 pure interpolation. `LSRESIZE_GATHER_PREFILTER_SCALE=0` restores the
   prior gather-then-scale path for A/B checks. The recursive pole application
   remains the same Arrate-method spline prefilter.
+- A follow-up prefilter setup pass keeps the double-internal initializer
+  unchanged but uses row-wise finite-horizon initial-causal setup for the
+  float32 col-major prefilter. `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0` restores the
+  scalar-per-line setup. The same pass adds a guarded 2-D projection batch
+  heuristic behind `LSRESIZE_2D_PROJECTION_BATCH_TUNE=0`.
 
 These keep Arrate's least-squares projection method intact: the changes are
 routing, storage precision for pure interpolation, and batched execution of the
@@ -145,6 +150,16 @@ After the fused gather-prefilter scale pass:
 - 3-D median speedup: `25.10x`
 - Best native thread counts: `1:8`, `8:23`, `default:12`
 
+After the row-wise initial-causal/projection-batch pass:
+`/tmp/splineops_native_full_both_rowwise_projection_batch_20260616.csv`
+
+- Native/Python overlaps: `43`
+- Median speedup: `27.32x`
+- Mean speedup: `28.39x`
+- Range: `9.05x` to `73.15x`
+- Antialiasing median speedup: `20.07x`
+- Best native thread counts: `1:8`, `8:22`, `default:13`
+
 Cross-library artifact:
 `/tmp/splineops_libraries_full_after_profile_20260616.csv`
 
@@ -193,6 +208,24 @@ After the fused gather-prefilter scale pass, splineops forced to 8 threads:
 - skimage: median speed `0.15x`, with different resize semantics in most rows.
 - OpenCV: median speed `1.90x`, with median relative L2 difference `2.61e-1`.
 - Torch: median speed `1.14x`; exact-ish cases `0.98x`.
+
+After the row-wise initial-causal/projection-batch pass, splineops default
+scheduler:
+`/tmp/splineops_libraries_full_default_rowwise_projection_batch_20260616.csv`
+
+- SciPy: median speed `0.14x` versus splineops, exact-ish cases `0.08x`.
+- skimage: median speed `0.10x`, with different resize semantics in most rows.
+- OpenCV: median speed `1.41x`, with median relative L2 difference `2.61e-1`.
+- Torch: median speed `0.75x`; exact-ish cases `0.57x`.
+
+After the row-wise initial-causal/projection-batch pass, splineops forced to
+8 threads:
+`/tmp/splineops_libraries_full_threads8_rowwise_projection_batch_20260616.csv`
+
+- SciPy: median speed `0.17x` versus splineops, exact-ish cases `0.12x`.
+- skimage: median speed `0.15x`, with different resize semantics in most rows.
+- OpenCV: median speed `1.96x`, with median relative L2 difference `2.61e-1`.
+- Torch: median speed `1.29x`; exact-ish cases `0.95x`.
 
 ## Remaining Optimization Targets
 

@@ -20,6 +20,8 @@ Host:
   `/tmp/splineops_native_full_both_direct_scatter_20260616.{json,csv}`
 - Native full after fused gather-prefilter scale pass:
   `/tmp/splineops_native_full_both_gather_prefilter_scale_20260616.{json,csv}`
+- Native full after row-wise initial-causal/projection-batch pass:
+  `/tmp/splineops_native_full_both_rowwise_projection_batch_20260616.{json,csv}`
 - Cross-library full, splineops default scheduler:
   `/tmp/splineops_libraries_full_default_postcommit_20260616.{json,csv}`
 - Cross-library full after direct-scatter pass, splineops default scheduler:
@@ -27,6 +29,9 @@ Host:
 - Cross-library full after fused gather-prefilter scale pass, splineops default
   scheduler:
   `/tmp/splineops_libraries_full_default_gather_prefilter_scale_20260616.{json,csv}`
+- Cross-library full after row-wise initial-causal/projection-batch pass,
+  splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_rowwise_projection_batch_20260616.{json,csv}`
 - Cross-library full, splineops forced to 8 threads:
   `/tmp/splineops_libraries_full_threads8_postcommit_20260616.{json,csv}`
 - Cross-library full after direct-scatter pass, splineops forced to 8 threads:
@@ -34,12 +39,18 @@ Host:
 - Cross-library full after fused gather-prefilter scale pass, splineops forced
   to 8 threads:
   `/tmp/splineops_libraries_full_threads8_gather_prefilter_scale_20260616.{json,csv}`
+- Cross-library full after row-wise initial-causal/projection-batch pass,
+  splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_rowwise_projection_batch_20260616.{json,csv}`
 - Legacy Java 2-D Arrate implementation harness:
   `/tmp/splineops_legacy_java_full_20260616.csv`
 - Legacy Java 2-D Arrate harness after direct-scatter pass:
   `/tmp/splineops_legacy_java_full_direct_scatter_20260616.csv`
 - Legacy Java 2-D Arrate harness after fused gather-prefilter scale pass:
   `/tmp/splineops_legacy_java_full_gather_prefilter_scale_20260616.csv`
+- Legacy Java 2-D Arrate harness after row-wise initial-causal/projection-batch
+  pass:
+  `/tmp/splineops_legacy_java_full_rowwise_projection_batch_20260616.csv`
 - Temporary legacy harness sources:
   `/tmp/legacy_resize_bench/ImageAccess.java`
   and `/tmp/legacy_resize_bench/LegacyResizeBench.java`
@@ -79,6 +90,11 @@ reported 43 overlaps with median speedup `25.11x` and mean speedup `29.16x`.
 Best native thread counts were `1:8`, `8:23`, and `default:12`; the 3-D median
 speedup was `25.10x`.
 
+After the row-wise initial-causal/projection-batch pass, the full native/Python
+artifact reported 43 overlaps with median speedup `27.32x` and mean speedup
+`28.39x`. Best native thread counts were `1:8`, `8:22`, and `default:13`; the
+antialiasing median speedup was `20.07x`.
+
 ## Legacy Java Baseline
 
 A temporary standalone shim was used around `legacy_code/resize/Resize.java`.
@@ -107,6 +123,10 @@ reference artifact. Against the current splineops default library artifact, the
 After the fused gather-prefilter scale pass, the same legacy harness showed
 median speedup `8.44x`, mean `11.04x`, minimum `3.53x`, and maximum `34.33x`
 over 14 overlapping 2-D cases.
+
+After the row-wise initial-causal/projection-batch pass, the legacy harness
+showed median speedup `10.15x`, mean `12.44x`, minimum `3.74x`, and maximum
+`35.44x` over 14 overlapping 2-D cases.
 
 ## Cross-Library Results
 
@@ -164,6 +184,26 @@ After the fused gather-prefilter scale pass, splineops forced to
 | scikit-image | 21 | 0 | `0.15x` | `2.39e-01` |
 | OpenCV | 18 | 17 | `1.90x` | `2.61e-01` |
 | PyTorch | 19 | 10 | `1.14x` | `1.59e-05` |
+
+After the row-wise initial-causal/projection-batch pass, splineops default
+scheduler:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 0 | `0.14x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.10x` | `2.39e-01` |
+| OpenCV | 18 | 15 | `1.41x` | `2.61e-01` |
+| PyTorch | 19 | 7 | `0.75x` | `1.59e-05` |
+
+After the row-wise initial-causal/projection-batch pass, splineops forced to
+`LSRESIZE_NUM_THREADS=8`:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.17x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.15x` | `2.39e-01` |
+| OpenCV | 18 | 16 | `1.96x` | `2.61e-01` |
+| PyTorch | 19 | 11 | `1.29x` | `1.59e-05` |
 
 Important interpretation:
 
