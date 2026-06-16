@@ -1784,3 +1784,83 @@ git diff --check
 
 Latest validation result: focused parity `34 passed`, full suite `543 passed`;
 script py-compile and `git diff --check` clean.
+
+## Handoff: 2026-06-16 Batch Tune V2 and 2-D Axis-0 Direct Scatter
+
+Accepted changes after the double-internal strided gather pass:
+
+- Added `LSRESIZE_2D_AXIS0_DIRECT_SCATTER`, default-on only for large 2-D pure
+  quadratic/cubic upsampling on axis 0. The first broader gate covering
+  downsample/aniso rows was noisy and produced losses, so the committed gate
+  requires `p.zoom > 1.0 + 1e-12` and at least `250000` axis-output samples.
+- Added `LSRESIZE_BATCH_TUNE_V2`, default-on for a very narrow 2-D pure
+  quadratic/cubic downsampling batch adjustment. Threaded/default paths keep
+  the previous 16-line batch. Explicit single-thread f32 rows and large
+  double rows use 24 lines.
+- Both changes preserve Arrate's least-squares projection method. They only
+  alter batching and whether a non-contiguous output axis writes through a
+  temporary accumulator row.
+
+Rejected experiment in this pass:
+
+- Cached f32 plan weights were tested behind `LSRESIZE_F32_PLAN_WEIGHTS`.
+  Output parity was exact, but performance was not stable: the focused outlier
+  repeat reported median `0.980x`, mean `0.978x`, with 5 losses and 1 win. The
+  experiment was removed rather than left as dead plan memory and dispatch
+  surface.
+
+New A/B artifacts:
+
+- 2-D axis-0 direct scatter, affected cubic upsample rows:
+  `/tmp/splineops_ab_2d_axis0_direct_scatter_up_final_20260616.csv`
+  - median `1.078x`, mean `1.076x`, 6 wins and 0 losses, no failed checks
+  - thread breakdown: `1` median `1.094x`, `8` median `1.073x`, default
+    median `1.062x`
+- Batch tune v2, affected single-thread cubic downsample rows:
+  `/tmp/splineops_ab_batch_tune_v2_single_thread_final_20260616.csv`
+  - median `1.036x`, mean `1.030x`, 2 wins and 0 losses, no failed checks
+  - f32 downsample rows were the useful wins: `1.062x` to `1.068x`
+
+Fresh final artifacts after this pass:
+
+- Native full sweep, current defaults:
+  `/tmp/splineops_native_full_current_batch_axis0_20260616.csv`
+- Native full sweep with this pass disabled:
+  `/tmp/splineops_native_full_without_batch_axis0_20260616.csv`
+  - direct same-build A/B remains the better source for claims; the
+    two-separate-run aggregate CSV comparison is visibly noisy on unaffected
+    linear and 3-D rows
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_batch_axis0_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `12/18`, with different coordinate/AA semantics
+  - Torch faster in `8/19`; exact-ish Torch rows all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_batch_axis0_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `17/18`, with different coordinate/AA semantics
+  - Torch faster in `11/19`; exact-ish Torch faster in `4/8`
+- Legacy Java 2-D reference:
+  `/tmp/splineops_legacy_java_full_batch_axis0_20260616.csv`
+  - 14 overlaps against current default-scheduler splineops artifact, median
+    speedup `7.94x`, mean `11.25x`
+
+Validation so far:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py -k 'batch_tune or direct_scatter or strided_offset_gather or row_gather or gather_prefilter_scale or rowwise_initial_causal or projection_batch_tune'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m py_compile \
+  scripts/benchmark_resize_native.py \
+  scripts/benchmark_resize_libraries.py \
+  scripts/benchmark_resize_ab.py \
+  scripts/summarize_resize_benchmarks.py
+git diff --check
+```
+
+Latest validation result: focused parity `40 passed`, full suite
+`549 passed`; script py-compile and `git diff --check` clean.

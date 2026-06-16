@@ -184,12 +184,20 @@ def native_knobs() -> dict[str, str]:
             "LSRESIZE_2D_PROJECTION_BATCH_TUNE",
             "<default:on>",
         ),
+        "LSRESIZE_BATCH_TUNE_V2": os.environ.get(
+            "LSRESIZE_BATCH_TUNE_V2",
+            "<default:on>",
+        ),
         "LSRESIZE_ROWWISE_INITIAL_CAUSAL": os.environ.get(
             "LSRESIZE_ROWWISE_INITIAL_CAUSAL",
             "<default:on>",
         ),
         "LSRESIZE_3D_AXIS1_DIRECT_SCATTER": os.environ.get(
             "LSRESIZE_3D_AXIS1_DIRECT_SCATTER",
+            "<default:on>",
+        ),
+        "LSRESIZE_2D_AXIS0_DIRECT_SCATTER": os.environ.get(
+            "LSRESIZE_2D_AXIS0_DIRECT_SCATTER",
             "<default:on>",
         ),
         "LSRESIZE_SPECIALIZED_PRESETS": os.environ.get(

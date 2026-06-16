@@ -421,6 +421,36 @@ def test_projection_batch_tune_matches_default_batch(
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping batch tune v2 compare",
+)
+@pytest.mark.parametrize(
+    "dtype,shape,zoom,atol",
+    [
+        (np.float32, (384, 320), (0.37, 0.37), 5e-6),
+        (np.float64, (2048, 16), (0.37, 0.37), 5e-11),
+    ],
+)
+def test_batch_tune_v2_matches_legacy_batch(monkeypatch, dtype, shape, zoom, atol):
+    rng = np.random.default_rng(147)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.setenv("LSRESIZE_NUM_THREADS", "1")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCH_TUNE_V2", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method="cubic")
+
+    monkeypatch.delenv("LSRESIZE_BATCH_TUNE_V2", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method="cubic")
+
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping row-wise initial-causal compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -482,6 +512,33 @@ def test_3d_axis1_direct_scatter_matches_buffered_scatter(
     monkeypatch.delenv("LSRESIZE_3D_AXIS1_DIRECT_SCATTER", raising=False)
     rz = _load_resize_module(force_reload=True)
     actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping 2-D direct scatter compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("method", ["quadratic", "cubic"])
+def test_2d_axis0_direct_scatter_matches_buffered_scatter(
+    monkeypatch, dtype, method
+):
+    rng = np.random.default_rng(149)
+    arr = rng.random((384, 384), dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_2D_AXIS0_DIRECT_SCATTER", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=(1.7, 1.25), method=method)
+
+    monkeypatch.delenv("LSRESIZE_2D_AXIS0_DIRECT_SCATTER", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=(1.7, 1.25), method=method)
 
     atol = 5e-6 if dtype == np.float32 else 5e-11
     assert np.allclose(actual, expected, atol=atol, rtol=atol)

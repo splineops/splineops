@@ -148,9 +148,19 @@ static inline bool projection_batch_tune_enabled()
   return env_flag_enabled_default_true("LSRESIZE_2D_PROJECTION_BATCH_TUNE");
 }
 
+static inline bool batch_tune_v2_enabled()
+{
+  return env_flag_enabled_default_true("LSRESIZE_BATCH_TUNE_V2");
+}
+
 static inline bool direct_3d_axis1_scatter_enabled()
 {
   return env_flag_enabled_default_true("LSRESIZE_3D_AXIS1_DIRECT_SCATTER");
+}
+
+static inline bool direct_2d_axis0_scatter_enabled()
+{
+  return env_flag_enabled_default_true("LSRESIZE_2D_AXIS0_DIRECT_SCATTER");
 }
 
 static inline bool fast_linear_interp_enabled()
@@ -312,6 +322,22 @@ static inline bool should_use_direct_3d_axis1_scatter(
   return thread_count(nlines, plan) <= 8;
 }
 
+static inline bool should_use_direct_2d_axis0_scatter(
+  const std::vector<int64_t>& in_shape,
+  const LSParams& p,
+  int axis,
+  int64_t nlines,
+  int outN)
+{
+  constexpr int64_t kMinAxisOutputs = 250000;
+  return direct_2d_axis0_scatter_enabled() &&
+         in_shape.size() == 2 &&
+         axis == 0 &&
+         is_pure_quadratic_or_cubic_interp(p) &&
+         p.zoom > 1.0 + 1e-12 &&
+         nlines * static_cast<int64_t>(outN) >= kMinAxisOutputs;
+}
+
 static inline double interpolation_prefilter_lambda(int degree)
 {
   if (degree <= 1) {
@@ -339,7 +365,10 @@ static inline float interpolation_prefilter_lambda_f32(int degree)
 
 static inline int adaptive_batch_lines_for(
   const std::vector<int64_t>& in_shape,
-  const LSParams& p)
+  const LSParams& p,
+  const Plan1D& plan,
+  int64_t nlines,
+  bool float32_internal)
 {
   if (const int forced = env_positive_int_or_zero("LSRESIZE_BATCH_LINES")) {
     return forced;
@@ -351,6 +380,20 @@ static inline int adaptive_batch_lines_for(
   if (in_shape.size() == 2 &&
       is_pure_quadratic_or_cubic_interp(p) &&
       p.zoom < 1.0 - 1e-12) {
+    if (batch_tune_v2_enabled()) {
+      const int64_t max_dim = std::max(in_shape[0], in_shape[1]);
+      const bool threaded = thread_count(nlines, plan) > 1;
+      if (threaded) {
+        return 16;
+      }
+      if (float32_internal) {
+        return 24;
+      }
+      if (max_dim >= 2048) {
+        return 24;
+      }
+      return 16;
+    }
     return 16;
   }
   if (projection_batch_tune_enabled() &&
@@ -2458,7 +2501,8 @@ static void resize_along_axis_batched_interp_t(
   const int N = plan.N;
   const int outN = plan.outN;
   const int batch_lines =
-      std::max(1, adaptive_batch_lines_for(in_shape, p));
+      std::max(1, adaptive_batch_lines_for(
+          in_shape, p, plan, nlines, false));
   const int64_t axis_stride_in = in_strides[static_cast<size_t>(axis)];
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   const bool row_major_gather = row_gather_enabled();
@@ -2467,6 +2511,8 @@ static void resize_along_axis_batched_interp_t(
                         : 0;
   const bool direct_axis1_scatter =
       should_use_direct_3d_axis1_scatter(in_shape, p, plan, axis, nlines, outN);
+  const bool direct_2d_axis0_scatter =
+      should_use_direct_2d_axis0_scatter(in_shape, p, axis, nlines, outN);
   const bool scaled_gather_prefilter =
       gather_prefilter_scale_enabled() && p.interp_degree > 1 && N > 1;
   const double gather_scale = scaled_gather_prefilter
@@ -2623,8 +2669,8 @@ static void resize_along_axis_batched_interp_t(
           }
         };
 
-        if (direct_axis1_scatter) {
-          if constexpr (std::is_same<Scalar, double>::value) {
+        if (direct_axis1_scatter || direct_2d_axis0_scatter) {
+          if constexpr (std::is_same_v<Scalar, double>) {
             const bool unit_stride_offsets =
                 offsets_are_unit_stride(out_offsets.data(), B);
             for (const RowRun1D& run : plan.row_runs) {
@@ -2681,7 +2727,8 @@ static void resize_along_axis_batched_t(
                         ? p.interp_degree
                         : (p.analy_degree + p.synthe_degree + 1);
   const int batch_lines =
-      std::max(1, adaptive_batch_lines_for(in_shape, p));
+      std::max(1, adaptive_batch_lines_for(
+          in_shape, p, plan, nlines, false));
   const int64_t axis_stride_in = in_strides[static_cast<size_t>(axis)];
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   const bool row_major_gather = row_gather_enabled();
@@ -2861,7 +2908,8 @@ static void resize_along_axis_batched_interp_f32_internal(
   const int N = plan.N;
   const int outN = plan.outN;
   const int batch_lines =
-      std::max(1, adaptive_batch_lines_for(in_shape, p));
+      std::max(1, adaptive_batch_lines_for(
+          in_shape, p, plan, nlines, true));
   const int64_t axis_stride_in = in_strides[static_cast<size_t>(axis)];
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   const bool row_major_gather = row_gather_enabled();
@@ -2870,6 +2918,8 @@ static void resize_along_axis_batched_interp_f32_internal(
                         : 0;
   const bool direct_axis1_scatter =
       should_use_direct_3d_axis1_scatter(in_shape, p, plan, axis, nlines, outN);
+  const bool direct_2d_axis0_scatter =
+      should_use_direct_2d_axis0_scatter(in_shape, p, axis, nlines, outN);
   const bool scaled_gather_prefilter =
       gather_prefilter_scale_enabled() && p.interp_degree > 1 && N > 1;
   const float gather_scale = scaled_gather_prefilter
@@ -2980,7 +3030,7 @@ static void resize_along_axis_batched_interp_f32_internal(
         const int64_t stride = out_strides[static_cast<size_t>(axis)];
         const double* weights = plan.weights.data();
 
-        if (direct_axis1_scatter) {
+        if (direct_axis1_scatter || direct_2d_axis0_scatter) {
           const bool unit_stride_offsets =
               offsets_are_unit_stride(out_offsets.data(), B);
           for (const RowRun1D& run : plan.row_runs) {
@@ -3052,7 +3102,8 @@ static void resize_along_axis_batched_f32_internal(
                         ? p.interp_degree
                         : (p.analy_degree + p.synthe_degree + 1);
   const int batch_lines =
-      std::max(1, adaptive_batch_lines_for(in_shape, p));
+      std::max(1, adaptive_batch_lines_for(
+          in_shape, p, plan, nlines, true));
   const int64_t axis_stride_in = in_strides[static_cast<size_t>(axis)];
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   const bool row_major_gather = row_gather_enabled();

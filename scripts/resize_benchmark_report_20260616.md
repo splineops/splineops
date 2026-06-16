@@ -398,3 +398,64 @@ Rejected in this pass:
    report generator.
 4. If a library PR becomes the target, package SciPy-like exact-semantics
    comparisons separately from OpenCV/PyTorch image-resize comparisons.
+
+## Addendum: Batch Tune V2 and 2-D Axis-0 Direct Scatter
+
+This addendum covers the next pass after the double-internal strided-gather
+run. Two narrow changes were accepted:
+
+- 2-D pure quadratic/cubic upsampling on axis 0 can use direct
+  accumulate-scatter when the output axis is non-contiguous and large enough.
+- 2-D pure quadratic/cubic downsampling gets a single-thread batch adjustment
+  from 16 to 24 lines for f32 and large double rows.
+
+Focused same-build A/B:
+
+| Flag | Artifact | Median | Mean | Wins | Losses |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `LSRESIZE_2D_AXIS0_DIRECT_SCATTER` | `/tmp/splineops_ab_2d_axis0_direct_scatter_up_final_20260616.csv` | `1.078x` | `1.076x` | 6 | 0 |
+| `LSRESIZE_BATCH_TUNE_V2` | `/tmp/splineops_ab_batch_tune_v2_single_thread_final_20260616.csv` | `1.036x` | `1.030x` | 2 | 0 |
+
+Rejected in this pass:
+
+- Cached f32 plan weights. The focused repeat was slower overall
+  (`0.980x` median, `0.978x` mean), so the experiment was removed.
+
+Current library comparison, splineops default scheduler:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.15x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.11x` | `2.39e-01` |
+| OpenCV | 18 | 12 | `1.43x` | `2.61e-01` |
+| PyTorch | 19 | 8 | `0.68x` | `1.59e-05` |
+
+Exact-ish rows under the default scheduler: SciPy faster in `0/16`, Torch
+faster in `0/8`.
+
+Current library comparison, splineops forced to `LSRESIZE_NUM_THREADS=8`:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.18x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.16x` | `2.39e-01` |
+| OpenCV | 18 | 17 | `2.08x` | `2.61e-01` |
+| PyTorch | 19 | 11 | `1.30x` | `1.59e-05` |
+
+Exact-ish rows with forced 8 threads: SciPy faster in `0/16`, Torch faster in
+`4/8`.
+
+Fresh artifacts:
+
+- Native current defaults:
+  `/tmp/splineops_native_full_current_batch_axis0_20260616.csv`
+- Native with the new knobs disabled:
+  `/tmp/splineops_native_full_without_batch_axis0_20260616.csv`
+- Libraries, default scheduler:
+  `/tmp/splineops_libraries_full_default_batch_axis0_20260616.csv`
+- Libraries, forced 8 threads:
+  `/tmp/splineops_libraries_full_threads8_batch_axis0_20260616.csv`
+- Legacy Java:
+  `/tmp/splineops_legacy_java_full_batch_axis0_20260616.csv`
+  - current splineops default median speedup `7.94x` over 14 overlapping 2-D
+    cases

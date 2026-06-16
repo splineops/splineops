@@ -654,3 +654,69 @@ Validation:
   scatter flags.
 - Full suite: `543 passed`.
 - Benchmark script py-compile and `git diff --check`: clean.
+
+## 2026-06-16 Update: 2-D Cubic Upsample Scatter and Batch Tuning
+
+This pass accepted two narrow routing changes and rejected one broader f32
+plan-weight experiment.
+
+Accepted changes:
+
+- `LSRESIZE_2D_AXIS0_DIRECT_SCATTER` is default-on for large 2-D pure
+  quadratic/cubic upsampling on axis 0. The route reuses the existing direct
+  accumulate-scatter helper when the output axis is non-contiguous and the
+  axis work is at least `250000` output samples. Downsampling and anisotropic
+  neutral axes stay on the buffered path.
+- `LSRESIZE_BATCH_TUNE_V2` is default-on for 2-D pure quadratic/cubic
+  downsampling. It keeps threaded/default passes on the historical 16-line
+  batch and only nudges explicit single-thread f32, plus large double rows, to
+  24 lines.
+
+Focused A/B:
+
+- 2-D axis-0 direct scatter, affected cubic upsample cases:
+  `/tmp/splineops_ab_2d_axis0_direct_scatter_up_final_20260616.csv`
+  - median `1.078x`, mean `1.076x`, 6 wins and 0 losses, no failed checks
+  - thread medians: `1` -> `1.094x`, `8` -> `1.073x`, default -> `1.062x`
+- Batch tune v2, affected single-thread cubic downsample cases:
+  `/tmp/splineops_ab_batch_tune_v2_single_thread_final_20260616.csv`
+  - median `1.036x`, mean `1.030x`, 2 wins and 0 losses, no failed checks
+  - largest wins were f32: `2d_cubic_down_2048_float32` `1.068x`,
+    `2d_cubic_down_1024_float32` `1.062x`
+
+Rejected experiment:
+
+- Cached f32 plan weights (`LSRESIZE_F32_PLAN_WEIGHTS`) were tested as a way to
+  avoid repeatedly streaming double weights in f32 accumulators. The focused
+  repeat was negative: median `0.980x`, mean `0.978x`, with 5 losses and 1
+  win across the selected outliers. The code and metadata were removed.
+
+Fresh artifacts:
+
+- Native full sweep, current defaults:
+  `/tmp/splineops_native_full_current_batch_axis0_20260616.csv`
+- Native full sweep with this pass disabled:
+  `/tmp/splineops_native_full_without_batch_axis0_20260616.csv`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_batch_axis0_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `12/18`, with different coordinate/AA semantics
+  - Torch faster in `8/19`; exact-ish Torch rows all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_batch_axis0_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `17/18`, with different coordinate/AA semantics
+  - Torch faster in `11/19`; exact-ish Torch faster in `4/8`
+- Legacy Java 2-D reference:
+  `/tmp/splineops_legacy_java_full_batch_axis0_20260616.csv`
+  - splineops median speedup `7.94x` over 14 overlapping 2-D cases
+
+Validation:
+
+- Native editable rebuild: clean.
+- Focused parity:
+  `40 passed` for batch/direct-scatter plus adjacent gather/projection flags.
+- Full suite: `549 passed`.
+- Benchmark script py-compile and `git diff --check`: clean.
