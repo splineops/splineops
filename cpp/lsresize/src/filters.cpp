@@ -239,7 +239,7 @@ void diff_as(std::vector<double>& c)
 // Batched col-major helpers: C[n * B + b]
 // -----------------------------------------------------------------------------
 
-static double initial_causal_colmajor(
+static double initial_causal_colmajor_scalar(
   const std::vector<double>& c,
   int B,
   int N,
@@ -254,21 +254,25 @@ static double initial_causal_colmajor(
   const size_t bi = static_cast<size_t>(b);
 
   if (horizon < static_cast<size_t>(N)) {
-    double sum = c[bi];
+    const double* ptr = c.data() + bi;
+    double sum = *ptr;
     double p = z;
     for (size_t n = 1; n < horizon; ++n) {
-      sum += p * c[n * Bs + bi];
+      ptr += Bs;
+      sum += p * (*ptr);
       p *= z;
     }
     return sum;
   }
 
   const double zn = std::pow(z, double(N - 1));
-  double sum = c[bi] + zn * c[static_cast<size_t>(N - 1) * Bs + bi];
+  const double* ptr = c.data() + bi;
+  double sum = *ptr + zn * (*(ptr + static_cast<size_t>(N - 1) * Bs));
   double p1 = z;
   double p2 = (zn * zn) / z;
   for (int n = 1; n + 1 < N; ++n) {
-    sum += (p1 + p2) * c[static_cast<size_t>(n) * Bs + bi];
+    ptr += Bs;
+    sum += (p1 + p2) * (*ptr);
     p1 *= z;
     p2 /= z;
   }
@@ -288,6 +292,46 @@ static inline size_t initial_causal_horizon_colmajor(
         static_cast<size_t>(2 + std::log(tol) / std::log(std::abs(z))));
   }
   return horizon;
+}
+
+static void apply_interpolation_pole_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  double z,
+  size_t horizon)
+{
+  const size_t Bs = static_cast<size_t>(B);
+  for (int b = 0; b < B; ++b) {
+    c[static_cast<size_t>(b)] =
+        initial_causal_colmajor_scalar(c, B, N, b, z, horizon);
+  }
+
+  for (int n = 1; n < N; ++n) {
+    double* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const double* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      cur[static_cast<size_t>(b)] += z * prev[static_cast<size_t>(b)];
+    }
+  }
+
+  double* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+  const double* before_last = c.data() + static_cast<size_t>(N - 2) * Bs;
+  const double denom = z * z - 1.0;
+  for (int b = 0; b < B; ++b) {
+    last[static_cast<size_t>(b)] =
+        (z * before_last[static_cast<size_t>(b)] +
+         last[static_cast<size_t>(b)]) * z / denom;
+  }
+
+  for (int n = N - 2; n >= 0; --n) {
+    double* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const double* next = c.data() + static_cast<size_t>(n + 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      cur[static_cast<size_t>(b)] =
+          z * (next[static_cast<size_t>(b)] - cur[static_cast<size_t>(b)]);
+    }
+  }
 }
 
 static inline int mirror_symmetric_index(int k, int N)
@@ -730,39 +774,9 @@ void get_interpolation_coefficients_colmajor(
     v *= lambda;
   }
 
-  const size_t Bs = static_cast<size_t>(B);
   for (double z : poles) {
-    const size_t horizon = initial_causal_horizon_colmajor(N, z);
-    for (int b = 0; b < B; ++b) {
-      c[static_cast<size_t>(b)] =
-          initial_causal_colmajor(c, B, N, b, z, horizon);
-    }
-
-    for (int n = 1; n < N; ++n) {
-      double* cur = c.data() + static_cast<size_t>(n) * Bs;
-      const double* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
-      for (int b = 0; b < B; ++b) {
-        cur[static_cast<size_t>(b)] += z * prev[static_cast<size_t>(b)];
-      }
-    }
-
-    double* last = c.data() + static_cast<size_t>(N - 1) * Bs;
-    const double* before_last = c.data() + static_cast<size_t>(N - 2) * Bs;
-    const double denom = z * z - 1.0;
-    for (int b = 0; b < B; ++b) {
-      last[static_cast<size_t>(b)] =
-          (z * before_last[static_cast<size_t>(b)] +
-           last[static_cast<size_t>(b)]) * z / denom;
-    }
-
-    for (int n = N - 2; n >= 0; --n) {
-      double* cur = c.data() + static_cast<size_t>(n) * Bs;
-      const double* next = c.data() + static_cast<size_t>(n + 1) * Bs;
-      for (int b = 0; b < B; ++b) {
-        cur[static_cast<size_t>(b)] =
-            z * (next[static_cast<size_t>(b)] - cur[static_cast<size_t>(b)]);
-      }
-    }
+    apply_interpolation_pole_colmajor(
+        c, B, N, z, initial_causal_horizon_colmajor(N, z));
   }
 }
 
@@ -870,7 +884,7 @@ void get_samples_colmajor(
   c.swap(work);
 }
 
-static float initial_causal_colmajor_f32(
+static float initial_causal_colmajor_scalar_f32(
   const std::vector<float>& c,
   int B,
   int N,
@@ -885,21 +899,25 @@ static float initial_causal_colmajor_f32(
   const size_t bi = static_cast<size_t>(b);
 
   if (horizon < static_cast<size_t>(N)) {
-    float sum = c[bi];
+    const float* ptr = c.data() + bi;
+    float sum = *ptr;
     float p = z;
     for (size_t n = 1; n < horizon; ++n) {
-      sum += p * c[n * Bs + bi];
+      ptr += Bs;
+      sum += p * (*ptr);
       p *= z;
     }
     return sum;
   }
 
   const float zn = std::pow(z, static_cast<float>(N - 1));
-  float sum = c[bi] + zn * c[static_cast<size_t>(N - 1) * Bs + bi];
+  const float* ptr = c.data() + bi;
+  float sum = *ptr + zn * (*(ptr + static_cast<size_t>(N - 1) * Bs));
   float p1 = z;
   float p2 = (zn * zn) / z;
   for (int n = 1; n + 1 < N; ++n) {
-    sum += (p1 + p2) * c[static_cast<size_t>(n) * Bs + bi];
+    ptr += Bs;
+    sum += (p1 + p2) * (*ptr);
     p1 *= z;
     p2 /= z;
   }
@@ -919,6 +937,46 @@ static inline size_t initial_causal_horizon_colmajor_f32(
         static_cast<size_t>(2 + std::log(tol) / std::log(std::abs(z))));
   }
   return horizon;
+}
+
+static void apply_interpolation_pole_colmajor_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  float z,
+  size_t horizon)
+{
+  const size_t Bs = static_cast<size_t>(B);
+  for (int b = 0; b < B; ++b) {
+    c[static_cast<size_t>(b)] =
+        initial_causal_colmajor_scalar_f32(c, B, N, b, z, horizon);
+  }
+
+  for (int n = 1; n < N; ++n) {
+    float* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const float* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      cur[static_cast<size_t>(b)] += z * prev[static_cast<size_t>(b)];
+    }
+  }
+
+  float* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+  const float* before_last = c.data() + static_cast<size_t>(N - 2) * Bs;
+  const float denom = z * z - 1.0f;
+  for (int b = 0; b < B; ++b) {
+    last[static_cast<size_t>(b)] =
+        (z * before_last[static_cast<size_t>(b)] +
+         last[static_cast<size_t>(b)]) * z / denom;
+  }
+
+  for (int n = N - 2; n >= 0; --n) {
+    float* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const float* next = c.data() + static_cast<size_t>(n + 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      cur[static_cast<size_t>(b)] =
+          z * (next[static_cast<size_t>(b)] - cur[static_cast<size_t>(b)]);
+    }
+  }
 }
 
 static void average_colmajor_f32(
@@ -1070,40 +1128,10 @@ void get_interpolation_coefficients_colmajor_f32(
     v *= lambda;
   }
 
-  const size_t Bs = static_cast<size_t>(B);
   for (double zd : poles) {
     const float z = static_cast<float>(zd);
-    const size_t horizon = initial_causal_horizon_colmajor_f32(N, z);
-    for (int b = 0; b < B; ++b) {
-      c[static_cast<size_t>(b)] =
-          initial_causal_colmajor_f32(c, B, N, b, z, horizon);
-    }
-
-    for (int n = 1; n < N; ++n) {
-      float* cur = c.data() + static_cast<size_t>(n) * Bs;
-      const float* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
-      for (int b = 0; b < B; ++b) {
-        cur[static_cast<size_t>(b)] += z * prev[static_cast<size_t>(b)];
-      }
-    }
-
-    float* last = c.data() + static_cast<size_t>(N - 1) * Bs;
-    const float* before_last = c.data() + static_cast<size_t>(N - 2) * Bs;
-    const float denom = z * z - 1.0f;
-    for (int b = 0; b < B; ++b) {
-      last[static_cast<size_t>(b)] =
-          (z * before_last[static_cast<size_t>(b)] +
-           last[static_cast<size_t>(b)]) * z / denom;
-    }
-
-    for (int n = N - 2; n >= 0; --n) {
-      float* cur = c.data() + static_cast<size_t>(n) * Bs;
-      const float* next = c.data() + static_cast<size_t>(n + 1) * Bs;
-      for (int b = 0; b < B; ++b) {
-        cur[static_cast<size_t>(b)] =
-            z * (next[static_cast<size_t>(b)] - cur[static_cast<size_t>(b)]);
-      }
-    }
+    apply_interpolation_pole_colmajor_f32(
+        c, B, N, z, initial_causal_horizon_colmajor_f32(N, z));
   }
 }
 

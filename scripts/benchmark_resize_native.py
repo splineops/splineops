@@ -136,6 +136,13 @@ def parse_positive_int_list(value: str) -> list[int]:
     return items
 
 
+def parse_case_filter(value: str | None) -> set[str] | None:
+    if value is None:
+        return None
+    names = {item.strip() for item in value.split(",") if item.strip()}
+    return names or None
+
+
 def set_threads(value: str) -> None:
     if value == "default":
         os.environ.pop("LSRESIZE_NUM_THREADS", None)
@@ -571,6 +578,7 @@ def parse_args() -> argparse.Namespace:
             "When set, this overrides --batch-lines and runs each case for each value."
         ),
     )
+    parser.add_argument("--cases", help="Comma-separated benchmark case names to include.")
     parser.add_argument("--output-json", type=Path, default=None, help="Optional JSON output path.")
     parser.add_argument("--output-csv", type=Path, default=None, help="Optional CSV output path.")
     return parser.parse_args()
@@ -609,6 +617,14 @@ def main() -> int:
     python_batch_line_values: list[int | None] = [None]
 
     cases = cases_for_profile(args.profile)
+    case_filter = parse_case_filter(args.cases)
+    if case_filter is not None:
+        cases = [case for case in cases if case.name in case_filter]
+        missing = sorted(case_filter - {case.name for case in cases})
+        if missing:
+            print(f"unknown case(s): {', '.join(missing)}", file=sys.stderr)
+            return 2
+
     results: list[BenchResult] = []
 
     print("splineops resize benchmark")

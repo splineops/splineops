@@ -1301,3 +1301,62 @@ single small 2-D images.
 The batched native axis kernel and interior/boundary split are now implemented.
 The next highest-upside exact redesign is method-specialized native kernels,
 followed by an opt-in float32 internal mode for image-oriented workloads.
+
+## Handoff: 2026-06-16 Follow-Up
+
+Accepted changes after the latest committed baseline:
+
+- Refactored the col-major recursive interpolation prefilter so the double and
+  float32 paths share one pole-application helper instead of duplicating the
+  causal/anti-causal loops.
+- Tightened the initial-causal scalar helper to walk each line with pointer
+  increments instead of recomputing `n * B + b` indexing in the inner loop.
+- Added `--cases` to `scripts/benchmark_resize_native.py` so targeted native
+  sweeps can use the same case selection style as `benchmark_resize_ab.py`.
+- Added `scripts/summarize_resize_benchmarks.py` for raw CSV artifacts:
+  `native`, `libraries`, `legacy`, and `ab` summaries.
+
+Measured but rejected on this machine:
+
+- Batched initial-causal setup:
+  `/tmp/splineops_ab_batched_initial_causal_20260616.csv`
+  - median `0.987x`, mean `0.979x`, 10 wins and 20 losses across 48 rows
+  - especially weak at 8 threads: median `0.909x`
+- Degree-specific one-pole prefilter setup:
+  `/tmp/splineops_ab_specialized_prefilters_20260616.csv`
+  - median `0.981x`, mean `0.977x`, 11 wins and 21 losses across 48 rows
+- Batch-line retunes:
+  - `64 -> 32`: median `1.024x`, but 13 losses and threaded/default regressions
+  - `64 -> 128`: median `0.946x`, 20 losses
+
+Fresh final artifacts:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_final_20260616.csv`
+  - 43 overlaps, median native/Python speedup `21.52x`, mean `24.12x`
+  - best native thread counts: `1:4`, `8:18`, `default:21`
+- Library full comparison:
+  `/tmp/splineops_libraries_full_default_final_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows are all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `15/18`, but with different coordinate/AA semantics
+  - Torch faster in `8/19`; exact-ish Torch rows are all slower
+
+Validation:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_pure_interpolation \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_antialiasing \
+  tests/test_02_03_resize_cpp.py::test_float32_auto_precision_for_2d_pure_interpolation \
+  tests/test_02_03_resize_cpp.py::test_float32_auto_precision_keeps_projection_default \
+  tests/test_02_03_resize_cpp.py::test_cpp_vs_python_equality \
+  tests/test_02_02_resize.py::test_interpolation_prefilter_preserves_short_constants \
+  tests/test_02_02_resize.py::test_resize_preserves_short_constants
+.venv/bin/python -m py_compile \
+  scripts/benchmark_resize_native.py \
+  scripts/benchmark_resize_libraries.py \
+  scripts/summarize_resize_benchmarks.py \
+  src/splineops/utils/specs.py
+```
