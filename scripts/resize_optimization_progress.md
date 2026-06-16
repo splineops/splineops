@@ -535,3 +535,60 @@ Validation:
   scatter flags.
 - Full suite: `543 passed`.
 - Benchmark script py-compile and `git diff --check`: clean.
+
+## 2026-06-16 Update: Row-Wise Finite Causal Initialization
+
+The next prefilter pass extended `LSRESIZE_ROWWISE_INITIAL_CAUSAL` beyond the
+float32 truncated-horizon case. The default path now uses the same row-wise,
+contiguous accumulation strategy for:
+
+- double-internal truncated-horizon initial-causal setup
+- float32 and double exact finite-length mirror initializers on short axes
+
+This keeps Arrate's least-squares projection and spline recursion unchanged.
+Only the setup of the first causal coefficient is rearranged from many strided
+per-line sums into row-contiguous accumulation. The scalar implementation
+remains available with `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0`.
+
+Accepted A/B:
+
+- Artifact: `/tmp/splineops_ab_rowwise_initial_causal_finite_clean_20260616.csv`
+- Full native profile, `1/8/default` threads:
+  median `1.028x`, mean `1.054x`, 64 wins and 24 losses, no failed checks.
+- By method: cubic median `1.054x`, cubic-antialiasing median `1.016x`,
+  linear-antialiasing median `1.036x`.
+
+Rejected experiments:
+
+- Forcing float32 internals on projection/antialiasing was fast but not default
+  safe: the selected A/B showed about `1.234x` median speedup but output drift
+  up to `1.75e-3` on large cubic-antialiasing rows.
+- Fusing length-2 sampling FIR with output scatter was correctness-clean but
+  slower: median `0.876x`, mean `0.894x`, 1 win and 15 losses. The experiment
+  was removed rather than kept as a default-off knob.
+
+End-to-end artifacts:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_rowwise_finite_20260616.csv`
+  - 43 overlaps, median native/Python speedup `24.86x`, mean `27.42x`
+  - cubic median `25.18x`, antialiasing/projection median `16.22x`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_rowwise_finite_20260616.csv`
+  - SciPy faster in `1/21`, skimage `0/21`, OpenCV `14/18`, Torch `8/19`
+  - exact-ish SciPy rows all slower; exact-ish Torch rows all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_rowwise_finite_20260616.csv`
+  - SciPy faster in `1/21`, skimage `0/21`, OpenCV `16/18`, Torch `12/19`
+  - exact-ish SciPy rows all slower; exact-ish Torch faster in `5/8`
+- Legacy Java 2-D reference:
+  `/tmp/splineops_legacy_java_full_rowwise_finite_20260616.csv`
+  - splineops median speedup `10.82x` over 14 overlapping 2-D cases
+
+Validation:
+
+- Native editable rebuild: clean.
+- Focused parity:
+  `30 passed` for row-wise initial-causal plus adjacent gather/projection flags.
+- Full suite: `543 passed`.
+- Benchmark script py-compile and `git diff --check`: clean.

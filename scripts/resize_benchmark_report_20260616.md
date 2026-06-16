@@ -22,6 +22,8 @@ Host:
   `/tmp/splineops_native_full_both_gather_prefilter_scale_20260616.{json,csv}`
 - Native full after row-wise initial-causal/projection-batch pass:
   `/tmp/splineops_native_full_both_rowwise_projection_batch_20260616.{json,csv}`
+- Native full after row-wise finite-causal initializer pass:
+  `/tmp/splineops_native_full_both_rowwise_finite_20260616.{json,csv}`
 - Cross-library full, splineops default scheduler:
   `/tmp/splineops_libraries_full_default_postcommit_20260616.{json,csv}`
 - Cross-library full after direct-scatter pass, splineops default scheduler:
@@ -32,6 +34,9 @@ Host:
 - Cross-library full after row-wise initial-causal/projection-batch pass,
   splineops default scheduler:
   `/tmp/splineops_libraries_full_default_rowwise_projection_batch_20260616.{json,csv}`
+- Cross-library full after row-wise finite-causal initializer pass, splineops
+  default scheduler:
+  `/tmp/splineops_libraries_full_default_rowwise_finite_20260616.{json,csv}`
 - Cross-library full, splineops forced to 8 threads:
   `/tmp/splineops_libraries_full_threads8_postcommit_20260616.{json,csv}`
 - Cross-library full after direct-scatter pass, splineops forced to 8 threads:
@@ -42,6 +47,9 @@ Host:
 - Cross-library full after row-wise initial-causal/projection-batch pass,
   splineops forced to 8 threads:
   `/tmp/splineops_libraries_full_threads8_rowwise_projection_batch_20260616.{json,csv}`
+- Cross-library full after row-wise finite-causal initializer pass, splineops
+  forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_rowwise_finite_20260616.{json,csv}`
 - Legacy Java 2-D Arrate implementation harness:
   `/tmp/splineops_legacy_java_full_20260616.csv`
 - Legacy Java 2-D Arrate harness after direct-scatter pass:
@@ -51,6 +59,8 @@ Host:
 - Legacy Java 2-D Arrate harness after row-wise initial-causal/projection-batch
   pass:
   `/tmp/splineops_legacy_java_full_rowwise_projection_batch_20260616.csv`
+- Legacy Java 2-D Arrate harness after row-wise finite-causal initializer pass:
+  `/tmp/splineops_legacy_java_full_rowwise_finite_20260616.csv`
 - Temporary legacy harness sources:
   `/tmp/legacy_resize_bench/ImageAccess.java`
   and `/tmp/legacy_resize_bench/LegacyResizeBench.java`
@@ -95,6 +105,17 @@ artifact reported 43 overlaps with median speedup `27.32x` and mean speedup
 `28.39x`. Best native thread counts were `1:8`, `8:22`, and `default:13`; the
 antialiasing median speedup was `20.07x`.
 
+After the strided-offset gather pass, the full native/Python artifact reported
+43 overlaps with median speedup `23.23x` and mean speedup `26.85x`. Best native
+thread counts were `1:12`, `8:18`, and `default:13`; the 3-D median speedup
+was `22.89x`.
+
+After the row-wise finite-causal initializer pass, the full native/Python
+artifact reported 43 overlaps with median speedup `24.86x` and mean speedup
+`27.42x`. Best native thread counts were `1:12`, `8:18`, and `default:13`;
+cubic median speedup was `25.18x` and antialiasing/projection median speedup
+was `16.22x`.
+
 ## Legacy Java Baseline
 
 A temporary standalone shim was used around `legacy_code/resize/Resize.java`.
@@ -131,6 +152,10 @@ showed median speedup `10.15x`, mean `12.44x`, minimum `3.74x`, and maximum
 After the strided-offset gather pass, the legacy harness showed median speedup
 `10.02x`, mean `12.08x`, minimum `3.86x`, and maximum `31.00x` over 14
 overlapping 2-D cases.
+
+After the row-wise finite-causal initializer pass, the legacy harness showed
+median speedup `10.82x`, mean `12.60x`, minimum `5.57x`, and maximum `32.74x`
+over 14 overlapping 2-D cases.
 
 ## Cross-Library Results
 
@@ -234,6 +259,31 @@ After the strided-offset gather pass, splineops forced to
 Exact-ish rows with forced 8 threads: SciPy faster in `0/16`, Torch faster in
 `3/8`.
 
+After the row-wise finite-causal initializer pass, splineops default scheduler:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.15x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.11x` | `2.39e-01` |
+| OpenCV | 18 | 14 | `1.39x` | `2.61e-01` |
+| PyTorch | 19 | 8 | `0.65x` | `1.59e-05` |
+
+Exact-ish rows under the default scheduler still favor splineops: SciPy faster
+in `0/16`, Torch faster in `0/8`.
+
+After the row-wise finite-causal initializer pass, splineops forced to
+`LSRESIZE_NUM_THREADS=8`:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.17x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.15x` | `2.39e-01` |
+| OpenCV | 18 | 16 | `2.04x` | `2.61e-01` |
+| PyTorch | 19 | 12 | `1.19x` | `1.59e-05` |
+
+Exact-ish rows with forced 8 threads: SciPy faster in `0/16`, Torch faster in
+`5/8`.
+
 Important interpretation:
 
 - SciPy is the closest semantic comparison for spline interpolation. In the
@@ -258,6 +308,22 @@ Observed remaining hotspots by timing behavior:
 - projection/antialiasing rows still have substantial memory traffic
 - default scheduling is generally good, but heavy cubic/projection workloads can
   benefit from an explicit physical-core thread count on this host
+
+Controlled A/B for the row-wise finite-causal initializer:
+
+- Artifact:
+  `/tmp/splineops_ab_rowwise_initial_causal_finite_clean_20260616.{json,csv}`
+- Full native profile, `1/8/default` threads: median `1.028x`, mean `1.054x`,
+  64 wins and 24 losses, no failed checks.
+- Cubic rows had median `1.054x`; cubic-antialiasing rows had median `1.016x`.
+
+Rejected experiments in the same pass:
+
+- Automatic float32 projection internals were fast but not default-safe:
+  selected A/B median speedup about `1.234x`, with output drift up to
+  `1.75e-3`.
+- Fusing length-2 sampling FIR into output scatter matched outputs but was
+  slower: median `0.876x`, mean `0.894x`, 1 win and 15 losses.
 
 ## Next Engineering Targets
 

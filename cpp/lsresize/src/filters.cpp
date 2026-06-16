@@ -343,9 +343,44 @@ static void apply_interpolation_pole_colmajor(
   size_t horizon)
 {
   const size_t Bs = static_cast<size_t>(B);
-  for (int b = 0; b < B; ++b) {
-    c[static_cast<size_t>(b)] =
-        initial_causal_colmajor_scalar(c, B, N, b, z, horizon);
+  if (rowwise_initial_causal_enabled()) {
+    double* first = c.data();
+    if (horizon < static_cast<size_t>(N)) {
+      double p = z;
+      for (size_t n = 1; n < horizon; ++n) {
+        const double* row = c.data() + n * Bs;
+        for (int b = 0; b < B; ++b) {
+          first[static_cast<size_t>(b)] += p * row[static_cast<size_t>(b)];
+        }
+        p *= z;
+      }
+    } else {
+      const double zn = std::pow(z, double(N - 1));
+      const double* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+      for (int b = 0; b < B; ++b) {
+        first[static_cast<size_t>(b)] += zn * last[static_cast<size_t>(b)];
+      }
+      double p1 = z;
+      double p2 = (zn * zn) / z;
+      for (int n = 1; n + 1 < N; ++n) {
+        const double* row = c.data() + static_cast<size_t>(n) * Bs;
+        const double w = p1 + p2;
+        for (int b = 0; b < B; ++b) {
+          first[static_cast<size_t>(b)] += w * row[static_cast<size_t>(b)];
+        }
+        p1 *= z;
+        p2 /= z;
+      }
+      const double denom = 1.0 - (zn * zn);
+      for (int b = 0; b < B; ++b) {
+        first[static_cast<size_t>(b)] /= denom;
+      }
+    }
+  } else {
+    for (int b = 0; b < B; ++b) {
+      c[static_cast<size_t>(b)] =
+          initial_causal_colmajor_scalar(c, B, N, b, z, horizon);
+    }
   }
 
   for (int n = 1; n < N; ++n) {
@@ -1003,16 +1038,38 @@ static void apply_interpolation_pole_colmajor_f32(
   size_t horizon)
 {
   const size_t Bs = static_cast<size_t>(B);
-  if (rowwise_initial_causal_enabled() &&
-      horizon < static_cast<size_t>(N)) {
+  if (rowwise_initial_causal_enabled()) {
     float* first = c.data();
-    float p = z;
-    for (size_t n = 1; n < horizon; ++n) {
-      const float* row = c.data() + n * Bs;
-      for (int b = 0; b < B; ++b) {
-        first[static_cast<size_t>(b)] += p * row[static_cast<size_t>(b)];
+    if (horizon < static_cast<size_t>(N)) {
+      float p = z;
+      for (size_t n = 1; n < horizon; ++n) {
+        const float* row = c.data() + n * Bs;
+        for (int b = 0; b < B; ++b) {
+          first[static_cast<size_t>(b)] += p * row[static_cast<size_t>(b)];
+        }
+        p *= z;
       }
-      p *= z;
+    } else {
+      const float zn = std::pow(z, static_cast<float>(N - 1));
+      const float* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+      for (int b = 0; b < B; ++b) {
+        first[static_cast<size_t>(b)] += zn * last[static_cast<size_t>(b)];
+      }
+      float p1 = z;
+      float p2 = (zn * zn) / z;
+      for (int n = 1; n + 1 < N; ++n) {
+        const float* row = c.data() + static_cast<size_t>(n) * Bs;
+        const float w = p1 + p2;
+        for (int b = 0; b < B; ++b) {
+          first[static_cast<size_t>(b)] += w * row[static_cast<size_t>(b)];
+        }
+        p1 *= z;
+        p2 /= z;
+      }
+      const float denom = 1.0f - (zn * zn);
+      for (int b = 0; b < B; ++b) {
+        first[static_cast<size_t>(b)] /= denom;
+      }
     }
   } else {
     for (int b = 0; b < B; ++b) {

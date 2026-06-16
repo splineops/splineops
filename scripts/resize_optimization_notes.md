@@ -1634,3 +1634,81 @@ git diff --check
 
 Latest validation result: focused parity `34 passed`, full suite
 `543 passed`; script py-compile and `git diff --check` clean.
+
+## Handoff: 2026-06-16 Row-Wise Finite Causal Initializer
+
+Accepted changes after the strided-offset gather pass:
+
+- Extended `LSRESIZE_ROWWISE_INITIAL_CAUSAL` to double-internal col-major
+  interpolation prefilters.
+- Extended the same row-wise setup to the exact finite-length mirror
+  initializer used when the causal horizon reaches the whole axis. This covers
+  short axes for both float32 and double internal paths.
+- Preserved the scalar reference path with `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0`.
+  The optimized path changes memory traversal, not the least-squares projection
+  math or spline pole recursion.
+
+Rejected experiments in this pass:
+
+- `LSRESIZE_PRECISION=float32`-style projection internals as an automatic
+  default. The selected projection-heavy A/B was fast, with about `1.234x`
+  median speedup, but failed output checks on 9 rows and reached max drift
+  around `1.75e-3` on large cubic-antialiasing output.
+- Fusing the length-2 sampling FIR directly into output scatter. The temporary
+  implementation matched the separate sampling path but was slower:
+  median `0.876x`, mean `0.894x`, with 1 win and 15 losses. It was removed
+  before finalizing this patch.
+
+New A/B artifact:
+
+- Row-wise truncated plus finite causal setup:
+  `/tmp/splineops_ab_rowwise_initial_causal_finite_clean_20260616.csv`
+  - median `1.028x`, mean `1.054x`, 64 wins and 24 losses across the full
+    native profile, no failed checks
+  - thread breakdown: `1` median `1.020x`, `8` median `1.050x`, default
+    median `1.025x`
+  - method breakdown: cubic median `1.054x`, cubic-antialiasing median
+    `1.016x`, linear-antialiasing median `1.036x`
+
+Fresh final artifacts after this pass:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_rowwise_finite_20260616.csv`
+  - 43 overlaps, median native/Python speedup `24.86x`, mean `27.42x`
+  - best native thread counts: `1:12`, `8:18`, `default:13`
+  - cubic median speedup `25.18x`, antialiasing median `16.22x`, 3-D median
+    `24.86x`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_rowwise_finite_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `14/18`, with different coordinate/AA semantics
+  - Torch faster in `8/19`; exact-ish Torch rows all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_rowwise_finite_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `16/18`, with different coordinate/AA semantics
+  - Torch faster in `12/19`; exact-ish Torch faster in `5/8`
+- Legacy Java 2-D reference:
+  `/tmp/splineops_legacy_java_full_rowwise_finite_20260616.csv`
+  - 14 overlaps against current splineops default library artifact, median
+    speedup `10.82x`, mean `12.60x`
+
+Validation so far:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py -k 'rowwise_initial_causal or projection_batch_tune or gather_prefilter_scale or row_gather or strided_offset_gather'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m py_compile \
+  scripts/benchmark_resize_native.py \
+  scripts/benchmark_resize_libraries.py \
+  scripts/benchmark_resize_ab.py \
+  scripts/summarize_resize_benchmarks.py
+git diff --check
+```
+
+Latest validation result: focused parity `30 passed`, full suite `543 passed`;
+editable rebuild, script py-compile, and `git diff --check` clean.
