@@ -592,3 +592,65 @@ Validation:
   `30 passed` for row-wise initial-causal plus adjacent gather/projection flags.
 - Full suite: `543 passed`.
 - Benchmark script py-compile and `git diff --check`: clean.
+
+## 2026-06-16 Update: Double-Internal Strided Gather Scope
+
+The next gather pass reused the existing `LSRESIZE_STRIDED_OFFSET_GATHER`
+machinery for double-internal pure interpolation. This preserves Arrate's
+least-squares projection and spline recursion exactly; it only changes how the
+input axis block is gathered before prefiltering.
+
+Accepted change:
+
+- Double-internal pure interpolation now uses the strided-offset gather when
+  batch line offsets form an arithmetic run, the axis is not an upsampling
+  axis, and the input is large enough for the cheaper address arithmetic to
+  pay off. The default 2-D gate is `max(input_shape) >= 1024`; non-2-D double
+  paths use the existing large-axis gate.
+- Projection/antialiasing paths remain on the prior offset-array gather.
+
+Rejected experiment:
+
+- A compact fixed-support row map precomputed signed source/weight tuples for
+  all rows with support <= 7. It was correctness-clean but not a stable win:
+  the first layout had median `0.998x`, mean `1.007x`, 39 wins and 38 losses;
+  the interleaved layout had median `1.000x`, mean `1.007x`, 39 wins and 51
+  losses, with explicit 8-thread median `0.943x`. The experiment was removed
+  instead of kept as another default-off knob.
+
+Focused A/B:
+
+- Active large float64 2-D cubic rows:
+  `/tmp/splineops_ab_strided_offset_gather_double_active_large2d_20260616.csv`
+  - median `1.066x`, mean `1.061x`, 6 wins and 2 losses, no failed checks
+  - default scheduler: median `1.088x`, 3 wins and 0 losses
+- Isolated 2048 float64 cubic repeat:
+  `/tmp/splineops_ab_strided_offset_gather_double_2048_repeat_20260616.csv`
+  - median `1.083x`, mean `1.088x`, 3 wins and 0 losses
+
+End-to-end artifacts:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_double_strided_gather_20260616.csv`
+  - 43 overlaps, median native/Python speedup `22.25x`, mean `27.34x`
+  - cubic median `23.88x`, antialiasing median `16.20x`, 3-D median `21.30x`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_double_strided_gather_20260616.csv`
+  - SciPy faster in `1/21`, skimage `0/21`, OpenCV `14/18`, Torch `8/19`
+  - exact-ish SciPy rows all slower; exact-ish Torch rows all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_double_strided_gather_20260616.csv`
+  - SciPy faster in `1/21`, skimage `0/21`, OpenCV `17/18`, Torch `12/19`
+  - exact-ish SciPy rows all slower; exact-ish Torch faster in `4/8`
+- Legacy Java 2-D reference:
+  `/tmp/splineops_legacy_java_full_double_strided_gather_20260616.csv`
+  - splineops median speedup `10.66x` over 14 overlapping 2-D cases
+
+Validation:
+
+- Native editable rebuild: clean.
+- Focused parity:
+  `34 passed` for strided-offset gather plus adjacent gather/prefilter/direct
+  scatter flags.
+- Full suite: `543 passed`.
+- Benchmark script py-compile and `git diff --check`: clean.

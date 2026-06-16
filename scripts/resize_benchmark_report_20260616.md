@@ -325,6 +325,69 @@ Rejected experiments in the same pass:
 - Fusing length-2 sampling FIR into output scatter matched outputs but was
   slower: median `0.876x`, mean `0.894x`, 1 win and 15 losses.
 
+## Double-Internal Strided Gather
+
+The latest pass extends the existing strided-offset gather to large
+double-internal pure interpolation axes. It is gated to non-upsampling axes and
+large inputs so small-image and projection/antialiasing rows stay on the prior
+offset-array gather.
+
+Focused A/B:
+
+- Active large float64 2-D cubic rows:
+  `/tmp/splineops_ab_strided_offset_gather_double_active_large2d_20260616.csv`
+  - median `1.066x`, mean `1.061x`, 6 wins and 2 losses, no failed checks
+  - default scheduler median `1.088x`, 3 wins and 0 losses
+- Isolated 2048 float64 cubic repeat:
+  `/tmp/splineops_ab_strided_offset_gather_double_2048_repeat_20260616.csv`
+  - median `1.083x`, mean `1.088x`, 3 wins and 0 losses
+
+Current full native/Python sweep:
+
+- Artifact:
+  `/tmp/splineops_native_full_both_double_strided_gather_20260616.csv`
+- 43 overlaps, median native/Python speedup `22.25x`, mean `27.34x`
+- By method: linear `24.67x`, cubic `23.88x`, antialiasing `16.20x`
+- 3-D median native/Python speedup: `21.30x`
+
+Current library comparison, splineops default scheduler:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.15x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.11x` | `2.39e-01` |
+| OpenCV | 18 | 14 | `1.61x` | `2.61e-01` |
+| PyTorch | 19 | 8 | `0.70x` | `1.59e-05` |
+
+Exact-ish rows under the default scheduler: SciPy faster in `0/16`, Torch
+faster in `0/8`.
+
+Current library comparison, splineops forced to `LSRESIZE_NUM_THREADS=8`:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.18x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.17x` | `2.39e-01` |
+| OpenCV | 18 | 17 | `2.08x` | `2.61e-01` |
+| PyTorch | 19 | 12 | `1.29x` | `1.59e-05` |
+
+Exact-ish rows with forced 8 threads: SciPy faster in `0/16`, Torch faster in
+`4/8`.
+
+Legacy Java 2-D reference:
+
+- Artifact:
+  `/tmp/splineops_legacy_java_full_double_strided_gather_20260616.csv`
+- 14 overlaps against the current default-scheduler splineops artifact, median
+  speedup `10.66x`, mean `13.73x`.
+
+Rejected in this pass:
+
+- Compact fixed-support row maps for support <= 7 were correctness-clean but
+  flat to negative: first layout median `0.998x`, interleaved layout median
+  `1.000x`, and interleaved explicit 8-thread median `0.943x`. The experiment
+  was removed.
+
 ## Next Engineering Targets
 
 1. Add deeper exact cubic specialization for 2-D pure interpolation and common

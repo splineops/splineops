@@ -2472,6 +2472,14 @@ static void resize_along_axis_batched_interp_t(
   const double gather_scale = scaled_gather_prefilter
                             ? interpolation_prefilter_lambda(p.interp_degree)
                             : 1.0;
+  const int64_t max_input_dim =
+      *std::max_element(in_shape.begin(), in_shape.end());
+  const bool strided_offset_gather_candidate =
+      p.zoom <= 1.0 &&
+      (in_shape.size() == 2 ? max_input_dim >= 1024
+                            : max_input_dim >= 192);
+  const bool strided_offset_gather =
+      strided_offset_gather_candidate && strided_offset_gather_enabled();
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -2517,7 +2525,7 @@ static void resize_along_axis_batched_interp_t(
               in_offsets.data(),
               axis_stride_in,
               row_major_gather,
-              false,
+              strided_offset_gather,
               gather_scale);
         } else {
           gather_axis_block(
@@ -2529,7 +2537,7 @@ static void resize_along_axis_batched_interp_t(
               in_offsets.data(),
               axis_stride_in,
               row_major_gather,
-              false);
+              strided_offset_gather);
         }
       }
 
