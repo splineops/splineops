@@ -128,6 +128,10 @@ After the row-wise initial-causal/projection-batch pass, the legacy harness
 showed median speedup `10.15x`, mean `12.44x`, minimum `3.74x`, and maximum
 `35.44x` over 14 overlapping 2-D cases.
 
+After the strided-offset gather pass, the legacy harness showed median speedup
+`10.02x`, mean `12.08x`, minimum `3.86x`, and maximum `31.00x` over 14
+overlapping 2-D cases.
+
 ## Cross-Library Results
 
 Full profile, splineops default scheduler:
@@ -205,10 +209,36 @@ After the row-wise initial-causal/projection-batch pass, splineops forced to
 | OpenCV | 18 | 16 | `1.96x` | `2.61e-01` |
 | PyTorch | 19 | 11 | `1.29x` | `1.59e-05` |
 
+After the strided-offset gather pass, splineops default scheduler:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.15x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.11x` | `2.39e-01` |
+| OpenCV | 18 | 14 | `1.33x` | `2.61e-01` |
+| PyTorch | 19 | 7 | `0.68x` | `1.59e-05` |
+
+Exact-ish rows under the default scheduler still favor splineops: SciPy faster
+in `0/16`, Torch faster in `0/8`.
+
+After the strided-offset gather pass, splineops forced to
+`LSRESIZE_NUM_THREADS=8`:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.17x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.15x` | `2.39e-01` |
+| OpenCV | 18 | 16 | `1.85x` | `2.61e-01` |
+| PyTorch | 19 | 10 | `1.17x` | `1.59e-05` |
+
+Exact-ish rows with forced 8 threads: SciPy faster in `0/16`, Torch faster in
+`3/8`.
+
 Important interpretation:
 
-- SciPy is the closest semantic comparison for spline interpolation. Splineops
-  is faster on `20/21` full-profile SciPy rows with default scheduling.
+- SciPy is the closest semantic comparison for spline interpolation. In the
+  latest full-profile default run, splineops is faster on `20/21` SciPy rows
+  and on all exact-ish SciPy rows.
 - OpenCV is faster on most 2-D rows, but its median rel-L2 delta is large
   because it implements different coordinate, boundary, cubic, and antialiasing
   semantics.
@@ -235,7 +265,7 @@ Observed remaining hotspots by timing behavior:
    contiguous-axis passes.
 2. Investigate projection/antialiasing temp-buffer traffic with a strategy that
    helps threaded/default paths, not only explicit single-thread mode.
-3. Add a first-class benchmark report generator so these summaries can be
-   reproduced from CSV artifacts without ad hoc parsing.
+3. Extend the CSV artifact comparison tooling into a first-class benchmark
+   report generator.
 4. If a library PR becomes the target, package SciPy-like exact-semantics
    comparisons separately from OpenCV/PyTorch image-resize comparisons.

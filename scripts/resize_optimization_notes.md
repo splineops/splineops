@@ -56,6 +56,7 @@ Current default knobs:
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
 | Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
+| Native float32 strided-offset gather | enabled for routed pure interpolation | `LSRESIZE_STRIDED_OFFSET_GATHER=0` |
 | Native gather-prefilter scaling | enabled | `LSRESIZE_GATHER_PREFILTER_SCALE=0` |
 | Native 2-D projection batch tuning | enabled | `LSRESIZE_2D_PROJECTION_BATCH_TUNE=0` |
 | Native float32 row-wise initial causal setup | enabled | `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0` |
@@ -1554,3 +1555,82 @@ git diff --check
 
 Latest validation result: focused parity `28 passed`, full suite
 `537 passed`; script py-compile and `git diff --check` clean.
+
+## Handoff: 2026-06-16 Strided-Offset Gather
+
+Accepted changes after the row-wise initial-causal/projection-batch pass:
+
+- Added `LSRESIZE_STRIDED_OFFSET_GATHER`, default-on, scoped to batched
+  float32 pure interpolation gathers where batch line offsets form a constant
+  stride. It keeps Arrate's least-squares/spline math unchanged; only the input
+  coefficient block gather is specialized.
+- The first global version was A/B tested and rejected for projection/double
+  paths because antialiasing rows regressed. The committed route therefore
+  leaves projection/antialiasing and double-internal gather on the previous
+  offset-array code path.
+- Added `scripts/summarize_resize_benchmarks.py compare` for artifact-to-
+  artifact CSV comparisons. It compares rows by inferred or explicit keys,
+  reports aggregate baseline/current speedups, and lists largest wins/losses.
+
+Fresh profiles before this pass:
+
+- `/tmp/splineops_profile_2d_cubic_down_2048_f32_thr1_20260616.csv`
+  - profile summary: gather `39.14%`, prefilter `27.35%`
+- `/tmp/splineops_profile_2d_cubic_aa_down_2048_f32_thr1_20260616.csv`
+  - profile summary: gather `28.90%`, integrate `17.64%`, prefilter `12.69%`
+- `/tmp/splineops_profile_3d_cubic_down_large_f32_thr1_20260616.csv`
+  - profile summary: gather `49.89%`, prefilter `24.15%`
+- `/tmp/splineops_profile_3d_cubic_aniso_large_f32_thr1_20260616.csv`
+  - profile summary: gather `37.62%`, accumulate-scatter `37.96%`
+
+New A/B artifact:
+
+- Strided-offset gather:
+  `/tmp/splineops_ab_strided_offset_gather_routed_20260616.csv`
+  - median `1.021x`, mean `1.052x`, 61 wins and 33 losses across the full
+    native profile, no failed checks
+  - key intended wins:
+    `3d_cubic_down_large_f32` up to `1.29x`,
+    `3d_cubic_aniso_large_f32` up to `1.37x`, and
+    `2d_cubic_down_2048_float32` up to `1.19x`
+
+Fresh final artifacts after this pass:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_strided_offset_gather_20260616.csv`
+  - 43 overlaps, median native/Python speedup `23.23x`, mean `26.85x`
+  - 3-D median native/Python speedup `22.89x`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_strided_offset_gather_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `14/18`, with different coordinate/AA semantics
+  - Torch faster in `7/19`; exact-ish Torch rows all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_strided_offset_gather_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `16/18`, with different coordinate/AA semantics
+  - Torch faster in `10/19`; exact-ish Torch rows faster in `3/8`
+- Legacy Java 2-D reference:
+  `/tmp/splineops_legacy_java_full_strided_offset_gather_20260616.csv`
+  - 14 overlaps against current splineops default library artifact, median
+    speedup `10.02x`, mean `12.08x`
+
+Validation:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py -k 'strided_offset_gather or row_gather or gather_prefilter_scale or rowwise_initial_causal or projection_batch_tune or direct_scatter'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m py_compile \
+  scripts/benchmark_resize_native.py \
+  scripts/benchmark_resize_libraries.py \
+  scripts/benchmark_resize_ab.py \
+  scripts/summarize_resize_benchmarks.py
+git diff --check
+```
+
+Latest validation result: focused parity `34 passed`, full suite
+`543 passed`; script py-compile and `git diff --check` clean.

@@ -265,6 +265,182 @@ def summarize_ab(path: Path) -> None:
         )
 
 
+def _parse_key_fields(value: str | None, rows: list[dict[str, str]]) -> list[str]:
+    if value:
+        return [part.strip() for part in value.split(",") if part.strip()]
+
+    fieldnames = set(rows[0].keys()) if rows else set()
+    if {"backend", "case", "dtype", "threads"}.issubset(fieldnames):
+        return ["backend", "case", "dtype", "threads"]
+    if {"backend", "case"}.issubset(fieldnames):
+        return ["backend", "case"]
+    if "case" in fieldnames:
+        return ["case"]
+    raise ValueError("could not infer comparison key; pass --key")
+
+
+def _filtered_rows(
+    rows: list[dict[str, str]],
+    *,
+    metric: str,
+    backends: set[str],
+    include_failed: bool,
+) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    for row in rows:
+        if backends and row.get("backend") not in backends:
+            continue
+        if not include_failed and row.get("status", "ok") != "ok":
+            continue
+        value = _float(row, metric)
+        if value is None or value <= 0.0:
+            continue
+        out.append(row)
+    return out
+
+
+def _row_key(row: dict[str, str], key_fields: list[str]) -> tuple[str, ...]:
+    return tuple(row.get(field, "") for field in key_fields)
+
+
+def _best_rows_by_key(
+    rows: list[dict[str, str]],
+    *,
+    key_fields: list[str],
+    metric: str,
+) -> tuple[dict[tuple[str, ...], dict[str, str]], int]:
+    best: dict[tuple[str, ...], dict[str, str]] = {}
+    duplicates = 0
+    for row in rows:
+        key = _row_key(row, key_fields)
+        if key in best:
+            duplicates += 1
+            current = _float(row, metric) or float("inf")
+            previous = _float(best[key], metric) or float("inf")
+            if current >= previous:
+                continue
+        best[key] = row
+    return best, duplicates
+
+
+def _format_key(key_fields: list[str], key: tuple[str, ...]) -> str:
+    return " ".join(
+        f"{field}={value}" for field, value in zip(key_fields, key)
+    )
+
+
+def compare_artifacts(
+    baseline: Path,
+    current: Path,
+    *,
+    metric: str,
+    key: str | None,
+    backend: list[str],
+    include_failed: bool,
+    win_threshold: float,
+    loss_threshold: float,
+    top: int,
+) -> None:
+    base_rows_raw = _rows(baseline)
+    cur_rows_raw = _rows(current)
+    key_fields = _parse_key_fields(key, base_rows_raw or cur_rows_raw)
+    backends = set(backend)
+
+    base_rows = _filtered_rows(
+        base_rows_raw,
+        metric=metric,
+        backends=backends,
+        include_failed=include_failed,
+    )
+    cur_rows = _filtered_rows(
+        cur_rows_raw,
+        metric=metric,
+        backends=backends,
+        include_failed=include_failed,
+    )
+    base_by_key, base_duplicates = _best_rows_by_key(
+        base_rows,
+        key_fields=key_fields,
+        metric=metric,
+    )
+    cur_by_key, cur_duplicates = _best_rows_by_key(
+        cur_rows,
+        key_fields=key_fields,
+        metric=metric,
+    )
+
+    entries: list[tuple[float, tuple[str, ...], float, float]] = []
+    for key_tuple, cur_row in cur_by_key.items():
+        base_row = base_by_key.get(key_tuple)
+        if base_row is None:
+            continue
+        base_value = _float(base_row, metric)
+        cur_value = _float(cur_row, metric)
+        if base_value is None or cur_value is None or cur_value <= 0.0:
+            continue
+        entries.append((base_value / cur_value, key_tuple, base_value, cur_value))
+
+    missing_current = len(set(base_by_key) - set(cur_by_key))
+    missing_baseline = len(set(cur_by_key) - set(base_by_key))
+    speedups = [entry[0] for entry in entries]
+
+    print(f"baseline artifact: {baseline}")
+    print(f"current artifact:  {current}")
+    print(f"metric={metric} key={','.join(key_fields)}")
+    if backends:
+        print(f"backend filter: {','.join(sorted(backends))}")
+    print(
+        f"overlaps={len(entries)} "
+        f"baseline_only={missing_current} "
+        f"current_only={missing_baseline} "
+        f"duplicate_rows={base_duplicates + cur_duplicates}"
+    )
+    if not entries:
+        return
+
+    print(
+        "baseline/current speedup: "
+        f"median={_median(speedups):.3f}x "
+        f"mean={_mean(speedups):.3f}x "
+        f"min={min(speedups):.3f}x "
+        f"max={max(speedups):.3f}x "
+        f"wins={sum(v > win_threshold for v in speedups)} "
+        f"losses={sum(v < loss_threshold for v in speedups)}"
+    )
+
+    if "backend" in key_fields:
+        backend_index = key_fields.index("backend")
+        for backend_name in sorted({key_tuple[backend_index] for _, key_tuple, _, _ in entries}):
+            group = [
+                speedup for speedup, key_tuple, _, _ in entries
+                if key_tuple[backend_index] == backend_name
+            ]
+            print(
+                f"backend={backend_name:9s} "
+                f"rows={len(group):2d} "
+                f"median={_median(group):.3f}x "
+                f"mean={_mean(group):.3f}x "
+                f"wins={sum(v > win_threshold for v in group)} "
+                f"losses={sum(v < loss_threshold for v in group)}"
+            )
+
+    ranked = sorted(entries, key=lambda entry: entry[0])
+    print("largest regressions:")
+    for speedup, key_tuple, base_value, cur_value in ranked[:top]:
+        print(
+            f"  {_format_key(key_fields, key_tuple)} "
+            f"{base_value:.3f}->{cur_value:.3f} ms "
+            f"speedup={speedup:.3f}x"
+        )
+    print("largest wins:")
+    for speedup, key_tuple, base_value, cur_value in reversed(ranked[-top:]):
+        print(
+            f"  {_format_key(key_fields, key_tuple)} "
+            f"{base_value:.3f}->{cur_value:.3f} ms "
+            f"speedup={speedup:.3f}x"
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="kind", required=True)
@@ -286,6 +462,29 @@ def main() -> int:
     ab = sub.add_parser("ab", help="Summarize benchmark_resize_ab.py CSV output.")
     ab.add_argument("csv", type=Path)
 
+    compare = sub.add_parser("compare", help="Compare two benchmark CSV artifacts.")
+    compare.add_argument("baseline", type=Path)
+    compare.add_argument("current", type=Path)
+    compare.add_argument("--metric", default="median_ms")
+    compare.add_argument(
+        "--key",
+        help="Comma-separated key fields. Defaults to backend,case,dtype,threads; backend,case; or case.",
+    )
+    compare.add_argument(
+        "--backend",
+        action="append",
+        default=[],
+        help="Restrict comparison to a backend. May be passed more than once.",
+    )
+    compare.add_argument(
+        "--include-failed",
+        action="store_true",
+        help="Include rows whose status column is not ok.",
+    )
+    compare.add_argument("--win-threshold", type=float, default=1.03)
+    compare.add_argument("--loss-threshold", type=float, default=0.97)
+    compare.add_argument("--top", type=int, default=5)
+
     args = parser.parse_args()
     if args.kind == "native":
         summarize_native(args.csv)
@@ -295,6 +494,18 @@ def main() -> int:
         summarize_legacy(args.csv, args.reference)
     elif args.kind == "ab":
         summarize_ab(args.csv)
+    elif args.kind == "compare":
+        compare_artifacts(
+            args.baseline,
+            args.current,
+            metric=args.metric,
+            key=args.key,
+            backend=args.backend,
+            include_failed=args.include_failed,
+            win_threshold=args.win_threshold,
+            loss_threshold=args.loss_threshold,
+            top=args.top,
+        )
     return 0
 
 

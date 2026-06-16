@@ -316,6 +316,42 @@ def test_batched_row_gather_matches_line_gather(monkeypatch, dtype, method, shap
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping strided-offset gather compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "method,shape,zoom",
+    [
+        ("cubic", (96, 80), (0.61, 1.33)),
+        ("cubic-antialiasing", (80, 72), (0.57, 1.21)),
+        ("cubic", (24, 20, 16), (0.75, 1.25, 0.5)),
+    ],
+)
+def test_strided_offset_gather_matches_offset_array_gather(
+    monkeypatch, dtype, method, shape, zoom
+):
+    rng = np.random.default_rng(139)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_STRIDED_OFFSET_GATHER", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.delenv("LSRESIZE_STRIDED_OFFSET_GATHER", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    atol = 3e-5 if method.endswith("-antialiasing") and dtype == np.float32 else 5e-6
+    if dtype == np.float64:
+        atol = 2e-9 if method.endswith("-antialiasing") else 5e-11
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping fused gather scale compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])

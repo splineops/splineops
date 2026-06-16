@@ -241,6 +241,7 @@ Representative measurement:
 | Native batched axis | `auto` when unset | `LSRESIZE_BATCHED_AXIS=off/1/auto` |
 | Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
+| Native float32 strided-offset gather | enabled for routed pure interpolation | `LSRESIZE_STRIDED_OFFSET_GATHER=0` |
 | Native gather-prefilter scaling | enabled | `LSRESIZE_GATHER_PREFILTER_SCALE=0` |
 | Native 2-D projection batch tuning | enabled | `LSRESIZE_2D_PROJECTION_BATCH_TUNE=0` |
 | Native float32 row-wise initial causal setup | enabled | `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0` |
@@ -469,4 +470,68 @@ Validation:
 - Native editable rebuild: clean.
 - Focused parity: `28 passed`.
 - Full suite: `537 passed`.
+- Benchmark script py-compile and `git diff --check`: clean.
+
+## 2026-06-16 Update: Strided-Offset Gather And Benchmark Compare
+
+The next profile pass showed the remaining large float32 pure-cubic time was
+gather-heavy:
+
+- `2d_cubic_down_2048_float32`, single-thread profile:
+  gather `39.14%`, prefilter `27.35%`, accumulation/scatter the rest.
+- `3d_cubic_down_large_f32`, single-thread profile:
+  gather `49.89%`, prefilter `24.15%`, accumulate-scatter `21.51%`.
+- `3d_cubic_aniso_large_f32`, single-thread profile:
+  gather `37.62%`, accumulate-scatter `37.96%`, prefilter `23.69%`.
+
+Accepted changes:
+
+- Added `LSRESIZE_STRIDED_OFFSET_GATHER`, default-on, for batched float32 pure
+  interpolation gathers when batch line offsets form an arithmetic run.
+  The path avoids loading the per-line offset array inside every coefficient
+  row and uses contiguous copies for unit-stride float32 runs.
+- Kept projection/antialiasing and double-internal gather paths on the prior
+  offset-array gather after full A/B showed projection regressions when the
+  new path was applied globally.
+- Added `summarize_resize_benchmarks.py compare` to compare saved CSV artifacts
+  by stable row keys and report wins/losses plus largest regressions/wins.
+
+Focused A/B:
+
+- Strided-offset gather:
+  `/tmp/splineops_ab_strided_offset_gather_routed_20260616.csv`
+  - median `1.021x`, mean `1.052x`, 61 wins and 33 losses across the full
+    native profile, no failed checks
+  - large float32 cubic rows were the intended wins:
+    `3d_cubic_down_large_f32` `1.29x/1.11x/1.14x` for
+    `1/8/default` threads, `3d_cubic_aniso_large_f32`
+    `1.37x/1.25x/1.30x`, and `2d_cubic_down_2048_float32`
+    `1.07x/1.07x/1.19x`
+
+End-to-end artifacts:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_strided_offset_gather_20260616.csv`
+  - 43 overlaps, median native/Python speedup `23.23x`, mean `26.85x`
+  - 3-D median native/Python speedup `22.89x`
+  - best native thread counts: `1:12`, `8:18`, `default:13`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_strided_offset_gather_20260616.csv`
+  - SciPy faster in `1/21`, skimage `0/21`, OpenCV `14/18`, Torch `7/19`
+  - exact-ish SciPy rows all slower; exact-ish Torch rows all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_strided_offset_gather_20260616.csv`
+  - SciPy faster in `1/21`, skimage `0/21`, OpenCV `16/18`, Torch `10/19`
+  - exact-ish SciPy rows all slower; exact-ish Torch faster in `3/8`
+- Legacy Java 2-D reference:
+  `/tmp/splineops_legacy_java_full_strided_offset_gather_20260616.csv`
+  - splineops median speedup `10.02x` over 14 overlapping 2-D cases
+
+Validation:
+
+- Native editable rebuild: clean.
+- Focused parity:
+  `34 passed` for strided-offset gather plus adjacent gather/prefilter/direct
+  scatter flags.
+- Full suite: `543 passed`.
 - Benchmark script py-compile and `git diff --check`: clean.
