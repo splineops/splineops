@@ -180,9 +180,21 @@ def native_knobs() -> dict[str, str]:
             "LSRESIZE_FUSED_3D_LINEAR",
             "<default:on>",
         ),
+        "LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR": os.environ.get(
+            "LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR",
+            "<default:on>",
+        ),
+        "LSRESIZE_FUSED_PROJECTION_AVG_RESTORE": os.environ.get(
+            "LSRESIZE_FUSED_PROJECTION_AVG_RESTORE",
+            "<default:single-thread-auto>",
+        ),
         "LSRESIZE_AVX2_LINEAR": os.environ.get(
             "LSRESIZE_AVX2_LINEAR",
             "<default:on-if-supported>",
+        ),
+        "LSRESIZE_LAST_AXIS_LINEAR_DIRECT": os.environ.get(
+            "LSRESIZE_LAST_AXIS_LINEAR_DIRECT",
+            "<default:on>",
         ),
         "LSRESIZE_2D_LINEAR_INTERP": os.environ.get(
             "LSRESIZE_2D_LINEAR_INTERP",

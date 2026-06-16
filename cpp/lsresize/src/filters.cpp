@@ -415,6 +415,173 @@ static void diff_sa_as_colmajor_pair(
   }
 }
 
+template <typename Scalar>
+static void add_average_colmajor(
+  std::vector<Scalar>& c,
+  int B,
+  int N,
+  const std::vector<Scalar>& average)
+{
+  if (B <= 0 || N <= 0) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  for (int n = 0; n < N; ++n) {
+    Scalar* row = c.data() + static_cast<size_t>(n) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      row[bi] += average[bi];
+    }
+  }
+}
+
+template <typename Scalar>
+static void diff_as_colmajor_plain(
+  std::vector<Scalar>& c,
+  int B,
+  int N)
+{
+  if (B <= 0 || N <= 0) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  if (N == 1) {
+    Scalar* first = c.data();
+    for (int b = 0; b < B; ++b) {
+      first[static_cast<size_t>(b)] *= static_cast<Scalar>(2);
+    }
+    return;
+  }
+
+  for (int n = N - 1; n > 0; --n) {
+    Scalar* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const Scalar* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      cur[static_cast<size_t>(b)] -= prev[static_cast<size_t>(b)];
+    }
+  }
+
+  Scalar* first = c.data();
+  for (int b = 0; b < B; ++b) {
+    first[static_cast<size_t>(b)] *= static_cast<Scalar>(2);
+  }
+}
+
+template <typename Scalar>
+static void diff_as_colmajor_add_average(
+  std::vector<Scalar>& c,
+  int B,
+  int N,
+  const std::vector<Scalar>& average)
+{
+  if (B <= 0 || N <= 0) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  if (N == 1) {
+    Scalar* first = c.data();
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      first[bi] = first[bi] * static_cast<Scalar>(2) + average[bi];
+    }
+    return;
+  }
+
+  for (int n = N - 1; n > 0; --n) {
+    Scalar* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const Scalar* prev = c.data() + static_cast<size_t>(n - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      cur[bi] = cur[bi] - prev[bi] + average[bi];
+    }
+  }
+
+  Scalar* first = c.data();
+  for (int b = 0; b < B; ++b) {
+    const size_t bi = static_cast<size_t>(b);
+    first[bi] = first[bi] * static_cast<Scalar>(2) + average[bi];
+  }
+}
+
+template <typename Scalar>
+static void diff_sa_as_colmajor_pair_add_average(
+  std::vector<Scalar>& c,
+  int B,
+  int N,
+  const std::vector<Scalar>& average,
+  std::vector<Scalar>& work)
+{
+  if (B <= 0 || N <= 0) return;
+
+  const size_t Bs = static_cast<size_t>(B);
+  if (N == 1) {
+    Scalar* first = c.data();
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      first[bi] = first[bi] * static_cast<Scalar>(2) + average[bi];
+    }
+    return;
+  }
+
+  work.resize(Bs);
+  const Scalar* first = c.data();
+  for (int b = 0; b < B; ++b) {
+    work[static_cast<size_t>(b)] = first[static_cast<size_t>(b)];
+  }
+
+  {
+    Scalar* row0 = c.data();
+    const Scalar* row1 = c.data() + Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      const Scalar d0 = work[bi] - row1[bi];
+      row0[bi] = d0 * static_cast<Scalar>(2) + average[bi];
+    }
+  }
+
+  for (int n = 1; n + 1 < N; ++n) {
+    Scalar* cur = c.data() + static_cast<size_t>(n) * Bs;
+    const Scalar* next = c.data() + static_cast<size_t>(n + 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      const Scalar orig_cur = cur[bi];
+      cur[bi] = (orig_cur - next[bi]) - (work[bi] - orig_cur) + average[bi];
+      work[bi] = orig_cur;
+    }
+  }
+
+  {
+    Scalar* last = c.data() + static_cast<size_t>(N - 1) * Bs;
+    for (int b = 0; b < B; ++b) {
+      const size_t bi = static_cast<size_t>(b);
+      const Scalar orig_last = last[bi];
+      last[bi] = (orig_last - work[bi]) - (work[bi] - orig_last) + average[bi];
+    }
+  }
+}
+
+template <typename Scalar>
+static void do_diff_colmajor_add_average_impl(
+  std::vector<Scalar>& c,
+  int B,
+  int N,
+  int nb,
+  const std::vector<Scalar>& average,
+  std::vector<Scalar>& work)
+{
+  if (B <= 0 || N <= 0) return;
+  if (nb <= 0) { add_average_colmajor(c, B, N, average); return; }
+  if (nb == 1) { diff_as_colmajor_add_average(c, B, N, average); return; }
+  if (nb == 2) {
+    diff_sa_as_colmajor_pair_add_average(c, B, N, average, work);
+    return;
+  }
+  if (nb == 3) {
+    diff_as_colmajor_plain(c, B, N);
+    diff_sa_as_colmajor_pair_add_average(c, B, N, average, work);
+    return;
+  }
+  diff_sa_as_colmajor_pair(c, B, N, work);
+  diff_sa_as_colmajor_pair_add_average(c, B, N, average, work);
+}
+
 static void average_colmajor(
   const std::vector<double>& c,
   int B,
@@ -645,6 +812,17 @@ void do_diff_colmajor(
   if (nb == 3) { diff_as_colmajor(c, B, N); diff_sa_as_colmajor_pair(c, B, N, work); return; }
   diff_sa_as_colmajor_pair(c, B, N, work);
   diff_sa_as_colmajor_pair(c, B, N, work);
+}
+
+void do_diff_colmajor_add_average(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int nb,
+  const std::vector<double>& average,
+  std::vector<double>& work)
+{
+  do_diff_colmajor_add_average_impl(c, B, N, nb, average, work);
 }
 
 void get_samples_colmajor(
@@ -975,6 +1153,17 @@ void do_diff_colmajor_f32(
   if (nb == 3) { diff_as_colmajor_f32(c, B, N); diff_sa_as_colmajor_pair(c, B, N, work); return; }
   diff_sa_as_colmajor_pair(c, B, N, work);
   diff_sa_as_colmajor_pair(c, B, N, work);
+}
+
+void do_diff_colmajor_add_average_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  int nb,
+  const std::vector<float>& average,
+  std::vector<float>& work)
+{
+  do_diff_colmajor_add_average_impl(c, B, N, nb, average, work);
 }
 
 void get_samples_colmajor_f32(

@@ -24,11 +24,29 @@ inline double estimate_axis_flops(
   return 2.0 * static_cast<double>(nlines) * L * wavg;
 }
 
+inline std::int64_t explicit_thread_count(std::int64_t nlines)
+{
+  if (const char* e = std::getenv("LSRESIZE_NUM_THREADS")) {
+    if (int v = std::atoi(e); v > 0) {
+      return std::min<std::int64_t>(static_cast<std::int64_t>(v), nlines);
+    }
+  }
+  return 0;
+}
+
 // Heuristic: decide when it's worth parallelizing.
 inline bool use_parallel(
   std::int64_t nlines,
   const lsresize::Plan1D& plan)
 {
+  if (nlines <= 1) {
+    return false;
+  }
+
+  if (explicit_thread_count(nlines) > 1) {
+    return true;
+  }
+
   const double flops = estimate_axis_flops(nlines, plan);
 
   // Default FLOP threshold: ~1e6 operations
@@ -42,23 +60,13 @@ inline bool use_parallel(
     }
   }
 
-  return (nlines > 64) || (flops > thr);
+  return (flops > thr) || (nlines > 64 && flops > 0.5 * thr);
 }
 
 inline unsigned hardware_threads()
 {
   unsigned hw = std::thread::hardware_concurrency();
   return hw == 0 ? 1U : hw;
-}
-
-inline std::int64_t explicit_thread_count(std::int64_t nlines)
-{
-  if (const char* e = std::getenv("LSRESIZE_NUM_THREADS")) {
-    if (int v = std::atoi(e); v > 0) {
-      return std::min<std::int64_t>(static_cast<std::int64_t>(v), nlines);
-    }
-  }
-  return 0;
 }
 
 inline std::int64_t round_up_thread_count(

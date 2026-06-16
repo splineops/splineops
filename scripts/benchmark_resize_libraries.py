@@ -716,6 +716,18 @@ def main() -> int:
                 "LSRESIZE_AVX2_LINEAR",
                 "<default:on-if-supported>",
             ),
+            "LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR": os.environ.get(
+                "LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR",
+                "<default:on>",
+            ),
+            "LSRESIZE_FUSED_PROJECTION_AVG_RESTORE": os.environ.get(
+                "LSRESIZE_FUSED_PROJECTION_AVG_RESTORE",
+                "<default:single-thread-auto>",
+            ),
+            "LSRESIZE_LAST_AXIS_LINEAR_DIRECT": os.environ.get(
+                "LSRESIZE_LAST_AXIS_LINEAR_DIRECT",
+                "<default:on>",
+            ),
             "coordinate_note": (
                 "Backends use different coordinate, boundary, and antialiasing semantics; "
                 "quality metrics are deltas against splineops, not parity checks."

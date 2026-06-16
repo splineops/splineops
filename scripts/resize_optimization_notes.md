@@ -19,7 +19,7 @@ The resize optimization pass now has three solid pillars:
      constant preservation.
    - Added regressions for constants, native/Python parity, batched/native parity,
      forced batched routing, and default-auto routing.
-   - Latest full-suite validation: `429 passed`.
+   - Latest full-suite validation: `507 passed`.
 
 2. **Native default path is substantially faster for the target 2-D workloads.**
    - Axis scheduling now processes shrinking axes first and skips pure
@@ -59,7 +59,10 @@ Current default knobs:
 | Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
 | Native fused 2-D linear path | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |
 | Native fused 3-D linear path | enabled | `LSRESIZE_FUSED_3D_LINEAR=0` |
+| Native fused 3-D two-axis linear path | enabled | `LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR=0` |
+| Native fused projection average restore | auto only for explicit `LSRESIZE_NUM_THREADS=1` | `LSRESIZE_FUSED_PROJECTION_AVG_RESTORE=0/1/auto` |
 | Native AVX2 2-D linear upsample path | enabled on supported x86 | `LSRESIZE_AVX2_LINEAR=0` |
+| Native last-axis linear direct path | enabled | `LSRESIZE_LAST_AXIS_LINEAR_DIRECT=0` |
 | Native internal precision | `float32` internals for 2-D `float32` pure quadratic/cubic interpolation; `float64` otherwise | `LSRESIZE_PRECISION=float32` to force batched float32 internals; non-empty non-f32 values keep the conservative path |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
@@ -242,9 +245,16 @@ Measured progress so far:
     `3d_linear_down_f32` improved from `2.263 ms` to `0.452 ms` median
     (`5.00x`), and `3d_linear_two_axis01_f32` improved from `1.912 ms` to
     `1.084 ms` median (`1.76x`)
-  - the `(0, 2)` and `(1, 2)` two-axis patterns stay on the separable direct
-    linear path by default because local A/B showed no win for `(0, 2)` and a
-    regression for `(1, 2)` when forced through the fused evaluator
+  - dedicated exact `(0, 2)` and `(1, 2)` two-axis kernels now replace the
+    earlier forced-through-all-axis experiment; they keep Arrate's direct
+    linear plan weights/boundary handling and avoid the poor memory pattern
+    that made the generic fused evaluator lose
+  - dedicated two-axis A/B artifact:
+    `/tmp/splineops_ab_two_axis_fused_codex.{json,csv}`; on local standard
+    cases, `(0, 2)` improved `1.428 ms -> 0.423 ms` (`3.37x`) with
+    `LSRESIZE_NUM_THREADS=1` and `1.466 ms -> 0.474 ms` (`3.10x`) with
+    default scheduling, while `(1, 2)` improved `1.073 ms -> 0.430 ms`
+    (`2.50x`) single-thread and `1.051 ms -> 0.706 ms` (`1.49x`) default
   - direct linear source/weight metadata is now precomputed inside `Plan1D`
     for pure linear interpolation and reused by all direct/fused linear
     kernels; this removes the per-call compact-plan rebuild from one-shot
@@ -310,6 +320,13 @@ Measured progress so far:
   - antialiasing rows, where the fused projection diff applies most directly,
     won `13/16` medians and `12/16` best-of timings, with about `1.12x` mean
     median speedup
+  - fused projection average restore into the final diff pass, but only
+    default-auto when `LSRESIZE_NUM_THREADS=1` is explicit; forced default
+    threaded runs were too noisy/regressive to keep enabled generally
+  - single-thread projection restore artifact:
+    `/tmp/splineops_ab_projection_avg_restore_single_long_codex.{json,csv}`;
+    on selected 2-D antialiasing rows it won `3/8` medians, lost `0/8`, with
+    about `1.018x` median and `1.030x` mean speedup
 - Native batched filter and offset cleanup:
   - precomputes the finite causal-initializer horizon once per pole/axis pass
     instead of recalculating the same logarithms for every line in a batch
@@ -326,6 +343,14 @@ Measured progress so far:
   - the same pass improved all 2-D pure cubic standard rows (`8/8` medians),
     with about `1.15x` mean and median speedup, because cubic interpolation
     also uses the batched prefilter and 2-D offset path
+  - 2026-06-16 retunes kept the current defaults: `LSRESIZE_BATCH_LINES=64`
+    beat tested `32` and `16` alternatives on the focused float32 rows, and
+    `LSRESIZE_PARALLEL_THRESHOLD=1e6` beat `750000` on the focused scheduler
+    sweep
+  - rejected retune artifacts:
+    `/tmp/splineops_ab_batch_64_32_f32_codex.{json,csv}`,
+    `/tmp/splineops_ab_batch_64_16_f32_codex.{json,csv}`, and
+    `/tmp/splineops_ab_parallel_threshold_1m_750k_codex.{json,csv}`
   - local quality artifact:
     `/tmp/splineops_resize_quality_projection_next_fast_standard.{json,csv}`;
     default-vs-explicit-float32 quality deltas were unchanged from the prior
@@ -501,9 +526,9 @@ design.
 5. **Routing and scheduler calibration on more hardware.**
    - Re-run standard/full artifacts on machines with different core counts,
      cache sizes, and SMT behavior.
-   - Revisit `LSRESIZE_BATCH_LINES=64`, default-auto thresholds, and default
-     thread caps only after cross-machine artifacts show a consistent better
-     choice.
+   - Revisit `LSRESIZE_BATCH_LINES=64`, default-auto thresholds, direct
+     last-axis routing, and default thread caps only after cross-machine
+     artifacts show a consistent better choice.
 
 6. **Benchmark hygiene before every default change.**
    - Always save before/after JSON+CSV artifacts.

@@ -143,6 +143,22 @@ void do_diff_colmajor_f32(
   int nb,
   std::vector<float>& work);
 
+void do_diff_colmajor_add_average(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int nb,
+  const std::vector<double>& average,
+  std::vector<double>& work);
+
+void do_diff_colmajor_add_average_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  int nb,
+  const std::vector<float>& average,
+  std::vector<float>& work);
+
 void get_samples_colmajor(
   std::vector<double>& c,
   int B,

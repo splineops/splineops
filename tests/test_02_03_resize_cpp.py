@@ -388,6 +388,65 @@ def test_3d_linear_fused_path_matches_axis_direct(monkeypatch, dtype, shape, zoo
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping fused 3-D two-axis compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "zoom",
+    [
+        (0.6, 1.0, 0.5),
+        (1.0, 0.7, 0.5),
+    ],
+)
+def test_3d_linear_two_axis_fused_path_matches_disabled(monkeypatch, dtype, zoom):
+    rng = np.random.default_rng(137)
+    arr = rng.random((28, 24, 20), dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "1")
+    monkeypatch.setenv("LSRESIZE_FUSED_3D_LINEAR", "1")
+    monkeypatch.setenv("LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    monkeypatch.setenv("LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert actual.dtype == dtype
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping projection restore compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_projection_avg_restore_fused_path_matches_disabled(monkeypatch, dtype):
+    rng = np.random.default_rng(138)
+    arr = rng.random((48, 45), dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_NUM_THREADS", "1")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    monkeypatch.setenv("LSRESIZE_FUSED_PROJECTION_AVG_RESTORE", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=(0.53, 0.71), method="cubic-antialiasing")
+
+    monkeypatch.setenv("LSRESIZE_FUSED_PROJECTION_AVG_RESTORE", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=(0.53, 0.71), method="cubic-antialiasing")
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert actual.dtype == dtype
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping AVX2 2-D linear compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
@@ -433,6 +492,39 @@ def test_nd_linear_interp_fast_path_matches_disabled(monkeypatch, dtype):
     monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "1")
     rz = _load_resize_module(force_reload=True)
     actual = rz.resize(arr, zoom_factors=(0.75, 1.2, 0.5), method="linear")
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert actual.dtype == dtype
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping N-D last-axis linear compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "zoom",
+    [
+        (0.75, 1.0, 0.5),
+        (1.0, 0.8, 0.5),
+    ],
+)
+def test_nd_linear_last_axis_direct_path_matches_disabled(monkeypatch, dtype, zoom):
+    rng = np.random.default_rng(136)
+    arr = rng.random((24, 20, 16), dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    monkeypatch.setenv("LSRESIZE_LINEAR_INTERP", "1")
+    monkeypatch.setenv("LSRESIZE_LAST_AXIS_LINEAR_DIRECT", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method="linear")
+
+    monkeypatch.setenv("LSRESIZE_LAST_AXIS_LINEAR_DIRECT", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method="linear")
 
     atol = 5e-6 if dtype == np.float32 else 5e-11
     assert actual.dtype == dtype

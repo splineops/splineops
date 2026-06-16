@@ -187,6 +187,39 @@ static inline bool avx2_linear_enabled()
 #endif
 }
 
+static inline bool last_axis_linear_direct_enabled()
+{
+  return env_flag_enabled_default_true("LSRESIZE_LAST_AXIS_LINEAR_DIRECT");
+}
+
+static inline bool fused_projection_average_restore_enabled_for(
+  int64_t nlines,
+  const Plan1D& plan)
+{
+  const char* value = std::getenv("LSRESIZE_FUSED_PROJECTION_AVG_RESTORE");
+  if (value == nullptr || value[0] == '\0' || env_equals_ci(value, "auto")) {
+    (void)plan;
+    return explicit_thread_count(nlines) == 1;
+  }
+  if (value[0] == '0' ||
+      env_equals_ci(value, "off") ||
+      env_equals_ci(value, "false") ||
+      env_equals_ci(value, "no")) {
+    return false;
+  }
+  if (value[0] == '1' ||
+      value[0] == 't' ||
+      value[0] == 'T' ||
+      value[0] == 'y' ||
+      value[0] == 'Y' ||
+      env_equals_ci(value, "on") ||
+      env_equals_ci(value, "true") ||
+      env_equals_ci(value, "yes")) {
+    return true;
+  }
+  return false;
+}
+
 static inline int specialized_preset_max_support(const LSParams& p)
 {
   if (p.analy_degree < 0 && p.synthe_degree == p.interp_degree) {
@@ -1542,6 +1575,71 @@ static void resize_along_axis_linear_direct(
   const Accum* LS_RESTRICT a1 = direct.w1;
   const Accum* LS_RESTRICT a2 = direct.w2;
 
+  if (axis == D - 1 && last_axis_linear_direct_enabled()) {
+    const auto count2_run = longest_count_run(c, plan.outN, 2);
+    const int64_t count2_begin = count2_run.first;
+    const int64_t count2_end = count2_run.second;
+    const bool use_avx2_last_axis =
+        avx2_linear_enabled() &&
+        (count2_end - count2_begin >= 16);
+
+    auto worker = [&](int64_t start, int64_t end) {
+      for (int64_t line = start; line < end; ++line) {
+        const Scalar* LS_RESTRICT src = in + line * static_cast<int64_t>(plan.N);
+        Scalar* LS_RESTRICT dst = out + line * static_cast<int64_t>(plan.outN);
+        auto scalar_last_axis = [&](int64_t l_begin, int64_t l_end) {
+          for (int64_t l = l_begin; l < l_end; ++l) {
+            const size_t li = static_cast<size_t>(l);
+            Accum acc = Accum(0);
+            switch (c[li]) {
+              case 3:
+                acc = a0[li] *
+                      static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
+                acc += a1[li] *
+                       static_cast<Accum>(src[static_cast<size_t>(s1[li])]);
+                acc += a2[li] *
+                       static_cast<Accum>(src[static_cast<size_t>(s2[li])]);
+                break;
+              case 2:
+                acc = a0[li] *
+                      static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
+                acc += a1[li] *
+                       static_cast<Accum>(src[static_cast<size_t>(s1[li])]);
+                break;
+              case 1:
+                acc = a0[li] *
+                      static_cast<Accum>(src[static_cast<size_t>(s0[li])]);
+                break;
+              default:
+                break;
+            }
+            dst[li] = static_cast<Scalar>(acc);
+          }
+        };
+
+#if LSRESIZE_GNU_X86_TARGETS
+        if (use_avx2_last_axis) {
+          scalar_last_axis(0, count2_begin);
+          if constexpr (std::is_same_v<Scalar, float>) {
+            resize_linear_axis1_col2_f32_avx2(
+                src, dst, count2_begin, count2_end, s0, s1, a0, a1);
+          } else if constexpr (std::is_same_v<Scalar, double>) {
+            resize_linear_axis1_col2_f64_avx2(
+                src, dst, count2_begin, count2_end, s0, s1, a0, a1);
+          }
+          scalar_last_axis(count2_end, plan.outN);
+          continue;
+        }
+#endif
+
+        scalar_last_axis(0, plan.outN);
+      }
+    };
+
+    run_parallel_or_serial(nlines, plan, worker);
+    return;
+  }
+
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(static_cast<size_t>(D), 0);
     for (int64_t line = start; line < end; ++line) {
@@ -1800,6 +1898,8 @@ static void resize_along_axis_batched_t(
   const int max_support = specialized_presets_enabled()
                         ? specialized_preset_max_support(p)
                         : 0;
+  const bool fused_avg_restore =
+      fused_projection_average_restore_enabled_for(nlines, plan);
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -1872,11 +1972,16 @@ static void resize_along_axis_batched_t(
           y.data());
 
       if (p.analy_degree >= 0) {
-        do_diff_colmajor(y, B, out_total, p.analy_degree + 1, filter_work);
-        for (int l = 0; l < out_total; ++l) {
-          double* y_col = y.data() + static_cast<size_t>(l) * Bs;
-          for (int b = 0; b < B; ++b) {
-            y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+        if (fused_avg_restore) {
+          do_diff_colmajor_add_average(
+              y, B, out_total, p.analy_degree + 1, average, filter_work);
+        } else {
+          do_diff_colmajor(y, B, out_total, p.analy_degree + 1, filter_work);
+          for (int l = 0; l < out_total; ++l) {
+            double* y_col = y.data() + static_cast<size_t>(l) * Bs;
+            for (int b = 0; b < B; ++b) {
+              y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+            }
           }
         }
         get_interpolation_coefficients_colmajor(y, B, out_total, corr_degree);
@@ -2054,6 +2159,8 @@ static void resize_along_axis_batched_f32_internal(
   const int max_support = specialized_presets_enabled()
                         ? specialized_preset_max_support(p)
                         : 0;
+  const bool fused_avg_restore =
+      fused_projection_average_restore_enabled_for(nlines, plan);
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -2153,11 +2260,16 @@ static void resize_along_axis_batched_f32_internal(
           y.data());
 
       if (p.analy_degree >= 0) {
-        do_diff_colmajor_f32(y, B, out_total, p.analy_degree + 1, filter_work);
-        for (int l = 0; l < out_total; ++l) {
-          float* y_col = y.data() + static_cast<size_t>(l) * Bs;
-          for (int b = 0; b < B; ++b) {
-            y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+        if (fused_avg_restore) {
+          do_diff_colmajor_add_average_f32(
+              y, B, out_total, p.analy_degree + 1, average, filter_work);
+        } else {
+          do_diff_colmajor_f32(y, B, out_total, p.analy_degree + 1, filter_work);
+          for (int l = 0; l < out_total; ++l) {
+            float* y_col = y.data() + static_cast<size_t>(l) * Bs;
+            for (int b = 0; b < B; ++b) {
+              y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+            }
           }
         }
         get_interpolation_coefficients_colmajor_f32(y, B, out_total, corr_degree);
@@ -3141,6 +3253,330 @@ static void resize_3d_linear_t(
   run_parallel_or_serial(out_n0 * out_n1, plan2, worker);
 }
 
+template <typename Scalar, typename Accum>
+static inline Accum eval_axis2_weighted_rows_generic(
+  const Scalar* LS_RESTRICT row0,
+  const Scalar* LS_RESTRICT row1,
+  const Scalar* LS_RESTRICT row2,
+  int nrow,
+  Accum wr0,
+  Accum wr1,
+  Accum wr2,
+  const unsigned char* LS_RESTRICT c2,
+  const int* LS_RESTRICT s20,
+  const int* LS_RESTRICT s21,
+  const int* LS_RESTRICT s22,
+  const Accum* LS_RESTRICT a20,
+  const Accum* LS_RESTRICT a21,
+  const Accum* LS_RESTRICT a22,
+  size_t i2)
+{
+  auto row_value = [&](int z) -> Accum {
+    Accum value = wr0 * static_cast<Accum>(row0[static_cast<size_t>(z)]);
+    if (nrow >= 2) {
+      value += wr1 * static_cast<Accum>(row1[static_cast<size_t>(z)]);
+    }
+    if (nrow >= 3) {
+      value += wr2 * static_cast<Accum>(row2[static_cast<size_t>(z)]);
+    }
+    return value;
+  };
+
+  switch (c2[i2]) {
+    case 3:
+      return a20[i2] * row_value(s20[i2]) +
+             a21[i2] * row_value(s21[i2]) +
+             a22[i2] * row_value(s22[i2]);
+    case 2:
+      return a20[i2] * row_value(s20[i2]) +
+             a21[i2] * row_value(s21[i2]);
+    case 1:
+      return a20[i2] * row_value(s20[i2]);
+    default:
+      return Accum(0);
+  }
+}
+
+template <typename Scalar>
+static void resize_3d_linear_axis02_t(
+  const Scalar* LS_RESTRICT in,
+  Scalar* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p2)
+{
+  const int64_t in_n0 = in_shape[0];
+  const int64_t in_n1 = in_shape[1];
+  const int64_t in_n2 = in_shape[2];
+  const int64_t out_n0 = out_shape[0];
+  const int64_t out_n1 = out_shape[1];
+  const int64_t out_n2 = out_shape[2];
+  const int64_t in_s0 = in_n1 * in_n2;
+  using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
+
+  if (out_n1 != in_n1) {
+    LSParams p1 = p0;
+    p1.zoom = 1.0;
+    resize_3d_linear_t(in, out, in_shape, out_shape, p0, p1, p2);
+    return;
+  }
+
+  const auto plan0_handle =
+      get_plan_1d_cached(static_cast<int>(in_n0), p0);
+  const auto plan2_handle =
+      get_plan_1d_cached(static_cast<int>(in_n2), p2);
+  const Plan1D& plan0 = *plan0_handle;
+  const Plan1D& plan2 = *plan2_handle;
+  const auto direct0 = direct_linear_plan_view<Accum>(plan0);
+  const auto direct2 = direct_linear_plan_view<Accum>(plan2);
+
+  if (!direct0.ok || !direct2.ok) {
+    std::vector<int64_t> shape1 = {out_n0, in_n1, in_n2};
+    std::vector<Scalar> tmp(
+        static_cast<size_t>(out_n0) *
+        static_cast<size_t>(in_n1) *
+        static_cast<size_t>(in_n2));
+    resize_along_axis_t(in, tmp.data(), in_shape, shape1, 0, p0);
+    resize_along_axis_t(tmp.data(), out, shape1, out_shape, 2, p2);
+    return;
+  }
+
+  const unsigned char* LS_RESTRICT c0 = direct0.count;
+  const int* LS_RESTRICT s00 = direct0.src0;
+  const int* LS_RESTRICT s01 = direct0.src1;
+  const int* LS_RESTRICT s02 = direct0.src2;
+  const Accum* LS_RESTRICT a00 = direct0.w0;
+  const Accum* LS_RESTRICT a01 = direct0.w1;
+  const Accum* LS_RESTRICT a02 = direct0.w2;
+  const unsigned char* LS_RESTRICT c2 = direct2.count;
+  const int* LS_RESTRICT s20 = direct2.src0;
+  const int* LS_RESTRICT s21 = direct2.src1;
+  const int* LS_RESTRICT s22 = direct2.src2;
+  const Accum* LS_RESTRICT a20 = direct2.w0;
+  const Accum* LS_RESTRICT a21 = direct2.w1;
+  const Accum* LS_RESTRICT a22 = direct2.w2;
+  const auto count2_run = longest_count_run(c2, out_n2, 2);
+  const int64_t count2_begin = count2_run.first;
+  const int64_t count2_end = count2_run.second;
+
+  auto worker = [&](int64_t start, int64_t end) {
+    for (int64_t line = start; line < end; ++line) {
+      const int64_t o0 = line / in_n1;
+      const int64_t i1 = line - o0 * in_n1;
+      const size_t i0 = static_cast<size_t>(o0);
+      const int n0 = static_cast<int>(c0[i0]);
+      const Scalar* LS_RESTRICT row0 =
+          in + static_cast<int64_t>(s00[i0]) * in_s0 + i1 * in_n2;
+      const Scalar* LS_RESTRICT row1 =
+          in + static_cast<int64_t>(s01[i0]) * in_s0 + i1 * in_n2;
+      const Scalar* LS_RESTRICT row2 =
+          in + static_cast<int64_t>(s02[i0]) * in_s0 + i1 * in_n2;
+      Scalar* LS_RESTRICT dst = out + line * out_n2;
+      const Accum wr0 = a00[i0];
+      const Accum wr1 = a01[i0];
+      const Accum wr2 = a02[i0];
+
+      auto generic_range = [&](int64_t begin, int64_t finish) {
+        for (int64_t o2 = begin; o2 < finish; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          dst[i2] = static_cast<Scalar>(
+              eval_axis2_weighted_rows_generic(
+                  row0, row1, row2, n0, wr0, wr1, wr2,
+                  c2, s20, s21, s22, a20, a21, a22, i2));
+        }
+      };
+
+      generic_range(0, count2_begin);
+      if (n0 == 2) {
+        for (int64_t o2 = count2_begin; o2 < count2_end; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          const int z0 = s20[i2];
+          const int z1 = s21[i2];
+          const Accum h0 =
+              wr0 * static_cast<Accum>(row0[static_cast<size_t>(z0)]) +
+              wr1 * static_cast<Accum>(row1[static_cast<size_t>(z0)]);
+          const Accum h1 =
+              wr0 * static_cast<Accum>(row0[static_cast<size_t>(z1)]) +
+              wr1 * static_cast<Accum>(row1[static_cast<size_t>(z1)]);
+          dst[i2] = static_cast<Scalar>(a20[i2] * h0 + a21[i2] * h1);
+        }
+      } else if (n0 == 1) {
+        for (int64_t o2 = count2_begin; o2 < count2_end; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          const int z0 = s20[i2];
+          const int z1 = s21[i2];
+          dst[i2] = static_cast<Scalar>(
+              wr0 * (
+                  a20[i2] * static_cast<Accum>(row0[static_cast<size_t>(z0)]) +
+                  a21[i2] * static_cast<Accum>(row0[static_cast<size_t>(z1)])));
+        }
+      } else if (n0 == 3) {
+        for (int64_t o2 = count2_begin; o2 < count2_end; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          const int z0 = s20[i2];
+          const int z1 = s21[i2];
+          const Accum h0 =
+              wr0 * static_cast<Accum>(row0[static_cast<size_t>(z0)]) +
+              wr1 * static_cast<Accum>(row1[static_cast<size_t>(z0)]) +
+              wr2 * static_cast<Accum>(row2[static_cast<size_t>(z0)]);
+          const Accum h1 =
+              wr0 * static_cast<Accum>(row0[static_cast<size_t>(z1)]) +
+              wr1 * static_cast<Accum>(row1[static_cast<size_t>(z1)]) +
+              wr2 * static_cast<Accum>(row2[static_cast<size_t>(z1)]);
+          dst[i2] = static_cast<Scalar>(a20[i2] * h0 + a21[i2] * h1);
+        }
+      } else {
+        generic_range(count2_begin, count2_end);
+      }
+      generic_range(count2_end, out_n2);
+    }
+  };
+
+  run_parallel_or_serial(out_n0 * in_n1, plan2, worker);
+}
+
+template <typename Scalar>
+static void resize_3d_linear_axis12_t(
+  const Scalar* LS_RESTRICT in,
+  Scalar* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p1,
+  const LSParams& p2)
+{
+  const int64_t in_n0 = in_shape[0];
+  const int64_t in_n1 = in_shape[1];
+  const int64_t in_n2 = in_shape[2];
+  const int64_t out_n0 = out_shape[0];
+  const int64_t out_n1 = out_shape[1];
+  const int64_t out_n2 = out_shape[2];
+  const int64_t in_s0 = in_n1 * in_n2;
+  const int64_t in_s1 = in_n2;
+  using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
+
+  if (out_n0 != in_n0) {
+    LSParams p0 = p1;
+    p0.zoom = 1.0;
+    resize_3d_linear_t(in, out, in_shape, out_shape, p0, p1, p2);
+    return;
+  }
+
+  const auto plan1_handle =
+      get_plan_1d_cached(static_cast<int>(in_n1), p1);
+  const auto plan2_handle =
+      get_plan_1d_cached(static_cast<int>(in_n2), p2);
+  const Plan1D& plan1 = *plan1_handle;
+  const Plan1D& plan2 = *plan2_handle;
+  const auto direct1 = direct_linear_plan_view<Accum>(plan1);
+  const auto direct2 = direct_linear_plan_view<Accum>(plan2);
+
+  if (!direct1.ok || !direct2.ok) {
+    std::vector<int64_t> shape1 = {in_n0, out_n1, in_n2};
+    std::vector<Scalar> tmp(
+        static_cast<size_t>(in_n0) *
+        static_cast<size_t>(out_n1) *
+        static_cast<size_t>(in_n2));
+    resize_along_axis_t(in, tmp.data(), in_shape, shape1, 1, p1);
+    resize_along_axis_t(tmp.data(), out, shape1, out_shape, 2, p2);
+    return;
+  }
+
+  const unsigned char* LS_RESTRICT c1 = direct1.count;
+  const int* LS_RESTRICT s10 = direct1.src0;
+  const int* LS_RESTRICT s11 = direct1.src1;
+  const int* LS_RESTRICT s12 = direct1.src2;
+  const Accum* LS_RESTRICT a10 = direct1.w0;
+  const Accum* LS_RESTRICT a11 = direct1.w1;
+  const Accum* LS_RESTRICT a12 = direct1.w2;
+  const unsigned char* LS_RESTRICT c2 = direct2.count;
+  const int* LS_RESTRICT s20 = direct2.src0;
+  const int* LS_RESTRICT s21 = direct2.src1;
+  const int* LS_RESTRICT s22 = direct2.src2;
+  const Accum* LS_RESTRICT a20 = direct2.w0;
+  const Accum* LS_RESTRICT a21 = direct2.w1;
+  const Accum* LS_RESTRICT a22 = direct2.w2;
+  const auto count2_run = longest_count_run(c2, out_n2, 2);
+  const int64_t count2_begin = count2_run.first;
+  const int64_t count2_end = count2_run.second;
+
+  auto worker = [&](int64_t start, int64_t end) {
+    for (int64_t line = start; line < end; ++line) {
+      const int64_t i0 = line / out_n1;
+      const int64_t o1 = line - i0 * out_n1;
+      const size_t i1 = static_cast<size_t>(o1);
+      const int n1 = static_cast<int>(c1[i1]);
+      const int64_t plane = i0 * in_s0;
+      const Scalar* LS_RESTRICT row0 =
+          in + plane + static_cast<int64_t>(s10[i1]) * in_s1;
+      const Scalar* LS_RESTRICT row1 =
+          in + plane + static_cast<int64_t>(s11[i1]) * in_s1;
+      const Scalar* LS_RESTRICT row2 =
+          in + plane + static_cast<int64_t>(s12[i1]) * in_s1;
+      Scalar* LS_RESTRICT dst = out + line * out_n2;
+      const Accum wr0 = a10[i1];
+      const Accum wr1 = a11[i1];
+      const Accum wr2 = a12[i1];
+
+      auto generic_range = [&](int64_t begin, int64_t finish) {
+        for (int64_t o2 = begin; o2 < finish; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          dst[i2] = static_cast<Scalar>(
+              eval_axis2_weighted_rows_generic(
+                  row0, row1, row2, n1, wr0, wr1, wr2,
+                  c2, s20, s21, s22, a20, a21, a22, i2));
+        }
+      };
+
+      generic_range(0, count2_begin);
+      if (n1 == 2) {
+        for (int64_t o2 = count2_begin; o2 < count2_end; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          const int z0 = s20[i2];
+          const int z1 = s21[i2];
+          const Accum h0 =
+              wr0 * static_cast<Accum>(row0[static_cast<size_t>(z0)]) +
+              wr1 * static_cast<Accum>(row1[static_cast<size_t>(z0)]);
+          const Accum h1 =
+              wr0 * static_cast<Accum>(row0[static_cast<size_t>(z1)]) +
+              wr1 * static_cast<Accum>(row1[static_cast<size_t>(z1)]);
+          dst[i2] = static_cast<Scalar>(a20[i2] * h0 + a21[i2] * h1);
+        }
+      } else if (n1 == 1) {
+        for (int64_t o2 = count2_begin; o2 < count2_end; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          const int z0 = s20[i2];
+          const int z1 = s21[i2];
+          dst[i2] = static_cast<Scalar>(
+              wr0 * (
+                  a20[i2] * static_cast<Accum>(row0[static_cast<size_t>(z0)]) +
+                  a21[i2] * static_cast<Accum>(row0[static_cast<size_t>(z1)])));
+        }
+      } else if (n1 == 3) {
+        for (int64_t o2 = count2_begin; o2 < count2_end; ++o2) {
+          const size_t i2 = static_cast<size_t>(o2);
+          const int z0 = s20[i2];
+          const int z1 = s21[i2];
+          const Accum h0 =
+              wr0 * static_cast<Accum>(row0[static_cast<size_t>(z0)]) +
+              wr1 * static_cast<Accum>(row1[static_cast<size_t>(z0)]) +
+              wr2 * static_cast<Accum>(row2[static_cast<size_t>(z0)]);
+          const Accum h1 =
+              wr0 * static_cast<Accum>(row0[static_cast<size_t>(z1)]) +
+              wr1 * static_cast<Accum>(row1[static_cast<size_t>(z1)]) +
+              wr2 * static_cast<Accum>(row2[static_cast<size_t>(z1)]);
+          dst[i2] = static_cast<Scalar>(a20[i2] * h0 + a21[i2] * h1);
+        }
+      } else {
+        generic_range(count2_begin, count2_end);
+      }
+      generic_range(count2_end, out_n2);
+    }
+  };
+
+  run_parallel_or_serial(in_n0 * out_n1, plan2, worker);
+}
+
 // -----------------------------------------------------------------------------
 // Public entry points
 // -----------------------------------------------------------------------------
@@ -3211,6 +3647,50 @@ void resize_3d_linear_f32(
   const LSParams& p2)
 {
   resize_3d_linear_t<float>(in, out, in_shape, out_shape, p0, p1, p2);
+}
+
+void resize_3d_linear_axis02(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p2)
+{
+  resize_3d_linear_axis02_t<double>(in, out, in_shape, out_shape, p0, p2);
+}
+
+void resize_3d_linear_axis02_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p2)
+{
+  resize_3d_linear_axis02_t<float>(in, out, in_shape, out_shape, p0, p2);
+}
+
+void resize_3d_linear_axis12(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p1,
+  const LSParams& p2)
+{
+  resize_3d_linear_axis12_t<double>(in, out, in_shape, out_shape, p1, p2);
+}
+
+void resize_3d_linear_axis12_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p1,
+  const LSParams& p2)
+{
+  resize_3d_linear_axis12_t<float>(in, out, in_shape, out_shape, p1, p2);
 }
 
 } // namespace lsresize

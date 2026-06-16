@@ -199,13 +199,15 @@ Representative measurements:
 | AVX2 2-D linear rows | pure 2-D linear medians won `8/12`, about `1.41x` mean speedup |
 | Fused 3-D all-axis linear | `3d_linear_down_f32` `2.263 ms -> 0.452 ms`, `5.00x` |
 | Fused 3-D two-axis `(0, 1)` | `1.912 ms -> 1.084 ms`, `1.76x` |
+| Dedicated 3-D two-axis `(0, 2)` | `1.428 ms -> 0.423 ms`, `3.37x` |
+| Dedicated 3-D two-axis `(1, 2)` | `1.073 ms -> 0.430 ms`, `2.50x` |
 | Direct-plan-cache metadata | `2d_linear_down_1024_float32` `0.508 ms -> 0.427 ms`, `1.19x` |
 
 Important dispatch decision:
 
-- `(0, 2)` and `(1, 2)` 3-D two-axis patterns stay on the separable direct path
-  by default. Local A/B showed no win for `(0, 2)` and a regression for
-  `(1, 2)` when forced through the fused evaluator.
+- `(0, 2)` and `(1, 2)` 3-D two-axis patterns now use dedicated exact kernels
+  instead of the earlier generic all-axis fused evaluator. The earlier forced
+  evaluator experiment was rejected; the dedicated kernels won locally.
 - A fused 3-D axis-2 interior branch-split experiment was measured and reverted
   because it regressed the important `(0, 1)` route without a durable all-axis
   win.
@@ -218,6 +220,11 @@ Important dispatch decision:
 - Removed redundant integration average-buffer initialization on normal
   projection paths.
 - Added direct 2-D axis-pass offset calculation in batched native kernels.
+- Tightened native parallel launch policy so cheap direct-linear passes do not
+  start worker threads only because they cross a line-count threshold.
+- Added a default-on exact linear N-D last-axis direct path, with an escape hatch
+  via `LSRESIZE_LAST_AXIS_LINEAR_DIRECT=0`, to skip generic offset unraveling
+  for contiguous final-axis rows.
 
 Representative measurement:
 
@@ -237,7 +244,10 @@ Representative measurement:
 | Exact linear fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
 | Fused 2-D linear | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |
 | Fused 3-D linear | enabled | `LSRESIZE_FUSED_3D_LINEAR=0` |
+| Fused 3-D two-axis linear | enabled | `LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR=0` |
+| Fused projection average restore | explicit single-thread auto | `LSRESIZE_FUSED_PROJECTION_AVG_RESTORE=0/1/auto` |
 | AVX2 linear kernels | enabled on supported x86 | `LSRESIZE_AVX2_LINEAR=0` |
+| Last-axis linear direct path | enabled | `LSRESIZE_LAST_AXIS_LINEAR_DIRECT=0` |
 | Native internal precision | auto f32 only for 2-D f32 pure quadratic/cubic interpolation | `LSRESIZE_PRECISION=float32` |
 | Native plan cache | capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
@@ -247,30 +257,35 @@ Representative measurement:
 
 ## Validation Status
 
-Latest validation after `5790dce Cache direct linear resize plans`:
+Latest local validation after the dedicated two-axis linear and projection
+restore pass:
 
 ```bash
 .venv/bin/python -m pip install -e .
 .venv/bin/python -m pytest -q \
-  tests/test_02_03_resize_cpp.py::test_2d_linear_interp_fast_path_matches_disabled \
-  tests/test_02_03_resize_cpp.py::test_2d_linear_fused_path_matches_axis_direct \
+  tests/test_02_03_resize_cpp.py::test_projection_avg_restore_fused_path_matches_disabled \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_equal_degree_projection \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_short_projection_axes \
+  tests/test_02_03_resize_cpp.py::test_3d_linear_two_axis_fused_path_matches_disabled \
   tests/test_02_03_resize_cpp.py::test_3d_linear_fused_path_matches_axis_direct \
-  tests/test_02_03_resize_cpp.py::test_2d_linear_avx2_path_matches_disabled \
   tests/test_02_03_resize_cpp.py::test_nd_linear_interp_fast_path_matches_disabled
 .venv/bin/python -m pytest -q tests/test_02_03_resize_cpp.py tests/test_02_02_resize.py
 .venv/bin/python -m pytest -q
 .venv/bin/python -m py_compile \
-  scripts/benchmark_resize_plan.py \
-  scripts/benchmark_resize_native.py
+  scripts/benchmark_resize_ab.py \
+  scripts/benchmark_resize_native.py \
+  scripts/benchmark_resize_libraries.py \
+  src/splineops/utils/specs.py
+git diff --check
 ```
 
 Results:
 
 | Check | Result |
 | --- | ---: |
-| Focused direct/fused linear checks | `30 passed` |
-| Resize-focused suite | `243 passed` |
-| Full suite | `497 passed` |
+| Focused native checks | `46 passed` |
+| Resize-focused suite | `253 passed` |
+| Full suite | `507 passed` |
 | Script py-compile | clean |
 | `git diff --check` | clean |
 
@@ -313,6 +328,10 @@ Most useful current artifacts:
   `/tmp/splineops_resize_native_fused3d_two_axis_supported_off.{json,csv}`
   and
   `/tmp/splineops_resize_native_fused3d_two_axis_final_policy_on.{json,csv}`
+- Dedicated 3-D `(0, 2)` / `(1, 2)` two-axis linear A/B:
+  `/tmp/splineops_ab_two_axis_fused_codex.{json,csv}`
+- Projection average-restore fusion A/B:
+  `/tmp/splineops_ab_projection_avg_restore_single_long_codex.{json,csv}`
 
 ## What Not To Claim
 
@@ -322,21 +341,23 @@ Most useful current artifacts:
 - Do not claim float32 internals are universally default-safe. They are default
   only for a narrow 2-D `float32` pure interpolation scope; projection and
   antialiasing float32 internals remain opt-in.
-- Do not claim fused 3-D is always better for every two-axis pattern. Only
-  all-axis and `(0, 1)` two-axis patterns are routed to the fused evaluator by
-  default.
+- Do not claim every fused 3-D experiment won. The dedicated `(0, 2)` and
+  `(1, 2)` two-axis kernels won locally, but batch-size and scheduler retunes
+  measured during this pass were rejected.
+- Do not claim projection average-restore fusion is a general threaded win. It
+  is default-auto only when `LSRESIZE_NUM_THREADS=1` is explicit; `=1` forces it
+  for experiments.
 
 ## Recommended Next Work
 
-1. Build a dedicated exact `(1, 2)` 3-D linear kernel that preserves contiguous
-   access better than the current fused evaluator.
-2. Specialize exact cubic interpolation more deeply, especially the 2-D pure
+1. Specialize exact cubic interpolation more deeply, especially the 2-D pure
    interpolation case where PyTorch/OpenCV still have speed advantages but
    semantic differences.
-3. Reduce temporary traffic for projection/antialiasing workloads, where memory
-   movement still dominates.
-4. Expand `ResizePlan` reuse for fused/direct linear paths, possibly by caching
+2. Reduce temporary traffic for projection/antialiasing workloads beyond the
+   single-thread average-restore fusion; threaded/default paths still need a
+   different approach.
+3. Expand `ResizePlan` reuse for fused/direct linear paths, possibly by caching
    output buffers or exposing a more explicit workspace API.
-5. Add an explicit, opt-in image-resize semantics mode only if matching OpenCV
+4. Add an explicit, opt-in image-resize semantics mode only if matching OpenCV
    style speed is a product goal; keep it separate from exact splineops
    semantics.
