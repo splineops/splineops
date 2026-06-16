@@ -459,3 +459,83 @@ Fresh artifacts:
   `/tmp/splineops_legacy_java_full_batch_axis0_20260616.csv`
   - current splineops default median speedup `7.94x` over 14 overlapping 2-D
     cases
+
+## Addendum: Projection Batch Single-Thread Tuning
+
+The next optimization pass accepted one narrow batch-policy change:
+
+- Large 2-D cubic-antialiasing projection uses 32-line batches for explicit
+  `LSRESIZE_NUM_THREADS=1`; default/threaded scheduling keeps the existing
+  96-line policy.
+
+Focused same-build A/B:
+
+| Change | Artifact | Median | Mean | Wins | Losses |
+| --- | --- | ---: | ---: | ---: | ---: |
+| cubic-AA `96 -> 32` batch, explicit single-thread | `/tmp/splineops_ab_cubic_aa_batch96_vs32_single_20260616.csv` | `1.072x` | `1.096x` | 3 | 0 |
+
+Rejected in this pass:
+
+- 2-D axis-1 direct scatter, blocked/transpose axis-contiguous scatter, tiled
+  last-axis gather, run-length fixed-window accumulation, and projection
+  constant-stride gather. All were correctness-clean where applicable, but
+  mixed or negative on the focused A/B matrices.
+
+Fresh artifacts after this pass:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_projection_batch_single_20260616.csv`
+  - 43 overlaps, median native/Python speedup `24.85x`, mean `28.45x`
+  - antialiasing median speedup `20.07x`
+- Library comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_projection_batch_single_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `13/18`, with different semantics
+  - Torch faster in `8/19`; exact-ish Torch rows all slower
+
+## Current Position and Next Steps
+
+Current native position:
+
+| Scope | Cases | Median speedup vs Python fallback | Mean speedup |
+| --- | ---: | ---: | ---: |
+| All overlaps | 43 | `24.85x` | `28.45x` |
+| Cubic | 16 | `25.79x` | `29.17x` |
+| Antialiasing/projection | 10 | `20.07x` | `21.60x` |
+| 3-D | 9 | `23.87x` | `25.11x` |
+
+Current default-scheduler library position:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Exact-ish faster |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.14x` | `0/16` |
+| scikit-image | 21 | 0 | `0.11x` | n/a |
+| OpenCV | 18 | 13 | `1.37x` | n/a |
+| PyTorch | 19 | 8 | `0.67x` | `0/8` |
+
+Interpretation:
+
+- Against exact-ish SciPy/Torch rows, splineops is now consistently faster on
+  this benchmark set.
+- OpenCV remains faster on many image-resize-style 2-D rows, but those rows are
+  not exact semantic matches for Arrate's spline projection method.
+- The remaining performance work should be guided by profiling, not by adding
+  speculative scatter/gather kernels. Several such attempts were measured and
+  rejected.
+
+Recommended next steps:
+
+1. Turn `scripts/summarize_resize_benchmarks.py` into a full report generator
+   that can produce this document automatically from CSV artifacts.
+2. Build a PR-focused benchmark pack that isolates exact-semantics comparisons
+   from contextual image-resize comparisons.
+3. Add hardware-counter profiling for the remaining hotspots: cubic gather,
+   prefilter recursion, projection integration/diff/output prefilter, and
+   projection scratch-buffer traffic.
+4. Revisit pure-cubic specialization only with counter evidence showing a
+   specific memory-traffic reduction. Prior tiled gather/scatter and fixed-run
+   accumulator experiments were too mixed.
+5. For a future library PR, document the exact numerical method first, then
+   present performance as an implementation of the same spline/LS projection
+   semantics rather than as a generic image-resize replacement.

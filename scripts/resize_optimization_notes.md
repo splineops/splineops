@@ -1864,3 +1864,144 @@ git diff --check
 
 Latest validation result: focused parity `40 passed`, full suite
 `549 passed`; script py-compile and `git diff --check` clean.
+
+## Handoff: 2026-06-16 Projection Batch Single-Thread Tuning
+
+Accepted change after the batch/direct-scatter pass:
+
+- Large 2-D cubic-antialiasing projection passes now use 32-line batches when
+  `LSRESIZE_NUM_THREADS=1` is set explicitly. The previous 96-line batch
+  remains the policy for default and other threaded scheduling. This changes
+  only workspace batch size; Arrate's projection, spline recursion, correction
+  filters, and weights are unchanged.
+
+Focused accepted A/B:
+
+- `/tmp/splineops_ab_cubic_aa_batch96_vs32_single_20260616.csv`
+  - old forced 96-line batch versus 32-line batch, explicit single-thread
+  - median `1.072x`, mean `1.096x`, 3 wins and 0 losses, no failed checks
+  - largest row: `2d_cubic_aa_down_2048_float64` improved `1.24x`
+
+Rejected experiments in this pass:
+
+- 2-D axis-1 direct scatter for pure upsampling:
+  `/tmp/splineops_ab_2d_axis1_direct_scatter_up_20260616.csv`, median
+  `0.873x`, mean `0.844x`, 0 wins and 6 losses.
+- Blocked axis-contiguous scatter:
+  `/tmp/splineops_ab_blocked_axis_contig_scatter_cubic_20260616.csv` had
+  median `1.020x`, but 7 losses; tile-16 and transpose variants were also
+  mixed or negative.
+- Tiled last-axis gather:
+  `/tmp/splineops_ab_tiled_axis_contig_gather_cubic_20260616.csv`, median
+  `0.971x`, mean `0.945x`, 15 losses.
+- Run-length fixed-window accumulation:
+  `/tmp/splineops_ab_run_length_accumulate_cubic_aa_20260616.csv`, median
+  `1.008x`, mean `1.009x`, 8 losses. A narrower cubic-only gate still had
+  unstable losses, so it was removed.
+- Projection constant-stride gather:
+  `/tmp/splineops_ab_projection_strided_gather_aa_20260616.csv`, median
+  `0.999x`, mean `1.005x`, 8 losses.
+- Cubic-antialiasing 128-line batches for explicit/threaded routes were
+  inconsistent: forced-8 rows looked good in one run, but the direct policy
+  A/B did not reproduce cleanly. The default/threaded policy remains 96 lines.
+
+Fresh final artifacts after this pass:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_projection_batch_single_20260616.csv`
+  - 43 overlaps, median native/Python speedup `24.85x`, mean `28.45x`
+  - best native thread counts: `1:6`, `8:12`, `default:25`
+  - antialiasing median speedup `20.07x`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_projection_batch_single_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `13/18`, with different coordinate/AA semantics
+  - Torch faster in `8/19`; exact-ish Torch rows all slower
+
+Validation for this handoff:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py -k 'projection_batch_tune or rowwise_initial_causal or gather_prefilter_scale'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m py_compile \
+  scripts/benchmark_resize_native.py \
+  scripts/benchmark_resize_libraries.py \
+  scripts/benchmark_resize_ab.py \
+  scripts/summarize_resize_benchmarks.py
+git diff --check
+```
+
+Latest validation result: focused parity `18 passed`, full suite
+`549 passed`; script py-compile and `git diff --check` clean.
+
+## Session Wrap-Up: Current State and Next Steps
+
+Current state:
+
+- The implementation is still Arrate's least-squares projection method. The
+  accepted changes rearrange execution only: batching, gather/scatter memory
+  traversal, prefilter setup, fused scale factors, specialized dispatch, and
+  workspace sizing.
+- Latest native/Python full artifact:
+  `/tmp/splineops_native_full_both_projection_batch_single_20260616.csv`
+  - median speedup `24.85x`, mean speedup `28.45x` across 43 overlaps
+  - cubic median speedup `25.79x`
+  - antialiasing/projection median speedup `20.07x`
+  - 3-D median speedup `23.87x`
+- Latest default-scheduler library artifact:
+  `/tmp/splineops_libraries_full_default_projection_batch_single_20260616.csv`
+  - exact-ish SciPy rows: SciPy faster in `0/16`
+  - exact-ish Torch rows: Torch faster in `0/8`
+  - OpenCV remains faster on many 2-D image-resize rows, but those rows use
+    different coordinate and antialiasing semantics.
+
+Accepted changes accumulated so far:
+
+- Batched ND axis execution for interpolation and projection.
+- Fused 2-D/3-D linear kernels and linear direct paths.
+- Row-major gather and strided-offset gather for large pure interpolation.
+- Gather-prefilter scale fusion.
+- Row-wise initial-causal setup for spline recursion, including finite mirror
+  initializers.
+- Projection batch tuning and fused single-thread projection average restore.
+- Specialized fixed-support accumulation dispatch.
+- 3-D axis-1 and 2-D axis-0 direct scatter in narrow pure interpolation cases.
+- 2-D cubic/quadratic downsampling batch tune v2.
+- Explicit-single-thread large cubic-antialiasing batch reduction to 32 lines.
+
+Rejected paths to avoid retesting without new evidence:
+
+- f32 projection internals as default: fast but not output-stable enough.
+- f32 cached plan weights: slower on focused outliers.
+- Compact fixed-support row maps: flat to negative.
+- Axis-1 direct scatter and blocked/transpose axis-contiguous scatter:
+  correctness-clean but mixed or negative.
+- Tiled last-axis gather: negative on threaded/default rows.
+- Run-length fixed-window accumulation: too mixed after narrowing.
+- Projection constant-stride gather: flat to negative.
+- Larger threaded cubic-antialiasing batches: promising in one sweep but not
+  reproducible enough for default routing.
+
+Recommended next work:
+
+1. Create a benchmark-report generator that consumes the native, A/B, library,
+   compare, and legacy CSV artifacts and writes one reviewable Markdown report.
+2. Define a PR-readiness profile with exact-ish comparisons separated from
+   image-resize comparisons. For major libraries, the exact-spline/SciPy-like
+   rows should carry the argument.
+3. Run hardware-counter profiling on current defaults. Prior timing profiles
+   show gather, prefilter, projection integration, and projection temp-buffer
+   traffic as remaining costs, but the next decisions need cache/branch data.
+4. Consider a deeper pure-cubic 2-D specialization only after profiling proves
+   where memory traffic can be reduced. Previous scatter/gather reorderings did
+   not generalize.
+5. Add CI-style benchmark smoke tests that compare a small set of A/B knobs
+   against stored baselines with loose thresholds. This would catch obvious
+   regressions without requiring full benchmark runs.
+6. If preparing a library PR, freeze a clean benchmark corpus, publish semantic
+   notes, and include a minimal implementation story: exact boundary handling,
+   spline poles, LS projection filters, and why the optimized memory traversal
+   does not change the mathematical method.

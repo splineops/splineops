@@ -404,6 +404,10 @@ static inline int adaptive_batch_lines_for(
     }
     if (is_cubic_antialiasing_projection(p) &&
         std::max(in_shape[0], in_shape[1]) >= 1024) {
+      const int64_t explicit_threads = explicit_thread_count(nlines);
+      if (explicit_threads == 1) {
+        return 32;
+      }
       return 96;
     }
   }

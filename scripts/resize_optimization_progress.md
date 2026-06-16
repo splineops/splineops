@@ -720,3 +720,125 @@ Validation:
   `40 passed` for batch/direct-scatter plus adjacent gather/projection flags.
 - Full suite: `549 passed`.
 - Benchmark script py-compile and `git diff --check`: clean.
+
+## 2026-06-16 Update: Projection Batch Single-Thread Tuning
+
+This pass kept the code change deliberately small after profiling several
+memory-layout experiments. The accepted change refines
+`LSRESIZE_2D_PROJECTION_BATCH_TUNE` for large 2-D cubic antialiasing:
+explicit single-thread runs now use 32-line batches instead of 96-line batches.
+Threaded/default scheduling keeps the previous 96-line policy because the
+larger-batch experiments were not stable enough.
+
+Accepted A/B:
+
+- Cubic antialiasing, old 96-line batch versus 32-line batch, explicit
+  single-thread:
+  `/tmp/splineops_ab_cubic_aa_batch96_vs32_single_20260616.csv`
+  - median `1.072x`, mean `1.096x`, 3 wins and 0 losses, no failed checks
+  - largest win: `2d_cubic_aa_down_2048_float64` at `1.24x`
+
+Rejected experiments:
+
+- 2-D axis-1 direct scatter for pure upsampling was slower:
+  `/tmp/splineops_ab_2d_axis1_direct_scatter_up_20260616.csv`
+  reported median `0.873x`, mean `0.844x`, 0 wins and 6 losses.
+- Blocked axis-contiguous scatter was mixed. The best broad attempt
+  (`/tmp/splineops_ab_blocked_axis_contig_scatter_cubic_20260616.csv`) had
+  median `1.020x` but still 7 losses; tile-16 and transpose variants were not
+  better.
+- Tiled last-axis gather was negative:
+  `/tmp/splineops_ab_tiled_axis_contig_gather_cubic_20260616.csv` reported
+  median `0.971x`, mean `0.945x`, with 15 losses.
+- Run-length fixed-window accumulation was correctness-clean but too mixed:
+  `/tmp/splineops_ab_run_length_accumulate_cubic_aa_20260616.csv` reported
+  median `1.008x`, mean `1.009x`, with 8 losses.
+- Projection constant-stride gather was flat to negative:
+  `/tmp/splineops_ab_projection_strided_gather_aa_20260616.csv` reported
+  median `0.999x`, mean `1.005x`, with 8 losses.
+- Explicit 8-thread cubic-AA 128-line batches looked promising in one sweep,
+  but the direct policy A/B did not hold up, so threaded/default cubic-AA
+  remains at 96 lines.
+
+Fresh artifacts:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_projection_batch_single_20260616.csv`
+  - 43 overlaps, median native/Python speedup `24.85x`, mean `28.45x`
+  - best native thread counts: `1:6`, `8:12`, `default:25`
+  - antialiasing median speedup `20.07x`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_projection_batch_single_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `13/18`, with different coordinate/AA semantics
+  - Torch faster in `8/19`; exact-ish Torch rows all slower
+
+Validation:
+
+- Native editable rebuild: clean.
+- Focused parity: `18 passed` for projection batch/gather-prefilter adjacent
+  flags.
+- Full suite: `549 passed`.
+- Benchmark script py-compile and `git diff --check`: clean.
+
+## 2026-06-16 Session Wrap-Up: Current State and Next Steps
+
+The native resize path has improved materially over the optimization session,
+with the largest gains coming from preserving Arrate's least-squares projection
+math while changing batching, memory traversal, dispatch, and workspace reuse.
+The current full native/Python artifact reports:
+
+- `/tmp/splineops_native_full_both_projection_batch_single_20260616.csv`
+  - 43 native/Python overlaps
+  - median speedup `24.85x`, mean speedup `28.45x`
+  - cubic median speedup `25.79x`
+  - antialiasing/projection median speedup `20.07x`
+  - 3-D median speedup `23.87x`
+
+Accepted optimization families so far:
+
+- Batched ND axis pipeline for pure interpolation and projection paths.
+- Fused 2-D/3-D linear fast paths, including AVX2-supported linear subpaths.
+- Row-major and strided-offset gather improvements for large pure
+  interpolation passes.
+- Gather-prefilter scale fusion for interpolation prefilters.
+- Row-wise initial-causal setup for spline prefilters, including finite-length
+  mirror initialization.
+- Projection batch tuning for 2-D antialiasing/projection paths.
+- Direct accumulate-scatter for large 3-D axis-1 pure interpolation and large
+  2-D axis-0 pure upsampling.
+- 2-D pure cubic/quadratic downsampling batch tune v2.
+- Large 2-D cubic-antialiasing explicit-single-thread batch reduction from 96
+  to 32 lines.
+
+Current library position, default scheduler:
+
+- `/tmp/splineops_libraries_full_default_projection_batch_single_20260616.csv`
+  - SciPy faster in `1/21`, exact-ish SciPy rows faster in `0/16`
+  - scikit-image faster in `0/21`
+  - OpenCV faster in `13/18`, but with different coordinate/AA semantics
+  - Torch faster in `8/19`, exact-ish Torch rows faster in `0/8`
+
+Near-term next steps:
+
+1. Build a first-class benchmark report generator that combines native,
+   library, same-build A/B, and legacy Java artifacts into one reproducible
+   Markdown report. This would make PR preparation and regressions much easier.
+2. Add a PR-readiness benchmark profile focused on exact-ish semantics:
+   splineops versus SciPy and exact-compatible Torch rows, separated from
+   OpenCV/skimage image-resize comparisons.
+3. Re-profile current defaults with Linux `perf` or equivalent hardware
+   counters. The next useful information is cache-miss and branch behavior in
+   cubic gather, prefilter, and projection temp-buffer phases.
+4. Investigate a dedicated pure-cubic 2-D kernel only if profiling shows a
+   clean opportunity. Prior scatter/gather/transposition attempts were mixed,
+   so the next kernel work should be driven by hardware-counter evidence.
+5. Keep rejected experiments documented and out of the default code path:
+   axis-1 direct scatter, blocked axis-contiguous scatter, tiled last-axis
+   gather, run-length fixed-window accumulation, projection strided gather, and
+   f32 projection internals were not stable enough.
+6. For a future major-library PR, package the method as an exact-spline
+   implementation first, with clear semantic comparisons against SciPy. Treat
+   OpenCV/skimage/PyTorch image-resize numbers as contextual rather than
+   apples-to-apples evidence.
