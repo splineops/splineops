@@ -170,7 +170,8 @@ def batched_axis_label() -> str:
 def native_knobs() -> dict[str, str]:
     return {
         "LSRESIZE_BATCHED_AXIS": os.environ.get("LSRESIZE_BATCHED_AXIS", "<default:auto>"),
-        "LSRESIZE_BATCH_LINES": os.environ.get("LSRESIZE_BATCH_LINES", "<default:64>"),
+        "LSRESIZE_BATCH_LINES": os.environ.get("LSRESIZE_BATCH_LINES", "<default:adaptive>"),
+        "LSRESIZE_ROW_GATHER": os.environ.get("LSRESIZE_ROW_GATHER", "<default:on>"),
         "LSRESIZE_SPECIALIZED_PRESETS": os.environ.get(
             "LSRESIZE_SPECIALIZED_PRESETS",
             "<default:on>",

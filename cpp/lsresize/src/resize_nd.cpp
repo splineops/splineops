@@ -98,14 +98,14 @@ static inline BatchedAxisMode batched_axis_mode()
   return BatchedAxisMode::Off;
 }
 
-static inline int env_int_or_default(const char* name, int fallback)
+static inline int env_positive_int_or_zero(const char* name)
 {
   if (const char* value = std::getenv(name)) {
     if (int parsed = std::atoi(value); parsed > 0) {
       return parsed;
     }
   }
-  return fallback;
+  return 0;
 }
 
 static inline bool env_flag_enabled_default_true(const char* name)
@@ -126,6 +126,11 @@ static inline bool env_flag_enabled_default_true(const char* name)
 static inline bool specialized_presets_enabled()
 {
   return env_flag_enabled_default_true("LSRESIZE_SPECIALIZED_PRESETS");
+}
+
+static inline bool row_gather_enabled()
+{
+  return env_flag_enabled_default_true("LSRESIZE_ROW_GATHER");
 }
 
 static inline bool fast_linear_interp_enabled()
@@ -244,6 +249,33 @@ static inline int specialized_preset_max_support(const LSParams& p)
   return 0;
 }
 
+static inline bool is_pure_quadratic_or_cubic_interp(const LSParams& p)
+{
+  return p.analy_degree < 0 &&
+         p.synthe_degree == p.interp_degree &&
+         (p.interp_degree == 2 || p.interp_degree == 3);
+}
+
+static inline int adaptive_batch_lines_for(
+  const std::vector<int64_t>& in_shape,
+  const LSParams& p)
+{
+  if (const int forced = env_positive_int_or_zero("LSRESIZE_BATCH_LINES")) {
+    return forced;
+  }
+
+  // Row-major gather writes the coefficient block contiguously. Local profiles
+  // show smaller 2-D pure downsampling batches keep that block hotter; other
+  // methods/dimensions are noisier and keep the historical default.
+  if (in_shape.size() == 2 &&
+      is_pure_quadratic_or_cubic_interp(p) &&
+      p.zoom < 1.0 - 1e-12) {
+    return 16;
+  }
+
+  return kDefaultBatchLines;
+}
+
 static inline bool should_use_batched_axis(
   BatchedAxisMode mode,
   const std::vector<int64_t>& in_shape,
@@ -269,9 +301,7 @@ static inline bool should_use_batched_axis(
   // coefficient layout even for short axes: there are still many neighboring
   // lines, and batching avoids the per-line 1-D workspace pipeline.
   if (in_shape.size() == 3 &&
-      p.analy_degree < 0 &&
-      p.synthe_degree == p.interp_degree &&
-      p.interp_degree >= 2) {
+      is_pure_quadratic_or_cubic_interp(p)) {
     return true;
   }
 
@@ -338,6 +368,35 @@ static inline void axis_pass_line_offsets(
     return;
   }
 
+  if (in_shape.size() == 3) {
+    const int64_t s1 = in_shape[1];
+    const int64_t s2 = in_shape[2];
+
+    if (axis == 0) {
+      const int64_t i2 = line % s2;
+      const int64_t i1 = line / s2;
+      in_off = i1 * in_strides[1] + i2 * in_strides[2];
+      out_off = i1 * out_strides[1] + i2 * out_strides[2];
+      return;
+    }
+
+    if (axis == 1) {
+      const int64_t i2 = line % s2;
+      const int64_t i0 = line / s2;
+      in_off = i0 * in_strides[0] + i2 * in_strides[2];
+      out_off = i0 * out_strides[0] + i2 * out_strides[2];
+      return;
+    }
+
+    if (axis == 2) {
+      const int64_t i1 = line % s1;
+      const int64_t i0 = line / s1;
+      in_off = i0 * in_strides[0] + i1 * in_strides[1];
+      out_off = i0 * out_strides[0] + i1 * out_strides[1];
+      return;
+    }
+  }
+
   line_offsets(
       line,
       axis,
@@ -348,6 +407,67 @@ static inline void axis_pass_line_offsets(
       idx,
       in_off,
       out_off);
+}
+
+template <typename InScalar, typename CoeffScalar>
+static inline void gather_axis_block_by_line(
+  const InScalar* LS_RESTRICT in,
+  CoeffScalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  int N,
+  const int64_t* LS_RESTRICT in_offsets,
+  int64_t axis_stride)
+{
+  for (int b = 0; b < B; ++b) {
+    const InScalar* src = in + in_offsets[static_cast<size_t>(b)];
+    CoeffScalar* dst = coeff + static_cast<size_t>(b);
+    for (int n = 0; n < N; ++n) {
+      *dst = static_cast<CoeffScalar>(
+          src[static_cast<int64_t>(n) * axis_stride]);
+      dst += Bs;
+    }
+  }
+}
+
+template <typename InScalar, typename CoeffScalar>
+static inline void gather_axis_block_by_coeff_row(
+  const InScalar* LS_RESTRICT in,
+  CoeffScalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  int N,
+  const int64_t* LS_RESTRICT in_offsets,
+  int64_t axis_stride)
+{
+  for (int n = 0; n < N; ++n) {
+    CoeffScalar* LS_RESTRICT dst = coeff + static_cast<size_t>(n) * Bs;
+    const int64_t axis_delta = static_cast<int64_t>(n) * axis_stride;
+    for (int b = 0; b < B; ++b) {
+      dst[static_cast<size_t>(b)] = static_cast<CoeffScalar>(
+          in[in_offsets[static_cast<size_t>(b)] + axis_delta]);
+    }
+  }
+}
+
+template <typename InScalar, typename CoeffScalar>
+static inline void gather_axis_block(
+  const InScalar* LS_RESTRICT in,
+  CoeffScalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  int N,
+  const int64_t* LS_RESTRICT in_offsets,
+  int64_t axis_stride,
+  bool row_major_gather)
+{
+  if (row_major_gather) {
+    gather_axis_block_by_coeff_row(
+        in, coeff, Bs, B, N, in_offsets, axis_stride);
+  } else {
+    gather_axis_block_by_line(
+        in, coeff, Bs, B, N, in_offsets, axis_stride);
+  }
 }
 
 static inline void accumulate_interior_row_colmajor(
@@ -1762,9 +1882,10 @@ static void resize_along_axis_batched_interp_t(
   const int N = plan.N;
   const int outN = plan.outN;
   const int batch_lines =
-      std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", kDefaultBatchLines));
-  const bool axis_contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
+      std::max(1, adaptive_batch_lines_for(in_shape, p));
+  const int64_t axis_stride_in = in_strides[static_cast<size_t>(axis)];
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+  const bool row_major_gather = row_gather_enabled();
   const int max_support = specialized_presets_enabled()
                         ? specialized_preset_max_support(p)
                         : 0;
@@ -1802,21 +1923,16 @@ static void resize_along_axis_batched_interp_t(
               out_off);
           in_offsets[static_cast<size_t>(b)] = in_off;
           out_offsets[static_cast<size_t>(b)] = out_off;
-
-          if (axis_contig_in) {
-            const Scalar* src = in + in_off;
-            for (int n = 0; n < N; ++n) {
-              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                  static_cast<double>(src[static_cast<size_t>(n)]);
-            }
-          } else {
-            const int64_t stride = in_strides[static_cast<size_t>(axis)];
-            for (int n = 0; n < N; ++n) {
-              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                  static_cast<double>(in[in_off + static_cast<int64_t>(n) * stride]);
-            }
-          }
         }
+        gather_axis_block(
+            in,
+            coeff.data(),
+            Bs,
+            B,
+            N,
+            in_offsets.data(),
+            axis_stride_in,
+            row_major_gather);
       }
 
       {
@@ -1923,9 +2039,10 @@ static void resize_along_axis_batched_t(
                         ? p.interp_degree
                         : (p.analy_degree + p.synthe_degree + 1);
   const int batch_lines =
-      std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", kDefaultBatchLines));
-  const bool axis_contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
+      std::max(1, adaptive_batch_lines_for(in_shape, p));
+  const int64_t axis_stride_in = in_strides[static_cast<size_t>(axis)];
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+  const bool row_major_gather = row_gather_enabled();
   const int max_support = specialized_presets_enabled()
                         ? specialized_preset_max_support(p)
                         : 0;
@@ -1969,21 +2086,16 @@ static void resize_along_axis_batched_t(
               out_off);
           in_offsets[static_cast<size_t>(b)] = in_off;
           out_offsets[static_cast<size_t>(b)] = out_off;
-
-          if (axis_contig_in) {
-            const Scalar* src = in + in_off;
-            for (int n = 0; n < N; ++n) {
-              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                  static_cast<double>(src[static_cast<size_t>(n)]);
-            }
-          } else {
-            const int64_t stride = in_strides[static_cast<size_t>(axis)];
-            for (int n = 0; n < N; ++n) {
-              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                  static_cast<double>(in[in_off + static_cast<int64_t>(n) * stride]);
-            }
-          }
         }
+        gather_axis_block(
+            in,
+            coeff.data(),
+            Bs,
+            B,
+            N,
+            in_offsets.data(),
+            axis_stride_in,
+            row_major_gather);
       }
 
       {
@@ -2083,9 +2195,10 @@ static void resize_along_axis_batched_interp_f32_internal(
   const int N = plan.N;
   const int outN = plan.outN;
   const int batch_lines =
-      std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", kDefaultBatchLines));
-  const bool axis_contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
+      std::max(1, adaptive_batch_lines_for(in_shape, p));
+  const int64_t axis_stride_in = in_strides[static_cast<size_t>(axis)];
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+  const bool row_major_gather = row_gather_enabled();
   const int max_support = specialized_presets_enabled()
                         ? specialized_preset_max_support(p)
                         : 0;
@@ -2123,21 +2236,16 @@ static void resize_along_axis_batched_interp_f32_internal(
               out_off);
           in_offsets[static_cast<size_t>(b)] = in_off;
           out_offsets[static_cast<size_t>(b)] = out_off;
-
-          if (axis_contig_in) {
-            const float* src = in + in_off;
-            for (int n = 0; n < N; ++n) {
-              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                  src[static_cast<size_t>(n)];
-            }
-          } else {
-            const int64_t stride = in_strides[static_cast<size_t>(axis)];
-            for (int n = 0; n < N; ++n) {
-              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                  in[in_off + static_cast<int64_t>(n) * stride];
-            }
-          }
         }
+        gather_axis_block(
+            in,
+            coeff.data(),
+            Bs,
+            B,
+            N,
+            in_offsets.data(),
+            axis_stride_in,
+            row_major_gather);
       }
 
       {
@@ -2223,9 +2331,10 @@ static void resize_along_axis_batched_f32_internal(
                         ? p.interp_degree
                         : (p.analy_degree + p.synthe_degree + 1);
   const int batch_lines =
-      std::max(1, env_int_or_default("LSRESIZE_BATCH_LINES", kDefaultBatchLines));
-  const bool axis_contig_in = (in_strides[static_cast<size_t>(axis)] == 1);
+      std::max(1, adaptive_batch_lines_for(in_shape, p));
+  const int64_t axis_stride_in = in_strides[static_cast<size_t>(axis)];
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
+  const bool row_major_gather = row_gather_enabled();
   const int max_support = specialized_presets_enabled()
                         ? specialized_preset_max_support(p)
                         : 0;
@@ -2272,21 +2381,16 @@ static void resize_along_axis_batched_f32_internal(
               out_off);
           in_offsets[static_cast<size_t>(b)] = in_off;
           out_offsets[static_cast<size_t>(b)] = out_off;
-
-          if (axis_contig_in) {
-            const float* src = in + in_off;
-            for (int n = 0; n < N; ++n) {
-              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                  src[static_cast<size_t>(n)];
-            }
-          } else {
-            const int64_t stride = in_strides[static_cast<size_t>(axis)];
-            for (int n = 0; n < N; ++n) {
-              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                  in[in_off + static_cast<int64_t>(n) * stride];
-            }
-          }
         }
+        gather_axis_block(
+            in,
+            coeff.data(),
+            Bs,
+            B,
+            N,
+            in_offsets.data(),
+            axis_stride_in,
+            row_major_gather);
       }
 
       // The projection pipeline is linear and should preserve constants. Run

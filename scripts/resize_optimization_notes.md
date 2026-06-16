@@ -54,7 +54,8 @@ Current default knobs:
 | --- | --- | --- |
 | Native acceleration | auto via `SPLINEOPS_ACCEL=auto` | `always`, `never` |
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
-| Native batch lines | `64` | `LSRESIZE_BATCH_LINES=<n>` |
+| Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
+| Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
 | Native fused 2-D linear path | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |
@@ -343,7 +344,10 @@ Measured progress so far:
   - the same pass improved all 2-D pure cubic standard rows (`8/8` medians),
     with about `1.15x` mean and median speedup, because cubic interpolation
     also uses the batched prefilter and 2-D offset path
-  - 2026-06-16 retunes kept the current defaults: `LSRESIZE_BATCH_LINES=64`
+  - an earlier 2026-06-16 retune kept `LSRESIZE_BATCH_LINES=64` before the
+    row-major gather pass; after row-major gather, the unset default became
+    narrowly adaptive for 2-D pure quadratic/cubic downsampling
+  - in that earlier run, `LSRESIZE_BATCH_LINES=64`
     beat tested `32` and `16` alternatives on the focused float32 rows, and
     `LSRESIZE_PARALLEL_THRESHOLD=1e6` beat `750000` on the focused scheduler
     sweep
@@ -526,9 +530,9 @@ design.
 5. **Routing and scheduler calibration on more hardware.**
    - Re-run standard/full artifacts on machines with different core counts,
      cache sizes, and SMT behavior.
-   - Revisit `LSRESIZE_BATCH_LINES=64`, default-auto thresholds, direct
-     last-axis routing, and default thread caps only after cross-machine
-     artifacts show a consistent better choice.
+  - Revisit the adaptive `LSRESIZE_BATCH_LINES` heuristic, default-auto
+    thresholds, direct last-axis routing, and default thread caps only after cross-machine
+    artifacts show a consistent better choice.
 
 6. **Benchmark hygiene before every default change.**
    - Always save before/after JSON+CSV artifacts.
