@@ -18,18 +18,28 @@ Host:
   `/tmp/splineops_native_full_both_postcommit_20260616.{json,csv}`
 - Native full after direct-scatter pass:
   `/tmp/splineops_native_full_both_direct_scatter_20260616.{json,csv}`
+- Native full after fused gather-prefilter scale pass:
+  `/tmp/splineops_native_full_both_gather_prefilter_scale_20260616.{json,csv}`
 - Cross-library full, splineops default scheduler:
   `/tmp/splineops_libraries_full_default_postcommit_20260616.{json,csv}`
 - Cross-library full after direct-scatter pass, splineops default scheduler:
   `/tmp/splineops_libraries_full_default_direct_scatter_20260616.{json,csv}`
+- Cross-library full after fused gather-prefilter scale pass, splineops default
+  scheduler:
+  `/tmp/splineops_libraries_full_default_gather_prefilter_scale_20260616.{json,csv}`
 - Cross-library full, splineops forced to 8 threads:
   `/tmp/splineops_libraries_full_threads8_postcommit_20260616.{json,csv}`
 - Cross-library full after direct-scatter pass, splineops forced to 8 threads:
   `/tmp/splineops_libraries_full_threads8_direct_scatter_20260616.{json,csv}`
+- Cross-library full after fused gather-prefilter scale pass, splineops forced
+  to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_gather_prefilter_scale_20260616.{json,csv}`
 - Legacy Java 2-D Arrate implementation harness:
   `/tmp/splineops_legacy_java_full_20260616.csv`
 - Legacy Java 2-D Arrate harness after direct-scatter pass:
   `/tmp/splineops_legacy_java_full_direct_scatter_20260616.csv`
+- Legacy Java 2-D Arrate harness after fused gather-prefilter scale pass:
+  `/tmp/splineops_legacy_java_full_gather_prefilter_scale_20260616.csv`
 - Temporary legacy harness sources:
   `/tmp/legacy_resize_bench/ImageAccess.java`
   and `/tmp/legacy_resize_bench/LegacyResizeBench.java`
@@ -64,6 +74,11 @@ reported 43 overlaps with median speedup `24.62x` and mean speedup `27.83x`.
 Best native thread counts were `1:8`, `8:17`, and `default:18`; the 3-D median
 speedup was `20.67x`.
 
+After the fused gather-prefilter scale pass, the full native/Python artifact
+reported 43 overlaps with median speedup `25.11x` and mean speedup `29.16x`.
+Best native thread counts were `1:8`, `8:23`, and `default:12`; the 3-D median
+speedup was `25.10x`.
+
 ## Legacy Java Baseline
 
 A temporary standalone shim was used around `legacy_code/resize/Resize.java`.
@@ -88,6 +103,10 @@ The legacy harness was rerun after the 3-D direct-scatter pass for a fresh
 reference artifact. Against the current splineops default library artifact, the
 14 overlapping 2-D cases showed median speedup `9.18x`, mean `12.93x`, minimum
 `4.36x`, and maximum `50.44x`.
+
+After the fused gather-prefilter scale pass, the same legacy harness showed
+median speedup `8.44x`, mean `11.04x`, minimum `3.53x`, and maximum `34.33x`
+over 14 overlapping 2-D cases.
 
 ## Cross-Library Results
 
@@ -126,6 +145,25 @@ After the direct-scatter pass, splineops forced to `LSRESIZE_NUM_THREADS=8`:
 | scikit-image | 21 | 0 | `0.16x` | `2.39e-01` |
 | OpenCV | 18 | 17 | `1.91x` | `2.61e-01` |
 | PyTorch | 19 | 10 | `1.10x` | `1.59e-05` |
+
+After the fused gather-prefilter scale pass, splineops default scheduler:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.14x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.11x` | `2.39e-01` |
+| OpenCV | 18 | 13 | `1.41x` | `2.61e-01` |
+| PyTorch | 19 | 8 | `0.71x` | `1.59e-05` |
+
+After the fused gather-prefilter scale pass, splineops forced to
+`LSRESIZE_NUM_THREADS=8`:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 0 | `0.17x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.15x` | `2.39e-01` |
+| OpenCV | 18 | 17 | `1.90x` | `2.61e-01` |
+| PyTorch | 19 | 10 | `1.14x` | `1.59e-05` |
 
 Important interpretation:
 

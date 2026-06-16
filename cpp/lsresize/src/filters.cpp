@@ -780,6 +780,21 @@ void get_interpolation_coefficients_colmajor(
   }
 }
 
+void apply_interpolation_poles_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int deg)
+{
+  if (deg <= 1 || N <= 1 || B <= 0) return;
+
+  const auto& poles = spline_poles(deg);
+  for (double z : poles) {
+    apply_interpolation_pole_colmajor(
+        c, B, N, z, initial_causal_horizon_colmajor(N, z));
+  }
+}
+
 void do_integ_colmajor(
   std::vector<double>& c,
   int B,
@@ -1128,6 +1143,22 @@ void get_interpolation_coefficients_colmajor_f32(
     v *= lambda;
   }
 
+  for (double zd : poles) {
+    const float z = static_cast<float>(zd);
+    apply_interpolation_pole_colmajor_f32(
+        c, B, N, z, initial_causal_horizon_colmajor_f32(N, z));
+  }
+}
+
+void apply_interpolation_poles_colmajor_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  int deg)
+{
+  if (deg <= 1 || N <= 1 || B <= 0) return;
+
+  const auto& poles = spline_poles(deg);
   for (double zd : poles) {
     const float z = static_cast<float>(zd);
     apply_interpolation_pole_colmajor_f32(

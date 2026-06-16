@@ -56,6 +56,7 @@ Current default knobs:
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
 | Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
+| Native gather-prefilter scaling | enabled | `LSRESIZE_GATHER_PREFILTER_SCALE=0` |
 | Native 3-D axis-1 direct scatter | enabled for large pure quadratic/cubic interpolation passes | `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
@@ -1389,3 +1390,84 @@ Validation:
 
 Latest validation result: full suite `519 passed`; script py-compile and
 `git diff --check` clean.
+
+## Handoff: 2026-06-16 Fused Gather-Prefilter Scale
+
+Accepted change after the direct-scatter pass:
+
+- Fused the interpolation-prefilter normalization factor into the batched gather
+  for default double-internal interpolation/projection and default float32 pure
+  interpolation. The recursive pole pass is still identical to the previous
+  path; the optimization removes the separate full coefficient-block scaling
+  pass. It is controllable with `LSRESIZE_GATHER_PREFILTER_SCALE=0`.
+- Added standalone `apply_interpolation_poles_colmajor*` helpers so the fused
+  path can apply only the recursive spline poles after gathering pre-scaled
+  coefficients.
+- Kept float32 projection on the existing path because its DC centering and
+  restore logic needs separate accounting.
+- Guarded the fused path with `N > 1` to preserve the previous short-line
+  behavior exactly.
+
+Measured but rejected on this machine:
+
+- Unit-stride gather specialization:
+  `/tmp/splineops_ab_unit_stride_gather_20260616.csv`
+  - median `0.985x`, mean `0.971x`, 3 wins and 8 losses
+  - removed from the implementation rather than keeping a default-off dead knob
+- 3-D batch-line retune:
+  `/tmp/splineops_batch_lines_3d_next_20260616.csv`
+  - no single tested larger batch size was safer than the current default `64`
+    across the sampled 3-D cubic rows
+
+New A/B artifact:
+
+- Gather-prefilter scale fusion:
+  `/tmp/splineops_ab_gather_prefilter_scale_final_20260616.csv`
+  - median `1.119x`, mean `1.155x`, 15 wins and 2 losses across 18 focused
+    cubic/projection rows, no failed checks
+  - default scheduler: median `1.124x`, mean `1.217x`, 6 wins and 0 losses
+  - single-thread: median `1.160x`, mean `1.141x`, 5 wins and 0 losses
+  - forced 8 threads: median `1.069x`, mean `1.107x`, 4 wins and 2 losses
+
+Fresh final artifacts after the fused gather-prefilter scale pass:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_gather_prefilter_scale_20260616.csv`
+  - 43 overlaps, median native/Python speedup `25.11x`, mean `29.16x`
+  - range `7.67x` to `90.82x`
+  - 3-D median native/Python speedup `25.10x`
+  - best native thread counts: `1:8`, `8:23`, `default:12`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_gather_prefilter_scale_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows are all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `13/18`, but with different coordinate/AA semantics
+  - Torch faster in `8/19`; exact-ish Torch rows are all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_gather_prefilter_scale_20260616.csv`
+  - SciPy faster in `0/21`; exact-ish SciPy rows are all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `17/18`, with different coordinate/AA semantics
+  - Torch faster in `10/19`; exact-ish Torch rows faster in `3/8`
+- Legacy Java 2-D reference rerun:
+  `/tmp/splineops_legacy_java_full_gather_prefilter_scale_20260616.csv`
+  - 14 overlaps against current splineops default library artifact, median
+    speedup `8.44x`, mean `11.04x`
+
+Validation:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py -k 'gather_prefilter_scale or row_gather or direct_scatter'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m py_compile \
+  scripts/benchmark_resize_native.py \
+  scripts/benchmark_resize_libraries.py \
+  scripts/benchmark_resize_ab.py \
+  scripts/summarize_resize_benchmarks.py
+git diff --check
+```
+
+Latest validation result: focused parity `18 passed`, full suite
+`527 passed`; script py-compile and `git diff --check` clean.

@@ -316,6 +316,43 @@ def test_batched_row_gather_matches_line_gather(monkeypatch, dtype, method, shap
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping fused gather scale compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "method,shape,zoom",
+    [
+        ("cubic", (128, 96), (0.61, 1.17)),
+        ("cubic-antialiasing", (96, 88), (0.57, 1.0)),
+        ("cubic", (1, 64), (2.0, 0.75)),
+        ("cubic", (32, 28, 24), (0.75, 1.25, 1.0)),
+    ],
+)
+def test_gather_prefilter_scale_matches_prefilter_scale(
+    monkeypatch, dtype, method, shape, zoom
+):
+    rng = np.random.default_rng(141)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_GATHER_PREFILTER_SCALE", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.delenv("LSRESIZE_GATHER_PREFILTER_SCALE", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    atol = 3e-5 if method.endswith("-antialiasing") and dtype == np.float32 else 5e-6
+    if dtype == np.float64:
+        atol = 2e-9 if method.endswith("-antialiasing") else 5e-11
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping direct scatter compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])

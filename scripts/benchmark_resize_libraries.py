@@ -728,6 +728,10 @@ def main() -> int:
                 "LSRESIZE_LAST_AXIS_LINEAR_DIRECT",
                 "<default:on>",
             ),
+            "LSRESIZE_GATHER_PREFILTER_SCALE": os.environ.get(
+                "LSRESIZE_GATHER_PREFILTER_SCALE",
+                "<default:on>",
+            ),
             "LSRESIZE_3D_AXIS1_DIRECT_SCATTER": os.environ.get(
                 "LSRESIZE_3D_AXIS1_DIRECT_SCATTER",
                 "<default:on>",

@@ -172,6 +172,10 @@ def native_knobs() -> dict[str, str]:
         "LSRESIZE_BATCHED_AXIS": os.environ.get("LSRESIZE_BATCHED_AXIS", "<default:auto>"),
         "LSRESIZE_BATCH_LINES": os.environ.get("LSRESIZE_BATCH_LINES", "<default:adaptive>"),
         "LSRESIZE_ROW_GATHER": os.environ.get("LSRESIZE_ROW_GATHER", "<default:on>"),
+        "LSRESIZE_GATHER_PREFILTER_SCALE": os.environ.get(
+            "LSRESIZE_GATHER_PREFILTER_SCALE",
+            "<default:on>",
+        ),
         "LSRESIZE_3D_AXIS1_DIRECT_SCATTER": os.environ.get(
             "LSRESIZE_3D_AXIS1_DIRECT_SCATTER",
             "<default:on>",

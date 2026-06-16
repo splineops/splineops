@@ -38,6 +38,11 @@ percentages.
   A/B checks. The router keeps the path off for smaller passes where direct
   destination traffic was not a stable win, and for larger worker pools where
   the extra destination traffic can dominate.
+- The latest dataflow pass fuses the interpolation-prefilter normalization
+  factor into batched gather for double-internal interpolation/projection and
+  float32 pure interpolation. `LSRESIZE_GATHER_PREFILTER_SCALE=0` restores the
+  prior gather-then-scale path for A/B checks. The recursive pole application
+  remains the same Arrate-method spline prefilter.
 
 These keep Arrate's least-squares projection method intact: the changes are
 routing, storage precision for pure interpolation, and batched execution of the
@@ -130,6 +135,16 @@ After the direct-scatter pass:
 - 3-D median speedup: `20.67x`
 - Best native thread counts: `1:8`, `8:17`, `default:18`
 
+After the fused gather-prefilter scale pass:
+`/tmp/splineops_native_full_both_gather_prefilter_scale_20260616.csv`
+
+- Native/Python overlaps: `43`
+- Median speedup: `25.11x`
+- Mean speedup: `29.16x`
+- Range: `7.67x` to `90.82x`
+- 3-D median speedup: `25.10x`
+- Best native thread counts: `1:8`, `8:23`, `default:12`
+
 Cross-library artifact:
 `/tmp/splineops_libraries_full_after_profile_20260616.csv`
 
@@ -162,6 +177,22 @@ After the direct-scatter pass, splineops forced to 8 threads:
 - skimage: median speed `0.16x`, with different resize semantics in most rows.
 - OpenCV: median speed `1.91x`, with median relative L2 difference `2.61e-1`.
 - Torch: median speed `1.10x`; exact-ish cases `0.93x`.
+
+After the fused gather-prefilter scale pass, splineops default scheduler:
+`/tmp/splineops_libraries_full_default_gather_prefilter_scale_20260616.csv`
+
+- SciPy: median speed `0.14x` versus splineops, exact-ish cases `0.08x`.
+- skimage: median speed `0.11x`, with different resize semantics in most rows.
+- OpenCV: median speed `1.41x`, with median relative L2 difference `2.61e-1`.
+- Torch: median speed `0.71x`; exact-ish cases `0.59x`.
+
+After the fused gather-prefilter scale pass, splineops forced to 8 threads:
+`/tmp/splineops_libraries_full_threads8_gather_prefilter_scale_20260616.csv`
+
+- SciPy: median speed `0.17x` versus splineops, exact-ish cases `0.10x`.
+- skimage: median speed `0.15x`, with different resize semantics in most rows.
+- OpenCV: median speed `1.90x`, with median relative L2 difference `2.61e-1`.
+- Torch: median speed `1.14x`; exact-ish cases `0.98x`.
 
 ## Remaining Optimization Targets
 

@@ -241,6 +241,7 @@ Representative measurement:
 | Native batched axis | `auto` when unset | `LSRESIZE_BATCHED_AXIS=off/1/auto` |
 | Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
+| Native gather-prefilter scaling | enabled | `LSRESIZE_GATHER_PREFILTER_SCALE=0` |
 | Native 3-D axis-1 direct scatter | enabled for large pure quadratic/cubic interpolation passes | `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Exact linear fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
@@ -320,6 +321,16 @@ Results:
 
 Most useful current artifacts:
 
+- Full native/Python after fused gather-prefilter scaling:
+  `/tmp/splineops_native_full_both_gather_prefilter_scale_20260616.{json,csv}`
+- Full library comparison after fused gather-prefilter scaling, default
+  scheduler:
+  `/tmp/splineops_libraries_full_default_gather_prefilter_scale_20260616.{json,csv}`
+- Full library comparison after fused gather-prefilter scaling, forced
+  8 threads:
+  `/tmp/splineops_libraries_full_threads8_gather_prefilter_scale_20260616.{json,csv}`
+- Fused gather-prefilter scale A/B:
+  `/tmp/splineops_ab_gather_prefilter_scale_final_20260616.{json,csv}`
 - Native direct-plan-cache:
   `/tmp/splineops_resize_native_direct_plan_cache_final.{json,csv}`
 - Full library comparison with PyTorch:
@@ -363,3 +374,43 @@ Most useful current artifacts:
 4. Add an explicit, opt-in image-resize semantics mode only if matching OpenCV
    style speed is a product goal; keep it separate from exact splineops
    semantics.
+
+## 2026-06-16 Update: Fused Gather-Prefilter Scaling
+
+The latest optimization keeps Arrate's least-squares projection method intact
+and removes one memory pass in the native batched spline prefilter:
+
+- The interpolation-prefilter normalization factor is applied while gathering
+  the axis block into coefficient storage.
+- The prefilter then applies only the recursive spline poles.
+- The path is default-on and A/B controlled with
+  `LSRESIZE_GATHER_PREFILTER_SCALE=0`.
+
+Focused A/B:
+
+- Artifact: `/tmp/splineops_ab_gather_prefilter_scale_final_20260616.csv`
+- Result: median `1.119x`, mean `1.155x`, 15 wins and 2 losses across 18 rows,
+  no failed checks.
+- Default scheduler only: median `1.124x`, 6 wins and 0 losses.
+
+End-to-end artifacts:
+
+- Native/Python full sweep:
+  `/tmp/splineops_native_full_both_gather_prefilter_scale_20260616.csv`
+  - 43 overlaps, median speedup `25.11x`, mean `29.16x`
+- Library full comparison, default scheduler:
+  `/tmp/splineops_libraries_full_default_gather_prefilter_scale_20260616.csv`
+  - SciPy faster in `1/21`, skimage `0/21`, OpenCV `13/18`, Torch `8/19`
+- Library full comparison, forced 8 threads:
+  `/tmp/splineops_libraries_full_threads8_gather_prefilter_scale_20260616.csv`
+  - SciPy faster in `0/21`, skimage `0/21`, OpenCV `17/18`, Torch `10/19`
+- Legacy Java 2-D reference:
+  `/tmp/splineops_legacy_java_full_gather_prefilter_scale_20260616.csv`
+  - splineops median speedup `8.44x` over 14 overlapping 2-D cases
+
+Validation:
+
+- Native editable rebuild: clean.
+- Focused fused-scale/row-gather/direct-scatter parity: `18 passed`.
+- Full suite: `527 passed`.
+- Benchmark script py-compile and `git diff --check`: clean.

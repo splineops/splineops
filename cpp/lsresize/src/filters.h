@@ -107,7 +107,19 @@ void get_interpolation_coefficients_colmajor(
   int N,
   int deg);
 
+void apply_interpolation_poles_colmajor(
+  std::vector<double>& c,
+  int B,
+  int N,
+  int deg);
+
 void get_interpolation_coefficients_colmajor_f32(
+  std::vector<float>& c,
+  int B,
+  int N,
+  int deg);
+
+void apply_interpolation_poles_colmajor_f32(
   std::vector<float>& c,
   int B,
   int N,

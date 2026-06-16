@@ -133,6 +133,11 @@ static inline bool row_gather_enabled()
   return env_flag_enabled_default_true("LSRESIZE_ROW_GATHER");
 }
 
+static inline bool gather_prefilter_scale_enabled()
+{
+  return env_flag_enabled_default_true("LSRESIZE_GATHER_PREFILTER_SCALE");
+}
+
 static inline bool direct_3d_axis1_scatter_enabled()
 {
   return env_flag_enabled_default_true("LSRESIZE_3D_AXIS1_DIRECT_SCATTER");
@@ -281,6 +286,31 @@ static inline bool should_use_direct_3d_axis1_scatter(
   // Direct writes are helpful for single/small worker pools, but large pools
   // can make the extra destination traffic slower than the buffered row.
   return thread_count(nlines, plan) <= 8;
+}
+
+static inline double interpolation_prefilter_lambda(int degree)
+{
+  if (degree <= 1) {
+    return 1.0;
+  }
+  double lambda = 1.0;
+  for (double z : spline_poles(degree)) {
+    lambda *= (1.0 - z) * (1.0 - 1.0 / z);
+  }
+  return lambda;
+}
+
+static inline float interpolation_prefilter_lambda_f32(int degree)
+{
+  if (degree <= 1) {
+    return 1.0f;
+  }
+  float lambda = 1.0f;
+  for (double zd : spline_poles(degree)) {
+    const float z = static_cast<float>(zd);
+    lambda *= (1.0f - z) * (1.0f - 1.0f / z);
+  }
+  return lambda;
 }
 
 static inline int adaptive_batch_lines_for(
@@ -458,6 +488,44 @@ static inline void gather_axis_block_by_line(
 }
 
 template <typename InScalar, typename CoeffScalar>
+static inline void gather_axis_block_by_line_scaled(
+  const InScalar* LS_RESTRICT in,
+  CoeffScalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  int N,
+  const int64_t* LS_RESTRICT in_offsets,
+  int64_t axis_stride,
+  CoeffScalar scale)
+{
+  for (int b = 0; b < B; ++b) {
+    const InScalar* src = in + in_offsets[static_cast<size_t>(b)];
+    CoeffScalar* dst = coeff + static_cast<size_t>(b);
+    for (int n = 0; n < N; ++n) {
+      *dst = scale * static_cast<CoeffScalar>(
+          src[static_cast<int64_t>(n) * axis_stride]);
+      dst += Bs;
+    }
+  }
+}
+
+static inline bool offsets_are_unit_stride(
+  const int64_t* LS_RESTRICT offsets,
+  int B)
+{
+  if (B <= 1) {
+    return true;
+  }
+  const int64_t first = offsets[0];
+  for (int b = 1; b < B; ++b) {
+    if (offsets[static_cast<size_t>(b)] != first + b) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename InScalar, typename CoeffScalar>
 static inline void gather_axis_block_by_coeff_row(
   const InScalar* LS_RESTRICT in,
   CoeffScalar* LS_RESTRICT coeff,
@@ -472,6 +540,27 @@ static inline void gather_axis_block_by_coeff_row(
     const int64_t axis_delta = static_cast<int64_t>(n) * axis_stride;
     for (int b = 0; b < B; ++b) {
       dst[static_cast<size_t>(b)] = static_cast<CoeffScalar>(
+          in[in_offsets[static_cast<size_t>(b)] + axis_delta]);
+    }
+  }
+}
+
+template <typename InScalar, typename CoeffScalar>
+static inline void gather_axis_block_by_coeff_row_scaled(
+  const InScalar* LS_RESTRICT in,
+  CoeffScalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  int N,
+  const int64_t* LS_RESTRICT in_offsets,
+  int64_t axis_stride,
+  CoeffScalar scale)
+{
+  for (int n = 0; n < N; ++n) {
+    CoeffScalar* LS_RESTRICT dst = coeff + static_cast<size_t>(n) * Bs;
+    const int64_t axis_delta = static_cast<int64_t>(n) * axis_stride;
+    for (int b = 0; b < B; ++b) {
+      dst[static_cast<size_t>(b)] = scale * static_cast<CoeffScalar>(
           in[in_offsets[static_cast<size_t>(b)] + axis_delta]);
     }
   }
@@ -497,20 +586,25 @@ static inline void gather_axis_block(
   }
 }
 
-static inline bool offsets_are_unit_stride(
-  const int64_t* LS_RESTRICT offsets,
-  int B)
+template <typename InScalar, typename CoeffScalar>
+static inline void gather_axis_block_scaled(
+  const InScalar* LS_RESTRICT in,
+  CoeffScalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  int N,
+  const int64_t* LS_RESTRICT in_offsets,
+  int64_t axis_stride,
+  bool row_major_gather,
+  CoeffScalar scale)
 {
-  if (B <= 1) {
-    return true;
+  if (row_major_gather) {
+    gather_axis_block_by_coeff_row_scaled(
+        in, coeff, Bs, B, N, in_offsets, axis_stride, scale);
+  } else {
+    gather_axis_block_by_line_scaled(
+        in, coeff, Bs, B, N, in_offsets, axis_stride, scale);
   }
-  const int64_t first = offsets[0];
-  for (int b = 1; b < B; ++b) {
-    if (offsets[static_cast<size_t>(b)] != first + b) {
-      return false;
-    }
-  }
-  return true;
 }
 
 static inline void accumulate_interior_row_colmajor(
@@ -2225,6 +2319,11 @@ static void resize_along_axis_batched_interp_t(
                         : 0;
   const bool direct_axis1_scatter =
       should_use_direct_3d_axis1_scatter(in_shape, p, plan, axis, nlines, outN);
+  const bool scaled_gather_prefilter =
+      gather_prefilter_scale_enabled() && p.interp_degree > 1 && N > 1;
+  const double gather_scale = scaled_gather_prefilter
+                            ? interpolation_prefilter_lambda(p.interp_degree)
+                            : 1.0;
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -2260,20 +2359,37 @@ static void resize_along_axis_batched_interp_t(
           in_offsets[static_cast<size_t>(b)] = in_off;
           out_offsets[static_cast<size_t>(b)] = out_off;
         }
-        gather_axis_block(
-            in,
-            coeff.data(),
-            Bs,
-            B,
-            N,
-            in_offsets.data(),
-            axis_stride_in,
-            row_major_gather);
+        if (scaled_gather_prefilter) {
+          gather_axis_block_scaled(
+              in,
+              coeff.data(),
+              Bs,
+              B,
+              N,
+              in_offsets.data(),
+              axis_stride_in,
+              row_major_gather,
+              gather_scale);
+        } else {
+          gather_axis_block(
+              in,
+              coeff.data(),
+              Bs,
+              B,
+              N,
+              in_offsets.data(),
+              axis_stride_in,
+              row_major_gather);
+        }
       }
 
       {
         LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpPrefilter);
-        get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
+        if (scaled_gather_prefilter) {
+          apply_interpolation_poles_colmajor(coeff, B, N, p.interp_degree);
+        } else {
+          get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
+        }
       }
 
       if (axis_contig_out) {
@@ -2416,6 +2532,11 @@ static void resize_along_axis_batched_t(
                         : 0;
   const bool fused_avg_restore =
       fused_projection_average_restore_enabled_for(nlines, plan);
+  const bool scaled_gather_prefilter =
+      gather_prefilter_scale_enabled() && p.interp_degree > 1 && N > 1;
+  const double gather_scale = scaled_gather_prefilter
+                            ? interpolation_prefilter_lambda(p.interp_degree)
+                            : 1.0;
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -2455,20 +2576,37 @@ static void resize_along_axis_batched_t(
           in_offsets[static_cast<size_t>(b)] = in_off;
           out_offsets[static_cast<size_t>(b)] = out_off;
         }
-        gather_axis_block(
-            in,
-            coeff.data(),
-            Bs,
-            B,
-            N,
-            in_offsets.data(),
-            axis_stride_in,
-            row_major_gather);
+        if (scaled_gather_prefilter) {
+          gather_axis_block_scaled(
+              in,
+              coeff.data(),
+              Bs,
+              B,
+              N,
+              in_offsets.data(),
+              axis_stride_in,
+              row_major_gather,
+              gather_scale);
+        } else {
+          gather_axis_block(
+              in,
+              coeff.data(),
+              Bs,
+              B,
+              N,
+              in_offsets.data(),
+              axis_stride_in,
+              row_major_gather);
+        }
       }
 
       {
         LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionInputPrefilter);
-        get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
+        if (scaled_gather_prefilter) {
+          apply_interpolation_poles_colmajor(coeff, B, N, p.interp_degree);
+        } else {
+          get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
+        }
       }
       if (p.analy_degree >= 0) {
         LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionIntegrate);
@@ -2572,6 +2710,11 @@ static void resize_along_axis_batched_interp_f32_internal(
                         : 0;
   const bool direct_axis1_scatter =
       should_use_direct_3d_axis1_scatter(in_shape, p, plan, axis, nlines, outN);
+  const bool scaled_gather_prefilter =
+      gather_prefilter_scale_enabled() && p.interp_degree > 1 && N > 1;
+  const float gather_scale = scaled_gather_prefilter
+                           ? interpolation_prefilter_lambda_f32(p.interp_degree)
+                           : 1.0f;
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -2607,21 +2750,39 @@ static void resize_along_axis_batched_interp_f32_internal(
           in_offsets[static_cast<size_t>(b)] = in_off;
           out_offsets[static_cast<size_t>(b)] = out_off;
         }
-        gather_axis_block(
-            in,
-            coeff.data(),
-            Bs,
-            B,
-            N,
-            in_offsets.data(),
-            axis_stride_in,
-            row_major_gather);
+        if (scaled_gather_prefilter) {
+          gather_axis_block_scaled(
+              in,
+              coeff.data(),
+              Bs,
+              B,
+              N,
+              in_offsets.data(),
+              axis_stride_in,
+              row_major_gather,
+              gather_scale);
+        } else {
+          gather_axis_block(
+              in,
+              coeff.data(),
+              Bs,
+              B,
+              N,
+              in_offsets.data(),
+              axis_stride_in,
+              row_major_gather);
+        }
       }
 
       {
         LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpPrefilter);
-        get_interpolation_coefficients_colmajor_f32(
-            coeff, B, N, p.interp_degree);
+        if (scaled_gather_prefilter) {
+          apply_interpolation_poles_colmajor_f32(
+              coeff, B, N, p.interp_degree);
+        } else {
+          get_interpolation_coefficients_colmajor_f32(
+              coeff, B, N, p.interp_degree);
+        }
       }
 
       if (axis_contig_out) {
