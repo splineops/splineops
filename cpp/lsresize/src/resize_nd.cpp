@@ -4,6 +4,7 @@
 #include "parallel_utils.h"
 #include "resize_1d.h"
 #include "filters.h"
+#include "profile_utils.h"
 
 #include <vector>
 #include <numeric>
@@ -159,7 +160,7 @@ static inline bool float32_internal_auto_enabled(
   if (value != nullptr && value[0] != '\0') {
     return false;
   }
-  return in_shape.size() == 2 &&
+  return (in_shape.size() == 2 || in_shape.size() == 3) &&
          p.analy_degree < 0 &&
          p.synthe_degree == p.interp_degree &&
          (p.interp_degree == 2 || p.interp_degree == 3);
@@ -257,21 +258,30 @@ static inline bool should_use_batched_axis(
     return true;
   }
 
-  // Conservative default: local benchmarks show stable wins for large 2-D
-  // passes, while 3-D cases are still mixed.
-  if (in_shape.size() != 2) {
-    return false;
-  }
   if (p.interp_degree <= 0) {
     return false;
   }
   if (nlines < 128) {
     return false;
   }
+
+  // Pure 3-D quadratic/cubic interpolation benefits from the batched
+  // coefficient layout even for short axes: there are still many neighboring
+  // lines, and batching avoids the per-line 1-D workspace pipeline.
+  if (in_shape.size() == 3 &&
+      p.analy_degree < 0 &&
+      p.synthe_degree == p.interp_degree &&
+      p.interp_degree >= 2) {
+    return true;
+  }
+
   if (plan.N < 64 || plan.out_total < 64) {
     return false;
   }
-  return true;
+  if (in_shape.size() == 2) {
+    return true;
+  }
+  return false;
 }
 
 static inline void line_offsets(
@@ -1348,6 +1358,8 @@ static void resize_along_axis_2d_linear_direct(
   const Plan1D& plan,
   int64_t nlines)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::LinearDirectTotal);
+
   const int64_t in_w = in_shape[1];
   const int64_t out_w = out_shape[1];
   using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
@@ -1522,6 +1534,8 @@ static void resize_along_axis_linear_direct(
   const std::vector<int>& bases,
   int64_t nlines)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::LinearDirectTotal);
+
   const int D = static_cast<int>(in_shape.size());
   using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
   const auto direct = direct_linear_plan_view<Accum>(plan);
@@ -1742,6 +1756,8 @@ static void resize_along_axis_batched_interp_t(
   const std::vector<int>& bases,
   int64_t nlines)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpTotal);
+
   const int D = static_cast<int>(in_shape.size());
   const int N = plan.N;
   const int outN = plan.outN;
@@ -1769,59 +1785,72 @@ static void resize_along_axis_batched_interp_t(
       const size_t Bs = static_cast<size_t>(B);
       coeff.resize(static_cast<size_t>(N) * Bs);
 
-      for (int b = 0; b < B; ++b) {
-        int64_t in_off = 0;
-        int64_t out_off = 0;
-        axis_pass_line_offsets(
-            block + b,
-            axis,
-            bases,
-            in_shape,
-            in_strides,
-            out_strides,
-            idx,
-            in_off,
-            out_off);
-        in_offsets[static_cast<size_t>(b)] = in_off;
-        out_offsets[static_cast<size_t>(b)] = out_off;
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpGather);
+        for (int b = 0; b < B; ++b) {
+          int64_t in_off = 0;
+          int64_t out_off = 0;
+          axis_pass_line_offsets(
+              block + b,
+              axis,
+              bases,
+              in_shape,
+              in_strides,
+              out_strides,
+              idx,
+              in_off,
+              out_off);
+          in_offsets[static_cast<size_t>(b)] = in_off;
+          out_offsets[static_cast<size_t>(b)] = out_off;
 
-        if (axis_contig_in) {
-          const Scalar* src = in + in_off;
-          for (int n = 0; n < N; ++n) {
-            coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                static_cast<double>(src[static_cast<size_t>(n)]);
-          }
-        } else {
-          const int64_t stride = in_strides[static_cast<size_t>(axis)];
-          for (int n = 0; n < N; ++n) {
-            coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                static_cast<double>(in[in_off + static_cast<int64_t>(n) * stride]);
+          if (axis_contig_in) {
+            const Scalar* src = in + in_off;
+            for (int n = 0; n < N; ++n) {
+              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
+                  static_cast<double>(src[static_cast<size_t>(n)]);
+            }
+          } else {
+            const int64_t stride = in_strides[static_cast<size_t>(axis)];
+            for (int n = 0; n < N; ++n) {
+              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
+                  static_cast<double>(in[in_off + static_cast<int64_t>(n) * stride]);
+            }
           }
         }
       }
 
-      get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpPrefilter);
+        get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
+      }
 
       if (axis_contig_out) {
-        y.resize(static_cast<size_t>(outN) * Bs);
-        accumulate_row_runs_colmajor_preset_set(
-            coeff.data(),
-            Bs,
-            B,
-            plan,
-            max_support,
-            y.data());
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpAccumulate);
+          y.resize(static_cast<size_t>(outN) * Bs);
+          accumulate_row_runs_colmajor_preset_set(
+              coeff.data(),
+              Bs,
+              B,
+              plan,
+              max_support,
+              y.data());
+        }
 
-        for (int b = 0; b < B; ++b) {
-          const int64_t out_off = out_offsets[static_cast<size_t>(b)];
-          Scalar* dst = out + out_off;
-          for (int l = 0; l < outN; ++l) {
-            dst[static_cast<size_t>(l)] =
-                static_cast<Scalar>(y[static_cast<size_t>(l) * Bs +
-                                      static_cast<size_t>(b)]);
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpScatter);
+          for (int b = 0; b < B; ++b) {
+            const int64_t out_off = out_offsets[static_cast<size_t>(b)];
+            Scalar* dst = out + out_off;
+            for (int l = 0; l < outN; ++l) {
+              dst[static_cast<size_t>(l)] =
+                  static_cast<Scalar>(y[static_cast<size_t>(l) * Bs +
+                                        static_cast<size_t>(b)]);
+            }
           }
         }
       } else {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpAccumulateScatter);
         accum.resize(Bs);
         const int64_t stride = out_strides[static_cast<size_t>(axis)];
         const double* weights = plan.weights.data();
@@ -1884,6 +1913,8 @@ static void resize_along_axis_batched_t(
   const std::vector<int>& bases,
   int64_t nlines)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionTotal);
+
   const int D = static_cast<int>(in_shape.size());
   const int N = plan.N;
   const int outN = plan.outN;
@@ -1921,39 +1952,46 @@ static void resize_along_axis_batched_t(
       coeff.resize(static_cast<size_t>(N) * Bs);
       y.resize(static_cast<size_t>(out_total) * Bs);
 
-      for (int b = 0; b < B; ++b) {
-        int64_t in_off = 0;
-        int64_t out_off = 0;
-        axis_pass_line_offsets(
-            block + b,
-            axis,
-            bases,
-            in_shape,
-            in_strides,
-            out_strides,
-            idx,
-            in_off,
-            out_off);
-        in_offsets[static_cast<size_t>(b)] = in_off;
-        out_offsets[static_cast<size_t>(b)] = out_off;
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionGather);
+        for (int b = 0; b < B; ++b) {
+          int64_t in_off = 0;
+          int64_t out_off = 0;
+          axis_pass_line_offsets(
+              block + b,
+              axis,
+              bases,
+              in_shape,
+              in_strides,
+              out_strides,
+              idx,
+              in_off,
+              out_off);
+          in_offsets[static_cast<size_t>(b)] = in_off;
+          out_offsets[static_cast<size_t>(b)] = out_off;
 
-        if (axis_contig_in) {
-          const Scalar* src = in + in_off;
-          for (int n = 0; n < N; ++n) {
-            coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                static_cast<double>(src[static_cast<size_t>(n)]);
-          }
-        } else {
-          const int64_t stride = in_strides[static_cast<size_t>(axis)];
-          for (int n = 0; n < N; ++n) {
-            coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                static_cast<double>(in[in_off + static_cast<int64_t>(n) * stride]);
+          if (axis_contig_in) {
+            const Scalar* src = in + in_off;
+            for (int n = 0; n < N; ++n) {
+              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
+                  static_cast<double>(src[static_cast<size_t>(n)]);
+            }
+          } else {
+            const int64_t stride = in_strides[static_cast<size_t>(axis)];
+            for (int n = 0; n < N; ++n) {
+              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
+                  static_cast<double>(in[in_off + static_cast<int64_t>(n) * stride]);
+            }
           }
         }
       }
 
-      get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionInputPrefilter);
+        get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
+      }
       if (p.analy_degree >= 0) {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionIntegrate);
         do_integ_colmajor(
             coeff,
             B,
@@ -1963,46 +2001,61 @@ static void resize_along_axis_batched_t(
             filter_work);
       }
 
-      accumulate_row_runs_colmajor_preset_set(
-          coeff.data(),
-          Bs,
-          B,
-          plan,
-          max_support,
-          y.data());
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionAccumulate);
+        accumulate_row_runs_colmajor_preset_set(
+            coeff.data(),
+            Bs,
+            B,
+            plan,
+            max_support,
+            y.data());
+      }
 
       if (p.analy_degree >= 0) {
-        if (fused_avg_restore) {
-          do_diff_colmajor_add_average(
-              y, B, out_total, p.analy_degree + 1, average, filter_work);
-        } else {
-          do_diff_colmajor(y, B, out_total, p.analy_degree + 1, filter_work);
-          for (int l = 0; l < out_total; ++l) {
-            double* y_col = y.data() + static_cast<size_t>(l) * Bs;
-            for (int b = 0; b < B; ++b) {
-              y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionDiff);
+          if (fused_avg_restore) {
+            do_diff_colmajor_add_average(
+                y, B, out_total, p.analy_degree + 1, average, filter_work);
+          } else {
+            do_diff_colmajor(y, B, out_total, p.analy_degree + 1, filter_work);
+            for (int l = 0; l < out_total; ++l) {
+              double* y_col = y.data() + static_cast<size_t>(l) * Bs;
+              for (int b = 0; b < B; ++b) {
+                y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+              }
             }
           }
         }
-        get_interpolation_coefficients_colmajor(y, B, out_total, corr_degree);
-        get_samples_colmajor(y, B, out_total, p.synthe_degree, filter_work);
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionOutputPrefilter);
+          get_interpolation_coefficients_colmajor(y, B, out_total, corr_degree);
+        }
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionSampling);
+          get_samples_colmajor(y, B, out_total, p.synthe_degree, filter_work);
+        }
       }
 
-      for (int b = 0; b < B; ++b) {
-        const int64_t out_off = out_offsets[static_cast<size_t>(b)];
-        if (axis_contig_out) {
-          Scalar* dst = out + out_off;
-          for (int l = 0; l < outN; ++l) {
-            dst[static_cast<size_t>(l)] =
-                static_cast<Scalar>(y[static_cast<size_t>(l) * Bs +
-                                      static_cast<size_t>(b)]);
-          }
-        } else {
-          const int64_t stride = out_strides[static_cast<size_t>(axis)];
-          for (int l = 0; l < outN; ++l) {
-            out[out_off + static_cast<int64_t>(l) * stride] =
-                static_cast<Scalar>(y[static_cast<size_t>(l) * Bs +
-                                      static_cast<size_t>(b)]);
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionScatter);
+        for (int b = 0; b < B; ++b) {
+          const int64_t out_off = out_offsets[static_cast<size_t>(b)];
+          if (axis_contig_out) {
+            Scalar* dst = out + out_off;
+            for (int l = 0; l < outN; ++l) {
+              dst[static_cast<size_t>(l)] =
+                  static_cast<Scalar>(y[static_cast<size_t>(l) * Bs +
+                                        static_cast<size_t>(b)]);
+            }
+          } else {
+            const int64_t stride = out_strides[static_cast<size_t>(axis)];
+            for (int l = 0; l < outN; ++l) {
+              out[out_off + static_cast<int64_t>(l) * stride] =
+                  static_cast<Scalar>(y[static_cast<size_t>(l) * Bs +
+                                        static_cast<size_t>(b)]);
+            }
           }
         }
       }
@@ -2024,6 +2077,8 @@ static void resize_along_axis_batched_interp_f32_internal(
   const std::vector<int>& bases,
   int64_t nlines)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpTotal);
+
   const int D = static_cast<int>(in_shape.size());
   const int N = plan.N;
   const int outN = plan.outN;
@@ -2051,59 +2106,72 @@ static void resize_along_axis_batched_interp_f32_internal(
       const size_t Bs = static_cast<size_t>(B);
       coeff.resize(static_cast<size_t>(N) * Bs);
 
-      for (int b = 0; b < B; ++b) {
-        int64_t in_off = 0;
-        int64_t out_off = 0;
-        axis_pass_line_offsets(
-            block + b,
-            axis,
-            bases,
-            in_shape,
-            in_strides,
-            out_strides,
-            idx,
-            in_off,
-            out_off);
-        in_offsets[static_cast<size_t>(b)] = in_off;
-        out_offsets[static_cast<size_t>(b)] = out_off;
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpGather);
+        for (int b = 0; b < B; ++b) {
+          int64_t in_off = 0;
+          int64_t out_off = 0;
+          axis_pass_line_offsets(
+              block + b,
+              axis,
+              bases,
+              in_shape,
+              in_strides,
+              out_strides,
+              idx,
+              in_off,
+              out_off);
+          in_offsets[static_cast<size_t>(b)] = in_off;
+          out_offsets[static_cast<size_t>(b)] = out_off;
 
-        if (axis_contig_in) {
-          const float* src = in + in_off;
-          for (int n = 0; n < N; ++n) {
-            coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                src[static_cast<size_t>(n)];
-          }
-        } else {
-          const int64_t stride = in_strides[static_cast<size_t>(axis)];
-          for (int n = 0; n < N; ++n) {
-            coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                in[in_off + static_cast<int64_t>(n) * stride];
+          if (axis_contig_in) {
+            const float* src = in + in_off;
+            for (int n = 0; n < N; ++n) {
+              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
+                  src[static_cast<size_t>(n)];
+            }
+          } else {
+            const int64_t stride = in_strides[static_cast<size_t>(axis)];
+            for (int n = 0; n < N; ++n) {
+              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
+                  in[in_off + static_cast<int64_t>(n) * stride];
+            }
           }
         }
       }
 
-      get_interpolation_coefficients_colmajor_f32(
-          coeff, B, N, p.interp_degree);
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpPrefilter);
+        get_interpolation_coefficients_colmajor_f32(
+            coeff, B, N, p.interp_degree);
+      }
 
       if (axis_contig_out) {
-        y.resize(static_cast<size_t>(outN) * Bs);
-        accumulate_row_runs_colmajor_f32_preset_set(
-            coeff.data(),
-            Bs,
-            B,
-            plan,
-            max_support,
-            y.data());
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpAccumulate);
+          y.resize(static_cast<size_t>(outN) * Bs);
+          accumulate_row_runs_colmajor_f32_preset_set(
+              coeff.data(),
+              Bs,
+              B,
+              plan,
+              max_support,
+              y.data());
+        }
 
-        for (int b = 0; b < B; ++b) {
-          const int64_t out_off = out_offsets[static_cast<size_t>(b)];
-          float* dst = out + out_off;
-          for (int l = 0; l < outN; ++l) {
-            dst[static_cast<size_t>(l)] =
-                y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)];
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpScatter);
+          for (int b = 0; b < B; ++b) {
+            const int64_t out_off = out_offsets[static_cast<size_t>(b)];
+            float* dst = out + out_off;
+            for (int l = 0; l < outN; ++l) {
+              dst[static_cast<size_t>(l)] =
+                  y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)];
+            }
           }
         }
       } else {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpAccumulateScatter);
         accum.resize(Bs);
         const int64_t stride = out_strides[static_cast<size_t>(axis)];
         const double* weights = plan.weights.data();
@@ -2145,6 +2213,8 @@ static void resize_along_axis_batched_f32_internal(
   const std::vector<int>& bases,
   int64_t nlines)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionTotal);
+
   const int D = static_cast<int>(in_shape.size());
   const int N = plan.N;
   const int outN = plan.outN;
@@ -2185,33 +2255,36 @@ static void resize_along_axis_batched_f32_internal(
       y.resize(static_cast<size_t>(out_total) * Bs);
       line_dc.resize(Bs);
 
-      for (int b = 0; b < B; ++b) {
-        int64_t in_off = 0;
-        int64_t out_off = 0;
-        axis_pass_line_offsets(
-            block + b,
-            axis,
-            bases,
-            in_shape,
-            in_strides,
-            out_strides,
-            idx,
-            in_off,
-            out_off);
-        in_offsets[static_cast<size_t>(b)] = in_off;
-        out_offsets[static_cast<size_t>(b)] = out_off;
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionGather);
+        for (int b = 0; b < B; ++b) {
+          int64_t in_off = 0;
+          int64_t out_off = 0;
+          axis_pass_line_offsets(
+              block + b,
+              axis,
+              bases,
+              in_shape,
+              in_strides,
+              out_strides,
+              idx,
+              in_off,
+              out_off);
+          in_offsets[static_cast<size_t>(b)] = in_off;
+          out_offsets[static_cast<size_t>(b)] = out_off;
 
-        if (axis_contig_in) {
-          const float* src = in + in_off;
-          for (int n = 0; n < N; ++n) {
-            coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                src[static_cast<size_t>(n)];
-          }
-        } else {
-          const int64_t stride = in_strides[static_cast<size_t>(axis)];
-          for (int n = 0; n < N; ++n) {
-            coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
-                in[in_off + static_cast<int64_t>(n) * stride];
+          if (axis_contig_in) {
+            const float* src = in + in_off;
+            for (int n = 0; n < N; ++n) {
+              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
+                  src[static_cast<size_t>(n)];
+            }
+          } else {
+            const int64_t stride = in_strides[static_cast<size_t>(axis)];
+            for (int n = 0; n < N; ++n) {
+              coeff[static_cast<size_t>(n) * Bs + static_cast<size_t>(b)] =
+                  in[in_off + static_cast<int64_t>(n) * stride];
+            }
           }
         }
       }
@@ -2219,29 +2292,36 @@ static void resize_along_axis_batched_f32_internal(
       // The projection pipeline is linear and should preserve constants. Run
       // it on a DC-centered residual so float32 recursive filters do not turn a
       // constant line into small boundary drift.
-      bool has_dc = false;
-      for (int b = 0; b < B; ++b) {
-        const size_t bi = static_cast<size_t>(b);
-        float dc = coeff[bi];
-        if (!std::isfinite(dc)) {
-          dc = 0.0f;
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionDcCenter);
+        bool has_dc = false;
+        for (int b = 0; b < B; ++b) {
+          const size_t bi = static_cast<size_t>(b);
+          float dc = coeff[bi];
+          if (!std::isfinite(dc)) {
+            dc = 0.0f;
+          }
+          line_dc[bi] = dc;
+          has_dc = has_dc || (dc != 0.0f);
         }
-        line_dc[bi] = dc;
-        has_dc = has_dc || (dc != 0.0f);
-      }
-      if (has_dc) {
-        for (int n = 0; n < N; ++n) {
-          float* col = coeff.data() + static_cast<size_t>(n) * Bs;
-          for (int b = 0; b < B; ++b) {
-            const size_t bi = static_cast<size_t>(b);
-            col[bi] -= line_dc[bi];
+        if (has_dc) {
+          for (int n = 0; n < N; ++n) {
+            float* col = coeff.data() + static_cast<size_t>(n) * Bs;
+            for (int b = 0; b < B; ++b) {
+              const size_t bi = static_cast<size_t>(b);
+              col[bi] -= line_dc[bi];
+            }
           }
         }
       }
 
-      get_interpolation_coefficients_colmajor_f32(
-          coeff, B, N, p.interp_degree);
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionInputPrefilter);
+        get_interpolation_coefficients_colmajor_f32(
+            coeff, B, N, p.interp_degree);
+      }
       if (p.analy_degree >= 0) {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionIntegrate);
         do_integ_colmajor_f32(
             coeff,
             B,
@@ -2251,45 +2331,60 @@ static void resize_along_axis_batched_f32_internal(
             filter_work);
       }
 
-      accumulate_row_runs_colmajor_f32_preset_set(
-          coeff.data(),
-          Bs,
-          B,
-          plan,
-          max_support,
-          y.data());
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionAccumulate);
+        accumulate_row_runs_colmajor_f32_preset_set(
+            coeff.data(),
+            Bs,
+            B,
+            plan,
+            max_support,
+            y.data());
+      }
 
       if (p.analy_degree >= 0) {
-        if (fused_avg_restore) {
-          do_diff_colmajor_add_average_f32(
-              y, B, out_total, p.analy_degree + 1, average, filter_work);
-        } else {
-          do_diff_colmajor_f32(y, B, out_total, p.analy_degree + 1, filter_work);
-          for (int l = 0; l < out_total; ++l) {
-            float* y_col = y.data() + static_cast<size_t>(l) * Bs;
-            for (int b = 0; b < B; ++b) {
-              y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionDiff);
+          if (fused_avg_restore) {
+            do_diff_colmajor_add_average_f32(
+                y, B, out_total, p.analy_degree + 1, average, filter_work);
+          } else {
+            do_diff_colmajor_f32(y, B, out_total, p.analy_degree + 1, filter_work);
+            for (int l = 0; l < out_total; ++l) {
+              float* y_col = y.data() + static_cast<size_t>(l) * Bs;
+              for (int b = 0; b < B; ++b) {
+                y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
+              }
             }
           }
         }
-        get_interpolation_coefficients_colmajor_f32(y, B, out_total, corr_degree);
-        get_samples_colmajor_f32(y, B, out_total, p.synthe_degree, filter_work);
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionOutputPrefilter);
+          get_interpolation_coefficients_colmajor_f32(y, B, out_total, corr_degree);
+        }
+        {
+          LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionSampling);
+          get_samples_colmajor_f32(y, B, out_total, p.synthe_degree, filter_work);
+        }
       }
 
-      for (int b = 0; b < B; ++b) {
-        const int64_t out_off = out_offsets[static_cast<size_t>(b)];
-        const float dc = line_dc[static_cast<size_t>(b)];
-        if (axis_contig_out) {
-          float* dst = out + out_off;
-          for (int l = 0; l < outN; ++l) {
-            dst[static_cast<size_t>(l)] =
-                y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)] + dc;
-          }
-        } else {
-          const int64_t stride = out_strides[static_cast<size_t>(axis)];
-          for (int l = 0; l < outN; ++l) {
-            out[out_off + static_cast<int64_t>(l) * stride] =
-                y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)] + dc;
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionScatter);
+        for (int b = 0; b < B; ++b) {
+          const int64_t out_off = out_offsets[static_cast<size_t>(b)];
+          const float dc = line_dc[static_cast<size_t>(b)];
+          if (axis_contig_out) {
+            float* dst = out + out_off;
+            for (int l = 0; l < outN; ++l) {
+              dst[static_cast<size_t>(l)] =
+                  y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)] + dc;
+            }
+          } else {
+            const int64_t stride = out_strides[static_cast<size_t>(axis)];
+            for (int l = 0; l < outN; ++l) {
+              out[out_off + static_cast<int64_t>(l) * stride] =
+                  y[static_cast<size_t>(l) * Bs + static_cast<size_t>(b)] + dc;
+            }
           }
         }
       }
@@ -2312,6 +2407,8 @@ static void resize_along_axis_t(
   int axis,
   const LSParams& p)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::NdAxisTotal);
+
   const int D = static_cast<int>(in_shape.size());
   const auto in_strides  = strides_from_shape(in_shape);
   const auto out_strides = strides_from_shape(out_shape);
@@ -2492,26 +2589,29 @@ static void resize_along_axis_t(
         (out_strides[static_cast<size_t>(axis)] == 1);
 
     for (int64_t line = start; line < end; ++line) {
-      std::fill(idx.begin(), idx.end(), 0);
-
-      // Unravel 'line' into coordinates for all dims except 'axis'
-      int64_t t = line;
-      for (int bi = 0; bi < static_cast<int>(bases.size()); ++bi) {
-        const int d = bases[static_cast<size_t>(bi)];
-        idx[static_cast<size_t>(d)] =
-            t % in_shape[static_cast<size_t>(d)];
-        t /= in_shape[static_cast<size_t>(d)];
-      }
-
-      // Offsets at the start of this line
       int64_t in_off  = 0;
       int64_t out_off = 0;
-      for (int d = 0; d < D; ++d) {
-        if (d != axis) {
-          in_off  += idx[static_cast<size_t>(d)] *
-                     in_strides[static_cast<size_t>(d)];
-          out_off += idx[static_cast<size_t>(d)] *
-                     out_strides[static_cast<size_t>(d)];
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::LineFallbackOffset);
+        std::fill(idx.begin(), idx.end(), 0);
+
+        // Unravel 'line' into coordinates for all dims except 'axis'
+        int64_t t = line;
+        for (int bi = 0; bi < static_cast<int>(bases.size()); ++bi) {
+          const int d = bases[static_cast<size_t>(bi)];
+          idx[static_cast<size_t>(d)] =
+              t % in_shape[static_cast<size_t>(d)];
+          t /= in_shape[static_cast<size_t>(d)];
+        }
+
+        // Offsets at the start of this line
+        for (int d = 0; d < D; ++d) {
+          if (d != axis) {
+            in_off  += idx[static_cast<size_t>(d)] *
+                       in_strides[static_cast<size_t>(d)];
+            out_off += idx[static_cast<size_t>(d)] *
+                       out_strides[static_cast<size_t>(d)];
+          }
         }
       }
 
@@ -2519,65 +2619,80 @@ static void resize_along_axis_t(
       if constexpr (std::is_same_v<Scalar, double>) {
         if (axis_contig_in && axis_contig_out) {
           // Direct 1-D resize on raw buffers, no gather/scatter via vectors.
-          resize_1d_line_contiguous(in + in_off, out + out_off, p, plan, workspace);
+          {
+            LSRESIZE_PROFILE_SCOPE(profile::Phase::LineFallbackResize1D);
+            resize_1d_line_contiguous(in + in_off, out + out_off, p, plan, workspace);
+          }
           continue;
         }
       }
 
       // --- Fallback: gather into workspace.line (double), run 1-D core from line ---
 
-      workspace.line.resize(static_cast<size_t>(N_line));
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::LineFallbackGather);
+        workspace.line.resize(static_cast<size_t>(N_line));
 
-      if (axis_contig_in) {
-        // contiguous axis: simple block copy with cast
-        const Scalar* in_line = in + in_off;
-        for (int i = 0; i < N_line; ++i) {
-          workspace.line[static_cast<size_t>(i)] =
-            static_cast<double>(in_line[static_cast<size_t>(i)]);
-        }
-      } else {
-        // non-contiguous axis: strided gather with cast
-        const int64_t stride = in_strides[static_cast<size_t>(axis)];
-        for (int i = 0; i < N_line; ++i) {
-          workspace.line[static_cast<size_t>(i)] =
-              static_cast<double>(
-                  in[in_off +
-                     static_cast<int64_t>(i) * stride]);
+        if (axis_contig_in) {
+          // contiguous axis: simple block copy with cast
+          const Scalar* in_line = in + in_off;
+          for (int i = 0; i < N_line; ++i) {
+            workspace.line[static_cast<size_t>(i)] =
+              static_cast<double>(in_line[static_cast<size_t>(i)]);
+          }
+        } else {
+          // non-contiguous axis: strided gather with cast
+          const int64_t stride = in_strides[static_cast<size_t>(axis)];
+          for (int i = 0; i < N_line; ++i) {
+            workspace.line[static_cast<size_t>(i)] =
+                static_cast<double>(
+                    in[in_off +
+                       static_cast<int64_t>(i) * stride]);
+          }
         }
       }
 
       // Fast planned path with workspace reuse (double internal)
-      resize_1d_line_buffered(workspace.line, line_out, p, plan, workspace);
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::LineFallbackResize1D);
+        resize_1d_line_buffered(workspace.line, line_out, p, plan, workspace);
+      }
 
       // Scatter to output (Scalar storage)
-      const bool contig_out = axis_contig_out;
-      if (contig_out) {
-        if constexpr (std::is_same_v<Scalar, double>) {
-          // One-shot block write when the axis is contiguous
-          std::memcpy(out + out_off,
-                      line_out.data(),
-                      line_out.size() * sizeof(double));
-        } else {
-          for (size_t i = 0; i < line_out.size(); ++i) {
-            out[out_off + static_cast<int64_t>(i)] =
-                static_cast<Scalar>(line_out[static_cast<size_t>(i)]);
+      {
+        LSRESIZE_PROFILE_SCOPE(profile::Phase::LineFallbackScatter);
+        const bool contig_out = axis_contig_out;
+        if (contig_out) {
+          if constexpr (std::is_same_v<Scalar, double>) {
+            // One-shot block write when the axis is contiguous
+            std::memcpy(out + out_off,
+                        line_out.data(),
+                        line_out.size() * sizeof(double));
+          } else {
+            for (size_t i = 0; i < line_out.size(); ++i) {
+              out[out_off + static_cast<int64_t>(i)] =
+                  static_cast<Scalar>(line_out[static_cast<size_t>(i)]);
+            }
           }
-        }
-      } else {
-        for (int64_t i = 0;
-             i < static_cast<int64_t>(line_out.size());
-             ++i) {
-          out[out_off +
-              i * out_strides[static_cast<size_t>(axis)]] =
-              static_cast<Scalar>(
-                  line_out[static_cast<size_t>(i)]);
+        } else {
+          for (int64_t i = 0;
+               i < static_cast<int64_t>(line_out.size());
+               ++i) {
+            out[out_off +
+                i * out_strides[static_cast<size_t>(axis)]] =
+                static_cast<Scalar>(
+                    line_out[static_cast<size_t>(i)]);
+          }
         }
       }
     }
   };
 
   // Centralized scheduling: OpenMP, std::thread, or serial
-  run_parallel_or_serial(nlines, plan, worker);
+  {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::LineFallbackTotal);
+    run_parallel_or_serial(nlines, plan, worker);
+  }
 }
 
 #if LSRESIZE_GNU_X86_TARGETS
@@ -2693,6 +2808,8 @@ static void resize_2d_linear_t(
   const LSParams& p0,
   const LSParams& p1)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::Fused2DLinearTotal);
+
   const int64_t in_h = in_shape[0];
   const int64_t in_w = in_shape[1];
   const int64_t out_h = out_shape[0];
@@ -2937,6 +3054,8 @@ static void resize_3d_linear_t(
   const LSParams& p1,
   const LSParams& p2)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::Fused3DLinearTotal);
+
   const int64_t in_n0 = in_shape[0];
   const int64_t in_n1 = in_shape[1];
   const int64_t in_n2 = in_shape[2];
@@ -3306,6 +3425,8 @@ static void resize_3d_linear_axis02_t(
   const LSParams& p0,
   const LSParams& p2)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::Fused3DLinearTotal);
+
   const int64_t in_n0 = in_shape[0];
   const int64_t in_n1 = in_shape[1];
   const int64_t in_n2 = in_shape[2];
@@ -3445,6 +3566,8 @@ static void resize_3d_linear_axis12_t(
   const LSParams& p1,
   const LSParams& p2)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::Fused3DLinearTotal);
+
   const int64_t in_n0 = in_shape[0];
   const int64_t in_n1 = in_shape[1];
   const int64_t in_n2 = in_shape[2];

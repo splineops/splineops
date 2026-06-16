@@ -4,6 +4,7 @@
 #include "filters.h"
 #include "utils.h"
 #include "dot_kernels.h"
+#include "profile_utils.h"
 
 #include <algorithm>
 #include <cmath>
@@ -495,6 +496,7 @@ std::shared_ptr<const Plan1D> get_plan_1d_cached(int N, const LSParams& p)
 {
   const int capacity = plan_cache_capacity();
   if (capacity <= 0) {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::PlanBuild);
     return std::make_shared<Plan1D>(make_plan_1d(N, p));
   }
 
@@ -507,7 +509,11 @@ std::shared_ptr<const Plan1D> get_plan_1d_cached(int N, const LSParams& p)
     }
   }
 
-  auto built = std::make_shared<Plan1D>(make_plan_1d(N, p));
+  std::shared_ptr<const Plan1D> built;
+  {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::PlanBuild);
+    built = std::make_shared<Plan1D>(make_plan_1d(N, p));
+  }
 
   {
     std::lock_guard<std::mutex> lock(plan_cache_mutex());
@@ -537,6 +543,8 @@ static inline void run_pipeline_from_line(
   std::vector<double>& ext_full,
   std::vector<double>& y)
 {
+  LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DTotal);
+
   const int N = plan.N;
   if (N == 0) {
     return;
@@ -547,11 +555,15 @@ static inline void run_pipeline_from_line(
                         : (p.analy_degree + p.synthe_degree + 1);
 
   // 1) Interpolation coefficients (causal/anti-causal IIR on input), in-place.
-  get_interpolation_coefficients(line, p.interp_degree);
+  {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DPrefilter);
+    get_interpolation_coefficients(line, p.interp_degree);
+  }
 
   // 2) Optional projection integration
   double average = 0.0;
   if (p.analy_degree >= 0) {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DIntegrate);
     average = do_integ(line, p.analy_degree + 1);
   }
 
@@ -560,43 +572,47 @@ static inline void run_pipeline_from_line(
   const int length = plan.length_total;
   const int RP     = plan.right_pad;
 
-  ext_full.resize(static_cast<size_t>(LP + length + RP));
-  double* dst = ext_full.data();
+  {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DExtend);
+    ext_full.resize(static_cast<size_t>(LP + length + RP));
+    double* dst = ext_full.data();
 
-  // 3a) Left pad using the precomputed mapping
-  if (LP > 0) {
-    for (int i = 0; i < LP; ++i) {
-      const int src = std::min(
-          std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0),
-          std::max(0, N - 1));
-      const int sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(i)]);
-      dst[static_cast<size_t>(i)] = sgn * line[static_cast<size_t>(src)];
+    // 3a) Left pad using the precomputed mapping
+    if (LP > 0) {
+      for (int i = 0; i < LP; ++i) {
+        const int src = std::min(
+            std::max(plan.pad_src_idx[static_cast<size_t>(i)], 0),
+            std::max(0, N - 1));
+        const int sgn = static_cast<int>(plan.pad_src_sgn[static_cast<size_t>(i)]);
+        dst[static_cast<size_t>(i)] = sgn * line[static_cast<size_t>(src)];
+      }
     }
-  }
 
-  // 3b) Main input samples
-  std::copy(line.begin(), line.end(), dst + LP);
+    // 3b) Main input samples
+    std::copy(line.begin(), line.end(), dst + LP);
 
-  // 3c) Right extension into the middle block
-  const int rem = length - N;
-  if (rem > 0 && !plan.rp_src.empty()) {
-    const double sgn = static_cast<int>(plan.rp_sign);
-    double* tail = dst + LP + N;
-    for (int i = 0; i < rem; ++i) {
-      const int src = plan.rp_src[static_cast<size_t>(i)];
-      tail[static_cast<size_t>(i)] = sgn * line[static_cast<size_t>(src)];
+    // 3c) Right extension into the middle block
+    const int rem = length - N;
+    if (rem > 0 && !plan.rp_src.empty()) {
+      const double sgn = static_cast<int>(plan.rp_sign);
+      double* tail = dst + LP + N;
+      for (int i = 0; i < rem; ++i) {
+        const int src = plan.rp_src[static_cast<size_t>(i)];
+        tail[static_cast<size_t>(i)] = sgn * line[static_cast<size_t>(src)];
+      }
     }
-  }
 
-  // 3d) Right pad (clamp to last sample)
-  if (RP > 0) {
-    const double last = dst[LP + length - 1];
-    std::fill(dst + LP + length, dst + LP + length + RP, last);
+    // 3d) Right pad (clamp to last sample)
+    if (RP > 0) {
+      const double last = dst[LP + length - 1];
+      std::fill(dst + LP + length, dst + LP + length + RP, last);
+    }
   }
 
   // 4) Accumulate using the plan (contiguous weights & samples)
-  y.resize(static_cast<size_t>(plan.out_total));
   {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DAccumulate);
+    y.resize(static_cast<size_t>(plan.out_total));
     const int*    rp = plan.row_ptr.data();
     const double* ww = plan.weights.data();
     const double* vf = ext_full.data();
@@ -616,16 +632,28 @@ static inline void run_pipeline_from_line(
 
   // 5) Projection tail (unchanged)
   if (p.analy_degree >= 0) {
-    do_diff(y, p.analy_degree + 1);
-    for (int i = 0; i < plan.out_total; ++i) {
-      y[static_cast<size_t>(i)] += average;
+    {
+      LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DDiff);
+      do_diff(y, p.analy_degree + 1);
+      for (int i = 0; i < plan.out_total; ++i) {
+        y[static_cast<size_t>(i)] += average;
+      }
     }
-    get_interpolation_coefficients(y, corr_degree);
-    get_samples(y, p.synthe_degree);
+    {
+      LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DOutputPrefilter);
+      get_interpolation_coefficients(y, corr_degree);
+    }
+    {
+      LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DSampling);
+      get_samples(y, p.synthe_degree);
+    }
   }
 
   // 6) Copy to true output size
-  std::copy(y.begin(), y.begin() + plan.outN, out);
+  {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DOutputCopy);
+    std::copy(y.begin(), y.begin() + plan.outN, out);
+  }
 }
 
 // Raw-pointer core: operates directly on in/out buffers using workspace vectors.
@@ -644,7 +672,10 @@ static inline void run_pipeline_from_raw(
   if (N == 0) return;
 
   line.resize(static_cast<size_t>(N));
-  std::copy(in_samples, in_samples + N, line.begin());
+  {
+    LSRESIZE_PROFILE_SCOPE(profile::Phase::Pipeline1DRawCopy);
+    std::copy(in_samples, in_samples + N, line.begin());
+  }
 
   run_pipeline_from_line(out_samples, p, plan,
                          line, ext_full, y);

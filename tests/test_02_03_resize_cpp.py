@@ -625,10 +625,16 @@ def test_float32_internal_preserves_constant_arrays(monkeypatch, method, atol):
     reason="Native extension not available: skipping float32 auto precision",
 )
 @pytest.mark.parametrize("method", ["quadratic", "cubic"])
-def test_float32_auto_precision_for_2d_pure_interpolation(monkeypatch, method):
+@pytest.mark.parametrize(
+    "shape,zoom",
+    [
+        ((129, 97), (0.61, 1.33)),
+        ((32, 24, 16), (0.75, 1.25, 0.5)),
+    ],
+)
+def test_float32_auto_precision_for_pure_interpolation(monkeypatch, method, shape, zoom):
     rng = np.random.default_rng(128)
-    arr = rng.random((129, 97), dtype=np.float32)
-    zoom = (0.61, 1.33)
+    arr = rng.random(shape, dtype=np.float32)
 
     monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
     monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")

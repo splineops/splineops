@@ -63,7 +63,7 @@ Current default knobs:
 | Native fused projection average restore | auto only for explicit `LSRESIZE_NUM_THREADS=1` | `LSRESIZE_FUSED_PROJECTION_AVG_RESTORE=0/1/auto` |
 | Native AVX2 2-D linear upsample path | enabled on supported x86 | `LSRESIZE_AVX2_LINEAR=0` |
 | Native last-axis linear direct path | enabled | `LSRESIZE_LAST_AXIS_LINEAR_DIRECT=0` |
-| Native internal precision | `float32` internals for 2-D `float32` pure quadratic/cubic interpolation; `float64` otherwise | `LSRESIZE_PRECISION=float32` to force batched float32 internals; non-empty non-f32 values keep the conservative path |
+| Native internal precision | `float32` internals for 2-D/3-D `float32` pure quadratic/cubic interpolation; `float64` otherwise | `LSRESIZE_PRECISION=float32` to force batched float32 internals; non-empty non-f32 values keep the conservative path |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
 | Python block size | `256` | `SPLINEOPS_BLOCK=<n>` |
