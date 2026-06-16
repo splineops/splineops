@@ -32,6 +32,12 @@ percentages.
   forces the old gather order for A/B checks.
 - `LSRESIZE_BATCH_LINES` is now adaptive only for 2-D pure quadratic/cubic
   downsampling; all other unset cases keep the historical batch size.
+- Large 3-D axis-1 pure quadratic/cubic interpolation passes now skip the
+  temporary accumulation row and scatter directly into the destination.
+  `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0` restores the buffered scatter path for
+  A/B checks. The router keeps the path off for smaller passes where direct
+  destination traffic was not a stable win, and for larger worker pools where
+  the extra destination traffic can dominate.
 
 These keep Arrate's least-squares projection method intact: the changes are
 routing, storage precision for pure interpolation, and batched execution of the
@@ -80,6 +86,13 @@ Key results:
   heuristic:
   median `1.047x`, mean `1.095x`, `16/27` wins, `2/27` losses, no failed
   checks.
+- `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0 -> <unset>` after adding the
+  thresholded/thread-guarded router:
+  median `1.079x`, mean `1.078x`, `9/12` wins, no losses, no failed checks.
+  The unthresholded attempt was rejected as a blanket default because small
+  anisotropic 3-D cases regressed under explicit thread counts; a threshold-only
+  attempt exposed thread-pool sensitivity, so the final router also checks
+  selected worker count.
 - `LSRESIZE_BATCH_LINES` remains cache-sensitive but not solved by a single
   obvious default. In the sampled cases, pure 2-D cubic liked `16`, 2-D cubic
   antialiasing liked `16`-`96`, and large 3-D cubic liked `96`-`192`.
@@ -107,6 +120,16 @@ After the row-major gather/adaptive-batch pass:
   by median `1.130x`; 2-D cubic rows improved by median `1.449x`, and 3-D
   cubic rows by median `1.400x`.
 
+After the direct-scatter pass:
+`/tmp/splineops_native_full_both_direct_scatter_20260616.csv`
+
+- Native/Python overlaps: `43`
+- Median speedup: `24.62x`
+- Mean speedup: `27.83x`
+- Range: `7.78x` to `85.68x`
+- 3-D median speedup: `20.67x`
+- Best native thread counts: `1:8`, `8:17`, `default:18`
+
 Cross-library artifact:
 `/tmp/splineops_libraries_full_after_profile_20260616.csv`
 
@@ -123,6 +146,22 @@ After the row-major gather/adaptive-batch pass:
 - skimage: median speed `0.11x`, with different resize semantics in most rows.
 - OpenCV: median speed `1.44x`, with median relative L2 difference `2.61e-1`.
 - Torch: median speed `0.73x`; exact-ish cases `0.59x`.
+
+After the direct-scatter pass, splineops default scheduler:
+`/tmp/splineops_libraries_full_default_direct_scatter_20260616.csv`
+
+- SciPy: median speed `0.12x` versus splineops, exact-ish cases `0.10x`.
+- skimage: median speed `0.11x`, with different resize semantics in most rows.
+- OpenCV: median speed `1.41x`, with median relative L2 difference `2.61e-1`.
+- Torch: median speed `0.75x`; exact-ish cases `0.59x`.
+
+After the direct-scatter pass, splineops forced to 8 threads:
+`/tmp/splineops_libraries_full_threads8_direct_scatter_20260616.csv`
+
+- SciPy: median speed `0.16x` versus splineops, exact-ish cases `0.12x`.
+- skimage: median speed `0.16x`, with different resize semantics in most rows.
+- OpenCV: median speed `1.91x`, with median relative L2 difference `2.61e-1`.
+- Torch: median speed `1.10x`; exact-ish cases `0.93x`.
 
 ## Remaining Optimization Targets
 

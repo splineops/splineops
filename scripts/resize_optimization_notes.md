@@ -56,6 +56,7 @@ Current default knobs:
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
 | Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
+| Native 3-D axis-1 direct scatter | enabled for large pure quadratic/cubic interpolation passes | `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Native exact linear interpolation fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
 | Native fused 2-D linear path | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |
@@ -1319,6 +1320,11 @@ Accepted changes after the latest committed baseline:
   sweeps can use the same case selection style as `benchmark_resize_ab.py`.
 - Added `scripts/summarize_resize_benchmarks.py` for raw CSV artifacts:
   `native`, `libraries`, `legacy`, and `ab` summaries.
+- Added a guarded direct-scatter path for large 3-D axis-1 pure
+  quadratic/cubic interpolation passes. It evaluates the same spline row plan
+  directly into the strided destination when the pass has at least about
+  `1M` axis outputs and the selected worker pool is at most 8 threads. It
+  remains A/B controllable with `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0`.
 
 Measured but rejected on this machine:
 
@@ -1333,34 +1339,53 @@ Measured but rejected on this machine:
   - `64 -> 32`: median `1.024x`, but 13 losses and threaded/default regressions
   - `64 -> 128`: median `0.946x`, 20 losses
 
-Fresh final artifacts:
+New A/B artifact:
+
+- Thresholded 3-D axis-1 direct scatter:
+  `/tmp/splineops_ab_direct_scatter_threadguard_20260616.csv`
+  - median `1.079x`, mean `1.078x`, 9 wins and 0 losses across the focused
+    3-D cubic sweep
+  - first unthresholded attempt was rejected as a blanket policy because the
+    small anisotropic case regressed under explicit thread counts; a later
+    threshold-only attempt exposed thread-pool sensitivity on the active large
+    anisotropic case, so the final router also checks selected worker count
+
+Fresh final artifacts after the direct-scatter pass:
 
 - Native/Python full sweep:
-  `/tmp/splineops_native_full_both_final_20260616.csv`
-  - 43 overlaps, median native/Python speedup `21.52x`, mean `24.12x`
-  - best native thread counts: `1:4`, `8:18`, `default:21`
-- Library full comparison:
-  `/tmp/splineops_libraries_full_default_final_20260616.csv`
+  `/tmp/splineops_native_full_both_direct_scatter_20260616.csv`
+  - 43 overlaps, median native/Python speedup `24.62x`, mean `27.83x`
+  - best native thread counts: `1:8`, `8:17`, `default:18`
+  - 3-D median native/Python speedup `20.67x`
+- Library full comparison, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_direct_scatter_20260616.csv`
   - SciPy faster in `1/21`; exact-ish SciPy rows are all slower
   - skimage faster in `0/21`
-  - OpenCV faster in `15/18`, but with different coordinate/AA semantics
+  - OpenCV faster in `14/18`, but with different coordinate/AA semantics
   - Torch faster in `8/19`; exact-ish Torch rows are all slower
+- Library full comparison, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_direct_scatter_20260616.csv`
+  - SciPy faster in `1/21`; exact-ish SciPy rows are all slower
+  - skimage faster in `0/21`
+  - OpenCV faster in `17/18`, with different coordinate/AA semantics
+  - Torch faster in `10/19`; exact-ish Torch rows faster in `3/8`
+- Legacy Java 2-D reference rerun:
+  `/tmp/splineops_legacy_java_full_direct_scatter_20260616.csv`
+  - 14 overlaps against current splineops default library artifact, median
+    speedup `9.18x`, mean `12.93x`
 
 Validation:
 
 ```bash
 .venv/bin/python -m pip install -e .
-.venv/bin/python -m pytest -q \
-  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_pure_interpolation \
-  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_antialiasing \
-  tests/test_02_03_resize_cpp.py::test_float32_auto_precision_for_2d_pure_interpolation \
-  tests/test_02_03_resize_cpp.py::test_float32_auto_precision_keeps_projection_default \
-  tests/test_02_03_resize_cpp.py::test_cpp_vs_python_equality \
-  tests/test_02_02_resize.py::test_interpolation_prefilter_preserves_short_constants \
-  tests/test_02_02_resize.py::test_resize_preserves_short_constants
+.venv/bin/python -m pytest -q
 .venv/bin/python -m py_compile \
   scripts/benchmark_resize_native.py \
   scripts/benchmark_resize_libraries.py \
+  scripts/benchmark_resize_ab.py \
   scripts/summarize_resize_benchmarks.py \
   src/splineops/utils/specs.py
 ```
+
+Latest validation result: full suite `519 passed`; script py-compile and
+`git diff --check` clean.

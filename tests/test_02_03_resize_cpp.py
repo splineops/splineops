@@ -316,6 +316,39 @@ def test_batched_row_gather_matches_line_gather(monkeypatch, dtype, method, shap
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping direct scatter compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize(
+    "method,shape,zoom",
+    [
+        ("quadratic", (128, 160, 64), (1.0, 0.85, 1.0)),
+        ("cubic", (128, 160, 64), (1.0, 1.1, 1.0)),
+    ],
+)
+def test_3d_axis1_direct_scatter_matches_buffered_scatter(
+    monkeypatch, dtype, method, shape, zoom
+):
+    rng = np.random.default_rng(137)
+    arr = rng.random(shape, dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_3D_AXIS1_DIRECT_SCATTER", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.delenv("LSRESIZE_3D_AXIS1_DIRECT_SCATTER", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    atol = 5e-6 if dtype == np.float32 else 5e-11
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping 2-D linear interpolation compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])

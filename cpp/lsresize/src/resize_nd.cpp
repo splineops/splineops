@@ -133,6 +133,11 @@ static inline bool row_gather_enabled()
   return env_flag_enabled_default_true("LSRESIZE_ROW_GATHER");
 }
 
+static inline bool direct_3d_axis1_scatter_enabled()
+{
+  return env_flag_enabled_default_true("LSRESIZE_3D_AXIS1_DIRECT_SCATTER");
+}
+
 static inline bool fast_linear_interp_enabled()
 {
   const char* value = std::getenv("LSRESIZE_LINEAR_INTERP");
@@ -254,6 +259,28 @@ static inline bool is_pure_quadratic_or_cubic_interp(const LSParams& p)
   return p.analy_degree < 0 &&
          p.synthe_degree == p.interp_degree &&
          (p.interp_degree == 2 || p.interp_degree == 3);
+}
+
+static inline bool should_use_direct_3d_axis1_scatter(
+  const std::vector<int64_t>& in_shape,
+  const LSParams& p,
+  const Plan1D& plan,
+  int axis,
+  int64_t nlines,
+  int outN)
+{
+  constexpr int64_t kMinAxisOutputs = 1000000;
+  if (!direct_3d_axis1_scatter_enabled() ||
+      in_shape.size() != 3 ||
+      axis != 1 ||
+      !is_pure_quadratic_or_cubic_interp(p) ||
+      nlines * static_cast<int64_t>(outN) < kMinAxisOutputs) {
+    return false;
+  }
+
+  // Direct writes are helpful for single/small worker pools, but large pools
+  // can make the extra destination traffic slower than the buffered row.
+  return thread_count(nlines, plan) <= 8;
 }
 
 static inline int adaptive_batch_lines_for(
@@ -468,6 +495,22 @@ static inline void gather_axis_block(
     gather_axis_block_by_line(
         in, coeff, Bs, B, N, in_offsets, axis_stride);
   }
+}
+
+static inline bool offsets_are_unit_stride(
+  const int64_t* LS_RESTRICT offsets,
+  int B)
+{
+  if (B <= 1) {
+    return true;
+  }
+  const int64_t first = offsets[0];
+  for (int b = 1; b < B; ++b) {
+    if (offsets[static_cast<size_t>(b)] != first + b) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static inline void accumulate_interior_row_colmajor(
@@ -1267,6 +1310,297 @@ static inline void accumulate_row_colmajor_preset_set(
   }
 }
 
+template <typename Scalar>
+static inline void scatter_row_zero(
+  int B,
+  Scalar* LS_RESTRICT out,
+  const int64_t* LS_RESTRICT out_offsets,
+  int64_t out_delta,
+  bool unit_stride_offsets)
+{
+  if (unit_stride_offsets) {
+    Scalar* LS_RESTRICT dst = out + out_offsets[0] + out_delta;
+    std::fill(dst, dst + B, Scalar(0));
+    return;
+  }
+
+  for (int b = 0; b < B; ++b) {
+    out[out_offsets[static_cast<size_t>(b)] + out_delta] = Scalar(0);
+  }
+}
+
+template <typename Scalar>
+static inline void scatter_row_assign_scaled(
+  const Scalar* LS_RESTRICT values,
+  Scalar weight,
+  int B,
+  Scalar* LS_RESTRICT out,
+  const int64_t* LS_RESTRICT out_offsets,
+  int64_t out_delta,
+  bool unit_stride_offsets)
+{
+  if (unit_stride_offsets) {
+    Scalar* LS_RESTRICT dst = out + out_offsets[0] + out_delta;
+    for (int b = 0; b < B; ++b) {
+      dst[static_cast<size_t>(b)] = weight * values[static_cast<size_t>(b)];
+    }
+    return;
+  }
+
+  for (int b = 0; b < B; ++b) {
+    out[out_offsets[static_cast<size_t>(b)] + out_delta] =
+        weight * values[static_cast<size_t>(b)];
+  }
+}
+
+template <typename Scalar>
+static inline void scatter_row_add_scaled(
+  const Scalar* LS_RESTRICT values,
+  Scalar weight,
+  int B,
+  Scalar* LS_RESTRICT out,
+  const int64_t* LS_RESTRICT out_offsets,
+  int64_t out_delta,
+  bool unit_stride_offsets)
+{
+  if (unit_stride_offsets) {
+    Scalar* LS_RESTRICT dst = out + out_offsets[0] + out_delta;
+    for (int b = 0; b < B; ++b) {
+      dst[static_cast<size_t>(b)] +=
+          weight * values[static_cast<size_t>(b)];
+    }
+    return;
+  }
+
+  for (int b = 0; b < B; ++b) {
+    out[out_offsets[static_cast<size_t>(b)] + out_delta] +=
+        weight * values[static_cast<size_t>(b)];
+  }
+}
+
+template <typename Scalar, bool Mapped, int MaxM>
+static inline void accumulate_scatter_row_colmajor_impl(
+  const Scalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  const Plan1D& plan,
+  const double* LS_RESTRICT weights,
+  int l,
+  Scalar* LS_RESTRICT out,
+  const int64_t* LS_RESTRICT out_offsets,
+  int64_t stride,
+  bool unit_stride_offsets)
+{
+  const int begin = plan.row_ptr[static_cast<size_t>(l)];
+  const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
+  const int M = endw - begin;
+  const int k0 = plan.kmin[static_cast<size_t>(l)];
+  const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
+  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  const int64_t out_delta = static_cast<int64_t>(l) * stride;
+
+  if (M <= 0) {
+    scatter_row_zero(B, out, out_offsets, out_delta, unit_stride_offsets);
+    return;
+  }
+  if constexpr (MaxM > 0) {
+    if (M > MaxM) {
+      accumulate_scatter_row_colmajor_impl<Scalar, Mapped, 0>(
+          coeff, Bs, B, plan, weights, l, out, out_offsets, stride,
+          unit_stride_offsets);
+      return;
+    }
+  }
+
+  auto row_values = [&](int t) -> const Scalar* {
+    if constexpr (Mapped) {
+      return coeff + static_cast<size_t>(coeff_src[static_cast<size_t>(t)]) * Bs;
+    } else {
+      return coeff + static_cast<size_t>(k0 + (t - begin)) * Bs;
+    }
+  };
+  auto row_weight = [&](int t) -> Scalar {
+    const size_t ti = static_cast<size_t>(t);
+    if constexpr (Mapped) {
+      return static_cast<Scalar>(weights[ti] * coeff_sgn[ti]);
+    } else {
+      return static_cast<Scalar>(weights[ti]);
+    }
+  };
+
+  scatter_row_assign_scaled(
+      row_values(begin),
+      row_weight(begin),
+      B,
+      out,
+      out_offsets,
+      out_delta,
+      unit_stride_offsets);
+
+  if constexpr (MaxM == 0) {
+    for (int t = begin + 1; t < endw; ++t) {
+      scatter_row_add_scaled(
+          row_values(t),
+          row_weight(t),
+          B,
+          out,
+          out_offsets,
+          out_delta,
+          unit_stride_offsets);
+    }
+    return;
+  }
+
+  if constexpr (MaxM >= 2) {
+    if (M >= 2) {
+      scatter_row_add_scaled(
+          row_values(begin + 1),
+          row_weight(begin + 1),
+          B,
+          out,
+          out_offsets,
+          out_delta,
+          unit_stride_offsets);
+    }
+  }
+  if constexpr (MaxM >= 3) {
+    if (M >= 3) {
+      scatter_row_add_scaled(
+          row_values(begin + 2),
+          row_weight(begin + 2),
+          B,
+          out,
+          out_offsets,
+          out_delta,
+          unit_stride_offsets);
+    }
+  }
+  if constexpr (MaxM >= 4) {
+    if (M >= 4) {
+      scatter_row_add_scaled(
+          row_values(begin + 3),
+          row_weight(begin + 3),
+          B,
+          out,
+          out_offsets,
+          out_delta,
+          unit_stride_offsets);
+    }
+  }
+  if constexpr (MaxM >= 5) {
+    if (M >= 5) {
+      scatter_row_add_scaled(
+          row_values(begin + 4),
+          row_weight(begin + 4),
+          B,
+          out,
+          out_offsets,
+          out_delta,
+          unit_stride_offsets);
+    }
+  }
+  if constexpr (MaxM >= 6) {
+    if (M >= 6) {
+      scatter_row_add_scaled(
+          row_values(begin + 5),
+          row_weight(begin + 5),
+          B,
+          out,
+          out_offsets,
+          out_delta,
+          unit_stride_offsets);
+    }
+  }
+  if constexpr (MaxM >= 7) {
+    if (M >= 7) {
+      scatter_row_add_scaled(
+          row_values(begin + 6),
+          row_weight(begin + 6),
+          B,
+          out,
+          out_offsets,
+          out_delta,
+          unit_stride_offsets);
+    }
+  }
+}
+
+template <typename Scalar, int MaxM>
+static inline void accumulate_scatter_row_colmajor_fixed_set(
+  const Scalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  const Plan1D& plan,
+  const double* LS_RESTRICT weights,
+  int l,
+  bool interior,
+  Scalar* LS_RESTRICT out,
+  const int64_t* LS_RESTRICT out_offsets,
+  int64_t stride,
+  bool unit_stride_offsets)
+{
+  if (interior) {
+    accumulate_scatter_row_colmajor_impl<Scalar, false, MaxM>(
+        coeff, Bs, B, plan, weights, l, out, out_offsets, stride,
+        unit_stride_offsets);
+  } else {
+    accumulate_scatter_row_colmajor_impl<Scalar, true, MaxM>(
+        coeff, Bs, B, plan, weights, l, out, out_offsets, stride,
+        unit_stride_offsets);
+  }
+}
+
+template <typename Scalar>
+static inline void accumulate_scatter_row_colmajor_preset_set(
+  const Scalar* LS_RESTRICT coeff,
+  size_t Bs,
+  int B,
+  const Plan1D& plan,
+  const double* LS_RESTRICT weights,
+  int max_support,
+  int l,
+  bool interior,
+  Scalar* LS_RESTRICT out,
+  const int64_t* LS_RESTRICT out_offsets,
+  int64_t stride,
+  bool unit_stride_offsets)
+{
+  switch (max_support) {
+    case 3:
+      accumulate_scatter_row_colmajor_fixed_set<Scalar, 3>(
+          coeff, Bs, B, plan, weights, l, interior, out, out_offsets, stride,
+          unit_stride_offsets);
+      return;
+    case 4:
+      accumulate_scatter_row_colmajor_fixed_set<Scalar, 4>(
+          coeff, Bs, B, plan, weights, l, interior, out, out_offsets, stride,
+          unit_stride_offsets);
+      return;
+    case 5:
+      accumulate_scatter_row_colmajor_fixed_set<Scalar, 5>(
+          coeff, Bs, B, plan, weights, l, interior, out, out_offsets, stride,
+          unit_stride_offsets);
+      return;
+    case 7:
+      accumulate_scatter_row_colmajor_fixed_set<Scalar, 7>(
+          coeff, Bs, B, plan, weights, l, interior, out, out_offsets, stride,
+          unit_stride_offsets);
+      return;
+    default:
+      break;
+  }
+
+  if (interior) {
+    accumulate_scatter_row_colmajor_impl<Scalar, false, 0>(
+        coeff, Bs, B, plan, weights, l, out, out_offsets, stride,
+        unit_stride_offsets);
+  } else {
+    accumulate_scatter_row_colmajor_impl<Scalar, true, 0>(
+        coeff, Bs, B, plan, weights, l, out, out_offsets, stride,
+        unit_stride_offsets);
+  }
+}
+
 static inline void accumulate_row_runs_colmajor(
   const double* LS_RESTRICT coeff,
   size_t Bs,
@@ -1889,6 +2223,8 @@ static void resize_along_axis_batched_interp_t(
   const int max_support = specialized_presets_enabled()
                         ? specialized_preset_max_support(p)
                         : 0;
+  const bool direct_axis1_scatter =
+      should_use_direct_3d_axis1_scatter(in_shape, p, plan, axis, nlines, outN);
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -1967,47 +2303,79 @@ static void resize_along_axis_batched_interp_t(
         }
       } else {
         LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpAccumulateScatter);
-        accum.resize(Bs);
         const int64_t stride = out_strides[static_cast<size_t>(axis)];
         const double* weights = plan.weights.data();
-        for (const RowRun1D& run : plan.row_runs) {
-          if (run.interior) {
-            for (int l = run.begin; l < run.end; ++l) {
-              accumulate_row_colmajor_preset_set(
-                  coeff.data(),
-                  Bs,
-                  B,
-                  plan,
-                  weights,
-                  max_support,
-                  l,
-                  true,
-                  accum.data());
-              for (int b = 0; b < B; ++b) {
-                out[out_offsets[static_cast<size_t>(b)] +
-                    static_cast<int64_t>(l) * stride] =
-                    static_cast<Scalar>(accum[static_cast<size_t>(b)]);
+
+        auto run_buffered_accumulate_scatter = [&]() {
+          accum.resize(Bs);
+          for (const RowRun1D& run : plan.row_runs) {
+            if (run.interior) {
+              for (int l = run.begin; l < run.end; ++l) {
+                accumulate_row_colmajor_preset_set(
+                    coeff.data(),
+                    Bs,
+                    B,
+                    plan,
+                    weights,
+                    max_support,
+                    l,
+                    true,
+                    accum.data());
+                for (int b = 0; b < B; ++b) {
+                  out[out_offsets[static_cast<size_t>(b)] +
+                      static_cast<int64_t>(l) * stride] =
+                      static_cast<Scalar>(accum[static_cast<size_t>(b)]);
+                }
               }
-            }
-          } else {
-            for (int l = run.begin; l < run.end; ++l) {
-              accumulate_row_colmajor_preset_set(
-                  coeff.data(),
-                  Bs,
-                  B,
-                  plan,
-                  weights,
-                  max_support,
-                  l,
-                  false,
-                  accum.data());
-              for (int b = 0; b < B; ++b) {
-                out[out_offsets[static_cast<size_t>(b)] +
-                    static_cast<int64_t>(l) * stride] =
-                    static_cast<Scalar>(accum[static_cast<size_t>(b)]);
+            } else {
+              for (int l = run.begin; l < run.end; ++l) {
+                accumulate_row_colmajor_preset_set(
+                    coeff.data(),
+                    Bs,
+                    B,
+                    plan,
+                    weights,
+                    max_support,
+                    l,
+                    false,
+                    accum.data());
+                for (int b = 0; b < B; ++b) {
+                  out[out_offsets[static_cast<size_t>(b)] +
+                      static_cast<int64_t>(l) * stride] =
+                      static_cast<Scalar>(accum[static_cast<size_t>(b)]);
+                }
               }
             }
           }
+        };
+
+        if (direct_axis1_scatter) {
+          if constexpr (std::is_same<Scalar, double>::value) {
+            const bool unit_stride_offsets =
+                offsets_are_unit_stride(out_offsets.data(), B);
+            for (const RowRun1D& run : plan.row_runs) {
+              const bool interior = run.interior != 0;
+              for (int l = run.begin; l < run.end; ++l) {
+                accumulate_scatter_row_colmajor_preset_set(
+                    coeff.data(),
+                    Bs,
+                    B,
+                    plan,
+                    weights,
+                    max_support,
+                    l,
+                    interior,
+                    out,
+                    out_offsets.data(),
+                    stride,
+                    unit_stride_offsets);
+              }
+            }
+          } else {
+            run_buffered_accumulate_scatter();
+          }
+        } else {
+          run_buffered_accumulate_scatter();
         }
       }
     }
@@ -2202,6 +2570,8 @@ static void resize_along_axis_batched_interp_f32_internal(
   const int max_support = specialized_presets_enabled()
                         ? specialized_preset_max_support(p)
                         : 0;
+  const bool direct_axis1_scatter =
+      should_use_direct_3d_axis1_scatter(in_shape, p, plan, axis, nlines, outN);
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -2280,25 +2650,49 @@ static void resize_along_axis_batched_interp_f32_internal(
         }
       } else {
         LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedInterpAccumulateScatter);
-        accum.resize(Bs);
         const int64_t stride = out_strides[static_cast<size_t>(axis)];
         const double* weights = plan.weights.data();
-        for (const RowRun1D& run : plan.row_runs) {
-          for (int l = run.begin; l < run.end; ++l) {
-            accumulate_row_colmajor_f32_preset_set(
-                coeff.data(),
-                Bs,
-                B,
-                plan,
-                weights,
-                max_support,
-                l,
-                run.interior != 0,
-                accum.data());
-            for (int b = 0; b < B; ++b) {
-              out[out_offsets[static_cast<size_t>(b)] +
-                  static_cast<int64_t>(l) * stride] =
-                  accum[static_cast<size_t>(b)];
+
+        if (direct_axis1_scatter) {
+          const bool unit_stride_offsets =
+              offsets_are_unit_stride(out_offsets.data(), B);
+          for (const RowRun1D& run : plan.row_runs) {
+            const bool interior = run.interior != 0;
+            for (int l = run.begin; l < run.end; ++l) {
+              accumulate_scatter_row_colmajor_preset_set(
+                  coeff.data(),
+                  Bs,
+                  B,
+                  plan,
+                  weights,
+                  max_support,
+                  l,
+                  interior,
+                  out,
+                  out_offsets.data(),
+                  stride,
+                  unit_stride_offsets);
+            }
+          }
+        } else {
+          accum.resize(Bs);
+          for (const RowRun1D& run : plan.row_runs) {
+            for (int l = run.begin; l < run.end; ++l) {
+              accumulate_row_colmajor_f32_preset_set(
+                  coeff.data(),
+                  Bs,
+                  B,
+                  plan,
+                  weights,
+                  max_support,
+                  l,
+                  run.interior != 0,
+                  accum.data());
+              for (int b = 0; b < B; ++b) {
+                out[out_offsets[static_cast<size_t>(b)] +
+                    static_cast<int64_t>(l) * stride] =
+                    accum[static_cast<size_t>(b)];
+              }
             }
           }
         }

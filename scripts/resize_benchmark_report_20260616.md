@@ -16,12 +16,20 @@ Host:
 
 - Native full, same-algorithm Python fallback:
   `/tmp/splineops_native_full_both_postcommit_20260616.{json,csv}`
+- Native full after direct-scatter pass:
+  `/tmp/splineops_native_full_both_direct_scatter_20260616.{json,csv}`
 - Cross-library full, splineops default scheduler:
   `/tmp/splineops_libraries_full_default_postcommit_20260616.{json,csv}`
+- Cross-library full after direct-scatter pass, splineops default scheduler:
+  `/tmp/splineops_libraries_full_default_direct_scatter_20260616.{json,csv}`
 - Cross-library full, splineops forced to 8 threads:
   `/tmp/splineops_libraries_full_threads8_postcommit_20260616.{json,csv}`
+- Cross-library full after direct-scatter pass, splineops forced to 8 threads:
+  `/tmp/splineops_libraries_full_threads8_direct_scatter_20260616.{json,csv}`
 - Legacy Java 2-D Arrate implementation harness:
   `/tmp/splineops_legacy_java_full_20260616.csv`
+- Legacy Java 2-D Arrate harness after direct-scatter pass:
+  `/tmp/splineops_legacy_java_full_direct_scatter_20260616.csv`
 - Temporary legacy harness sources:
   `/tmp/legacy_resize_bench/ImageAccess.java`
   and `/tmp/legacy_resize_bench/LegacyResizeBench.java`
@@ -51,6 +59,11 @@ The workload-aware default is still the best general default. Forced `8` helps
 many heavy cubic/projection rows on this 8-core CPU, while forced `16` is often
 worse on medium rows.
 
+After the 3-D axis-1 direct-scatter pass, the full native/Python artifact
+reported 43 overlaps with median speedup `24.62x` and mean speedup `27.83x`.
+Best native thread counts were `1:8`, `8:17`, and `default:18`; the 3-D median
+speedup was `20.67x`.
+
 ## Legacy Java Baseline
 
 A temporary standalone shim was used around `legacy_code/resize/Resize.java`.
@@ -71,6 +84,11 @@ The weakest same-method legacy gap was `2d_linear_aa_down_random_f32`
 (`4.557 ms -> 1.679 ms`, `2.71x`). The strongest was
 `2d_linear_up_sinusoid_f32_large` (`46.708 ms -> 1.332 ms`, `35.07x`).
 
+The legacy harness was rerun after the 3-D direct-scatter pass for a fresh
+reference artifact. Against the current splineops default library artifact, the
+14 overlapping 2-D cases showed median speedup `9.18x`, mean `12.93x`, minimum
+`4.36x`, and maximum `50.44x`.
+
 ## Cross-Library Results
 
 Full profile, splineops default scheduler:
@@ -90,6 +108,24 @@ Full profile, splineops forced to `LSRESIZE_NUM_THREADS=8`:
 | scikit-image | 21 | 0 | `0.17x` | `2.39e-01` |
 | OpenCV | 18 | 16 | `1.93x` | `2.61e-01` |
 | PyTorch | 19 | 12 | `1.26x` | `1.59e-05` |
+
+After the direct-scatter pass, splineops default scheduler:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.12x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.11x` | `2.39e-01` |
+| OpenCV | 18 | 14 | `1.41x` | `2.61e-01` |
+| PyTorch | 19 | 8 | `0.75x` | `1.59e-05` |
+
+After the direct-scatter pass, splineops forced to `LSRESIZE_NUM_THREADS=8`:
+
+| Backend | Comparable cases | Faster than splineops | Median speed vs splineops | Median rel-L2 delta |
+| --- | ---: | ---: | ---: | ---: |
+| SciPy | 21 | 1 | `0.16x` | `5.79e-08` |
+| scikit-image | 21 | 0 | `0.16x` | `2.39e-01` |
+| OpenCV | 18 | 17 | `1.91x` | `2.61e-01` |
+| PyTorch | 19 | 10 | `1.10x` | `1.59e-05` |
 
 Important interpretation:
 

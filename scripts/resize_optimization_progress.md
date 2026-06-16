@@ -241,6 +241,7 @@ Representative measurement:
 | Native batched axis | `auto` when unset | `LSRESIZE_BATCHED_AXIS=off/1/auto` |
 | Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
+| Native 3-D axis-1 direct scatter | enabled for large pure quadratic/cubic interpolation passes | `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0` |
 | Native preset specialization | enabled | `LSRESIZE_SPECIALIZED_PRESETS=0` |
 | Exact linear fast path | enabled | `LSRESIZE_LINEAR_INTERP=0` |
 | Fused 2-D linear | enabled | `LSRESIZE_FUSED_2D_LINEAR=0` |

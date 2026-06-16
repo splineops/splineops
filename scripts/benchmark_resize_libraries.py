@@ -728,6 +728,10 @@ def main() -> int:
                 "LSRESIZE_LAST_AXIS_LINEAR_DIRECT",
                 "<default:on>",
             ),
+            "LSRESIZE_3D_AXIS1_DIRECT_SCATTER": os.environ.get(
+                "LSRESIZE_3D_AXIS1_DIRECT_SCATTER",
+                "<default:on>",
+            ),
             "coordinate_note": (
                 "Backends use different coordinate, boundary, and antialiasing semantics; "
                 "quality metrics are deltas against splineops, not parity checks."
