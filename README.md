@@ -68,3 +68,20 @@ Install development environment in editable mode
 ```shell
 pip install -e .[dev]
 ```
+
+## Resize Native Backend
+
+The resize module uses the native CPU `_lsresize` extension when it is available.
+Set `SPLINEOPS_ACCEL=never` to force the Python fallback, or
+`SPLINEOPS_ACCEL=always` to require the native extension during benchmarking.
+
+Useful benchmark entry points:
+
+```shell
+python scripts/benchmark_resize_native.py --backend both --output-csv /tmp/splineops_native.csv
+python scripts/benchmark_resize_libraries.py --output-csv /tmp/splineops_libraries.csv
+python scripts/summarize_resize_benchmarks.py report \
+  --native /tmp/splineops_native.csv \
+  --libraries /tmp/splineops_libraries.csv \
+  --output /tmp/splineops_resize_report.md
+```

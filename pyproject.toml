@@ -94,8 +94,8 @@ wheel.packages = ["src/splineops"]
 editable.mode = "redirect"
 sdist.include = [
   "src/splineops/**",
-  "splineops/cpp/**",
-  "splineops/CMakeLists.txt",
+  "cpp/**",
+  "CMakeLists.txt",
   "README.md",
   "LICENSE",
 ]

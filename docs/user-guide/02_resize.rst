@@ -552,20 +552,28 @@ factors :math:`0 < z < 2`. For each method and zoom, it:
   cubic variants.
 
 This provides an at-a-glance view of the quality–speed trade-off of each
-backend:
+backend. The timing results should be read in two groups:
 
-- OpenCV and PyTorch tend to be the fastest;
-- SciPy and scikit-image tend to be the slowest;
-- :func:`~splineops.resize.resize` sits in between, with ``method="cubic"`` methods matching the quality
-  of traditional cubic/linear filters, and ``method="cubic-antialiasing"`` methods pushing
-  quality (higher SNR/SSIM at small :math:`z`) while remaining competitive
-  in runtime.
+- SciPy is the closest same-semantics reference for spline interpolation. On
+  the native backend, :func:`~splineops.resize.resize` is intended to preserve
+  the same spline/projection behavior while avoiding much of the generic
+  N-dimensional overhead.
+- OpenCV, scikit-image and PyTorch are useful image-processing reference points,
+  but their coordinate conventions, antialiasing filters, boundary handling and
+  dtype policies do not always match this implementation. A faster runtime for
+  one of these libraries is therefore not necessarily a faster implementation of
+  the same operation.
+- ``method="cubic"`` matches the quality expected from standard cubic spline
+  interpolation, while ``method="cubic-antialiasing"`` uses the
+  projection-based low-pass step to improve strong downsampling quality, usually
+  with only a moderate runtime cost over cubic interpolation.
 
-The first plot below shows round-trip SNR vs zoom for cubic methods:
-:func:`~splineops.resize.resize` ``method="cubic-antialiasing"`` **rises well above the other curves for strong
-downsampling and remains best for all resampling factors**. In the zoomed version focusing on :math:`0 < z < 1`, it
-leads the next-best method by several decibels over a wide range of zoom
-factors, corresponding to a noticeably smaller reconstruction error:
+The first plot below shows round-trip SNR vs zoom for cubic methods. In this
+benchmark, :func:`~splineops.resize.resize` ``method="cubic-antialiasing"``
+rises well above the other curves for strong downsampling. In the zoomed
+version focusing on :math:`0 < z < 1`, it leads the next-best method by several
+decibels over a wide range of zoom factors, corresponding to a noticeably
+smaller reconstruction error:
 
 .. image:: /auto_examples/02_resize/images/sphx_glr_07_benchmarking_plot_004.png
    :align: center
