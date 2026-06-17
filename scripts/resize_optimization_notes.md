@@ -2054,3 +2054,36 @@ Validation:
 ```
 
 Latest focused validation result: `28 passed`.
+
+## Rejected: 2026-06-17 Fused Projection Integration
+
+Experiment:
+
+- Combined the `nb == 2` projection integration path by computing the weighted
+  average first, then fusing the symmetric and anti-symmetric integration
+  recurrences into one pass. This targets the common quadratic/cubic
+  antialiasing path while preserving the same Arrate finite-difference
+  recurrence and output values.
+
+Result:
+
+- Correctness was clean in focused tests and same-build A/B checks
+  (`max_abs_diff=0` in the measured rows).
+- End-to-end performance was mixed and not stable enough to keep:
+  - `/tmp/splineops_ab_fused_projection_integrate_standard.csv`
+  - `/tmp/splineops_ab_fused_projection_integrate_standard_rerun.csv`
+  - `/tmp/splineops_ab_fused_projection_integrate_large.csv`
+- The large-row run had median `1.014x` overall, but default-thread rows had
+  median `0.954x` and included regressions. Single-thread rows were noisy:
+  some large rows won, while others regressed.
+- Phase profiles showed the integration phase itself can drop, e.g.
+  `/tmp/splineops_profile_fused_integrate_on_1024_f64_thr1.err` versus
+  `/tmp/splineops_profile_fused_integrate_off_1024_f64_thr1.err`, but total
+  runtime remained effectively flat because adjacent gather/accumulate/scatter
+  phases moved within noise.
+
+Decision:
+
+- Removed the experimental native code path and did not add a public knob.
+- Do not retry this as a default optimization without lower-level evidence
+  such as hardware-counter data showing a cache or bandwidth win.

@@ -860,3 +860,11 @@ algorithmic path and removes one memory pass when enabled.
   `max_abs_diff=0` across 8 single-thread projection rows.
 - Force-on default-thread large rows were mixed, so the optimization is not
   unconditional.
+
+Rejected follow-up:
+
+- Fusing `nb == 2` projection input integration was exact in focused checks but
+  did not produce stable end-to-end wins. Artifacts:
+  `/tmp/splineops_ab_fused_projection_integrate_standard_rerun.csv` and
+  `/tmp/splineops_ab_fused_projection_integrate_large.csv`. Large rows had
+  mixed default-thread regressions, so the experimental code path was removed.
