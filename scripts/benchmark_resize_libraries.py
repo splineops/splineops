@@ -354,6 +354,14 @@ def full_cases() -> list[LibraryCase]:
             "random",
         ),
         LibraryCase("3d_cubic_aniso_random_f32", (128, 128, 32), (1.0, 0.5, 1.0), "cubic", "float32", "random"),
+        LibraryCase(
+            "3d_cubic_aa_down_random_f32_large",
+            (96, 96, 32),
+            (0.5, 0.5, 0.5),
+            "cubic-antialiasing",
+            "float32",
+            "random",
+        ),
     ]
 
 

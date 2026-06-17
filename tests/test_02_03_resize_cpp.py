@@ -253,6 +253,7 @@ def test_batched_axis_matches_default_equal_degree_projection(
         ("cubic", (256, 256), (0.37, 0.37)),
         ("cubic-antialiasing", (256, 256), (0.37, 0.37)),
         ("cubic", (32, 24, 16), (0.75, 1.25, 0.5)),
+        ("cubic-antialiasing", (32, 32, 12), (0.5, 0.5, 0.5)),
     ],
 )
 def test_batched_axis_auto_matches_default(monkeypatch, dtype, method, shape, zoom):

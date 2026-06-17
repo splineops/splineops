@@ -479,6 +479,7 @@ def full_cases() -> list[BenchCase]:
         [
             BenchCase("3d_cubic_down_large_f32", (256, 256, 64), (0.37, 0.37, 0.37), "cubic", "float32"),
             BenchCase("3d_cubic_aniso_large_f32", (256, 256, 64), (1.0, 0.5, 1.0), "cubic", "float32"),
+            BenchCase("3d_cubic_aa_down_large_f32", (128, 128, 32), (0.5, 0.5, 0.5), "cubic-antialiasing", "float32"),
         ]
     )
     return cases

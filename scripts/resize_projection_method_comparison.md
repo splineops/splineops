@@ -47,7 +47,7 @@ considerably fewer computations.
 
 Artifacts:
 
-- `/tmp/splineops_projection_methods_standard_20260617.csv`
+- `/tmp/splineops_resize_pr_oblique_batched_20260617/resize_projection_methods_standard_oblique_batched_20260617.csv`
 - `/tmp/splineops_projection_methods_stability_20260617.csv`
 
 Reproduce with:
@@ -77,8 +77,8 @@ Summary:
 
 | Degree | Cases | Oblique faster | Median oblique speedup vs LS | PSNR wins LS/Oblique/Interp | SSIM oblique wins |
 | ---: | ---: | ---: | ---: | --- | ---: |
-| 1 | 36 | 36/36 | `1.23x` | 24 / 12 / 0 | 20/36 |
-| 3 | 36 | 36/36 | `1.40x` | 30 / 4 / 2 | 17/36 |
+| 1 | 36 | 36/36 | `1.24x` | 24 / 12 / 0 | 20/36 |
+| 3 | 36 | 36/36 | `1.42x` | 30 / 4 / 2 | 17/36 |
 
 The small-image round-trip PSNR metric gives least-squares a slight edge in
 many rows, especially cubic. This is useful as a reminder that least-squares is

@@ -459,6 +459,15 @@ def test_interpolation_prefilter_preserves_short_constants(degree, length):
     assert np.allclose(coeff, 1.0, atol=5e-10, rtol=0.0)
 
 
+def test_cubic_oblique_long_ramp_stays_bounded():
+    x = np.linspace(0.0, 1.0, 16384, dtype=np.float64)
+
+    y = resize(x, zoom_factors=(0.37,), method="cubic-antialiasing")
+
+    assert y.min() > -1e-3
+    assert y.max() < 1.0 + 1e-3
+
+
 @pytest.mark.parametrize("method", [
     "quadratic",
     "cubic",

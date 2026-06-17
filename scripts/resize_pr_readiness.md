@@ -63,6 +63,9 @@ These are the strongest PR candidates because they preserve default semantics
 and have measured wins:
 
 - Native batched N-D axis pipeline, especially the oblique antialiasing presets.
+- Automatic batched projection routing for 3-D oblique antialiasing presets;
+  this is now the primary native optimization target for volumetric
+  downsampling.
 - Cached immutable 1-D/axis plans and reusable `ResizePlan` execution.
 - Row-major batched gather and exact boundary source/sign mapping.
 - Strided-offset gather for routed pure interpolation cases.
@@ -78,6 +81,37 @@ and have measured wins:
 - Auto float32 internals only for pure `float32` interpolation rows where the
   default numerical contract remains acceptable; projection and antialiasing
   float32 internals remain opt-in.
+
+## Current Optimization Map
+
+Fresh full bundle after the 3-D oblique batching pass:
+
+- Report:
+  `/tmp/splineops_resize_pr_oblique_batched_20260617/resize_pr_report_oblique_batched_20260617.md`
+- Native/Python:
+  `/tmp/splineops_resize_pr_oblique_batched_20260617/resize_native_full_oblique_batched_20260617.csv`
+- Libraries:
+  `/tmp/splineops_resize_pr_oblique_batched_20260617/resize_libraries_full_oblique_batched_20260617.csv`
+- Plan:
+  `/tmp/splineops_resize_pr_oblique_batched_20260617/resize_plan_standard_oblique_batched_20260617.csv`
+- Projection methods:
+  `/tmp/splineops_resize_pr_oblique_batched_20260617/resize_projection_methods_standard_oblique_batched_20260617.csv`
+
+Benchmark-derived priorities:
+
+1. Keep oblique antialiasing as the headline resize method. The projection
+   method sweep has oblique faster in `36/36` degree-1 rows and `36/36`
+   degree-3 rows, with median oblique speedups of `1.24x` and `1.42x`
+   respectively versus equal-degree least-squares.
+2. Treat 3-D oblique as the main native hotspot. Automatic batched projection
+   routing raises the full-report 3-D oblique native/Python bucket to
+   `3` cases, median `12.61x`, mean `11.53x`.
+3. Treat `ResizePlan` reuse as a secondary ergonomic win rather than the main
+   performance claim. The current report shows modest medians:
+   `1.026x` for plan reuse and `1.030x` with caller-owned output.
+4. Keep external library rows split by semantics. Exact-ish SciPy rows remain
+   slower in `0/16` cases, while OpenCV/Torch can be faster on non-equivalent
+   image-resize semantics.
 
 ## Rejected Or Deferred Ideas
 

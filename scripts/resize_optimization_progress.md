@@ -868,3 +868,41 @@ Rejected follow-up:
   `/tmp/splineops_ab_fused_projection_integrate_standard_rerun.csv` and
   `/tmp/splineops_ab_fused_projection_integrate_large.csv`. Large rows had
   mixed default-thread regressions, so the experimental code path was removed.
+
+## 2026-06-17 Update: Oblique-First Benchmark Refocus
+
+The resize PR target was refocused from equal-degree least-squares projection
+to oblique antialiasing as the production/default downsampling story.
+
+Accepted in this pass:
+
+- Added an explicit projection-method benchmark comparing interpolation,
+  oblique projection, and equal-degree least-squares projection.
+- Updated the PR benchmark wrapper/report to include that method comparison by
+  default.
+- Added 3-D oblique antialiasing rows to native, library, and plan benchmark
+  profiles.
+- Promoted the existing batched projection kernel to the automatic path for
+  3-D oblique antialiasing presets.
+- Added fixed-support specialization coverage for quadratic antialiasing
+  (`max_support == 6`) alongside the existing linear/cubic presets.
+
+Key post-change artifact:
+
+- `/tmp/splineops_resize_pr_oblique_batched_20260617/resize_pr_report_oblique_batched_20260617.md`
+
+Post-change summary:
+
+- Native/Python full report: 46 overlaps, median speedup `22.10x`.
+- Oblique antialiasing native/Python bucket: 13 cases, median `13.22x`.
+- 3-D oblique antialiasing bucket: 3 cases, median `12.61x`, mean `11.53x`.
+- Projection-method sweep: oblique faster in `36/36` degree-1 rows and
+  `36/36` degree-3 rows; median speedup versus equal-degree LS is `1.24x` and
+  `1.42x`.
+- Exact-ish SciPy rows remain slower in `0/16` comparable cases.
+
+Validation added:
+
+- Auto 3-D cubic antialiasing parity against the scalar path.
+- Long-ramp cubic oblique boundedness.
+- Projection-method benchmark smoke execution.

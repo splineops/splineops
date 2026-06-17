@@ -285,6 +285,7 @@ static inline int specialized_preset_max_support(const LSParams& p)
 {
   if (p.analy_degree < 0 && p.synthe_degree == p.interp_degree) {
     if (p.interp_degree == 1) return 3;  // linear
+    if (p.interp_degree == 2) return 4;  // quadratic
     if (p.interp_degree == 3) return 5;  // cubic
     return 0;
   }
@@ -293,6 +294,12 @@ static inline int specialized_preset_max_support(const LSParams& p)
       p.analy_degree == 0 &&
       p.synthe_degree == 1) {
     return 4;  // linear-antialiasing: total degree 2
+  }
+
+  if (p.interp_degree == 2 &&
+      p.analy_degree == 1 &&
+      p.synthe_degree == 2) {
+    return 6;  // quadratic-antialiasing: total degree 4
   }
 
   if (p.interp_degree == 3 &&
@@ -318,11 +325,25 @@ static inline bool is_linear_antialiasing_projection(const LSParams& p)
          p.synthe_degree == 1;
 }
 
+static inline bool is_quadratic_antialiasing_projection(const LSParams& p)
+{
+  return p.interp_degree == 2 &&
+         p.analy_degree == 1 &&
+         p.synthe_degree == 2;
+}
+
 static inline bool is_cubic_antialiasing_projection(const LSParams& p)
 {
   return p.interp_degree == 3 &&
          p.analy_degree == 1 &&
          p.synthe_degree == 3;
+}
+
+static inline bool is_oblique_antialiasing_projection(const LSParams& p)
+{
+  return is_linear_antialiasing_projection(p) ||
+         is_quadratic_antialiasing_projection(p) ||
+         is_cubic_antialiasing_projection(p);
 }
 
 static inline bool should_use_direct_3d_axis1_scatter(
@@ -466,6 +487,15 @@ static inline bool should_use_batched_axis(
   // lines, and batching avoids the per-line 1-D workspace pipeline.
   if (in_shape.size() == 3 &&
       is_pure_quadratic_or_cubic_interp(p)) {
+    return true;
+  }
+
+  // 3-D oblique antialiasing has many neighboring short lines. The batched
+  // projection kernel avoids per-line workspace overhead and is materially
+  // faster on the PR benchmark cases, while 2-D projection remains governed by
+  // the older size gates below.
+  if (in_shape.size() == 3 &&
+      is_oblique_antialiasing_projection(p)) {
     return true;
   }
 
@@ -1222,6 +1252,9 @@ static inline void accumulate_row_runs_colmajor_f32_preset_set(
     case 5:
       accumulate_row_runs_colmajor_f32_fixed_set<5>(coeff, Bs, B, plan, y);
       return;
+    case 6:
+      accumulate_row_runs_colmajor_f32_fixed_set<6>(coeff, Bs, B, plan, y);
+      return;
     case 7:
       accumulate_row_runs_colmajor_f32_fixed_set<7>(coeff, Bs, B, plan, y);
       return;
@@ -1257,6 +1290,10 @@ static inline void accumulate_row_colmajor_f32_preset_set(
       return;
     case 5:
       accumulate_row_colmajor_f32_fixed_set<5>(
+          coeff, Bs, B, plan, weights, l, interior, dst);
+      return;
+    case 6:
+      accumulate_row_colmajor_f32_fixed_set<6>(
           coeff, Bs, B, plan, weights, l, interior, dst);
       return;
     case 7:
@@ -1569,6 +1606,9 @@ static inline void accumulate_row_runs_colmajor_preset_set(
     case 5:
       accumulate_row_runs_colmajor_fixed_set<5>(coeff, Bs, B, plan, y);
       return;
+    case 6:
+      accumulate_row_runs_colmajor_fixed_set<6>(coeff, Bs, B, plan, y);
+      return;
     case 7:
       accumulate_row_runs_colmajor_fixed_set<7>(coeff, Bs, B, plan, y);
       return;
@@ -1604,6 +1644,10 @@ static inline void accumulate_row_colmajor_preset_set(
       return;
     case 5:
       accumulate_row_colmajor_fixed_set<5>(
+          coeff, Bs, B, plan, weights, l, interior, dst);
+      return;
+    case 6:
+      accumulate_row_colmajor_fixed_set<6>(
           coeff, Bs, B, plan, weights, l, interior, dst);
       return;
     case 7:
@@ -1892,6 +1936,11 @@ static inline void accumulate_scatter_row_colmajor_preset_set(
       return;
     case 5:
       accumulate_scatter_row_colmajor_fixed_set<Scalar, 5>(
+          coeff, Bs, B, plan, weights, l, interior, out, out_offsets, stride,
+          unit_stride_offsets);
+      return;
+    case 6:
+      accumulate_scatter_row_colmajor_fixed_set<Scalar, 6>(
           coeff, Bs, B, plan, weights, l, interior, out, out_offsets, stride,
           unit_stride_offsets);
       return;
