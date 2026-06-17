@@ -29,14 +29,14 @@ The clearest differentiator is 3-D cubic antialiasing:
 
 | Case | splineops | SciPy | skimage | OpenCV | Torch |
 | --- | ---: | ---: | ---: | --- | --- |
-| `3d_cubic_aa_down_random_f32` | `2.152 ms` | `8.086 ms` | `10.228 ms` | skipped, 2-D only | skipped, no 3-D AA |
-| `3d_cubic_aa_down_random_f32_large` | `5.654 ms` | `23.811 ms` | `29.017 ms` | skipped, 2-D only | skipped, no 3-D AA |
+| `3d_cubic_aa_down_random_f32` | `2.454 ms` | `8.070 ms` | `10.186 ms` | skipped, 2-D only | skipped, no 3-D AA |
+| `3d_cubic_aa_down_random_f32_large` | `4.179 ms` | `23.610 ms` | `28.675 ms` | skipped, 2-D only | skipped, no 3-D AA |
 
 ## Evidence Bundle
 
 Canonical artifact:
 
-- `/tmp/splineops_resize_pr_oblique_batched_20260617/resize_pr_report_oblique_batched_20260617.md`
+- `/tmp/splineops_resize_pr_oblique_pr_6411817_20260617/resize_pr_report_oblique_pr_6411817_20260617.md`
 
 Reproduce with:
 
@@ -50,11 +50,11 @@ Important rows from the current bundle:
 
 | Evidence | Result |
 | --- | --- |
-| Native/Python full report | 46 overlaps, median `22.10x` speedup |
-| Oblique antialiasing native/Python bucket | 13 cases, median `13.22x` |
-| 3-D oblique antialiasing bucket | 3 cases, median `12.61x` |
-| Oblique vs equal-degree LS, degree 1 | faster in `36/36`, median `1.24x` |
-| Oblique vs equal-degree LS, degree 3 | faster in `36/36`, median `1.42x` |
+| Native/Python full report | 46 overlaps, median `22.95x` speedup |
+| Oblique antialiasing native/Python bucket | 13 cases, median `14.07x` |
+| 3-D oblique antialiasing bucket | 3 cases, median `13.01x` |
+| Oblique vs equal-degree LS, degree 1 | faster in `36/36`, median `1.25x` |
+| Oblique vs equal-degree LS, degree 3 | faster in `36/36`, median `1.41x` |
 | Exact-ish SciPy rows | SciPy faster in `0/16`, median speed `0.08x` |
 
 ## Non-Claims

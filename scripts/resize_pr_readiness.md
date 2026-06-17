@@ -6,7 +6,8 @@ This note is the compact upstream-PR checklist for the resize optimization
 work. The detailed engineering ledger remains in
 `scripts/resize_optimization_notes.md`; the shorter project summary remains in
 `scripts/resize_optimization_progress.md`. The PR-facing short brief is
-`scripts/resize_oblique_pr_brief.md`.
+`scripts/resize_oblique_pr_brief.md`, and the ready-to-paste PR draft is
+`scripts/resize_upstream_pr_description.md`.
 
 ## Objective
 
