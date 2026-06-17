@@ -47,8 +47,21 @@ considerably fewer computations.
 
 Artifacts:
 
-- `/tmp/splineops_projection_methods_legacy_relevant_20260617.csv`
-- `/tmp/splineops_ls_vs_oblique_20260617.csv`
+- `/tmp/splineops_projection_methods_standard_20260617.csv`
+- `/tmp/splineops_projection_methods_stability_20260617.csv`
+
+Reproduce with:
+
+```shell
+python scripts/benchmark_resize_projection_methods.py \
+  --profile standard \
+  --output-csv /tmp/splineops_projection_methods_standard.csv
+python scripts/benchmark_resize_projection_methods.py \
+  --profile stability \
+  --degrees 3 \
+  --dtypes float64 \
+  --output-csv /tmp/splineops_projection_methods_stability.csv
+```
 
 The focused sweep used:
 
@@ -62,25 +75,19 @@ The focused sweep used:
 
 Summary:
 
-| Degree | Dtype | Oblique faster | Median oblique speedup vs LS | PSNR wins LS/Oblique/Interp | SSIM wins LS/Oblique/Interp |
-| ---: | --- | ---: | ---: | --- | --- |
-| 1 | `float32` | 15/18 | `1.22x` | 12 / 6 / 0 | 4 / 10 / 4 |
-| 1 | `float64` | 16/18 | `1.22x` | 12 / 6 / 0 | 4 / 10 / 4 |
-| 3 | `float32` | 18/18 | `2.17x` | 15 / 2 / 1 | 4 / 10 / 4 |
-| 3 | `float64` | 18/18 | `2.16x` | 15 / 2 / 1 | 4 / 10 / 4 |
+| Degree | Cases | Oblique faster | Median oblique speedup vs LS | PSNR wins LS/Oblique/Interp | SSIM oblique wins |
+| ---: | ---: | ---: | ---: | --- | ---: |
+| 1 | 36 | 36/36 | `1.23x` | 24 / 12 / 0 | 20/36 |
+| 3 | 36 | 36/36 | `1.40x` | 30 / 4 / 2 | 17/36 |
 
 The small-image round-trip PSNR metric gives least-squares a slight edge in
-many rows, especially cubic. The median PSNR difference is small:
+many rows, especially cubic. This is useful as a reminder that least-squares is
+still the orthogonal-projection reference. It does not change the default
+recommendation, because the PSNR differences are small on these finite image
+cases while oblique is consistently faster and more robust.
 
-| Degree | Dtype | Median PSNR LS | Median PSNR Oblique |
-| ---: | --- | ---: | ---: |
-| 1 | `float32` | `18.14 dB` | `18.10 dB` |
-| 1 | `float64` | `18.14 dB` | `18.10 dB` |
-| 3 | `float32` | `18.43 dB` | `18.40 dB` |
-| 3 | `float64` | `18.43 dB` | `18.40 dB` |
-
-SSIM is mixed: oblique wins more individual cases, while cubic least-squares
-has a slightly higher median SSIM in this small sweep.
+SSIM is mixed and image-dependent. Oblique wins more degree-1 SSIM rows in this
+sweep; cubic is closer.
 
 ## Long-Line Stability
 

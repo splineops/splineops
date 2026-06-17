@@ -44,6 +44,11 @@ def _mean(values: Iterable[float]) -> float:
     return statistics.fmean(data) if data else float("nan")
 
 
+def _float_or(row: dict[str, str], key: str, default: float) -> float:
+    value = _float(row, key)
+    return default if value is None else value
+
+
 def _fmt(value: float, *, digits: int = 2, suffix: str = "") -> str:
     if math.isnan(value):
         return "n/a"
@@ -54,6 +59,10 @@ def _fmt_sci(value: float, *, digits: int = 2) -> str:
     if math.isnan(value):
         return "n/a"
     return f"`{value:.{digits}e}`"
+
+
+def _is_oblique_antialiasing(row: dict[str, str]) -> bool:
+    return row.get("method", "").endswith("-antialiasing")
 
 
 def _markdown_table(headers: list[str], rows: list[list[str]]) -> list[str]:
@@ -77,10 +86,11 @@ def _native_speedup_stats(
     ratios: list[float] = []
     thread_winners: dict[str, int] = {}
     buckets: dict[str, list[float]] = {
-        "Linear": [],
-        "Cubic": [],
-        "Antialiasing/projection": [],
+        "Linear interpolation": [],
+        "Cubic interpolation": [],
+        "Oblique antialiasing presets": [],
         "3-D": [],
+        "3-D oblique antialiasing": [],
     }
 
     for case, group in sorted(by_case.items()):
@@ -103,14 +113,18 @@ def _native_speedup_stats(
         ratios.append(speedup)
         thread = best_native.get("threads", "<unknown>")
         thread_winners[thread] = thread_winners.get(thread, 0) + 1
+        method = best_native.get("method", "")
+        is_oblique = method.endswith("-antialiasing")
         if case.startswith("3d_"):
             buckets["3-D"].append(speedup)
-        if "_aa_" in case:
-            buckets["Antialiasing/projection"].append(speedup)
-        elif "cubic" in case:
-            buckets["Cubic"].append(speedup)
-        elif "linear" in case:
-            buckets["Linear"].append(speedup)
+            if is_oblique:
+                buckets["3-D oblique antialiasing"].append(speedup)
+        if is_oblique:
+            buckets["Oblique antialiasing presets"].append(speedup)
+        elif method == "cubic":
+            buckets["Cubic interpolation"].append(speedup)
+        elif method == "linear":
+            buckets["Linear interpolation"].append(speedup)
 
     return ratios, buckets, thread_winners
 
@@ -171,6 +185,7 @@ def _libraries_report_lines(path: Path, *, exact_rel_l2: float) -> list[str]:
 
     backend_rows: list[list[str]] = []
     exact_rows: list[list[str]] = []
+    oblique_rows: list[list[str]] = []
     for backend in ("scipy", "skimage", "opencv", "torch"):
         br = [
             r for r in rows
@@ -211,6 +226,25 @@ def _libraries_report_lines(path: Path, *, exact_rel_l2: float) -> list[str]:
                 _fmt(_mean(exact_speeds), suffix="x"),
             ])
 
+        oblique = [r for r in br if _is_oblique_antialiasing(r)]
+        oblique_speeds = [
+            v for r in oblique
+            if (v := _float(r, "speedup_vs_splineops")) is not None
+        ]
+        oblique_rel = [
+            v for r in oblique
+            if (v := _float(r, "rel_l2_diff")) is not None
+        ]
+        if oblique_speeds:
+            oblique_rows.append([
+                backend,
+                str(len(oblique_speeds)),
+                f"{sum(v > 1.0 for v in oblique_speeds)}/{len(oblique_speeds)}",
+                _fmt(_median(oblique_speeds), suffix="x"),
+                _fmt(_mean(oblique_speeds), suffix="x"),
+                _fmt_sci(_median(oblique_rel)),
+            ])
+
     lines.extend(_markdown_table(
         [
             "Backend",
@@ -231,6 +265,23 @@ def _libraries_report_lines(path: Path, *, exact_rel_l2: float) -> list[str]:
         ["Backend", "Exact-ish cases", "Faster than splineops", "Median speed", "Mean speed"],
         exact_rows,
     ))
+    if oblique_rows:
+        lines.extend([
+            "",
+            "Oblique antialiasing rows use splineops `*-antialiasing` presets. Other libraries are contextual baselines here, not exact oblique projection implementations.",
+            "",
+        ])
+        lines.extend(_markdown_table(
+            [
+                "Backend",
+                "Oblique cases",
+                "Faster than splineops",
+                "Median speed",
+                "Mean speed",
+                "Median rel-L2",
+            ],
+            oblique_rows,
+        ))
     lines.append("")
     return lines
 
@@ -455,6 +506,86 @@ def _plan_report_lines(path: Path) -> list[str]:
     return lines
 
 
+def _projection_methods_report_lines(path: Path) -> list[str]:
+    rows = _rows(path)
+    usable = [
+        r for r in rows
+        if _float(r, "oblique_speedup_vs_least_squares") is not None
+    ]
+    lines = [
+        "## Projection Method Comparison",
+        "",
+        f"Artifact: `{path}`",
+        "",
+        "This compares splineops equal-degree least-squares projection against the oblique `*-antialiasing` method family.",
+        "",
+    ]
+    if not usable:
+        lines.extend(["No usable projection-method rows.", ""])
+        return lines
+
+    table_rows: list[list[str]] = []
+    for degree in sorted({r.get("degree", "<degree>") for r in usable}):
+        group = [r for r in usable if r.get("degree", "<degree>") == degree]
+        speedups = [
+            _float(r, "oblique_speedup_vs_least_squares") or 0.0
+            for r in group
+        ]
+        psnr_ls = psnr_oblique = psnr_interp = 0
+        ssim_rows = 0
+        ssim_oblique = 0
+        for row in group:
+            psnr_values = {
+                "LS": _float_or(row, "roundtrip_psnr_least_squares", -float("inf")),
+                "Oblique": _float_or(row, "roundtrip_psnr_oblique", -float("inf")),
+                "Interp": _float_or(row, "roundtrip_psnr_interpolation", -float("inf")),
+            }
+            best_psnr = max(psnr_values, key=psnr_values.get)
+            if best_psnr == "LS":
+                psnr_ls += 1
+            elif best_psnr == "Oblique":
+                psnr_oblique += 1
+            else:
+                psnr_interp += 1
+
+            ssim_values = {
+                "LS": _float(row, "roundtrip_ssim_least_squares"),
+                "Oblique": _float(row, "roundtrip_ssim_oblique"),
+                "Interp": _float(row, "roundtrip_ssim_interpolation"),
+            }
+            if all(value is not None for value in ssim_values.values()):
+                ssim_rows += 1
+                if ssim_values["Oblique"] >= max(ssim_values["LS"], ssim_values["Interp"]):  # type: ignore[arg-type]
+                    ssim_oblique += 1
+
+        table_rows.append([
+            f"`{degree}`",
+            str(len(group)),
+            f"{sum(v > 1.0 for v in speedups)}/{len(speedups)}",
+            _fmt(_median(speedups), suffix="x"),
+            f"{psnr_ls}/{psnr_oblique}/{psnr_interp}",
+            f"{ssim_oblique}/{ssim_rows}" if ssim_rows else "n/a",
+        ])
+
+    lines.extend(_markdown_table(
+        [
+            "Degree",
+            "Cases",
+            "Oblique faster",
+            "Median oblique speedup",
+            "PSNR wins LS/Oblique/Interp",
+            "SSIM oblique wins",
+        ],
+        table_rows,
+    ))
+    lines.extend([
+        "",
+        "Interpretation: least-squares can retain a small PSNR edge on controlled small round trips, but oblique is the production default because it is faster, lower-order, and more robust on long lines.",
+        "",
+    ])
+    return lines
+
+
 def build_markdown_report(
     *,
     title: str,
@@ -464,6 +595,7 @@ def build_markdown_report(
     legacy_reference: Path | None,
     ab: list[Path],
     plan: Path | None,
+    projection_methods: Path | None,
     exact_rel_l2: float,
 ) -> str:
     artifacts: list[list[str]] = []
@@ -479,6 +611,8 @@ def build_markdown_report(
         artifacts.append(["A/B", f"`{path}`"])
     if plan is not None:
         artifacts.append(["ResizePlan", f"`{plan}`"])
+    if projection_methods is not None:
+        artifacts.append(["Projection methods", f"`{projection_methods}`"])
 
     lines = [
         f"# {title}",
@@ -499,11 +633,14 @@ def build_markdown_report(
         lines.extend(_ab_report_lines(path))
     if plan is not None:
         lines.extend(_plan_report_lines(plan))
+    if projection_methods is not None:
+        lines.extend(_projection_methods_report_lines(projection_methods))
 
     lines.extend([
         "## PR Interpretation",
         "",
         "- Use the native/Python section to justify same-algorithm acceleration.",
+        "- Treat splineops `*-antialiasing` rows as oblique projection presets; do not describe them as equal-degree least-squares defaults.",
         "- Use exact-ish SciPy or PyTorch rows from the library comparison when arguing about like-for-like semantics.",
         "- Treat OpenCV, scikit-image and non-exact PyTorch rows as contextual image-resize baselines, because they can use different coordinate, boundary, antialiasing and dtype behavior.",
         "- Use A/B sections to defend individual default-on knobs and to identify rows that need another pass before an upstream PR.",
@@ -521,10 +658,11 @@ def summarize_native(path: Path) -> None:
     ratios: list[float] = []
     thread_winners: dict[str, int] = {}
     buckets: dict[str, list[float]] = {
-        "linear": [],
-        "cubic": [],
-        "antialiasing": [],
+        "linear interpolation": [],
+        "cubic interpolation": [],
+        "oblique antialiasing": [],
         "3d": [],
+        "3d oblique antialiasing": [],
     }
 
     for case, group in sorted(by_case.items()):
@@ -547,14 +685,18 @@ def summarize_native(path: Path) -> None:
         ratios.append(speedup)
         thread = best_native.get("threads", "<unknown>")
         thread_winners[thread] = thread_winners.get(thread, 0) + 1
+        method = best_native.get("method", "")
+        is_oblique = method.endswith("-antialiasing")
         if case.startswith("3d_"):
             buckets["3d"].append(speedup)
-        if "_aa_" in case:
-            buckets["antialiasing"].append(speedup)
-        elif "cubic" in case:
-            buckets["cubic"].append(speedup)
-        elif "linear" in case:
-            buckets["linear"].append(speedup)
+            if is_oblique:
+                buckets["3d oblique antialiasing"].append(speedup)
+        if is_oblique:
+            buckets["oblique antialiasing"].append(speedup)
+        elif method == "cubic":
+            buckets["cubic interpolation"].append(speedup)
+        elif method == "linear":
+            buckets["linear interpolation"].append(speedup)
 
     print(f"native artifact: {path}")
     print(f"native/python overlaps: {len(ratios)}")
@@ -948,6 +1090,11 @@ def main() -> int:
         help="benchmark_resize_ab.py CSV output. May be passed more than once.",
     )
     report.add_argument("--plan", type=Path, help="benchmark_resize_plan.py CSV output.")
+    report.add_argument(
+        "--projection-methods",
+        type=Path,
+        help="benchmark_resize_projection_methods.py CSV output.",
+    )
     report.add_argument("--exact-rel-l2", type=float, default=1e-5)
     report.add_argument("--output", type=Path, help="Write Markdown to this path.")
 
@@ -984,7 +1131,14 @@ def main() -> int:
     elif args.kind == "ab":
         summarize_ab(args.csv)
     elif args.kind == "report":
-        if not any([args.native, args.libraries, args.legacy, args.ab, args.plan]):
+        if not any([
+            args.native,
+            args.libraries,
+            args.legacy,
+            args.ab,
+            args.plan,
+            args.projection_methods,
+        ]):
             parser.error("report requires at least one artifact argument")
         if args.legacy is not None and args.legacy_reference is None:
             parser.error("report --legacy requires --legacy-reference")
@@ -996,6 +1150,7 @@ def main() -> int:
             legacy_reference=args.legacy_reference,
             ab=args.ab,
             plan=args.plan,
+            projection_methods=args.projection_methods,
             exact_rel_l2=args.exact_rel_l2,
         )
         if args.output is not None:

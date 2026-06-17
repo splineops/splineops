@@ -62,7 +62,7 @@ rules, kernels, or antialiasing differ from splineops.
 These are the strongest PR candidates because they preserve default semantics
 and have measured wins:
 
-- Native batched N-D axis pipeline, including projection and antialiasing.
+- Native batched N-D axis pipeline, especially the oblique antialiasing presets.
 - Cached immutable 1-D/axis plans and reusable `ResizePlan` execution.
 - Row-major batched gather and exact boundary source/sign mapping.
 - Strided-offset gather for routed pure interpolation cases.
@@ -117,9 +117,11 @@ python scripts/benchmark_resize_pr.py \
   --native-profile smoke \
   --library-profile smoke \
   --plan-profile smoke \
+  --projection-methods-profile smoke \
   --native-repeats 1 \
   --library-repeats 1 \
   --plan-repeats 1 \
+  --projection-methods-repeats 1 \
   --plan-frames 2 \
   --threads 1,default \
   --output-dir /tmp/splineops_resize_pr_smoke
@@ -130,8 +132,22 @@ The wrapper emits:
 - native versus Python timing CSV/JSON
 - splineops versus external-library timing and delta CSV/JSON
 - repeated `ResizePlan` timing CSV/JSON
+- equal-degree least-squares versus oblique projection timing/quality CSV/JSON
 - combined Markdown report
 - manifest and exact command list
+
+For focused method-positioning evidence:
+
+```shell
+python scripts/benchmark_resize_projection_methods.py \
+  --profile standard \
+  --output-csv /tmp/splineops_projection_methods.csv
+python scripts/benchmark_resize_projection_methods.py \
+  --profile stability \
+  --degrees 3 \
+  --dtypes float64 \
+  --output-csv /tmp/splineops_projection_methods_stability.csv
+```
 
 ## Interpreting Results
 
@@ -139,6 +155,9 @@ Use these categories in PR discussion:
 
 - Native versus Python fallback: proves speedup for the same splineops
   operation and is the most important exact comparison.
+- Projection-method comparison: proves why oblique antialiasing is the
+  production default even though equal-degree least-squares remains the
+  orthogonal-projection reference.
 - `ResizePlan`: proves repeated fixed-geometry workloads benefit from cached
   setup and reusable buffers.
 - SciPy close-output rows: useful like-for-like context for many interpolation
@@ -159,6 +178,7 @@ python -m py_compile \
   scripts/benchmark_resize_native.py \
   scripts/benchmark_resize_libraries.py \
   scripts/benchmark_resize_plan.py \
+  scripts/benchmark_resize_projection_methods.py \
   scripts/summarize_resize_benchmarks.py
 python -m pytest -q
 git diff --check
@@ -173,10 +193,12 @@ Recommended sequencing for a major-library PR:
 
 1. Submit the smallest exact implementation slice that improves common rows.
 2. Include targeted parity tests before benchmark claims.
-3. Include benchmark scripts or reproducible commands in the PR description.
-4. Hide local experiment knobs from the public API, or keep them clearly
+3. Lead with oblique antialiasing benchmark rows, including 3-D coverage, when
+   discussing projection/downsampling performance.
+4. Include benchmark scripts or reproducible commands in the PR description.
+5. Hide local experiment knobs from the public API, or keep them clearly
    internal and undocumented when they are only for A/B validation.
-5. Keep approximate/numerically different modes opt-in and separate from the
+6. Keep approximate/numerically different modes opt-in and separate from the
    exact default path.
 
 The best first PR is not the largest possible optimization bundle. It is the

@@ -95,6 +95,13 @@ def bench_cases(profile: str) -> list[PlanBenchCase]:
             "linear",
             "float32",
         ),
+        PlanBenchCase(
+            "3d_cubic_aa_down_f32",
+            (64, 64, 24),
+            (0.5, 0.5, 0.5),
+            "cubic-antialiasing",
+            "float32",
+        ),
     ]
 
 

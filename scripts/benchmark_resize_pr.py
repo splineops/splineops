@@ -34,6 +34,8 @@ class ArtifactSet:
     libraries_json: str | None
     plan_csv: str | None
     plan_json: str | None
+    projection_methods_csv: str | None
+    projection_methods_json: str | None
     report_md: str
     manifest_json: str
     commands_txt: str
@@ -78,6 +80,11 @@ def parse_args() -> argparse.Namespace:
         choices=["smoke", "standard"],
         default="standard",
     )
+    parser.add_argument(
+        "--projection-methods-profile",
+        choices=["smoke", "standard", "stability"],
+        default="standard",
+    )
     parser.add_argument("--threads", default="1,8,default")
     parser.add_argument("--native-repeats", type=int, default=3)
     parser.add_argument("--native-warmups", type=int, default=1)
@@ -91,11 +98,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plan-repeats", type=int, default=5)
     parser.add_argument("--plan-warmups", type=int, default=1)
     parser.add_argument("--plan-frames", type=int, default=8)
+    parser.add_argument("--projection-methods-repeats", type=int, default=3)
+    parser.add_argument("--projection-methods-warmups", type=int, default=1)
+    parser.add_argument("--projection-methods-degrees", default="1,3")
+    parser.add_argument("--projection-methods-dtypes", default="float32,float64")
     parser.add_argument("--exact-rel-l2", type=float, default=1e-5)
     parser.add_argument("--title", default="Resize PR Benchmark Report")
     parser.add_argument("--skip-native", action="store_true")
     parser.add_argument("--skip-libraries", action="store_true")
     parser.add_argument("--skip-plan", action="store_true")
+    parser.add_argument("--skip-projection-methods", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -120,10 +132,21 @@ def main() -> int:
     ensure_positive("--native-repeats", args.native_repeats)
     ensure_positive("--library-repeats", args.library_repeats)
     ensure_positive("--plan-repeats", args.plan_repeats)
+    ensure_positive("--projection-methods-repeats", args.projection_methods_repeats)
     ensure_positive("--plan-frames", args.plan_frames)
-    if args.native_warmups < 0 or args.library_warmups < 0 or args.plan_warmups < 0:
+    if (
+        args.native_warmups < 0
+        or args.library_warmups < 0
+        or args.plan_warmups < 0
+        or args.projection_methods_warmups < 0
+    ):
         raise SystemExit("warmup counts must be non-negative")
-    if args.skip_native and args.skip_libraries and args.skip_plan:
+    if (
+        args.skip_native
+        and args.skip_libraries
+        and args.skip_plan
+        and args.skip_projection_methods
+    ):
         raise SystemExit("at least one benchmark suite must be enabled")
 
     output_dir = args.output_dir or Path(f"/tmp/splineops_resize_pr_{args.tag}")
@@ -135,6 +158,12 @@ def main() -> int:
     libraries_json = output_dir / f"resize_libraries_{args.library_profile}_{args.tag}.json"
     plan_csv = output_dir / f"resize_plan_{args.plan_profile}_{args.tag}.csv"
     plan_json = output_dir / f"resize_plan_{args.plan_profile}_{args.tag}.json"
+    projection_methods_csv = output_dir / (
+        f"resize_projection_methods_{args.projection_methods_profile}_{args.tag}.csv"
+    )
+    projection_methods_json = output_dir / (
+        f"resize_projection_methods_{args.projection_methods_profile}_{args.tag}.json"
+    )
     report_md = output_dir / f"resize_pr_report_{args.tag}.md"
     manifest_json = output_dir / f"resize_pr_manifest_{args.tag}.json"
     commands_txt = output_dir / f"resize_pr_commands_{args.tag}.txt"
@@ -200,6 +229,26 @@ def main() -> int:
             str(plan_json),
         ])
 
+    if not args.skip_projection_methods:
+        commands.append([
+            py,
+            str(SCRIPT_DIR / "benchmark_resize_projection_methods.py"),
+            "--profile",
+            args.projection_methods_profile,
+            "--repeats",
+            str(args.projection_methods_repeats),
+            "--warmups",
+            str(args.projection_methods_warmups),
+            "--degrees",
+            args.projection_methods_degrees,
+            "--dtypes",
+            args.projection_methods_dtypes,
+            "--output-csv",
+            str(projection_methods_csv),
+            "--output-json",
+            str(projection_methods_json),
+        ])
+
     report_cmd = [
         py,
         str(SCRIPT_DIR / "summarize_resize_benchmarks.py"),
@@ -217,6 +266,8 @@ def main() -> int:
         report_cmd.extend(["--libraries", str(libraries_csv)])
     if not args.skip_plan:
         report_cmd.extend(["--plan", str(plan_csv)])
+    if not args.skip_projection_methods:
+        report_cmd.extend(["--projection-methods", str(projection_methods_csv)])
     commands.append(report_cmd)
 
     artifact_set = ArtifactSet(
@@ -228,6 +279,12 @@ def main() -> int:
         libraries_json=None if args.skip_libraries else str(libraries_json),
         plan_csv=None if args.skip_plan else str(plan_csv),
         plan_json=None if args.skip_plan else str(plan_json),
+        projection_methods_csv=(
+            None if args.skip_projection_methods else str(projection_methods_csv)
+        ),
+        projection_methods_json=(
+            None if args.skip_projection_methods else str(projection_methods_json)
+        ),
         report_md=str(report_md),
         manifest_json=str(manifest_json),
         commands_txt=str(commands_txt),

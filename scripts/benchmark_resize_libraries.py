@@ -328,6 +328,14 @@ def standard_cases() -> list[LibraryCase]:
         ),
         LibraryCase("3d_linear_down_random_f32", (96, 96, 32), (0.5, 0.5, 0.5), "linear", "float32", "random"),
         LibraryCase("3d_cubic_down_random_f32", (96, 96, 32), (0.5, 0.5, 0.5), "cubic", "float32", "random"),
+        LibraryCase(
+            "3d_cubic_aa_down_random_f32",
+            (64, 64, 24),
+            (0.5, 0.5, 0.5),
+            "cubic-antialiasing",
+            "float32",
+            "random",
+        ),
     ]
 
 

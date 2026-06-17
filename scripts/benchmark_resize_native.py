@@ -440,6 +440,8 @@ def standard_cases() -> list[BenchCase]:
             BenchCase("3d_linear_aniso_f32", (128, 128, 32), (1.0, 0.5, 1.0), "linear", "float32"),
             BenchCase("3d_cubic_down_f32", (128, 128, 32), (0.5, 0.5, 0.5), "cubic", "float32"),
             BenchCase("3d_cubic_aniso_f32", (128, 128, 32), (1.0, 0.5, 1.0), "cubic", "float32"),
+            BenchCase("3d_linear_aa_down_f32", (96, 96, 24), (0.5, 0.5, 0.5), "linear-antialiasing", "float32"),
+            BenchCase("3d_cubic_aa_down_f32", (96, 96, 24), (0.5, 0.5, 0.5), "cubic-antialiasing", "float32"),
         ]
     )
     return cases

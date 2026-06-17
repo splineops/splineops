@@ -79,6 +79,7 @@ Useful benchmark entry points:
 
 ```shell
 python scripts/benchmark_resize_pr.py --output-dir /tmp/splineops_resize_pr_current
+python scripts/benchmark_resize_projection_methods.py --profile standard --output-csv /tmp/splineops_projection_methods.csv
 python scripts/benchmark_resize_native.py --backend both --output-csv /tmp/splineops_native.csv
 python scripts/benchmark_resize_libraries.py --output-csv /tmp/splineops_libraries.csv
 python scripts/summarize_resize_benchmarks.py report \
