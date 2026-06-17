@@ -711,6 +711,34 @@ def test_projection_avg_restore_fused_path_matches_disabled(monkeypatch, dtype):
 
 @pytest.mark.skipif(
     not _has_cpp(),
+    reason="Native extension not available: skipping output prefilter scale compare",
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("method", ["linear-antialiasing", "cubic-antialiasing"])
+def test_projection_output_prefilter_scaled_path_matches_disabled(
+    monkeypatch, dtype, method
+):
+    rng = np.random.default_rng(139)
+    arr = rng.random((80, 72), dtype=dtype)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    monkeypatch.setenv("LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE", "0")
+    rz = _load_resize_module(force_reload=True)
+    expected = rz.resize(arr, zoom_factors=(0.57, 0.63), method=method)
+
+    monkeypatch.setenv("LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE", "1")
+    rz = _load_resize_module(force_reload=True)
+    actual = rz.resize(arr, zoom_factors=(0.57, 0.63), method=method)
+
+    atol = 3e-5 if dtype == np.float32 else 2e-9
+    assert actual.dtype == dtype
+    assert np.allclose(actual, expected, atol=atol, rtol=atol)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
     reason="Native extension not available: skipping AVX2 2-D linear compare",
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])

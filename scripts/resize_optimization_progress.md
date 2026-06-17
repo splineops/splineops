@@ -243,6 +243,7 @@ Representative measurement:
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
 | Native float32 strided-offset gather | enabled for routed pure interpolation | `LSRESIZE_STRIDED_OFFSET_GATHER=0` |
 | Native gather-prefilter scaling | enabled | `LSRESIZE_GATHER_PREFILTER_SCALE=0` |
+| Native projection output-prefilter scaling | explicit single-thread auto | `LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE=0/1/auto` |
 | Native 2-D projection batch tuning | enabled | `LSRESIZE_2D_PROJECTION_BATCH_TUNE=0` |
 | Native float32 row-wise initial causal setup | enabled | `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0` |
 | Native 3-D axis-1 direct scatter | enabled for large pure quadratic/cubic interpolation passes | `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0` |
@@ -811,6 +812,8 @@ Accepted optimization families so far:
 - 2-D pure cubic/quadratic downsampling batch tune v2.
 - Large 2-D cubic-antialiasing explicit-single-thread batch reduction from 96
   to 32 lines.
+- Projection output-prefilter scale fusion for explicit single-thread
+  projection passes.
 
 Current library position, default scheduler:
 
@@ -842,3 +845,18 @@ Near-term next steps:
    implementation first, with clear semantic comparisons against SciPy. Treat
    OpenCV/skimage/PyTorch image-resize numbers as contextual rather than
    apples-to-apples evidence.
+
+## 2026-06-17 Update
+
+Added conservative projection output-prefilter scale fusion. The output
+prefilter normalization is folded into the finite-difference average-restore
+step, then the pole-only output prefilter is applied. This preserves the exact
+algorithmic path and removes one memory pass when enabled.
+
+- Default policy: explicit `LSRESIZE_NUM_THREADS=1` auto only.
+- Override: `LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE=0/1/auto`.
+- A/B artifact: `/tmp/splineops_ab_projection_output_scale_auto_thr1_r9.csv`
+  reported median `1.019x`, mean `1.039x`, 2 wins, 0 losses, and
+  `max_abs_diff=0` across 8 single-thread projection rows.
+- Force-on default-thread large rows were mixed, so the optimization is not
+  unconditional.

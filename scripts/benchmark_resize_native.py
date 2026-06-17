@@ -180,6 +180,10 @@ def native_knobs() -> dict[str, str]:
             "LSRESIZE_GATHER_PREFILTER_SCALE",
             "<default:on>",
         ),
+        "LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE": os.environ.get(
+            "LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE",
+            "<default:single-thread-auto>",
+        ),
         "LSRESIZE_2D_PROJECTION_BATCH_TUNE": os.environ.get(
             "LSRESIZE_2D_PROJECTION_BATCH_TUNE",
             "<default:on>",

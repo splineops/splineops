@@ -58,6 +58,7 @@ Current default knobs:
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
 | Native float32 strided-offset gather | enabled for routed pure interpolation | `LSRESIZE_STRIDED_OFFSET_GATHER=0` |
 | Native gather-prefilter scaling | enabled | `LSRESIZE_GATHER_PREFILTER_SCALE=0` |
+| Native projection output-prefilter scaling | auto only for explicit `LSRESIZE_NUM_THREADS=1` | `LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE=0/1/auto` |
 | Native 2-D projection batch tuning | enabled | `LSRESIZE_2D_PROJECTION_BATCH_TUNE=0` |
 | Native float32 row-wise initial causal setup | enabled | `LSRESIZE_ROWWISE_INITIAL_CAUSAL=0` |
 | Native 3-D axis-1 direct scatter | enabled for large pure quadratic/cubic interpolation passes | `LSRESIZE_3D_AXIS1_DIRECT_SCATTER=0` |
@@ -2005,3 +2006,51 @@ Recommended next work:
    notes, and include a minimal implementation story: exact boundary handling,
    spline poles, LS projection filters, and why the optimized memory traversal
    does not change the mathematical method.
+
+## Handoff: 2026-06-17 Projection Output-Prefilter Scale Fusion
+
+Accepted change:
+
+- Projection paths now optionally fold the output prefilter normalization factor
+  into the existing finite-difference average-restore step, then run the
+  pole-only output prefilter. This removes one full normalization pass over the
+  projection output buffer without changing Arrate's finite-difference
+  projection, mirror boundaries, spline weights, or recursive poles.
+- The default policy is conservative: `auto` enables the fused scale only when
+  `LSRESIZE_NUM_THREADS=1` is set explicitly. It can be forced with
+  `LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE=1` or disabled with
+  `LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE=0`.
+
+Focused profiling:
+
+- `/tmp/splineops_profile_projection_scale_auto_1024_f64_thr1.err`
+- `/tmp/splineops_profile_projection_scale_disabled_1024_f64_thr1.err`
+- In the 1024x1024 float64 cubic-antialiasing single-thread profile, output
+  prefilter time dropped from about `5.57 ms` to `5.03 ms`; diff/average time
+  dropped from about `2.72 ms` to `2.21 ms`. Total profile time moved from
+  about `51.32 ms` to `50.62 ms` across the profiled benchmark process.
+
+Accepted A/B:
+
+- `/tmp/splineops_ab_projection_output_scale_auto_thr1_r9.csv`
+  - disabled versus default-auto, explicit `LSRESIZE_NUM_THREADS=1`
+  - 8 projection rows, `9` repeats, `3` warmups
+  - median speedup `1.019x`, mean speedup `1.039x`
+  - 2 wins, 0 losses, all checks passed with `max_abs_diff=0`
+- `/tmp/splineops_ab_projection_output_scale_full_large.csv`
+  - force-on large 2048x2048 cubic-antialiasing rows showed good
+    single-thread results but a default-thread float64 regression
+  - this is why the default is explicit-single-thread auto, not unconditional
+
+Validation:
+
+```bash
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest -q \
+  tests/test_02_03_resize_cpp.py::test_projection_output_prefilter_scaled_path_matches_disabled \
+  tests/test_02_03_resize_cpp.py::test_projection_avg_restore_fused_path_matches_disabled \
+  tests/test_02_03_resize_cpp.py::test_batched_axis_matches_default_antialiasing \
+  tests/test_02_03_resize_cpp.py::test_float32_internal_preserves_constant_arrays
+```
+
+Latest focused validation result: `28 passed`.

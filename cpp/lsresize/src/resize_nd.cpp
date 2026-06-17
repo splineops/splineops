@@ -143,6 +143,31 @@ static inline bool gather_prefilter_scale_enabled()
   return env_flag_enabled_default_true("LSRESIZE_GATHER_PREFILTER_SCALE");
 }
 
+static inline bool projection_output_prefilter_scale_enabled_for(int64_t nlines)
+{
+  const char* value = std::getenv("LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE");
+  if (value == nullptr || value[0] == '\0' || env_equals_ci(value, "auto")) {
+    return explicit_thread_count(nlines) == 1;
+  }
+  if (value[0] == '0' ||
+      env_equals_ci(value, "off") ||
+      env_equals_ci(value, "false") ||
+      env_equals_ci(value, "no")) {
+    return false;
+  }
+  if (value[0] == '1' ||
+      value[0] == 't' ||
+      value[0] == 'T' ||
+      value[0] == 'y' ||
+      value[0] == 'Y' ||
+      env_equals_ci(value, "on") ||
+      env_equals_ci(value, "true") ||
+      env_equals_ci(value, "yes")) {
+    return true;
+  }
+  return false;
+}
+
 static inline bool projection_batch_tune_enabled()
 {
   return env_flag_enabled_default_true("LSRESIZE_2D_PROJECTION_BATCH_TUNE");
@@ -2741,6 +2766,14 @@ static void resize_along_axis_batched_t(
                         : 0;
   const bool fused_avg_restore =
       fused_projection_average_restore_enabled_for(nlines, plan);
+  const bool scaled_output_prefilter =
+      projection_output_prefilter_scale_enabled_for(nlines) &&
+      p.analy_degree >= 0 &&
+      corr_degree > 1 &&
+      out_total > 1;
+  const double output_prefilter_scale = scaled_output_prefilter
+                                      ? interpolation_prefilter_lambda(corr_degree)
+                                      : 1.0;
   const bool scaled_gather_prefilter =
       gather_prefilter_scale_enabled() && p.interp_degree > 1 && N > 1;
   const double gather_scale = scaled_gather_prefilter
@@ -2844,7 +2877,28 @@ static void resize_along_axis_batched_t(
       if (p.analy_degree >= 0) {
         {
           LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionDiff);
-          if (fused_avg_restore) {
+          if (scaled_output_prefilter) {
+            if (fused_avg_restore) {
+              do_diff_colmajor_add_average_scaled(
+                  y,
+                  B,
+                  out_total,
+                  p.analy_degree + 1,
+                  average,
+                  output_prefilter_scale,
+                  filter_work);
+            } else {
+              do_diff_colmajor(y, B, out_total, p.analy_degree + 1, filter_work);
+              for (int l = 0; l < out_total; ++l) {
+                double* y_col = y.data() + static_cast<size_t>(l) * Bs;
+                for (int b = 0; b < B; ++b) {
+                  const size_t bi = static_cast<size_t>(b);
+                  y_col[bi] = (y_col[bi] + average[bi]) *
+                              output_prefilter_scale;
+                }
+              }
+            }
+          } else if (fused_avg_restore) {
             do_diff_colmajor_add_average(
                 y, B, out_total, p.analy_degree + 1, average, filter_work);
           } else {
@@ -2859,7 +2913,11 @@ static void resize_along_axis_batched_t(
         }
         {
           LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionOutputPrefilter);
-          get_interpolation_coefficients_colmajor(y, B, out_total, corr_degree);
+          if (scaled_output_prefilter) {
+            apply_interpolation_poles_colmajor(y, B, out_total, corr_degree);
+          } else {
+            get_interpolation_coefficients_colmajor(y, B, out_total, corr_degree);
+          }
         }
         {
           LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionSampling);
@@ -3116,6 +3174,14 @@ static void resize_along_axis_batched_f32_internal(
                         : 0;
   const bool fused_avg_restore =
       fused_projection_average_restore_enabled_for(nlines, plan);
+  const bool scaled_output_prefilter =
+      projection_output_prefilter_scale_enabled_for(nlines) &&
+      p.analy_degree >= 0 &&
+      corr_degree > 1 &&
+      out_total > 1;
+  const float output_prefilter_scale = scaled_output_prefilter
+                                     ? interpolation_prefilter_lambda_f32(corr_degree)
+                                     : 1.0f;
 
   auto worker = [&](int64_t start, int64_t end) {
     std::vector<int64_t> idx(D, 0);
@@ -3226,7 +3292,29 @@ static void resize_along_axis_batched_f32_internal(
       if (p.analy_degree >= 0) {
         {
           LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionDiff);
-          if (fused_avg_restore) {
+          if (scaled_output_prefilter) {
+            if (fused_avg_restore) {
+              do_diff_colmajor_add_average_scaled_f32(
+                  y,
+                  B,
+                  out_total,
+                  p.analy_degree + 1,
+                  average,
+                  output_prefilter_scale,
+                  filter_work);
+            } else {
+              do_diff_colmajor_f32(
+                  y, B, out_total, p.analy_degree + 1, filter_work);
+              for (int l = 0; l < out_total; ++l) {
+                float* y_col = y.data() + static_cast<size_t>(l) * Bs;
+                for (int b = 0; b < B; ++b) {
+                  const size_t bi = static_cast<size_t>(b);
+                  y_col[bi] = (y_col[bi] + average[bi]) *
+                              output_prefilter_scale;
+                }
+              }
+            }
+          } else if (fused_avg_restore) {
             do_diff_colmajor_add_average_f32(
                 y, B, out_total, p.analy_degree + 1, average, filter_work);
           } else {
@@ -3241,7 +3329,11 @@ static void resize_along_axis_batched_f32_internal(
         }
         {
           LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionOutputPrefilter);
-          get_interpolation_coefficients_colmajor_f32(y, B, out_total, corr_degree);
+          if (scaled_output_prefilter) {
+            apply_interpolation_poles_colmajor_f32(y, B, out_total, corr_degree);
+          } else {
+            get_interpolation_coefficients_colmajor_f32(y, B, out_total, corr_degree);
+          }
         }
         {
           LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionSampling);
