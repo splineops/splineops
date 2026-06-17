@@ -91,4 +91,5 @@ python scripts/summarize_resize_benchmarks.py report \
 
 For upstream PR preparation notes and interpretation guidelines, see
 `scripts/resize_pr_readiness.md`, `scripts/resize_oblique_pr_brief.md`, and
-`scripts/resize_upstream_pr_description.md`.
+`scripts/resize_upstream_pr_description.md`. For a close-out summary of the
+resize optimization session, see `scripts/resize_session_handoff.md`.

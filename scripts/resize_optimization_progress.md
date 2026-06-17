@@ -8,6 +8,10 @@ This report summarizes the resize optimization work completed so far. The
 detailed engineering ledger remains in `scripts/resize_optimization_notes.md`;
 this file is the shorter project-level summary.
 
+Update: this file captures an earlier checkpoint. For the final 2026-06-17
+handoff, current benchmark numbers, PR artifacts, validation results, and next
+steps, see `scripts/resize_session_handoff.md`.
+
 ## Goal
 
 Optimize `splineops.resize` while preserving exact splineops semantics by
