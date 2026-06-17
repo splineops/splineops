@@ -437,13 +437,14 @@ def _plan_report_lines(path: Path) -> list[str]:
     ))
     case_rows: list[list[str]] = []
     for row in usable:
+        max_abs_diff = _float(row, "max_abs_diff")
         case_rows.append([
             row.get("case", "<case>"),
             f"`{row.get('method', '<method>')}`",
             f"`{row.get('dtype', '<dtype>')}`",
             _fmt(_float(row, "median_speedup") or float("nan"), digits=3, suffix="x"),
             _fmt(_float(row, "median_into_speedup") or float("nan"), digits=3, suffix="x"),
-            _fmt_sci(_float(row, "max_abs_diff") or float("nan")),
+            _fmt_sci(max_abs_diff if max_abs_diff is not None else float("nan")),
         ])
     lines.extend(["", "Per case:", ""])
     lines.extend(_markdown_table(
