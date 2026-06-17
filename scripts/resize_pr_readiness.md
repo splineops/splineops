@@ -10,18 +10,19 @@ work. The detailed engineering ledger remains in
 ## Objective
 
 Prepare the optimized resize backend for a focused upstream contribution that
-keeps Arrate's least-squares spline resize method intact by default while
+keeps the Muñoz/Blu/Unser spline projection framework intact by default while
 reducing runtime, memory movement, and repeated setup cost.
 
 The PR narrative should be narrow:
 
 - same public resize semantics by default
 - same separable spline projection/interpolation model
+- oblique antialiasing presets as the practical default downsampling methods
 - faster native CPU implementation for common 2-D and 3-D workloads
 - explicit benchmark and correctness artifacts
 - experimental or opt-in numerical shortcuts kept out of the default path
 
-## Algorithm Boundary
+## Method Boundary
 
 The exact default path keeps the method-level contract:
 
@@ -31,9 +32,26 @@ The exact default path keeps the method-level contract:
 - separable axis passes with the same coordinate mapping and row plans
 - native/Python parity as the primary correctness target
 
-Optimizations should be described as implementation changes around that method:
-plan reuse, batched axis execution, cache-friendly gather/scatter, fixed-support
-specialization, direct linear kernels, and conservative dispatch policy.
+Optimizations should be described as implementation changes around that
+projection framework: plan reuse, batched axis execution, cache-friendly
+gather/scatter, fixed-support specialization, direct linear kernels, and
+conservative dispatch policy.
+
+The production/downsampling methods are the oblique antialiasing presets:
+
+- `linear-antialiasing`: `(interp=1, analy=0, synthe=1)`
+- `quadratic-antialiasing`: `(interp=2, analy=1, synthe=2)`
+- `cubic-antialiasing`: `(interp=3, analy=1, synthe=3)`
+
+Equal-degree least-squares configurations, for example
+`(interp=3, analy=3, synthe=3)`, remain useful as advanced/reference
+configurations through `resize_degrees`, but they should not be presented as
+the recommended default. Cubic equal-degree least-squares needs fourth-order
+integration in this finite-difference framework; that is slower and can amplify
+roundoff on long lines. The oblique presets keep the same synthesis model with
+a lower-degree analysis space, which makes the prefilter shorter, faster, and
+more numerically robust while staying close to the ideal least-squares result
+in practice.
 
 Do not present OpenCV, skimage, or PyTorch image-resize rows as exact algorithm
 equivalents. They are useful context, but their coordinate mappings, boundary
@@ -71,6 +89,10 @@ tradeoff:
   not a clear implementation win.
 - Default float32 internals for projection or antialiasing. The speed is useful,
   but random-output drift versus the conservative path is still measurable.
+- Making equal-degree least-squares projection the public default for
+  antialiasing. It is theoretically optimal for the orthogonal projection
+  criterion, but the oblique presets are the better production tradeoff for
+  speed, robustness, and visual downsampling behavior.
 - Fused `nb == 2` projection input integration. It was exact in focused checks
   but mixed or negative in timing, so the code was removed and the rejection was
   documented.
