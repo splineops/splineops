@@ -66,50 +66,120 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--tag", default=timestamp_tag())
     parser.add_argument(
+        "--profile",
+        choices=["default", "smoke", "oblique-pr"],
+        default="default",
+        help=(
+            "Wrapper preset. 'oblique-pr' runs the evidence bundle used for "
+            "the upstream oblique-antialiasing resize PR."
+        ),
+    )
+    parser.add_argument(
         "--native-profile",
         choices=["smoke", "standard", "full"],
-        default="full",
+        default=None,
     )
     parser.add_argument(
         "--library-profile",
         choices=["smoke", "standard", "full"],
-        default="full",
+        default=None,
     )
     parser.add_argument(
         "--plan-profile",
         choices=["smoke", "standard"],
-        default="standard",
+        default=None,
     )
     parser.add_argument(
         "--projection-methods-profile",
         choices=["smoke", "standard", "stability"],
-        default="standard",
+        default=None,
     )
-    parser.add_argument("--threads", default="1,8,default")
-    parser.add_argument("--native-repeats", type=int, default=3)
-    parser.add_argument("--native-warmups", type=int, default=1)
-    parser.add_argument("--library-repeats", type=int, default=3)
-    parser.add_argument("--library-warmups", type=int, default=1)
+    parser.add_argument("--threads")
+    parser.add_argument("--native-repeats", type=int)
+    parser.add_argument("--native-warmups", type=int)
+    parser.add_argument("--library-repeats", type=int)
+    parser.add_argument("--library-warmups", type=int)
     parser.add_argument(
         "--library-splineops-threads",
-        default="default",
         help="Value passed to benchmark_resize_libraries.py --splineops-threads.",
     )
-    parser.add_argument("--plan-repeats", type=int, default=5)
-    parser.add_argument("--plan-warmups", type=int, default=1)
-    parser.add_argument("--plan-frames", type=int, default=8)
-    parser.add_argument("--projection-methods-repeats", type=int, default=3)
-    parser.add_argument("--projection-methods-warmups", type=int, default=1)
-    parser.add_argument("--projection-methods-degrees", default="1,3")
-    parser.add_argument("--projection-methods-dtypes", default="float32,float64")
-    parser.add_argument("--exact-rel-l2", type=float, default=1e-5)
-    parser.add_argument("--title", default="Resize PR Benchmark Report")
+    parser.add_argument("--plan-repeats", type=int)
+    parser.add_argument("--plan-warmups", type=int)
+    parser.add_argument("--plan-frames", type=int)
+    parser.add_argument("--projection-methods-repeats", type=int)
+    parser.add_argument("--projection-methods-warmups", type=int)
+    parser.add_argument("--projection-methods-degrees")
+    parser.add_argument("--projection-methods-dtypes")
+    parser.add_argument("--exact-rel-l2", type=float)
+    parser.add_argument("--title")
     parser.add_argument("--skip-native", action="store_true")
     parser.add_argument("--skip-libraries", action="store_true")
     parser.add_argument("--skip-plan", action="store_true")
     parser.add_argument("--skip-projection-methods", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
+
+
+def apply_profile_defaults(args: argparse.Namespace) -> argparse.Namespace:
+    defaults: dict[str, object] = {
+        "native_profile": "full",
+        "library_profile": "full",
+        "plan_profile": "standard",
+        "projection_methods_profile": "standard",
+        "threads": "1,8,default",
+        "native_repeats": 3,
+        "native_warmups": 1,
+        "library_repeats": 3,
+        "library_warmups": 1,
+        "library_splineops_threads": "default",
+        "plan_repeats": 5,
+        "plan_warmups": 1,
+        "plan_frames": 8,
+        "projection_methods_repeats": 3,
+        "projection_methods_warmups": 1,
+        "projection_methods_degrees": "1,3",
+        "projection_methods_dtypes": "float32,float64",
+        "exact_rel_l2": 1e-5,
+        "title": "Resize PR Benchmark Report",
+    }
+    if args.profile == "smoke":
+        defaults.update(
+            {
+                "native_profile": "smoke",
+                "library_profile": "smoke",
+                "plan_profile": "smoke",
+                "projection_methods_profile": "smoke",
+                "threads": "1,default",
+                "native_repeats": 1,
+                "native_warmups": 0,
+                "library_repeats": 1,
+                "library_warmups": 0,
+                "plan_repeats": 1,
+                "plan_warmups": 0,
+                "plan_frames": 2,
+                "projection_methods_repeats": 1,
+                "projection_methods_warmups": 0,
+                "title": "Resize PR Smoke Benchmark Report",
+            }
+        )
+    elif args.profile == "oblique-pr":
+        defaults.update(
+            {
+                "native_profile": "full",
+                "library_profile": "full",
+                "plan_profile": "standard",
+                "projection_methods_profile": "standard",
+                "threads": "1,8,default",
+                "projection_methods_degrees": "1,3",
+                "projection_methods_dtypes": "float32,float64",
+                "title": "Oblique Antialiasing Resize PR Benchmark Report",
+            }
+        )
+
+    for key, value in defaults.items():
+        if getattr(args, key) is None:
+            setattr(args, key, value)
+    return args
 
 
 def ensure_positive(name: str, value: int) -> None:
@@ -128,7 +198,7 @@ def json_ready_options(args: argparse.Namespace) -> dict[str, object]:
 
 
 def main() -> int:
-    args = parse_args()
+    args = apply_profile_defaults(parse_args())
     ensure_positive("--native-repeats", args.native_repeats)
     ensure_positive("--library-repeats", args.library_repeats)
     ensure_positive("--plan-repeats", args.plan_repeats)

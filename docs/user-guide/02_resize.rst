@@ -27,6 +27,33 @@ high-quality antialiasing projection-based (see following animation, at right).
 
 This animation and its details are available in the example :ref:`sphx_glr_auto_examples_02_resize_02_resize_module_2d.py`.
 
+Recommended Downsampling Presets
+--------------------------------
+
+For production downsampling, prefer the antialiasing presets:
+
+.. code-block:: python
+
+   from splineops.resize import resize
+
+   y2d = resize(image, zoom_factors=(0.5, 0.5), method="cubic-antialiasing")
+   y3d = resize(volume, zoom_factors=(0.5, 0.5, 0.5), method="cubic-antialiasing")
+
+The ``*-antialiasing`` methods are oblique-projection spline resize presets.
+They keep the same synthesis spline degree as the corresponding interpolation
+method, but use a lower-degree analysis space:
+
+- ``linear-antialiasing`` maps to ``(interp=1, analy=0, synthe=1)``.
+- ``quadratic-antialiasing`` maps to ``(interp=2, analy=1, synthe=2)``.
+- ``cubic-antialiasing`` maps to ``(interp=3, analy=1, synthe=3)``.
+
+This is the recommended public method family for antialiasing resize. It is
+faster and more numerically robust than equal-degree least-squares projection
+in the production downsampling cases, while preserving the spline model and
+high-quality N-D behavior. Equal-degree least-squares remains available through
+``resize_degrees`` for advanced/reference use, but it is not exposed as a
+routine preset.
+
 Conceptually, resizing means:
 
 - starting from a spline :math:`f` defined on an input grid

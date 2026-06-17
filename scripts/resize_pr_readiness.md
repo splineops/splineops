@@ -5,7 +5,8 @@ Date: 2026-06-17
 This note is the compact upstream-PR checklist for the resize optimization
 work. The detailed engineering ledger remains in
 `scripts/resize_optimization_notes.md`; the shorter project summary remains in
-`scripts/resize_optimization_progress.md`.
+`scripts/resize_optimization_progress.md`. The PR-facing short brief is
+`scripts/resize_oblique_pr_brief.md`.
 
 ## Objective
 
@@ -141,23 +142,16 @@ tradeoff:
 Use the wrapper when preparing a PR evidence bundle:
 
 ```shell
-python scripts/benchmark_resize_pr.py --output-dir /tmp/splineops_resize_pr_<tag>
+python scripts/benchmark_resize_pr.py \
+  --profile oblique-pr \
+  --output-dir /tmp/splineops_resize_pr_oblique_pr
 ```
 
 For a quick wrapper smoke test:
 
 ```shell
 python scripts/benchmark_resize_pr.py \
-  --native-profile smoke \
-  --library-profile smoke \
-  --plan-profile smoke \
-  --projection-methods-profile smoke \
-  --native-repeats 1 \
-  --library-repeats 1 \
-  --plan-repeats 1 \
-  --projection-methods-repeats 1 \
-  --plan-frames 2 \
-  --threads 1,default \
+  --profile smoke \
   --output-dir /tmp/splineops_resize_pr_smoke
 ```
 

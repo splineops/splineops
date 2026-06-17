@@ -13,7 +13,9 @@ High-level helper
 
 The main entry point is :func:`~splineops.resize.resize`, which selects both
 the spline degrees and (optional) antialiasing behavior via a single
-``method`` string.
+``method`` string. For production downsampling, the recommended public presets
+are the oblique-projection methods ``"linear-antialiasing"``,
+``"quadratic-antialiasing"`` and ``"cubic-antialiasing"``.
 
 .. autofunction:: splineops.resize.resize
 
@@ -23,7 +25,8 @@ Advanced degrees API
 For full control over the three spline degrees (interpolation, analysis,
 synthesis), use :func:`~splineops.resize.resize_degrees`.
 
-This exposes the underlying Muñoz/Unser projection framework directly
+This exposes the underlying Muñoz/Unser projection framework directly,
+including advanced/reference equal-degree least-squares configurations.
 
 .. autofunction:: splineops.resize.resize_degrees
 

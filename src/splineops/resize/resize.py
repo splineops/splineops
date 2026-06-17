@@ -371,6 +371,11 @@ def resize_degrees(
       - analy_degree  : analysis spline degree (-1..3, -1 = no projection)
       - synthe_degree : synthesis spline degree (0..3)
 
+    Use this function for custom projection studies, including advanced or
+    reference equal-degree least-squares configurations. For routine
+    downsampling, prefer :func:`resize` with one of the oblique antialiasing
+    presets.
+
     Parameters
     ----------
     data : ndarray
@@ -505,11 +510,15 @@ def resize(
           - ``"quadratic"`` – degree 2
           - ``"cubic"``     – degree 3
 
-        Antialiasing (projection-based, recommended for down-sampling):
+        Antialiasing (oblique projection, recommended for downsampling):
 
           - ``"linear-antialiasing"``    – (interp=1, analy=0, synthe=1)
           - ``"quadratic-antialiasing"`` – (interp=2, analy=1, synthe=2)
           - ``"cubic-antialiasing"``     – (interp=3, analy=1, synthe=3)
+
+        Equal-degree least-squares projection is available through
+        :func:`resize_degrees` for advanced/reference use, but is not exposed
+        as a routine preset.
 
     Returns
     -------
