@@ -78,6 +78,7 @@ Set `SPLINEOPS_ACCEL=never` to force the Python fallback, or
 Useful benchmark entry points:
 
 ```shell
+python scripts/benchmark_resize_pr.py --output-dir /tmp/splineops_resize_pr_current
 python scripts/benchmark_resize_native.py --backend both --output-csv /tmp/splineops_native.csv
 python scripts/benchmark_resize_libraries.py --output-csv /tmp/splineops_libraries.csv
 python scripts/summarize_resize_benchmarks.py report \
@@ -85,3 +86,6 @@ python scripts/summarize_resize_benchmarks.py report \
   --libraries /tmp/splineops_libraries.csv \
   --output /tmp/splineops_resize_report.md
 ```
+
+For upstream PR preparation notes and interpretation guidelines, see
+`scripts/resize_pr_readiness.md`.
