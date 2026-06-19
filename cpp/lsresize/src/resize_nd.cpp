@@ -220,10 +220,23 @@ static inline bool float32_internal_auto_enabled(
   if (value != nullptr && value[0] != '\0') {
     return false;
   }
-  return (in_shape.size() == 2 || in_shape.size() == 3) &&
-         p.analy_degree < 0 &&
-         p.synthe_degree == p.interp_degree &&
-         (p.interp_degree == 2 || p.interp_degree == 3);
+  if (p.analy_degree < 0) {
+    return (in_shape.size() == 2 || in_shape.size() == 3) &&
+           p.synthe_degree == p.interp_degree &&
+           (p.interp_degree == 2 || p.interp_degree == 3);
+  }
+
+  return in_shape.size() == 3 &&
+         p.zoom < 1.0 &&
+         ((p.interp_degree == 1 &&
+           p.analy_degree == 0 &&
+           p.synthe_degree == 1) ||
+          (p.interp_degree == 2 &&
+           p.analy_degree == 1 &&
+           p.synthe_degree == 2) ||
+          (p.interp_degree == 3 &&
+           p.analy_degree == 1 &&
+           p.synthe_degree == 3));
 }
 
 static inline bool float32_internal_enabled_for(
@@ -456,6 +469,12 @@ static inline int adaptive_batch_lines_for(
       }
       return 96;
     }
+  }
+  if (in_shape.size() == 3 &&
+      float32_internal &&
+      is_cubic_antialiasing_projection(p) &&
+      p.zoom < 1.0 - 1e-12) {
+    return 256;
   }
 
   return kDefaultBatchLines;

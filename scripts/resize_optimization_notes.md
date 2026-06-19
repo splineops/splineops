@@ -54,7 +54,7 @@ Current default knobs:
 | --- | --- | --- |
 | Native acceleration | auto via `SPLINEOPS_ACCEL=auto` | `always`, `never` |
 | Native batched axis | `auto` when `LSRESIZE_BATCHED_AXIS` is unset | `off`, `1`, `auto` |
-| Native batch lines | adaptive by dimensionality/method | `LSRESIZE_BATCH_LINES=<n>` |
+| Native batch lines | adaptive by dimensionality/method; 3-D float32 cubic-antialiasing downsample uses `256` | `LSRESIZE_BATCH_LINES=<n>` |
 | Native row-major batched gather | enabled | `LSRESIZE_ROW_GATHER=0` |
 | Native float32 strided-offset gather | enabled for routed pure interpolation | `LSRESIZE_STRIDED_OFFSET_GATHER=0` |
 | Native gather-prefilter scaling | enabled | `LSRESIZE_GATHER_PREFILTER_SCALE=0` |
@@ -70,12 +70,39 @@ Current default knobs:
 | Native fused projection average restore | auto only for explicit `LSRESIZE_NUM_THREADS=1` | `LSRESIZE_FUSED_PROJECTION_AVG_RESTORE=0/1/auto` |
 | Native AVX2 2-D linear upsample path | enabled on supported x86 | `LSRESIZE_AVX2_LINEAR=0` |
 | Native last-axis linear direct path | enabled | `LSRESIZE_LAST_AXIS_LINEAR_DIRECT=0` |
-| Native internal precision | `float32` internals for 2-D/3-D `float32` pure quadratic/cubic interpolation; `float64` otherwise | `LSRESIZE_PRECISION=float32` to force batched float32 internals; non-empty non-f32 values keep the conservative path |
+| Native internal precision | `float32` internals for 2-D/3-D `float32` pure quadratic/cubic interpolation and 3-D downsampling antialiasing presets; `float64` otherwise | `LSRESIZE_PRECISION=float32` to force batched float32 internals; non-empty non-f32 values keep the conservative path |
 | Native plan cache | enabled, capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
 | Python block size | `256` | `SPLINEOPS_BLOCK=<n>` |
 | Python accumulator | `support` | `SPLINEOPS_ACCUM=einsum` or `mulsum` |
 | Python plan cache | enabled, capacity `32` | `SPLINEOPS_PLAN_CACHE_SIZE=<n>` |
+
+Precision policy update, 2026-06-19:
+
+- 3-D `float32` downsampling with the public antialiasing presets now uses the
+  existing DC-centered float32 batched projection path automatically when
+  `LSRESIZE_PRECISION` is unset.
+- 2-D projection/antialiasing remains on the conservative float64-internal path
+  by default because strict 2-D random-output parity still shows measurable
+  drift under forced float32 internals.
+- Explicit equal-degree least-squares projection remains conservative; the
+  automatic projection float32 gate is limited to the public oblique
+  antialiasing triples `(1,0,1)`, `(2,1,2)`, and `(3,1,3)`.
+- `LSRESIZE_PRECISION=float64` restores the strict float64-internal path, and
+  `LSRESIZE_PRECISION=float32` still forces batched float32 internals.
+
+3-D cubic antialiasing batch retune, 2026-06-19:
+
+- After the 3-D float32 antialiasing precision gate, the best batch size moved
+  upward. The default adaptive policy now uses `256` lines for 3-D float32
+  `cubic-antialiasing` downsample axes.
+- Focused A/B against forced historical batch `64`
+  (`--repeats 15 --warmups 4`) improved `3d_cubic_aa_down_large_f32`
+  default-thread median from `7.36 ms` to `4.91 ms`; the standard
+  `3d_cubic_aa_down_f32` default-thread row improved from `4.47 ms` to
+  `3.92 ms`.
+- A strided-offset gather experiment for the same projection rows was mixed
+  and was not kept.
 
 Measured progress so far:
 

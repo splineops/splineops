@@ -959,7 +959,7 @@ def test_float32_auto_precision_for_pure_interpolation(monkeypatch, method, shap
     reason="Native extension not available: skipping float32 auto precision",
 )
 @pytest.mark.parametrize("method", ["linear-antialiasing", "cubic-antialiasing"])
-def test_float32_auto_precision_keeps_projection_default(monkeypatch, method):
+def test_float32_auto_precision_keeps_2d_projection_default(monkeypatch, method):
     rng = np.random.default_rng(129)
     arr = rng.random((128, 96), dtype=np.float32)
     zoom = (0.6, 1.4)
@@ -977,6 +977,50 @@ def test_float32_auto_precision_keeps_projection_default(monkeypatch, method):
 
     assert automatic.dtype == np.float32
     assert np.array_equal(automatic, forced_f64)
+
+
+@pytest.mark.skipif(
+    not _has_cpp(),
+    reason="Native extension not available: skipping float32 auto precision",
+)
+@pytest.mark.parametrize(
+    "method,atol",
+    [
+        ("linear-antialiasing", 2e-5),
+        ("quadratic-antialiasing", 4e-5),
+        ("cubic-antialiasing", 4e-5),
+    ],
+)
+def test_float32_auto_precision_uses_3d_downsample_projection(
+    monkeypatch, method, atol
+):
+    rng = np.random.default_rng(130)
+    arr = rng.random((32, 24, 16), dtype=np.float32)
+    zoom = (0.75, 0.5, 0.625)
+
+    monkeypatch.setenv("SPLINEOPS_ACCEL", "always")
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
+
+    monkeypatch.delenv("LSRESIZE_PRECISION", raising=False)
+    rz = _load_resize_module(force_reload=True)
+    automatic = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_PRECISION", "float32")
+    rz = _load_resize_module(force_reload=True)
+    forced_f32 = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    monkeypatch.setenv("LSRESIZE_PRECISION", "float64")
+    rz = _load_resize_module(force_reload=True)
+    forced_f64 = rz.resize(arr, zoom_factors=zoom, method=method)
+
+    max_abs = float(
+        np.max(np.abs(automatic.astype(np.float64) - forced_f64.astype(np.float64)))
+    )
+    assert automatic.dtype == np.float32
+    assert np.array_equal(automatic, forced_f32)
+    assert np.allclose(automatic, forced_f64, atol=atol, rtol=0.0), (
+        f"{method} automatic 3-D projection float32 max|Δ|={max_abs:.3e}"
+    )
 
 
 @pytest.mark.skipif(

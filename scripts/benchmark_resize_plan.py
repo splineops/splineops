@@ -214,7 +214,7 @@ def write_json(path: Path, results: list[PlanBenchResult]) -> None:
             "platform": platform.platform(),
             "LSRESIZE_PRECISION": os.environ.get(
                 "LSRESIZE_PRECISION",
-                "<default:auto-f32-2d-interp-else-float64>",
+                "<default:auto-f32-2d/3d-interp+3d-down-proj-else-float64>",
             ),
             "LSRESIZE_BATCHED_AXIS": os.environ.get("LSRESIZE_BATCHED_AXIS", "<unset>"),
         },

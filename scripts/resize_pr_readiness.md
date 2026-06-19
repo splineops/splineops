@@ -81,8 +81,12 @@ and have measured wins:
 - AVX2/FMA dispatch for selected 2-D linear rows on supported x86 builds.
 - Workload-aware thread and batch policies that avoid expensive worker startup
   for cheap passes.
-- Auto float32 internals only for pure `float32` interpolation rows where the
-  default numerical contract remains acceptable; projection and antialiasing
+- Retuned 3-D float32 cubic-antialiasing downsample batches after the automatic
+  float32 projection gate; the adaptive policy uses larger batches for those
+  rows while `LSRESIZE_BATCH_LINES=<n>` remains the override.
+- Auto float32 internals only for pure `float32` interpolation rows and 3-D
+  downsampling antialiasing presets where the default numerical contract
+  remains acceptable; 2-D projection/antialiasing and explicit LS projection
   float32 internals remain opt-in.
 
 ## Current Optimization Map
