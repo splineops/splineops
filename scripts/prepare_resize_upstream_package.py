@@ -179,9 +179,14 @@ python -m py_compile \\
   scripts/benchmark_resize_libraries.py \\
   scripts/benchmark_resize_plan.py \\
   scripts/benchmark_resize_projection_methods.py \\
+  scripts/audit_scipy_zoom.py \\
   scripts/summarize_resize_benchmarks.py \\
   scripts/prepare_resize_upstream_package.py
 python -m pytest -q
+python scripts/audit_scipy_zoom.py \\
+  --profile standard \\
+  --variant-profile focused \\
+  --output-dir /tmp/splineops_scipy_zoom_audit_standard
 python scripts/prepare_resize_upstream_package.py \\
   --benchmark-profile oblique-pr \\
   --output-dir /tmp/splineops_resize_upstream_oblique_pr
@@ -281,17 +286,26 @@ Verify file names against the current SciPy checkout before editing:
 
 ## Minimum Prototype
 
-1. Add ASV benchmarks for `ndimage.zoom`:
+1. Run the splineops SciPy-only audit to identify exact-ish first-pass rows:
+
+   ```shell
+   python scripts/audit_scipy_zoom.py \\
+     --profile standard \\
+     --variant-profile focused \\
+     --output-dir /tmp/splineops_scipy_zoom_audit_standard
+   ```
+
+2. Add ASV benchmarks for `ndimage.zoom`:
    - 2-D `float32` and `float64`, order 1 and 3,
    - 3-D volume order 1 and 3,
    - `mode="mirror"`, `prefilter=True` for order > 1,
    - downsample and mixed-axis zoom rows.
-2. Add a private C helper that precomputes per-output bases/weights for one
+3. Add a private C helper that precomputes per-output bases/weights for one
    axis and reuses it across lines.
-3. Add a batched line loop for contiguous or near-contiguous lines while
+4. Add a batched line loop for contiguous or near-contiguous lines while
    preserving SciPy's current coordinate and boundary behavior.
-4. Prove bitwise or tolerance-level parity with the existing SciPy path.
-5. Benchmark before proposing any public API changes.
+5. Prove bitwise or tolerance-level parity with the existing SciPy path.
+6. Benchmark before proposing any public API changes.
 
 ## What To Avoid In The First Patch
 
@@ -411,8 +425,11 @@ Repository state:
 
 1. Use the semantics matrix and correctness policy to keep claims precise.
 2. Use the benchmark report as quantitative evidence.
-3. Open a SciPy issue/RFC before writing a large patch.
-4. Keep the PyTorch path as a custom operator until there is separate evidence
+3. Run `scripts/audit_scipy_zoom.py` before opening a SciPy issue/RFC; use only
+   exact-ish first-pass candidate rows as evidence for existing
+   `scipy.ndimage.zoom` semantics.
+4. Open a SciPy issue/RFC before writing a large patch.
+5. Keep the PyTorch path as a custom operator until there is separate evidence
    for tensor/autograd/device integration.
 """
 

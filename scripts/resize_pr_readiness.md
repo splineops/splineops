@@ -172,6 +172,21 @@ The upstream wrapper writes:
 - a PyTorch custom-operator bridge plan
 - a README, manifest, and command log
 
+For a SciPy-specific integration gate, run the dedicated `ndimage.zoom` audit:
+
+```shell
+python scripts/audit_scipy_zoom.py \
+  --profile standard \
+  --variant-profile focused \
+  --output-dir /tmp/splineops_scipy_zoom_audit_standard
+```
+
+This audit varies SciPy's `mode`, `grid_mode`, and `prefilter` settings,
+classifies exact-ish rows, writes a source-level prototype note, and emits a
+SciPy ASV benchmark stub for a future SciPy checkout. Use those first-pass
+candidate rows before claiming that splineops can improve existing
+`scipy.ndimage.zoom` behavior.
+
 Use the wrapper when preparing a PR evidence bundle:
 
 ```shell
@@ -240,6 +255,7 @@ python -m py_compile \
   scripts/benchmark_resize_libraries.py \
   scripts/benchmark_resize_plan.py \
   scripts/benchmark_resize_projection_methods.py \
+  scripts/audit_scipy_zoom.py \
   scripts/summarize_resize_benchmarks.py \
   scripts/prepare_resize_upstream_package.py
 python -m pytest -q

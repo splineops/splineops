@@ -119,3 +119,53 @@ def test_resize_upstream_package_docs_only(tmp_path):
     )
     assert "scipy.ndimage.zoom" in semantics
     assert "torch.nn.functional.interpolate" in semantics
+
+
+def test_scipy_zoom_audit_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_dir = tmp_path / "scipy_audit"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "audit_scipy_zoom.py"),
+            "--profile",
+            "smoke",
+            "--variant-profile",
+            "focused",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--tag",
+            "test_scipy_audit",
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(
+        (output_dir / "scipy_zoom_audit_test_scipy_audit.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    rows = payload["rows"]
+    assert rows
+    assert any(row["same_semantics_candidate"] for row in rows)
+    assert all("scipy_variant" in row for row in rows)
+    assert (
+        output_dir / "scipy_zoom_audit_report_test_scipy_audit.md"
+    ).exists()
+    asv = (output_dir / "scipy_zoom_asv_benchmark_test_scipy_audit.py").read_text(
+        encoding="utf-8"
+    )
+    assert "NdimageZoomSplineCandidates" in asv
+    source_audit = (
+        output_dir / "scipy_zoom_source_audit_test_scipy_audit.md"
+    ).read_text(encoding="utf-8")
+    assert "ni_interpolation.c" in source_audit
