@@ -34,7 +34,34 @@ jobs:
           pip install -e .[docs]
 
       - name: Build Sphinx documentation
-        run: make -C docs html
+        shell: bash
+        run: |
+          set +e
+          make -C docs html 2>&1 | tee docs-build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "### Sphinx build failure tail"
+              echo '```text'
+              tail -n 220 docs-build.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            python - <<'PY'
+          from pathlib import Path
+
+          text = "\n".join(Path("docs-build.log").read_text(errors="replace").splitlines()[-220:])
+          chunks = [text[i : i + 3500] for i in range(0, len(text), 3500)] or [""]
+          chunks = chunks[-3:]
+          for i, chunk in enumerate(chunks, 1):
+              message = (
+                  chunk.replace("%", "%25")
+                  .replace("\r", "%0D")
+                  .replace("\n", "%0A")
+              )
+              print(f"::error title=Sphinx failure tail {i}/{len(chunks)}::{message}")
+          PY
+          fi
+          exit "$status"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
