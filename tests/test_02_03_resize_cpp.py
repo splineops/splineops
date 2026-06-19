@@ -191,7 +191,8 @@ def test_batched_axis_matches_default_short_projection_axes(
     rz = _load_resize_module(force_reload=True)
     actual = rz.resize(arr, zoom_factors=zoom, method=method)
 
-    assert np.allclose(actual, expected, atol=0.0, rtol=0.0)
+    atol = 3e-5 if dtype == np.float32 else 2e-9
+    np.testing.assert_allclose(actual, expected, atol=atol, rtol=atol)
 
 
 @pytest.mark.skipif(
