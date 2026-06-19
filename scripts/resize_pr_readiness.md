@@ -145,6 +145,33 @@ tradeoff:
 
 ## Benchmark Artifact Set
 
+For upstream discussions, prefer the wrapper that combines the benchmark
+bundle with stable SciPy/PyTorch-facing notes:
+
+```shell
+python scripts/prepare_resize_upstream_package.py \
+  --benchmark-profile oblique-pr \
+  --output-dir /tmp/splineops_resize_upstream_oblique_pr
+```
+
+For a fast smoke check of the upstream package generator:
+
+```shell
+python scripts/prepare_resize_upstream_package.py \
+  --benchmark-profile smoke \
+  --output-dir /tmp/splineops_resize_upstream_smoke
+```
+
+The upstream wrapper writes:
+
+- a benchmark report from `benchmark_resize_pr.py`
+- a semantics matrix for same-semantics versus contextual comparisons
+- a correctness/tolerance policy
+- a draft SciPy RFC
+- a SciPy prototype patch plan
+- a PyTorch custom-operator bridge plan
+- a README, manifest, and command log
+
 Use the wrapper when preparing a PR evidence bundle:
 
 ```shell
@@ -213,7 +240,8 @@ python -m py_compile \
   scripts/benchmark_resize_libraries.py \
   scripts/benchmark_resize_plan.py \
   scripts/benchmark_resize_projection_methods.py \
-  scripts/summarize_resize_benchmarks.py
+  scripts/summarize_resize_benchmarks.py \
+  scripts/prepare_resize_upstream_package.py
 python -m pytest -q
 git diff --check
 ```

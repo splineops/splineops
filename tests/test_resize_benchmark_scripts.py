@@ -83,3 +83,39 @@ def test_resize_pr_oblique_profile_dry_run(tmp_path):
     assert "--projection-methods" in (
         output_dir / "resize_pr_commands_test_oblique_pr.txt"
     ).read_text(encoding="utf-8")
+
+
+def test_resize_upstream_package_docs_only(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_dir = tmp_path / "upstream"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "prepare_resize_upstream_package.py"),
+            "--output-dir",
+            str(output_dir),
+            "--tag",
+            "test_upstream",
+            "--skip-benchmarks",
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    manifest = json.loads(
+        (output_dir / "resize_upstream_manifest_test_upstream.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert manifest["options"]["skip_benchmarks"] is True
+    assert (output_dir / "resize_scipy_rfc_test_upstream.md").exists()
+    assert (output_dir / "resize_pytorch_bridge_test_upstream.md").exists()
+    semantics = (output_dir / "resize_upstream_semantics_test_upstream.md").read_text(
+        encoding="utf-8"
+    )
+    assert "scipy.ndimage.zoom" in semantics
+    assert "torch.nn.functional.interpolate" in semantics
