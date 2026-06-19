@@ -14,6 +14,14 @@ what was changed locally, and what remains before an upstream SciPy PR.
 - SciPy base commit: `fd362f891a`
 - SciPy benchmark commit: `dda79c011c BENCH: add ndimage zoom benchmark cases`
 - SciPy implementation commit: `338af31deb ENH: add ndimage zoom fast paths`
+- Draft SciPy PR: https://github.com/scipy/scipy/pull/25441
+
+## Current PR Status
+
+Draft PR 25441 is open against SciPy `main`. The PR body includes the full ASV
+comparison table, validation commands and the proposed review split. At the
+time this note was updated, there were no maintainer comments yet and CircleCI
+was still pending.
 
 ## Why SciPy Was Slower
 
@@ -170,6 +178,7 @@ working compare command is the `--no-dry-run` form above.
 
 ## Remaining Work
 
+- Monitor PR feedback and CircleCI.
 - Decide whether maintainers prefer one PR or a sequence:
   benchmark-only, order-1 zoom, then order-3 zoom/prefilter.
 - Consider a deeper `spline_filter1d` redesign only after the first PR is
