@@ -48,10 +48,29 @@ jobs:
 
       # Run full test suite (C++ required)
       - name: Run tests with tox (C++ required)
+        shell: bash
         env:
           SPLINEOPS_ACCEL: always
           OMP_NUM_THREADS: 1
           OPENBLAS_NUM_THREADS: 1
           MKL_NUM_THREADS: 1
           NUMEXPR_NUM_THREADS: 1
-        run: tox -e py
+        run: |
+          set +e
+          python -m tox -e py 2>&1 | tee tox-test.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            python - <<'PY'
+          from pathlib import Path
+
+          lines = Path("tox-test.log").read_text(errors="replace").splitlines()
+          message = "\n".join(lines[-120:])
+          message = (
+              message.replace("%", "%25")
+              .replace("\r", "%0D")
+              .replace("\n", "%0A")
+          )
+          print(f"::error title=tox pytest failure tail::{message}")
+          PY
+          fi
+          exit "$status"
