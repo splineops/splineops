@@ -155,11 +155,13 @@ Reusable plans:
 
 Precision policy:
 
-- Conservative default precision preserved for projection/antialiasing.
-- Native float32 internals enabled only for safe pure `float32`
-  interpolation rows.
-- Projection/antialiasing float32 internals kept opt-in due to measurable
-  random-output drift.
+- Conservative default precision preserved for 2-D projection/antialiasing,
+  mixed projection cases, and equal-degree least-squares configurations.
+- Native float32 internals enabled for safe pure 2-D/3-D `float32`
+  quadratic/cubic interpolation rows.
+- Public 3-D downsampling antialiasing presets use native float32 internals by
+  default after focused quality checks; broader projection/antialiasing
+  float32 internals remain opt-in due to measurable random-output drift.
 
 Python fallback:
 
@@ -199,8 +201,9 @@ Rejected for the current PR:
   but not a stable timing win.
 - Broad projection strided-gather routing. Prior runs did not show enough
   durable end-to-end gain.
-- Default float32 internals for projection/antialiasing. Quality drift remains
-  measurable.
+- Broad default float32 internals for projection/antialiasing. Only the public
+  3-D downsampling antialiasing presets cleared the quality gate; broader
+  quality drift remains measurable.
 - Promoting equal-degree least-squares as the public default. It is the
   reference path, not the best production path.
 

@@ -43,7 +43,8 @@ def fmt_ms(seconds: float) -> str:
     return f"{seconds * 1000.0:.1f} ms"
 
 
-# Use float32 for storage / IO (resize still computes internally in float64)
+# Use float32 for storage / IO. Standard cubic may use native float32 scratch;
+# the 2-D antialiasing projection uses conservative float64 scratch by default.
 DTYPE = np.float32
 
 # %%
@@ -76,8 +77,8 @@ input_image_normalized = (
     + input_image_normalized[:, :, 2] * 0.1140  # Blue channel
 )
 
-# Run the spline backend in float32 for performance
-# (it still computes internally in float64).
+# Run the spline backend with float32 storage for performance. The 2-D
+# antialiasing projection remains conservative internally by default.
 input_image_normalized = input_image_normalized.astype(DTYPE, copy=False)
 
 h_img, w_img = input_image_normalized.shape

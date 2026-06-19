@@ -394,9 +394,10 @@ Internally, :ref:`resize <api-resize>` uses two cooperating backends:
   - constructs a single contiguous **extended buffer** per line that contains
     the mirrored input samples, so the inner loop only sees simple pointer
     arithmetic and dot products,
-  - evaluates spline sums in **double precision by default**, using small
-    dense dot products that can exploit SIMD instructions (AVX2, AVX-512,
-    NEON) when available,
+  - evaluates spline sums with conservative double-precision scratch by
+    default, while automatically using float32 scratch for selected validated
+    float32 workloads; the small dense dot products can exploit SIMD
+    instructions (AVX2, AVX-512, NEON) when available,
   - and **parallelizes over independent lines** with a lightweight
     multithreading pool whenever the estimated workload is large enough.
 
@@ -411,14 +412,18 @@ Internally, :ref:`resize <api-resize>` uses two cooperating backends:
   environments where the C++ extension cannot be built; it is numerically
   equivalent but typically slower.
 
-Both backends perform spline computations in 64-bit floating point by default;
-input and output arrays keep their original dtype (or a user-specified dtype),
-with casting only at the boundary of each axis pass. The native backend also
-has an experimental opt-in fast path for batched ``float32`` workloads via
-``LSRESIZE_PRECISION=float32``. That mode keeps the selected native batched
-axis pass in ``float32`` scratch space for speed, so it can differ slightly
-from the default 64-bit internal result and should be treated as an explicit
-performance/precision tradeoff.
+The pure-NumPy fallback and the conservative native paths perform spline
+computations in 64-bit floating point. Input and output arrays keep their
+original dtype (or a user-specified dtype), with casting only at the boundary
+of each axis pass. For speed, the native backend automatically keeps selected
+validated ``float32`` workloads in ``float32`` scratch space: pure quadratic
+and cubic interpolation in 2-D/3-D, plus the public 3-D downsampling
+antialiasing presets. Other projection/antialiasing configurations remain on
+the conservative 64-bit internal path by default.
+
+For explicit A/B checks, ``LSRESIZE_PRECISION=float32`` forces the selected
+native batched axis pass to use ``float32`` scratch space, while
+``LSRESIZE_PRECISION=float64`` restores the strict 64-bit internal path.
 
 Repeated same-shape workloads can use :class:`~splineops.resize.ResizePlan` to
 resolve the resize geometry once and then apply it to many arrays:
@@ -518,7 +523,7 @@ Benchmarking
 ------------
 
 We compare our module :ref:`resize <api-resize>` against widely used interpolation libraries on
-realistic image resizing tasks, in these two examples:
+realistic image resizing tasks, in these three examples:
 
 - :ref:`sphx_glr_auto_examples_02_resize_06_benchmarking.py`
 - :ref:`sphx_glr_auto_examples_02_resize_07_benchmarking_plot.py`

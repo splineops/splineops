@@ -138,10 +138,11 @@ Representative measurements:
 - Added opt-in native float32 internals with `LSRESIZE_PRECISION=float32`.
 - DC-centered projection paths before float32 recursive filters to preserve
   constant arrays better.
-- Kept antialiasing/projection float32 internals opt-in because random outputs
-  still show measurable drift versus conservative float64 internals.
-- Auto-enabled float32 internals only for 2-D `float32` pure quadratic/cubic
-  interpolation when `LSRESIZE_PRECISION` is unset.
+- Kept broad projection float32 internals opt-in because random outputs still
+  show measurable drift versus conservative float64 internals.
+- Auto-enabled float32 internals for 2-D/3-D `float32` pure quadratic/cubic
+  interpolation, and for the public 3-D downsampling antialiasing presets when
+  `LSRESIZE_PRECISION` is unset.
 
 Representative measurement:
 
@@ -259,7 +260,7 @@ Representative measurement:
 | Fused projection average restore | explicit single-thread auto | `LSRESIZE_FUSED_PROJECTION_AVG_RESTORE=0/1/auto` |
 | AVX2 linear kernels | enabled on supported x86 | `LSRESIZE_AVX2_LINEAR=0` |
 | Last-axis linear direct path | enabled | `LSRESIZE_LAST_AXIS_LINEAR_DIRECT=0` |
-| Native internal precision | auto f32 only for 2-D f32 pure quadratic/cubic interpolation | `LSRESIZE_PRECISION=float32` |
+| Native internal precision | auto f32 for 2-D/3-D f32 pure quadratic/cubic interpolation and public 3-D downsampling AA presets | `LSRESIZE_PRECISION=float32` |
 | Native plan cache | capacity `32` | `LSRESIZE_PLAN_CACHE_SIZE=<n>` |
 | Native threads | workload-aware default | `LSRESIZE_NUM_THREADS=<n>` |
 | Python block size | `256` | `SPLINEOPS_BLOCK=<n>` |
@@ -370,8 +371,9 @@ Most useful current artifacts:
   a different fixed-kernel image operation and often has much larger output
   deltas.
 - Do not claim float32 internals are universally default-safe. They are default
-  only for a narrow 2-D `float32` pure interpolation scope; projection and
-  antialiasing float32 internals remain opt-in.
+  only for pure 2-D/3-D `float32` quadratic/cubic interpolation and the public
+  3-D downsampling antialiasing presets; other projection and antialiasing
+  float32 internals remain opt-in.
 - Do not claim every fused 3-D experiment won. The dedicated `(0, 2)` and
   `(1, 2)` two-axis kernels won locally, but batch-size and scheduler retunes
   measured during this pass were rejected.

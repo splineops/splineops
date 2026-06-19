@@ -43,7 +43,8 @@ plt.rcParams.update({
     "axes.labelsize": 16,
 })
 
-# Use float32 for storage / IO (resize still computes internally in float64).
+# Use float32 for storage / IO. The native backend chooses validated float32
+# scratch for standard cubic and conservative float64 scratch for 2-D AA.
 DTYPE = np.float32
 
 STD_LABEL = "SplineOps Standard cubic"

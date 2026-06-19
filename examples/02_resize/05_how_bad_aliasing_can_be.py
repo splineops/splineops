@@ -34,7 +34,8 @@ from splineops.utils.plotting import show_roi_zoom
 
 # sphinx_gallery_thumbnail_number = 5  # show the fifth figure (std canvas) as thumbnail
 
-# Use float32 for storage / IO (resize still computes internally in float64).
+# Use float32 for storage / IO. Standard cubic may use native float32 scratch;
+# the 2-D antialiasing projection uses conservative float64 scratch by default.
 DTYPE = np.float32
 
 # %%
