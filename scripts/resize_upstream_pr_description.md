@@ -13,11 +13,11 @@ path as the oblique-projection antialiasing method family:
 - `quadratic-antialiasing`
 - `cubic-antialiasing`
 
-The implementation keeps the existing spline API, but makes the native backend
-substantially faster for interpolation and projection-based antialiasing cases.
-Equal-degree least-squares projection remains available through
-`resize_degrees` for advanced/reference use, but it is not the promoted routine
-downsampling preset.
+The implementation keeps the existing resize API and spline model, but makes
+the native backend substantially faster for interpolation and projection-based
+antialiasing workloads. Equal-degree least-squares projection remains available
+through `resize_degrees` for advanced/reference use, but it is not promoted as
+the routine production downsampling preset.
 
 ## Why Oblique Projection
 
@@ -28,49 +28,68 @@ least-squares configurations. In practice this makes the production
 downsampling path faster and more robust on long lines, especially in N-D and
 3-D workloads.
 
+## Implementation Highlights
+
+- Native batched axis execution for common interpolation and projection rows.
+- Cached native resize plans and reusable `ResizePlan` execution buffers.
+- Fixed-support accumulator specializations for common presets.
+- Direct/fused exact linear paths, including selected 2-D/3-D kernels.
+- Workload-aware thread and batch policies.
+- Conservative precision policy:
+  - automatic float32 internals for validated 2-D/3-D float32 pure
+    quadratic/cubic interpolation rows,
+  - automatic float32 internals for public 3-D downsampling antialiasing
+    presets,
+  - conservative float64 internals for 2-D projection/antialiasing, mixed
+    projection cases, and equal-degree least-squares by default.
+
 ## Fresh Benchmark Evidence
 
-Fresh evidence bundle:
+Fresh evidence bundle from the current branch:
 
 ```shell
 python scripts/benchmark_resize_pr.py \
   --profile oblique-pr \
-  --output-dir /tmp/splineops_resize_pr_oblique_pr_6411817_20260617 \
-  --tag oblique_pr_6411817_20260617
+  --output-dir /tmp/splineops_resize_pr_oblique_pr_20260619 \
+  --tag oblique_pr_20260619
 ```
 
 Report:
 
 ```text
-/tmp/splineops_resize_pr_oblique_pr_6411817_20260617/resize_pr_report_oblique_pr_6411817_20260617.md
+/tmp/splineops_resize_pr_oblique_pr_20260619/resize_pr_report_oblique_pr_20260619.md
 ```
 
 Key rows from that bundle:
 
 | Evidence | Result |
 | --- | --- |
-| Native/Python full report | 46 overlaps, median `22.95x` speedup |
-| Oblique antialiasing native/Python bucket | 13 cases, median `14.07x` |
-| 3-D oblique antialiasing bucket | 3 cases, median `13.01x` |
-| Oblique vs equal-degree LS, degree 1 | faster in `36/36`, median `1.25x` |
-| Oblique vs equal-degree LS, degree 3 | faster in `36/36`, median `1.41x` |
+| Native/Python full report | 46 overlaps, median `24.34x` speedup |
+| Oblique antialiasing native/Python bucket | 13 cases, median `19.14x` |
+| 3-D oblique antialiasing bucket | 3 cases, median `19.66x` |
+| Oblique vs equal-degree LS, degree 1 | faster in `36/36`, median `1.22x` |
+| Oblique vs equal-degree LS, degree 3 | faster in `36/36`, median `1.39x` |
 | Exact-ish SciPy rows | SciPy faster in `0/16`, median speed `0.08x` |
+| Exact-ish PyTorch rows | PyTorch faster in `0/8`, median speed `0.61x` |
+| ResizePlan reuse | 11 cases, median `1.083x` speedup |
 
 The clearest library comparison is 3-D cubic antialiasing:
 
 | Case | splineops | SciPy | skimage | OpenCV | Torch |
 | --- | ---: | ---: | ---: | --- | --- |
-| `3d_cubic_aa_down_random_f32` | `2.454 ms` | `8.070 ms` | `10.186 ms` | skipped, 2-D only | skipped, no 3-D AA |
-| `3d_cubic_aa_down_random_f32_large` | `4.179 ms` | `23.610 ms` | `28.675 ms` | skipped, 2-D only | skipped, no 3-D AA |
+| `3d_cubic_aa_down_random_f32` | `1.926 ms` | `8.291 ms` | `10.341 ms` | skipped, 2-D only | skipped, no 3-D AA |
+| `3d_cubic_aa_down_random_f32_large` | `3.007 ms` | `23.750 ms` | `28.773 ms` | skipped, 2-D only | skipped, no 3-D AA |
 
 ## Correctness And Compatibility
 
-- Native/Python parity is checked in the benchmark suite for representative
-  interpolation and oblique antialiasing cases.
+- Native/Python parity is checked in the test suite and benchmark suite for
+  representative interpolation and oblique antialiasing cases.
 - Long-line boundedness is covered for cubic oblique projection to guard
   against the drift seen in high-order equal-degree least-squares projection.
 - `ResizePlan` reuse preserves bitwise output equality in the plan benchmark.
 - The public `resize(..., method="*-antialiasing")` API remains unchanged.
+- Explicit `LSRESIZE_PRECISION=float64` keeps the strict float64-internal path
+  available for A/B checks.
 
 ## Non-Claims
 
@@ -87,13 +106,28 @@ integration order, long-line robustness, and N-D coverage.
 
 ## Validation Checklist
 
-- `python -m py_compile` on benchmark/report scripts
-- `python scripts/benchmark_resize_pr.py --profile smoke`
-- `python scripts/benchmark_resize_pr.py --profile oblique-pr`
-- `python -m pytest -q`
-- `python -m build --outdir <tmp>`
-- Clean-install smoke from the built wheel
-- Docs build, if the docs extra is installed
+Current local validation:
+
+```text
+python -m pytest -q
+561 passed in 58.99s
+
+python -m sphinx -b html docs docs/_build/html_noplot -W --keep-going \
+  -D sphinx_gallery_conf.plot_gallery=0
+build succeeded
+
+python scripts/benchmark_resize_pr.py --profile smoke \
+  --output-dir /tmp/splineops_resize_pr_smoke_recheck_20260619
+passed
+
+python scripts/benchmark_resize_pr.py --profile oblique-pr \
+  --output-dir /tmp/splineops_resize_pr_oblique_pr_20260619 \
+  --tag oblique_pr_20260619
+passed
+
+git diff --check
+clean
+```
 
 ## Reviewer Notes
 
