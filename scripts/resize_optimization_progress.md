@@ -12,6 +12,10 @@ Update: this file captures an earlier checkpoint. For the final 2026-06-17
 handoff, current benchmark numbers, PR artifacts, validation results, and next
 steps, see `scripts/resize_session_handoff.md`.
 
+Update, 2026-06-22: upstream submission is paused pending provenance review,
+AI/LLM disclosure, and human audit. See `scripts/resize_session_handoff.md`
+and `scripts/resize_optimization_notes.md` for the current pause/audit state.
+
 ## Goal
 
 Optimize `splineops.resize` while preserving exact splineops semantics by

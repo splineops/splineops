@@ -2114,3 +2114,116 @@ Decision:
 - Removed the experimental native code path and did not add a public knob.
 - Do not retry this as a default optimization without lower-level evidence
   such as hardware-counter data showing a cache or bandwidth win.
+
+## Pause/Audit: 2026-06-22 Provenance and Remaining Speed Headroom
+
+Status:
+
+- Upstream-facing work is paused. The SciPy draft PR was closed after the
+  missing AI/LLM disclosure issue was identified.
+- The local `splineops` resize implementation and the SciPy prototype were both
+  developed with extensive LLM assistance. Future upstream use needs explicit
+  disclosure and a human audit that can explain and maintain the code.
+- No code changes were made in this pause audit. The purpose was to preserve
+  the technical state and identify whether there is obvious remaining speed
+  headroom.
+
+Reference-method interpretation:
+
+- The implementation follows the Muñoz Barrutia/Blu/Unser finite-difference
+  spline resize method and the Lee/Eden/Unser oblique-projection production
+  variant.
+- Legacy `Resize.java` and current C++ agree on the core cost model:
+  projection performs `analy_degree + 1` integrations before geometric
+  resampling, then the matching differences, correction prefilter, and synthesis
+  sampling after resampling.
+- Equal-degree least-squares remains the orthogonal/reference path, but the
+  public `*-antialiasing` presets are better production defaults because their
+  oblique triples use lower integration/correction order.
+
+Fresh artifacts:
+
+```text
+/tmp/splineops_resize_evidence_check_20260622.md
+/tmp/splineops_resize_thread_sweep_20260622.csv
+/tmp/splineops_resize_thread_sweep_20260622.json
+```
+
+Hardware-counter profiling:
+
+- `perf` is installed, but hardware counters are blocked locally by
+  `perf_event_paranoid=4`.
+- The audit therefore used `LSRESIZE_PROFILE=1` phase profiles plus controlled
+  same-build A/B timing.
+
+Phase-profile summary, `LSRESIZE_NUM_THREADS=1`:
+
+| Case | Main phases |
+| --- | --- |
+| `2d_cubic_down_1024_f32` | gather `31.9%`, prefilter `29.3%`, accumulate `17.9%`, accumulate/scatter plus scatter about `19.8%` |
+| `2d_cubic_aa_down_1024_f32` | gather `21.6%`, integrate `21.1%`, accumulate `16.8%`, input prefilter `12.7%`, output prefilter `10.4%` |
+| `2d_linear_aa_down_1024_f32` | gather `34.1%`, integrate `23.7%`, accumulate `13.5%`, scatter `12.5%` |
+| `3d_cubic_down_f32` | gather `42.8%`, prefilter `20.2%`, accumulate `17.4%`, accumulate/scatter `11.9%` |
+| `3d_cubic_aa_down_f32` | spread across gather `17.6%`, accumulate `16.0%`, output prefilter `14.2%`, integrate/input prefilter about `22.0%` |
+
+Interpretation:
+
+- Pure linear paths are already heavily optimized by direct/fused kernels.
+- Pure cubic interpolation still has some headroom, mostly in gather and
+  intermediate memory movement, especially for 3-D.
+- Projection antialiasing does not have one dominant hot loop. The time is
+  distributed over the required projection passes, so large gains likely need a
+  layout or algorithmic change rather than another small loop fusion.
+
+Same-build A/B observations:
+
+- Fused 2-D linear remains a large default-on win: about `2.1x` to `2.7x` on
+  sampled 2-D linear rows.
+- Fused 3-D linear remains a large default-on win: about `2.4x` to `3.3x` on
+  common down/two-axis rows.
+- Row-major gather remains useful and default-on: `1.16x` to `1.49x` on sampled
+  2-D cubic/projection rows.
+- Strided-offset gather is useful in the sampled 2-D cubic row and mostly
+  neutral elsewhere.
+- Gather-prefilter scale fusion remains useful for pure cubic interpolation
+  (`1.18x` to `1.25x` in sampled rows) and mostly neutral for projection.
+- Projection output-prefilter scale fusion is a small neutral-to-slight win in
+  the sampled rows, not a broad new source of speed.
+- Fixed `LSRESIZE_BATCH_LINES=64` was worse than the adaptive default in the
+  sampled cubic/projection cases.
+
+Thread-policy finding:
+
+- Explicit `LSRESIZE_NUM_THREADS=2` was consistently bad in the focused sweep.
+- Small sampled 3-D cubic/projection cases preferred serial execution:
+  - `3d_cubic_down_f32`: best median at `1` thread; default was about `1.09x`
+    slower.
+  - `3d_cubic_aa_down_f32`: best median at `1` thread; default was about
+    `1.48x` slower.
+- Forcing serial globally with a very high `LSRESIZE_PARALLEL_THRESHOLD`
+  improved the small 3-D cases but hurt 1024x1024 2-D projection and larger 3-D
+  rows badly.
+- Conclusion: do not globally raise the parallel threshold. If work resumes,
+  prototype a narrow small-volume 3-D serial gate and validate against large
+  2-D and large 3-D benchmark rows.
+
+Current technical conclusion:
+
+- `splineops.resize` appears to be a real improvement for exact-ish N-D spline
+  resize semantics, especially compared with SciPy-like rows and 3-D oblique
+  antialiasing.
+- It should not be positioned as the fastest generic 2-D image resize; OpenCV
+  and Torch can be faster in non-equivalent image-resize semantics.
+- The current native backend is past the easy optimization stage. Further CPU
+  gains are likely incremental and workload-specific unless the project changes
+  layout strategy, algorithmic semantics, or backend target.
+
+Recommended if work resumes:
+
+1. Keep provenance and AI/LLM disclosure explicit in all upstream work.
+2. Rebuild a narrow human-owned branch from the documented method and tests.
+3. Start with thread-policy validation for small 3-D cubic/projection cases.
+4. Only consider a deeper 3-D gather/layout rewrite after cache-counter
+   profiling is available.
+5. Keep projection antialiasing claims focused on exact N-D spline semantics,
+   lower-order oblique projection, and measured 3-D behavior.

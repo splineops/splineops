@@ -18,10 +18,20 @@ what was changed locally, and what remains before an upstream SciPy PR.
 
 ## Current PR Status
 
-Draft PR 25441 is open against SciPy `main`. The PR body includes the full ASV
-comparison table, validation commands and the proposed review split. At the
-time this note was updated, there were no maintainer comments yet and CircleCI
-was still pending.
+Draft PR 25441 was closed on 2026-06-22 before further upstream review. The
+trigger was a reviewer request around the missing AI/LLM disclosure section in
+the PR template. The local SciPy branch and related resize work were developed
+with extensive LLM assistance, so the correct state is to pause, close the PR,
+and audit the work before any future upstream submission.
+
+Current policy for this branch:
+
+- Do not reopen PR 25441 as-is.
+- Do not open a replacement PR without explicit AI/LLM disclosure.
+- Treat the existing branch as a prototype and evidence source, not a
+  submission-ready contribution.
+- If the work resumes, rebuild a narrow human-owned PR that can be explained
+  and maintained without relying on generated reasoning.
 
 ## Why SciPy Was Slower
 
@@ -178,10 +188,13 @@ working compare command is the `--no-dry-run` form above.
 
 ## Remaining Work
 
-- Monitor PR feedback and CircleCI.
-- Decide whether maintainers prefer one PR or a sequence:
+- Keep PR 25441 closed.
+- Preserve the ASV results, validation commands, and prototype branch as local
+  evidence only.
+- Audit the SciPy changes line by line before any future upstream attempt.
+- Decide whether a future human-owned sequence should start with
   benchmark-only, order-1 zoom, then order-3 zoom/prefilter.
-- Consider a deeper `spline_filter1d` redesign only after the first PR is
-  discussed, because that is a separate review surface.
+- Consider a deeper `spline_filter1d` redesign only after a narrow fast-path PR
+  has been rebuilt, disclosed, and discussed.
 - Consider extending the fast paths to `grid_mode=True`, more modes and more
-  layouts after the narrow path is accepted.
+  layouts only after the narrow path is accepted.

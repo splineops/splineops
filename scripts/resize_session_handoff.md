@@ -8,9 +8,70 @@ This is the close-out handoff for the resize optimization work done across
 `splineops` and the local legacy/reference material. It summarizes what was
 implemented, what was measured, what was rejected, and what should happen next.
 
+Update, 2026-06-22: this handoff is now historical. The upstream push is paused
+after reviewing the provenance and disclosure requirements around the
+LLM-assisted work. Use the June 22 update below as the current state before
+opening, reopening, or reusing any PR-facing material.
+
+## 2026-06-22 Pause and Audit Update
+
+Current state:
+
+- The SciPy draft PR was closed before further review because the branch was
+  developed with extensive LLM assistance and the PR did not initially disclose
+  that provenance.
+- No new upstream PR should be opened from this work without a human audit that
+  can explain, justify, and maintain the implementation.
+- The benchmark evidence remains useful for deciding whether the resize method
+  is worth further human-owned work, but it should not be treated as a ready
+  submission package.
+- The strongest technical conclusion still holds: `splineops.resize` is a real
+  improvement for exact-ish N-D spline resize semantics, especially compared
+  with SciPy-like interpolation rows and 3-D oblique antialiasing. It is not a
+  claim to be the fastest generic 2-D image resize.
+
+Additional 2026-06-22 performance audit:
+
+- Hardware counters could not be collected locally because `perf` is blocked by
+  `perf_event_paranoid=4`.
+- Built-in phase profiling showed that pure cubic interpolation is now mainly
+  gather/prefilter/accumulation traffic, while projection antialiasing is split
+  across required passes: gather, integration, accumulation, output prefilter,
+  sampling, differentiation, and scatter.
+- Linear fast paths are already the best-optimized area. The large wins from
+  fused 2-D/3-D linear kernels, row-major gather, gather-prefilter scale fusion,
+  and fixed-support preset specialization are already default-on.
+- The most plausible remaining short-term speed work is thread scheduling:
+  sampled small 3-D cubic/projection cases prefer serial execution, while large
+  2-D and large 3-D cases still benefit from default parallelism.
+- Projection antialiasing appears close to the method's CPU-side pass-count and
+  memory-traffic limits unless the algorithm or layout strategy changes.
+
+Fresh local artifacts from the pause audit:
+
+```text
+/tmp/splineops_resize_thread_sweep_20260622.csv
+/tmp/splineops_resize_thread_sweep_20260622.json
+/tmp/splineops_resize_evidence_check_20260622.md
+```
+
+Recommended pause-state next steps:
+
+1. Treat all PR-facing files as draft evidence, not submission material.
+2. If work resumes, rebuild a small human-owned branch from the reference method
+   and documented benchmarks.
+3. Keep an explicit AI/LLM disclosure in any future upstream discussion.
+4. Prefer a narrow follow-up experiment around small-volume 3-D thread policy
+   before any new kernel rewrites.
+5. Do not add more broad optimization until a human maintainer can explain the
+   method, code paths, and benchmark limits end to end.
+
 ## Executive State
 
-The branch is ready for submission-mode review. The strongest public story is:
+Historical 2026-06-17 state: the branch was considered ready for
+submission-mode review at that time. That submission recommendation is now
+superseded by the 2026-06-22 pause and audit update above. The strongest public
+technical story was:
 
 > Fast N-D spline resize with oblique-projection antialiasing, especially for
 > 3-D/volumetric downsampling.
@@ -279,6 +340,12 @@ At the time this document was written:
 The repository should remain clean after committing this file and its links.
 
 ## Recommended Next Steps
+
+These 2026-06-17 recommendations are superseded by the 2026-06-22 pause above.
+Do not use this checklist to open or reopen a PR without a human audit and
+explicit AI/LLM disclosure.
+
+Historical recommendations were:
 
 1. Push `feature/publication`.
 2. Open the upstream PR using `scripts/resize_upstream_pr_description.md`.

@@ -10,6 +10,12 @@ work. The detailed engineering ledger remains in
 `scripts/resize_upstream_pr_description.md`. The close-out session handoff is
 `scripts/resize_session_handoff.md`.
 
+Update, 2026-06-22: do not use this checklist to open an upstream PR as-is.
+The upstream effort is paused after reviewing AI/LLM disclosure requirements
+and closing the related SciPy draft PR. Treat this file as a historical
+readiness checklist and use `scripts/resize_session_handoff.md` plus
+`scripts/resize_optimization_notes.md` for the current pause/audit state.
+
 ## Objective
 
 Prepare the optimized resize backend for a focused upstream contribution that
