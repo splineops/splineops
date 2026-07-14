@@ -92,6 +92,8 @@ python scripts/summarize_resize_benchmarks.py report \
 Current resize behavior and numerical policy are documented in the
 [resize API guide](https://splineops.github.io/api/02_resize.html) and
 [resize user guide](https://splineops.github.io/user-guide/02_resize.html).
+Breaking changes and migration guidance are recorded in the
+[changelog](https://github.com/splineops/splineops/blob/main/CHANGELOG.md).
 
 The dated PR preparation notes in `scripts/resize_pr_readiness.md`,
 `scripts/resize_oblique_pr_brief.md`, and

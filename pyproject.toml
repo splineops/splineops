@@ -11,7 +11,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "splineops"
-version = "1.3.0"
+version = "2.0.0"
 description = "Spline signal processing in N-D with support for GPU computing."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -97,6 +97,7 @@ sdist.include = [
   "cpp/**",
   "CMakeLists.txt",
   "README.md",
+  "CHANGELOG.md",
   "LICENSE",
 ]
 
