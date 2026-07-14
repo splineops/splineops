@@ -118,3 +118,4 @@ Contents
    user-guide/index
    auto_examples/index
    api/index
+   roadmap
