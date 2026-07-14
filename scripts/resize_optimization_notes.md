@@ -621,8 +621,7 @@ Work completed today:
   - one-worker decisions now run directly in the current thread instead of
     launching a single `std::thread`
 - Added a bounded process-local native `Plan1D` cache:
-  - keyed exactly by line length, degrees, zoom bits, shift bits, and
-    `inversable`
+  - keyed by line length, realized output length, degrees, and shift bits
   - plans are immutable/read-only after construction and shared by axis workers
   - `LSRESIZE_PLAN_CACHE_SIZE=0` disables the cache for measurements/debugging
 - Moved the native batched row map into cached `Plan1D` metadata:
@@ -1181,8 +1180,8 @@ reuse the same plans.
 
 Options:
 
-- Add a small process-local LRU cache keyed by:
-  `(N, zoom, interp_degree, analy_degree, synthe_degree, shift, inversable)`.
+- Add a small process-local LRU cache keyed by realized grid, degrees, and
+  shift.
 - Or expose a Python-facing `ResizePlan` object:
   `plan = ResizePlan(input_shape, output_shape, method); plan.apply(frame)`.
 

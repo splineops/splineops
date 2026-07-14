@@ -3,10 +3,17 @@
 Probe whether resize's 1-D spline operator can be collapsed into a compact
 precomputed matrix.
 
-The Arrate/Unser projection path is separable, so any fundamental replacement
-for the per-axis finite-difference pipeline should first show useful locality in
-1-D. This script builds dense 1-D response matrices for small signals and
-summarizes threshold sparsity and energy outside local neighborhoods.
+The Arrate/Unser projection framework is separable, so any fundamental
+replacement for the per-axis operator should first show useful locality in 1-D.
+This script builds dense 1-D response matrices for small signals and summarizes
+threshold sparsity and energy outside local neighborhoods. It follows the
+current plan policy: public zero-shift projections with analysis degree one or
+greater use direct compact cross-Gram rows, while analysis degree zero retains
+the finite-difference pipeline.
+
+The historical ``coeff_after_diff`` stage label is retained for CSV
+compatibility. It means the projected coefficient response before the output
+solve; a direct plan performs no differentiation at that stage.
 """
 
 from __future__ import annotations
@@ -100,7 +107,7 @@ def parse_csv_ints(value: str) -> list[int]:
     return out
 
 
-def params_for_method(method: str, zoom: float, shift: float, inversable: bool) -> LSParams:
+def params_for_method(method: str, zoom: float, shift: float) -> LSParams:
     interp, analy, synthe = METHOD_PARAMS[method]
     return LSParams(
         interp_degree=interp,
@@ -108,20 +115,21 @@ def params_for_method(method: str, zoom: float, shift: float, inversable: bool) 
         synthe_degree=synthe,
         zoom=float(zoom),
         shift=float(shift),
-        inversable=bool(inversable),
     )
 
 
 def visible_centers(n: int, out_n: int, p: LSParams) -> np.ndarray:
-    if out_n > 1:
-        step = (n - 1) / float(out_n - 1)
+    if n > 1 and out_n > 1:
+        effective_zoom = (out_n - 1) / float(n - 1)
+        step = 1.0 / effective_zoom
     else:
+        effective_zoom = 1.0
         step = 0.0
 
     shift = float(p.shift)
     if p.analy_degree >= 0:
         t = (p.analy_degree + 1.0) / 2.0
-        shift += (t - np.floor(t)) * (1.0 / p.zoom - 1.0)
+        shift += (t - np.floor(t)) * (1.0 / effective_zoom - 1.0)
     return step * np.arange(out_n, dtype=np.float64) + shift
 
 
@@ -132,18 +140,22 @@ def projection_from_coeff(coeff: np.ndarray, p: LSParams, tail: bool) -> np.ndar
 
     ws.coeff[...] = coeff
     average = 0.0
-    if p.analy_degree >= 0:
+    if p.analy_degree >= 0 and not plan.direct_projection:
         average = do_integ(ws.coeff, p.analy_degree + 1)
 
-    _build_extension_inplace(ws.coeff, plan, ws)
+    if plan.direct_projection:
+        source = ws.coeff
+    else:
+        _build_extension_inplace(ws.coeff, plan, ws)
+        source = ws.ext_full
     if plan.win_len_max > 0 and plan.out_total > 0:
-        np.take(ws.ext_full, plan.idx2d, out=ws.gather2d)
+        np.take(source, plan.idx2d, out=ws.gather2d)
         np.multiply(plan.weights2d, ws.gather2d, out=ws.gather2d)
         np.sum(ws.gather2d, axis=1, out=ws.y)
     else:
         ws.y[:] = 0.0
 
-    if p.analy_degree >= 0:
+    if p.analy_degree >= 0 and not plan.direct_projection:
         do_diff(ws.y, p.analy_degree + 1)
         ws.y += average
 
@@ -168,6 +180,8 @@ def build_matrix(n: int, p: LSParams, stage: str) -> np.ndarray:
     for col in range(n):
         basis[col] = 1.0
         if stage == "coeff_after_diff":
+            # Historical artifact label: for direct plans this is the compact
+            # cross-Gram response before the output solve, with no difference.
             mat[:, col] = projection_from_coeff(basis, p, tail=False)
         elif stage == "coeff_after_output_tail":
             mat[:, col] = projection_from_coeff(basis, p, tail=True)
@@ -360,11 +374,6 @@ def main() -> int:
         help="Absolute floor used with relative thresholds.",
     )
     parser.add_argument(
-        "--inversable",
-        action="store_true",
-        help="Use the legacy inversable output-size policy.",
-    )
-    parser.add_argument(
         "--truncation-trials",
         type=int,
         default=0,
@@ -388,7 +397,7 @@ def main() -> int:
     rows: list[SummaryRow] = []
 
     for method in methods:
-        p = params_for_method(method, args.zoom, args.shift, args.inversable)
+        p = params_for_method(method, args.zoom, args.shift)
         stages = list(STAGES_ALL)
         if p.analy_degree < 0:
             stages = ["sample_to_sample"]

@@ -89,7 +89,13 @@ python scripts/summarize_resize_benchmarks.py report \
   --output /tmp/splineops_resize_report.md
 ```
 
-For upstream PR preparation notes and interpretation guidelines, see
-`scripts/resize_pr_readiness.md`, `scripts/resize_oblique_pr_brief.md`, and
-`scripts/resize_upstream_pr_description.md`. For a close-out summary of the
-resize optimization session, see `scripts/resize_session_handoff.md`.
+Current resize behavior and numerical policy are documented in the
+[resize API guide](https://splineops.github.io/api/02_resize.html) and
+[resize user guide](https://splineops.github.io/user-guide/02_resize.html).
+
+The dated PR preparation notes in `scripts/resize_pr_readiness.md`,
+`scripts/resize_oblique_pr_brief.md`, and
+`scripts/resize_upstream_pr_description.md`, together with the close-out
+`scripts/resize_session_handoff.md`, are historical records. They describe the
+implementation and benchmark evidence available at the time, not the current
+resize contract.

@@ -10,7 +10,6 @@ class LSParams:
     synthe_degree: int   # n2  (usually = n)
     zoom:          float # a
     shift:         float # b
-    inversable:    bool  # size policy
 
 @dataclass
 class Plan1D:
@@ -26,8 +25,8 @@ class Plan1D:
     right_pad: int
 
     # window metadata (CSR-like signature kept for compatibility)
-    kmin:     np.ndarray         # (out_total,) int32
-    win_len:  np.ndarray         # (out_total,) int32
+    kmin:     np.ndarray         # (out_total,) int64
+    win_len:  np.ndarray         # (out_total,) int64
     row_ptr:  np.ndarray         # (out_total+1,) int32
 
     # weights (we use weights2d at runtime; keep fields for API compat)
@@ -41,6 +40,9 @@ class Plan1D:
     lp_sign:  float      = 1.0
     rp_src:   np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.intp))  # coeff indices for ext[N:]
     rp_sign:  float      = 1.0
+    # Analysis degree >= 1 uses compact cross-Gram rows directly, avoiding
+    # ill-conditioned high-order integration/difference pairs.
+    direct_projection: bool = False
 
 @dataclass
 class Work1D:

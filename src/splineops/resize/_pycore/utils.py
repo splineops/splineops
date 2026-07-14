@@ -1,6 +1,15 @@
 # splineops/src/splineops/resize/_pycore/utils.py
 from __future__ import annotations
+import math
 import numpy as np
+
+
+def round_half_away_from_zero(value: float) -> int:
+    """Round like C++ ``std::llround`` (ties away from zero)."""
+    value = float(value)
+    if value >= 0.0:
+        return int(math.floor(value + 0.5))
+    return int(math.ceil(value - 0.5))
 
 def border(size: int, degree: int, tol: float = 1e-10) -> int:
     if degree <= 1: return 0
@@ -14,16 +23,20 @@ def border(size: int, degree: int, tol: float = 1e-10) -> int:
     horiz = 2 + int(np.log(tol)/np.log(abs(z)))
     return min(horiz, size)
 
-def calculate_final_size_1d(inversable: bool, N: int, zoom: float) -> tuple[int, int]:
-    if not inversable:
-        return N, int(round(N * zoom))
-    working = N
-    s = int(round(round((working-1)*zoom)/zoom))
-    while working - 1 - s != 0:
-        working += 1
-        s = int(round(round((working-1)*zoom)/zoom))
-    final_ = int(round((working - 1) * zoom) + 1)
-    return working, final_
+def calculate_output_size_1d(N: int, zoom: float) -> int:
+    if N <= 0:
+        raise ValueError("input length must be positive")
+    if not math.isfinite(zoom) or zoom <= 0.0:
+        raise ValueError("zoom must be finite and positive")
+
+    max_native_axis = (1 << 31) - 1
+
+    def checked_round(value: float) -> int:
+        if not math.isfinite(value) or value > max_native_axis:
+            raise OverflowError("resized axis length exceeds native limits")
+        return round_half_away_from_zero(value)
+
+    return max(1, checked_round(N * zoom))
 
 def strides_from_shape(shape: tuple[int, ...]) -> tuple[int, ...]:
     s = [1]*len(shape)

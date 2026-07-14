@@ -16,7 +16,6 @@ struct LSParams {
   int    synthe_degree;   // n2  (usually = n)
   double zoom;            // a
   double shift;           // b
-  bool   inversable;      // size adjustment
 };
 
 struct RowRun1D {
@@ -26,13 +25,15 @@ struct RowRun1D {
 };
 
 // Precomputed, per-axis resampling plan.
-// Reused for every 1-D line with the same (N, zoom, degrees, inversable, shift).
+// Reused for every 1-D line with the same realized grid, degrees, and shift.
 struct Plan1D {
   int  N;               // input line length
   int  outN;            // true output length
   int  out_total;       // output length incl. tail (add_border)
-  int  length_total;    // extended input length (N + ceil(add_border/zoom))
+  int  length_total;    // materialized input/extension length (N when direct)
+  double effective_zoom = 1.0; // (outN-1)/(N-1), non-degenerate axes only
   bool symmetric_ext;   // boundary for negative indices (true=symmetric, false=antisymmetric)
+  bool direct_projection = false; // stable compact cross-Gram projection
 
   // CSR-style layout for variable window sizes per output position l
   // row_ptr.size() == out_total + 1; for each row l, weights[row_ptr[l] ... row_ptr[l+1]-1]
@@ -49,7 +50,7 @@ struct Plan1D {
 
   // Precomputed left-pad mapping for negative indices: -t -> sign * line[src]
   // (size == left_pad). This removes per-line mirror math.
-  std::vector<int>  pad_src_idx;   // source index in line (clamped later to [0, N-1])
+  std::vector<int>  pad_src_idx;   // source index in line
   std::vector<char> pad_src_sgn;   // +1 / -1
 
   // Precomputed right-tail mapping: ext[N + i] = rp_sign * line[rp_src[i]]
@@ -60,7 +61,7 @@ struct Plan1D {
   // directly; boundary rows use coeff_src/coeff_sgn to preserve exact extension.
   std::vector<RowRun1D> row_runs;
   std::vector<int>      coeff_src;
-  std::vector<double>   coeff_sgn;
+  std::vector<std::int8_t> coeff_sgn;
   int                   interior_rows = 0;
   int                   mapped_rows = 0;
 
@@ -89,8 +90,8 @@ struct Work1D {
 // Build the reusable plan once per axis.
 Plan1D make_plan_1d(int N, const LSParams& p);
 
-// Process-local bounded cache for repeated same-shape/same-parameter axes.
-// Set LSRESIZE_PLAN_CACHE_SIZE=0 to disable it.
+// Process-local count- and byte-bounded cache for repeated axes. Set either
+// LSRESIZE_PLAN_CACHE_SIZE=0 or LSRESIZE_PLAN_CACHE_BYTES=0 to disable it.
 std::shared_ptr<const Plan1D> get_plan_1d_cached(int N, const LSParams& p);
 
 // Allocation-free fast path: reuse the provided workspace (vector in/out).

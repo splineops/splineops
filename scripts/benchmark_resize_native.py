@@ -249,7 +249,16 @@ def native_knobs() -> dict[str, str]:
             "<default:auto-f32-2d/3d-interp+3d-down-proj-else-float64>",
         ),
         "LSRESIZE_NUM_THREADS": os.environ.get("LSRESIZE_NUM_THREADS", "<default:auto>"),
+        "LSRESIZE_PERSISTENT_THREADS": os.environ.get(
+            "LSRESIZE_PERSISTENT_THREADS", "<default:on>"
+        ),
+        "LSRESIZE_PLAN_CACHE_BYTES": os.environ.get(
+            "LSRESIZE_PLAN_CACHE_BYTES", "<default:134217728>"
+        ),
         "LSRESIZE_PLAN_CACHE_SIZE": os.environ.get("LSRESIZE_PLAN_CACHE_SIZE", "<default:32>"),
+        "LSRESIZE_WORKSPACE_CACHE_BYTES": os.environ.get(
+            "LSRESIZE_WORKSPACE_CACHE_BYTES", "<default:134217728>"
+        ),
     }
 
 
@@ -259,7 +268,11 @@ def python_knobs() -> dict[str, str]:
         "SPLINEOPS_ACCUM": os.environ.get("SPLINEOPS_ACCUM", "<default:support>"),
         "SPLINEOPS_TILE_W": os.environ.get("SPLINEOPS_TILE_W", "<default:0>"),
         "SPLINEOPS_PLAN_CACHE": os.environ.get("SPLINEOPS_PLAN_CACHE", "<default:on>"),
+        "SPLINEOPS_PLAN_CACHE_BYTES": os.environ.get(
+            "SPLINEOPS_PLAN_CACHE_BYTES", "<default:134217728>"
+        ),
         "SPLINEOPS_PLAN_CACHE_SIZE": os.environ.get("SPLINEOPS_PLAN_CACHE_SIZE", "<default:32>"),
+        "LSRESIZE_PLAN_CACHE_BYTES": os.environ.get("LSRESIZE_PLAN_CACHE_BYTES", "<unset>"),
         "LSRESIZE_PLAN_CACHE_SIZE": os.environ.get("LSRESIZE_PLAN_CACHE_SIZE", "<unset>"),
         "SPLINEOPS_AUTOTUNE": os.environ.get("SPLINEOPS_AUTOTUNE", "<default:off>"),
     }

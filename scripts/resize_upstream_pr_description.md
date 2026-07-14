@@ -1,5 +1,13 @@
 # Upstream PR Description: Oblique Antialiasing Resize
 
+> [!WARNING]
+> **Historical and superseded.** This draft preserves the proposed PR framing
+> and dated benchmark evidence; do not use its numerical rationale as the
+> current resize contract. Public zero-shift projections with analysis degree
+> one or greater now use stable direct compact cross-Gram rows. See the current
+> [resize API guide](../docs/api/02_resize.rst) and
+> [resize user guide](../docs/user-guide/02_resize.rst).
+
 ## Title
 
 Optimize N-D spline resize and promote oblique-projection antialiasing presets

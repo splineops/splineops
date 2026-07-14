@@ -324,7 +324,7 @@ static double initial_causal_colmajor_scalar(
 static inline size_t initial_causal_horizon_colmajor(
   int N,
   double z,
-  double tol = 1e-10)
+  double tol = 1e-15)
 {
   size_t horizon = static_cast<size_t>(std::max(N, 0));
   if (N > 0 && tol > 0.0) {
@@ -927,35 +927,6 @@ static void integ_as_colmajor(
   }
 }
 
-static void diff_sa_colmajor(
-  std::vector<double>& c,
-  int B,
-  int N,
-  std::vector<double>& work)
-{
-  if (B <= 0 || N < 2) return;
-
-  work.assign(static_cast<size_t>(B), 0.0);
-  const size_t Bs = static_cast<size_t>(B);
-  const double* before_last = c.data() + static_cast<size_t>(N - 2) * Bs;
-  for (int b = 0; b < B; ++b) {
-    work[static_cast<size_t>(b)] = before_last[static_cast<size_t>(b)];
-  }
-
-  for (int n = 0; n + 1 < N; ++n) {
-    double* cur = c.data() + static_cast<size_t>(n) * Bs;
-    const double* next = c.data() + static_cast<size_t>(n + 1) * Bs;
-    for (int b = 0; b < B; ++b) {
-      cur[static_cast<size_t>(b)] -= next[static_cast<size_t>(b)];
-    }
-  }
-
-  double* last = c.data() + static_cast<size_t>(N - 1) * Bs;
-  for (int b = 0; b < B; ++b) {
-    last[static_cast<size_t>(b)] -= work[static_cast<size_t>(b)];
-  }
-}
-
 static void diff_as_colmajor(
   std::vector<double>& c,
   int B,
@@ -1340,35 +1311,6 @@ static void integ_as_colmajor_f32(
       cur[bi] = (n == 1) ? 0.0f : -work[bi];
       work[bi] += tmp;
     }
-  }
-}
-
-static void diff_sa_colmajor_f32(
-  std::vector<float>& c,
-  int B,
-  int N,
-  std::vector<float>& work)
-{
-  if (B <= 0 || N < 2) return;
-
-  work.assign(static_cast<size_t>(B), 0.0f);
-  const size_t Bs = static_cast<size_t>(B);
-  const float* before_last = c.data() + static_cast<size_t>(N - 2) * Bs;
-  for (int b = 0; b < B; ++b) {
-    work[static_cast<size_t>(b)] = before_last[static_cast<size_t>(b)];
-  }
-
-  for (int n = 0; n + 1 < N; ++n) {
-    float* cur = c.data() + static_cast<size_t>(n) * Bs;
-    const float* next = c.data() + static_cast<size_t>(n + 1) * Bs;
-    for (int b = 0; b < B; ++b) {
-      cur[static_cast<size_t>(b)] -= next[static_cast<size_t>(b)];
-    }
-  }
-
-  float* last = c.data() + static_cast<size_t>(N - 1) * Bs;
-  for (int b = 0; b < B; ++b) {
-    last[static_cast<size_t>(b)] -= work[static_cast<size_t>(b)];
   }
 }
 

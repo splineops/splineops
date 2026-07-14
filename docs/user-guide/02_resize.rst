@@ -39,6 +39,20 @@ For production downsampling, prefer the antialiasing presets:
    y2d = resize(image, zoom_factors=(0.5, 0.5), method="cubic-antialiasing")
    y3d = resize(volume, zoom_factors=(0.5, 0.5, 0.5), method="cubic-antialiasing")
 
+For arrays with batch or channel dimensions, select the spatial axes
+explicitly. Unselected axes are exact identity axes and incur no projection
+pass:
+
+.. code-block:: python
+
+   # H x W x C -> resize H and W without filtering across colour channels.
+   rgb_small = resize(
+       rgb,
+       output_size=(256, 256),
+       axes=(0, 1),
+       method="cubic-antialiasing",
+   )
+
 The ``*-antialiasing`` methods are oblique-projection spline resize presets.
 They keep the same synthesis spline degree as the corresponding interpolation
 method, but use a lower-degree analysis space:
@@ -48,18 +62,42 @@ method, but use a lower-degree analysis space:
 - ``cubic-antialiasing`` maps to ``(interp=3, analy=1, synthe=3)``.
 
 This is the recommended public method family for antialiasing resize. It is
-faster and more numerically robust than equal-degree least-squares projection
-in the production downsampling cases, while preserving the spline model and
-high-quality N-D behavior. Equal-degree least-squares remains available through
-``resize_degrees`` for advanced/reference use, but it is not exposed as a
-routine preset.
+less expensive than equal-degree least-squares projection in production
+downsampling cases, while preserving the spline model and high-quality N-D
+behavior. Equal-degree least-squares remains available through
+``resize_degrees`` for advanced and reference use, but it is deliberately not
+exposed as a routine preset.
 
-Conceptually, resizing means:
+For an input axis of length :math:`N` and an output axis of length :math:`M`,
+``splineops`` uses one canonical endpoint-aligned grid. A requested zoom
+:math:`z` first determines the integer output length using half-away-from-zero
+rounding,
+
+.. math::
+
+   M = \max\!\left(1, \left\lfloor Nz + \tfrac{1}{2}\right\rfloor\right).
+
+Once :math:`M` is known, the nominal zoom no longer participates in the
+resampling kernel. For :math:`N,M>1`, output index :math:`l` maps to input
+coordinate
+
+.. math::
+
+   x_l = l\,\frac{N-1}{M-1},
+   \qquad l=0,\ldots,M-1.
+
+Thus two zoom requests that produce the same integer output shape produce the
+same result. A singleton input is treated as a constant. A singleton projected
+output is the line mean, while singleton interpolation evaluates the symmetric
+input centre.
+
+Conceptually, resizing then means:
 
 - starting from a spline :math:`f` defined on an input grid
   (typically the integers),
-- choosing a new output grid, obtained by scaling the grid by a factor
-  :math:`T` (e.g., :math:`0, T, 2T, 3T, \dots`),
+- choosing the endpoint-aligned output grid with effective input-coordinate
+  step :math:`T=(N-1)/(M-1)`
+  (e.g., :math:`0, T, 2T, 3T, \dots`),
 - and constructing a new spline :math:`g` that “lives” on that new grid and
   best represents the same underlying continuous function.
 
@@ -348,18 +386,23 @@ For a single axis, the algorithm works on one 1D line at a time:
    represents a continuous spline in the sense of the previous sections,
    rather than just raw samples.
 
-2. **Optional projection prefilter.**  
-   In antialiasing modes, a small number of discrete integrations and
-   differences are applied to these coefficients. This realizes the
-   least-squares / oblique projection prefilter from [1]_ and [2]_, and acts
-   as a controlled low-pass filter when down-sampling. For pure
-   interpolation this stage is skipped.
+2. **Optional projection operator.**
+   On the public zero-shift grid, projections with analysis degree one or
+   greater evaluate compact cross-Gram rows directly. This includes the
+   quadratic and cubic oblique presets as well as equal-degree least-squares
+   configurations. The direct form is mathematically equivalent to the
+   integration/difference construction, but avoids forming large intermediate
+   antiderivatives and the associated floating-point cancellation. Analysis
+   degree zero retains the finite-difference form from [1]_ and [2]_. Pure
+   interpolation skips this stage.
 
 3. **Boundary handling.**  
-   Because real data are finite, each line is extended beyond its endpoints
-   by symmetric or antisymmetric mirroring, depending on the spline degree.
-   This produces a slightly longer “virtual” line on which the spline is
-   evaluated, without introducing visible edge artefacts.
+   Because real data are finite, coefficient indices outside each line are
+   resolved by symmetric or antisymmetric mirroring, depending on the spline
+   degree. Interpolation and analysis-degree-zero projection materialize this
+   extension in a short working buffer. Direct projection rows instead apply
+   precomputed whole-sample mirror indices to the original coefficient line,
+   avoiding the extension copy.
 
 4. **Resampling on the new grid.**  
    For the chosen zoom, the algorithm precomputes, once per axis, how every
@@ -368,15 +411,18 @@ For a single axis, the algorithm works on one 1D line at a time:
    sample is then obtained as a short weighted sum over that local window.
    This precomputation is what makes the method both accurate and efficient.
 
-5. **Projection tail (if enabled).**  
-   When using antialiasing, the intermediate result is brought back from the
-   analysis space to the desired spline model by applying the corresponding
-   discrete differences and a final spline reconstruction on the output grid.
+5. **Output-space solve and reconstruction (if enabled).**
+   The projected values are brought from the analysis space to the requested
+   synthesis spline model by the boundary-aware differences (for
+   analysis-degree-zero projection), output Gram inverse, and final sampling
+   filter. On the public zero-shift endpoint grid these operations run directly
+   on the :math:`M` visible samples; no hidden output tail changes the right
+   boundary.
 
 For N-dimensional data, this 1D scheme is applied separately along each axis
 in turn (a separable algorithm). All other axes are treated as batch
 dimensions, so the same 1D logic is reused for many lines, with a single
-precomputed plan per axis and zoom configuration.
+precomputed plan per realized input/output axis geometry.
 
 Implementation
 --------------
@@ -391,19 +437,24 @@ Internally, :ref:`resize <api-resize>` uses two cooperating backends:
   - builds a reusable **1D resampling plan** that encodes, for every output
     position, which input coefficients contribute and with which spline
     weights (including boundary handling via mirrored extension),
-  - constructs a single contiguous **extended buffer** per line that contains
-    the mirrored input samples, so the inner loop only sees simple pointer
-    arithmetic and dot products,
+  - evaluates projection rows with analysis degree one or greater using fixed
+    Gauss--Legendre quadrature split at the B-spline knots; since every piece
+    is polynomial, the chosen rule is exact in exact arithmetic,
+  - for interpolation and analysis-degree-zero projection, constructs a
+    single contiguous **extended buffer** per line containing the mirrored
+    input samples; direct projection rows instead use precomputed mirror
+    indices,
   - evaluates spline sums with conservative double-precision scratch by
     default, while automatically using float32 scratch for selected validated
     float32 workloads; the small dense dot products can exploit SIMD
     instructions (AVX2, AVX-512, NEON) when available,
-  - and **parallelizes over independent lines** with a lightweight
-    multithreading pool whenever the estimated workload is large enough.
+  - and **parallelizes over independent lines** with a persistent
+    multithreading pool whenever the estimated workload is large enough,
+    avoiding thread creation on every axis pass.
 
-  The plan is computed once per axis/zoom/degrees combination and then reused
-  across all lines along that axis, which keeps the per-call overhead low even
-  for large N-D arrays.
+  The plan is computed once per realized input/output grid and degree
+  combination and then reused across all lines along that axis, which keeps
+  the per-call overhead low even for large N-D arrays.
 
 * A pure-NumPy fallback that mirrors the same 1D scheme at a higher level.
   It reshapes the data so that each line along the resized axis is contiguous,
@@ -413,13 +464,14 @@ Internally, :ref:`resize <api-resize>` uses two cooperating backends:
   equivalent but typically slower.
 
 The pure-NumPy fallback and the conservative native paths perform spline
-computations in 64-bit floating point. Input and output arrays keep their
-original dtype (or a user-specified dtype), with casting only at the boundary
-of each axis pass. For speed, the native backend automatically keeps selected
-validated ``float32`` workloads in ``float32`` scratch space: pure quadratic
-and cubic interpolation in 2-D/3-D, plus the public 3-D downsampling
-antialiasing presets. Other projection/antialiasing configurations remain on
-the conservative 64-bit internal path by default.
+computations in 64-bit floating point. ``float32`` input produces ``float32``
+output; every other supported real integer or floating input produces
+``float64`` unless the caller supplies an explicit real output dtype or array.
+For speed, the native backend automatically keeps selected validated
+``float32`` workloads in ``float32`` scratch space: pure quadratic and cubic
+interpolation in 2-D/3-D, plus the public 3-D downsampling antialiasing presets.
+Other projection/antialiasing configurations remain on the conservative
+64-bit internal path by default.
 
 For explicit A/B checks, ``LSRESIZE_PRECISION=float32`` forces the selected
 native batched axis pass to use ``float32`` scratch space, while
@@ -434,6 +486,29 @@ resolve the resize geometry once and then apply it to many arrays:
 
    plan = ResizePlan((512, 512), zoom_factors=(0.5, 0.5), method="cubic")
    resized = plan(frame)
+
+Plan configuration is read-only and safe to share across Python threads.
+Supplying a compatible C-contiguous ``output`` array writes the last axis pass
+directly into that buffer, avoiding a final allocation and copy. Transient
+ping-pong buffers are leased per invocation, so concurrent calls do not share
+mutable workspace.
+
+The ordinary per-axis plan caches are bounded by both entry count and retained
+memory (32 entries and 128 MiB by default). A plan larger than the byte budget
+is still executed, but is not retained by the process-wide one-shot cache; an
+explicit native ``ResizePlan`` owns its selected plans directly. Reusable-plan
+workspaces have a separate 128 MiB per-plan budget, retain at most four idle
+workspaces across both floating dtypes, and keep only one intermediate buffer
+for a two-axis resize.
+
+These bounds can be adjusted for controlled profiling with
+``LSRESIZE_PLAN_CACHE_SIZE``, ``LSRESIZE_PLAN_CACHE_BYTES``,
+``SPLINEOPS_PLAN_CACHE_SIZE``, ``SPLINEOPS_PLAN_CACHE_BYTES`` and
+``LSRESIZE_WORKSPACE_CACHE_BYTES``. Setting either one-shot cache limit to
+zero disables that cache; a zero workspace budget retains only one primary
+workspace. The native line scheduler uses a persistent pool by default and is
+capped at 256 participants; ``LSRESIZE_PERSISTENT_THREADS=0`` is the diagnostic
+rollback to per-call threads.
 
 Conceptually, :ref:`resize <api-resize>` is configured by three spline degrees:
 
@@ -505,19 +580,17 @@ output spline model, while the lower analysis degree keeps the projection
 prefilter short, robust, and efficient, yet still very close to the ideal
 least-squares solution in [1]_ and [2]_.
 
-.. warning::
-   **Exact least-squares configurations**, where the analysis and synthesis
-   degrees are equal (for example, a cubic–cubic combination), require
-   high-order discrete integration in this framework. For cubic splines,
-   the theory calls for fourth-order integration: a running-sum operator
-   applied four times in a row to implement the continuous prefilter. Each
-   pass is stable in exact arithmetic, but in double precision they amplify
-   tiny rounding errors, especially on long lines, which can lead to slow
-   drift in the mean level and other visible artefacts. For this reason such
-   configurations **are not exposed as presets and are not recommended**
-   in routine use. **The oblique antialiasing presets above avoid the
-   problematic high-order integration while remaining very close in quality**
-   to the ideal least-squares projection.
+.. note::
+   **Exact least-squares configurations**, where interpolation, analysis, and
+   synthesis degrees are equal, are supported through ``resize_degrees``.
+   As with every projection whose analysis degree is one or greater, their
+   compact cross-Gram rows are evaluated directly. This avoids the numerically
+   ill-conditioned repeated running sums of a literal finite-difference
+   implementation and remains stable on long lines. These configurations
+   still require wider rows and more plan construction work than the oblique
+   methods, so they are advanced controls, not additional public presets. The
+   oblique antialiasing family above remains the recommended quality--cost
+   choice for routine downsampling.
 
 Benchmarking
 ------------

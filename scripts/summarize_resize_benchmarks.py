@@ -580,7 +580,15 @@ def _projection_methods_report_lines(path: Path) -> list[str]:
     ))
     lines.extend([
         "",
-        "Interpretation: least-squares can retain a small PSNR edge on controlled small round trips, but oblique is the production default because it is faster, lower-order, and more robust on long lines.",
+        (
+            "Interpretation: this artifact reports measured relative speed and "
+            "round-trip quality; it does not establish a numerical-stability "
+            "hierarchy. Equal-degree least-squares is the orthogonal projection "
+            "control, while oblique is the public quality-cost preset family. On "
+            "the public zero-shift grid, analysis degree one or greater uses stable "
+            "direct compact cross-Gram rows and analysis degree zero retains the "
+            "finite-difference form."
+        ),
         "",
     ])
     return lines

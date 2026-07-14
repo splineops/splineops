@@ -47,14 +47,14 @@ enum class Phase : int {
   Count
 };
 
-bool enabled();
-void add(Phase phase, std::uint64_t elapsed_ns);
+bool enabled() noexcept;
+void add(Phase phase, std::uint64_t elapsed_ns) noexcept;
 void print_summary();
 
 class Scope {
 public:
   explicit Scope(Phase phase);
-  ~Scope();
+  ~Scope() noexcept;
 
   Scope(const Scope&) = delete;
   Scope& operator=(const Scope&) = delete;

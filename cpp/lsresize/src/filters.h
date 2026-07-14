@@ -53,7 +53,7 @@ inline const std::vector<double>& sampling_fir(int deg) {
 }
 
 // spline IIR prefilter (Unser '93)
-double initial_causal(const std::vector<double>& c, double z, double tol = 1e-10);
+double initial_causal(const std::vector<double>& c, double z, double tol = 1e-15);
 double initial_anti_causal(const std::vector<double>& c, double z);
 
 inline void get_interpolation_coefficients(std::vector<double>& c, int deg) {

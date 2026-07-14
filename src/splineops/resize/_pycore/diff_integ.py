@@ -17,7 +17,10 @@ def integ_as(c: np.ndarray, y: np.ndarray) -> None:
 def do_integ(c: np.ndarray, nb: int) -> float:
     N = c.size
     if N == 0 or nb <= 0: return 0.0
-    def avg_of(x): return (2.0*np.sum(x) - x[-1] - x[0]) / (2.0*N - 2.0)
+    def avg_of(x):
+        if N == 1:
+            return float(x[0])
+        return (2.0*np.sum(x) - x[-1] - x[0]) / (2.0*N - 2.0)
     average = 0.0
     if nb >= 1: average = avg_of(c);            integ_sa(c, average)
     if nb >= 2: tmp = c.copy();                 integ_as(tmp, c)
@@ -54,7 +57,12 @@ def do_integ_batch(C: np.ndarray, nb: int) -> np.ndarray:
     if N == 0 or nb <= 0:
         return np.zeros(B, dtype=C.dtype)
 
-    def avg_of(X): return (2.0*np.sum(X, axis=1) - X[:, -1] - X[:, 0]) / (2.0*N - 2.0)
+    def avg_of(X):
+        if N == 1:
+            return X[:, 0].copy()
+        return (
+            2.0 * np.sum(X, axis=1) - X[:, -1] - X[:, 0]
+        ) / (2.0 * N - 2.0)
 
     avg = np.zeros(B, dtype=C.dtype)
     if nb >= 1:

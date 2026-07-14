@@ -3,12 +3,16 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include <mutex>
 #include <string>
 #include <vector>
+
+#if !defined(_WIN32)
+#include <pthread.h>
+#endif
 
 namespace lsresize {
 namespace profile {
@@ -17,33 +21,63 @@ namespace {
 
 constexpr int kPhaseCount = static_cast<int>(Phase::Count);
 
-struct ThreadCounters {
-  std::array<std::uint64_t, kPhaseCount> ns{};
-  std::array<std::uint64_t, kPhaseCount> calls{};
+// Profiling is opt-in, so prefer a small amount of relaxed-atomic overhead to
+// a registry of thread-owned counters.  A registry has two undesirable
+// properties for this library: transient std::threads make it grow forever,
+// and a child created by fork() can inherit its mutex in the locked state.
+// These process-wide arrays have fixed size, need no allocation in Scope's
+// noexcept destructor, and can be snapshotted without racing live workers.
+struct ProcessCounters {
+  std::array<std::atomic<std::uint64_t>, kPhaseCount> ns;
+  std::array<std::atomic<std::uint64_t>, kPhaseCount> calls;
+
+  ProcessCounters() noexcept
+  {
+    reset();
+  }
+
+  void reset() noexcept
+  {
+    for (int i = 0; i < kPhaseCount; ++i) {
+      ns[static_cast<size_t>(i)].store(0, std::memory_order_relaxed);
+      calls[static_cast<size_t>(i)].store(0, std::memory_order_relaxed);
+    }
+  }
 };
 
-std::mutex& registry_mutex()
+ProcessCounters& process_counters() noexcept
 {
-  static auto* mutex = new std::mutex();
-  return *mutex;
-}
-
-std::vector<ThreadCounters*>& registry()
-{
-  static auto* counters = new std::vector<ThreadCounters*>();
+  // Deliberately process-lifetime storage.  This also keeps the atexit summary
+  // independent of function-local-static destruction order.
+  static auto* counters = new ProcessCounters();
   return *counters;
 }
 
-ThreadCounters& thread_counters()
+#if !defined(_WIN32)
+
+void child_after_fork() noexcept
 {
-  thread_local ThreadCounters* counters = [] {
-    auto* ptr = new ThreadCounters();
-    std::lock_guard<std::mutex> lock(registry_mutex());
-    registry().push_back(ptr);
-    return ptr;
+  // Only the calling thread survives fork().  Do not attribute the parent's
+  // already-completed work to the child, and, more importantly, leave no
+  // inherited synchronization state for the child's first resize.  The
+  // counters are fixed-width lock-free operations on supported wheel targets;
+  // even on other targets there is no user-space registry mutex to strand.
+  process_counters().reset();
+}
+
+void ensure_atfork_registered() noexcept
+{
+  static const bool registered = [] {
+    return ::pthread_atfork(nullptr, nullptr, &child_after_fork) == 0;
   }();
-  return *counters;
+  (void)registered;
 }
+
+#else
+
+void ensure_atfork_registered() noexcept {}
+
+#endif
 
 bool env_truthy(const char* value)
 {
@@ -117,24 +151,28 @@ void ensure_atexit_registered()
 
 } // namespace
 
-bool enabled()
+bool enabled() noexcept
 {
   static const bool value = env_truthy(std::getenv("LSRESIZE_PROFILE"));
   if (value) {
+    (void)process_counters();
+    ensure_atfork_registered();
     ensure_atexit_registered();
   }
   return value;
 }
 
-void add(Phase phase, std::uint64_t elapsed_ns)
+void add(Phase phase, std::uint64_t elapsed_ns) noexcept
 {
-  if (phase == Phase::Count) {
+  const int index = static_cast<int>(phase);
+  if (index < 0 || index >= kPhaseCount) {
     return;
   }
-  ThreadCounters& counters = thread_counters();
-  const int index = static_cast<int>(phase);
-  counters.ns[static_cast<size_t>(index)] += elapsed_ns;
-  counters.calls[static_cast<size_t>(index)] += 1;
+  ProcessCounters& counters = process_counters();
+  counters.ns[static_cast<size_t>(index)].fetch_add(
+      elapsed_ns, std::memory_order_relaxed);
+  counters.calls[static_cast<size_t>(index)].fetch_add(
+      1, std::memory_order_relaxed);
 }
 
 Scope::Scope(Phase phase)
@@ -144,7 +182,7 @@ Scope::Scope(Phase phase)
                    : std::chrono::steady_clock::time_point{})
 {}
 
-Scope::~Scope()
+Scope::~Scope() noexcept
 {
   if (!active_) {
     return;
@@ -163,17 +201,12 @@ void print_summary()
 
   std::array<std::uint64_t, kPhaseCount> ns{};
   std::array<std::uint64_t, kPhaseCount> calls{};
-  {
-    std::lock_guard<std::mutex> lock(registry_mutex());
-    for (const ThreadCounters* counters : registry()) {
-      if (counters == nullptr) {
-        continue;
-      }
-      for (int i = 0; i < kPhaseCount; ++i) {
-        ns[static_cast<size_t>(i)] += counters->ns[static_cast<size_t>(i)];
-        calls[static_cast<size_t>(i)] += counters->calls[static_cast<size_t>(i)];
-      }
-    }
+  ProcessCounters& counters = process_counters();
+  for (int i = 0; i < kPhaseCount; ++i) {
+    ns[static_cast<size_t>(i)] =
+        counters.ns[static_cast<size_t>(i)].load(std::memory_order_relaxed);
+    calls[static_cast<size_t>(i)] =
+        counters.calls[static_cast<size_t>(i)].load(std::memory_order_relaxed);
   }
 
   std::uint64_t denominator = ns[static_cast<size_t>(Phase::NdAxisTotal)];

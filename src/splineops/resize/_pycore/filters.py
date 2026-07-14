@@ -46,7 +46,7 @@ def sampling_fir(deg: int) -> np.ndarray:
 
 # ------------------------------- 1-D (single) --------------------------------
 
-def initial_causal(c: np.ndarray, z: float, tol: float = 1e-10) -> float:
+def initial_causal(c: np.ndarray, z: float, tol: float = 1e-15) -> float:
     N = c.size
     if N == 0: return 0.0
     if N == 1: return float(c[0])
@@ -150,7 +150,7 @@ def get_samples(c: np.ndarray, deg: int) -> None:
 
 # ------------------------------- batched path --------------------------------
 
-def initial_causal_batch(C: np.ndarray, z: float, tol: float = 1e-10) -> np.ndarray:
+def initial_causal_batch(C: np.ndarray, z: float, tol: float = 1e-15) -> np.ndarray:
     """C: (B, N) -> (B,)"""
     B, N = C.shape
     if N == 0: return np.zeros(B, dtype=C.dtype)

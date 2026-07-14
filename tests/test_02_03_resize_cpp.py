@@ -75,7 +75,6 @@ def _time_and_run_ls(
         interp_degree=degree,
         analy_degree=degree,
         synthe_degree=degree,
-        inversable=False,
     )
     best = float("inf")
     for _ in range(repeats):
@@ -86,7 +85,6 @@ def _time_and_run_ls(
             interp_degree=degree,
             analy_degree=degree,
             synthe_degree=degree,
-            inversable=False,
         )
         dt = time.perf_counter() - t0
         if dt < best:
@@ -225,7 +223,6 @@ def test_batched_axis_matches_default_equal_degree_projection(
         interp_degree=degree,
         analy_degree=degree,
         synthe_degree=degree,
-        inversable=False,
     )
 
     monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "1")
@@ -236,7 +233,6 @@ def test_batched_axis_matches_default_equal_degree_projection(
         interp_degree=degree,
         analy_degree=degree,
         synthe_degree=degree,
-        inversable=False,
     )
 
     atol = 3e-5 if dtype == np.float32 else 2e-9

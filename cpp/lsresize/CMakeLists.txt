@@ -2,6 +2,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(lsresize_demo LANGUAGES CXX)
 
+find_package(Threads REQUIRED)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -13,11 +15,14 @@ message(STATUS "SRC_DIR = ${SRC_DIR}") # helpful sanity check
 # Core library
 add_library(lsresize STATIC
   "${SRC_DIR}/filters.cpp"
+  "${SRC_DIR}/parallel_executor.cpp"
+  "${SRC_DIR}/profile_utils.cpp"
   "${SRC_DIR}/resize_1d.cpp"
   "${SRC_DIR}/resize_nd.cpp"
 )
 target_include_directories(lsresize PUBLIC "${SRC_DIR}")
 target_compile_features(lsresize PUBLIC cxx_std_17)
+target_link_libraries(lsresize PUBLIC Threads::Threads)
 
 # Warnings
 if (MSVC)

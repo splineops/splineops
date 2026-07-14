@@ -413,6 +413,15 @@ def write_json(path: Path, rows: list[ProjectionResult], args: argparse.Namespac
             "platform": platform.platform(),
             "splineops_accel": os.environ.get("SPLINEOPS_ACCEL", "<unset>"),
             "threads": os.environ.get("LSRESIZE_NUM_THREADS", "<default>"),
+            "persistent_threads": os.environ.get(
+                "LSRESIZE_PERSISTENT_THREADS", "<default:on>"
+            ),
+            "plan_cache_size": os.environ.get(
+                "LSRESIZE_PLAN_CACHE_SIZE", "<default:32>"
+            ),
+            "plan_cache_bytes": os.environ.get(
+                "LSRESIZE_PLAN_CACHE_BYTES", "<default:134217728>"
+            ),
             "profile": args.profile,
             "degrees": args.degrees,
             "dtypes": args.dtypes,

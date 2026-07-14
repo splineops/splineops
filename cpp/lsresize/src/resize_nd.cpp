@@ -294,8 +294,16 @@ static inline bool fused_projection_average_restore_enabled_for(
   return false;
 }
 
-static inline int specialized_preset_max_support(const LSParams& p)
+static inline int specialized_preset_max_support(
+  const LSParams& p,
+  const Plan1D& plan)
 {
+  // Direct cross-Gram support depends on the realized endpoint scale. The
+  // fixed interpolation/FD widths below must never be used for those rows.
+  if (plan.direct_projection) {
+    return 0;
+  }
+
   if (p.analy_degree < 0 && p.synthe_degree == p.interp_degree) {
     if (p.interp_degree == 1) return 3;  // linear
     if (p.interp_degree == 2) return 4;  // quadratic
@@ -911,7 +919,7 @@ static inline void accumulate_mapped_row_colmajor(
   const int begin = plan.row_ptr[static_cast<size_t>(l)];
   const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
   const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
-  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  const std::int8_t* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
 
   for (int t = begin; t < endw; ++t) {
     const size_t ti = static_cast<size_t>(t);
@@ -980,7 +988,7 @@ static inline void accumulate_mapped_row_colmajor_f32_set(
   const int begin = plan.row_ptr[static_cast<size_t>(l)];
   const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
   const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
-  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  const std::int8_t* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
 
   if (begin == endw) {
     std::fill(dst, dst + B, 0.0f);
@@ -1139,7 +1147,7 @@ static inline void accumulate_mapped_row_colmajor_f32_fixed_set(
   const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
   const int M = endw - begin;
   const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
-  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  const std::int8_t* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
 
   if (M <= 0) {
     std::fill(dst, dst + B, 0.0f);
@@ -1376,7 +1384,7 @@ static inline void accumulate_mapped_row_colmajor_set_generic(
   const int begin = plan.row_ptr[static_cast<size_t>(l)];
   const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
   const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
-  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  const std::int8_t* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
 
   if (begin == endw) {
     std::fill(dst, dst + B, 0.0);
@@ -1493,7 +1501,7 @@ static inline void accumulate_mapped_row_colmajor_fixed_set(
   const int endw = plan.row_ptr[static_cast<size_t>(l) + 1];
   const int M = endw - begin;
   const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
-  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  const std::int8_t* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
 
   if (M <= 0) {
     std::fill(dst, dst + B, 0.0);
@@ -1773,7 +1781,7 @@ static inline void accumulate_scatter_row_colmajor_impl(
   const int M = endw - begin;
   const int k0 = plan.kmin[static_cast<size_t>(l)];
   const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
-  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  const std::int8_t* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
   const int64_t out_delta = static_cast<int64_t>(l) * stride;
 
   if (M <= 0) {
@@ -2030,7 +2038,7 @@ static inline double accumulate_scalar_line_plan_row(
   }
 
   const int* LS_RESTRICT coeff_src = plan.coeff_src.data();
-  const double* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
+  const std::int8_t* LS_RESTRICT coeff_sgn = plan.coeff_sgn.data();
   for (int t = begin; t < endw; ++t) {
     const size_t ti = static_cast<size_t>(t);
     const int src = coeff_src[ti];
@@ -2604,7 +2612,7 @@ static void resize_along_axis_batched_interp_t(
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   const bool row_major_gather = row_gather_enabled();
   const int max_support = specialized_presets_enabled()
-                        ? specialized_preset_max_support(p)
+                        ? specialized_preset_max_support(p, plan)
                         : 0;
   const bool direct_axis1_scatter =
       should_use_direct_3d_axis1_scatter(in_shape, p, plan, axis, nlines, outN);
@@ -2830,7 +2838,7 @@ static void resize_along_axis_batched_t(
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   const bool row_major_gather = row_gather_enabled();
   const int max_support = specialized_presets_enabled()
-                        ? specialized_preset_max_support(p)
+                        ? specialized_preset_max_support(p, plan)
                         : 0;
   const bool fused_avg_restore =
       fused_projection_average_restore_enabled_for(nlines, plan);
@@ -2920,7 +2928,7 @@ static void resize_along_axis_batched_t(
           get_interpolation_coefficients_colmajor(coeff, B, N, p.interp_degree);
         }
       }
-      if (p.analy_degree >= 0) {
+      if (p.analy_degree >= 0 && !plan.direct_projection) {
         LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionIntegrate);
         do_integ_colmajor(
             coeff,
@@ -2943,7 +2951,7 @@ static void resize_along_axis_batched_t(
       }
 
       if (p.analy_degree >= 0) {
-        {
+        if (!plan.direct_projection) {
           LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionDiff);
           if (scaled_output_prefilter) {
             if (fused_avg_restore) {
@@ -2977,6 +2985,13 @@ static void resize_along_axis_batched_t(
                 y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
               }
             }
+          }
+        } else if (scaled_output_prefilter) {
+          // The scaled output-prefilter route normally folds lambda into the
+          // difference/average restoration. Direct cross-Gram rows have no
+          // such stage, so apply the same normalization explicitly.
+          for (double& value : y) {
+            value *= output_prefilter_scale;
           }
         }
         {
@@ -3044,7 +3059,7 @@ static void resize_along_axis_batched_interp_f32_internal(
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   const bool row_major_gather = row_gather_enabled();
   const int max_support = specialized_presets_enabled()
-                        ? specialized_preset_max_support(p)
+                        ? specialized_preset_max_support(p, plan)
                         : 0;
   const bool direct_axis1_scatter =
       should_use_direct_3d_axis1_scatter(in_shape, p, plan, axis, nlines, outN);
@@ -3238,7 +3253,7 @@ static void resize_along_axis_batched_f32_internal(
   const bool axis_contig_out = (out_strides[static_cast<size_t>(axis)] == 1);
   const bool row_major_gather = row_gather_enabled();
   const int max_support = specialized_presets_enabled()
-                        ? specialized_preset_max_support(p)
+                        ? specialized_preset_max_support(p, plan)
                         : 0;
   const bool fused_avg_restore =
       fused_projection_average_restore_enabled_for(nlines, plan);
@@ -3335,7 +3350,7 @@ static void resize_along_axis_batched_f32_internal(
         get_interpolation_coefficients_colmajor_f32(
             coeff, B, N, p.interp_degree);
       }
-      if (p.analy_degree >= 0) {
+      if (p.analy_degree >= 0 && !plan.direct_projection) {
         LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionIntegrate);
         do_integ_colmajor_f32(
             coeff,
@@ -3358,7 +3373,7 @@ static void resize_along_axis_batched_f32_internal(
       }
 
       if (p.analy_degree >= 0) {
-        {
+        if (!plan.direct_projection) {
           LSRESIZE_PROFILE_SCOPE(profile::Phase::BatchedProjectionDiff);
           if (scaled_output_prefilter) {
             if (fused_avg_restore) {
@@ -3393,6 +3408,10 @@ static void resize_along_axis_batched_f32_internal(
                 y_col[static_cast<size_t>(b)] += average[static_cast<size_t>(b)];
               }
             }
+          }
+        } else if (scaled_output_prefilter) {
+          for (float& value : y) {
+            value *= output_prefilter_scale;
           }
         }
         {
@@ -3446,22 +3465,24 @@ static void resize_along_axis_t(
   const std::vector<int64_t>& in_shape,
   const std::vector<int64_t>& out_shape,
   int axis,
-  const LSParams& p)
+  const LSParams& p,
+  const Plan1D* preplanned = nullptr)
 {
   LSRESIZE_PROFILE_SCOPE(profile::Phase::NdAxisTotal);
 
   const int D = static_cast<int>(in_shape.size());
   const auto in_strides  = strides_from_shape(in_shape);
   const auto out_strides = strides_from_shape(out_shape);
+  const int N_line = static_cast<int>(in_shape[static_cast<size_t>(axis)]);
+  const int outN_line = static_cast<int>(out_shape[static_cast<size_t>(axis)]);
 
   // Early identity short-circuit on this axis:
   {
     const double eps = 1e-12;
     const bool identity_axis =
-        (out_shape[static_cast<size_t>(axis)] ==
-         in_shape[static_cast<size_t>(axis)]) &&
-        (std::abs(p.zoom - 1.0) <= eps) &&
-        (p.analy_degree < 0); // Standard interpolation (no projection)
+        (outN_line == N_line) &&
+        (std::abs(p.shift) <= eps) &&
+        (p.synthe_degree == p.interp_degree);
     if (identity_axis) {
       const int64_t total = prod_elems(in_shape); // in_shape == out_shape in this pass
       std::copy(in, in + total, out);             // Scalar -> Scalar
@@ -3486,10 +3507,82 @@ static void resize_along_axis_t(
     }
   }
 
-  // Build or reuse the per-axis plan ONCE (shared read-only across threads)
-  const int N_line = static_cast<int>(in_shape[static_cast<size_t>(axis)]);
-  const auto plan_handle = get_plan_1d_cached(N_line, p);
-  const Plan1D& plan = *plan_handle;
+  // Endpoint alignment has no scale when either endpoint grid is a
+  // singleton. Keep these cases explicit, symmetric and DC-preserving:
+  // replicate a singleton input; reduce a projected singleton output to the
+  // arithmetic line mean. Degree-zero interpolation explicitly averages the
+  // central pair at an even-length half-grid tie. Higher interpolation degrees
+  // continue below, where Plan1D evaluates the spline at x=(N-1)/2.
+  const bool projected_singleton =
+      (outN_line == 1 && p.analy_degree >= 0);
+  const bool nearest_center_singleton =
+      (outN_line == 1 && p.analy_degree < 0 &&
+       p.interp_degree == 0 && std::abs(p.shift) <= 1e-12);
+  if (N_line == 1 || projected_singleton || nearest_center_singleton) {
+    std::vector<int64_t> idx(static_cast<size_t>(D), 0);
+    const bool replicate = (N_line == 1);
+
+    for (int64_t line = 0; line < nlines; ++line) {
+      std::fill(idx.begin(), idx.end(), 0);
+      int64_t t = line;
+      for (int bi = 0; bi < static_cast<int>(bases.size()); ++bi) {
+        const int d = bases[static_cast<size_t>(bi)];
+        idx[static_cast<size_t>(d)] =
+            t % in_shape[static_cast<size_t>(d)];
+        t /= in_shape[static_cast<size_t>(d)];
+      }
+
+      int64_t in_off = 0;
+      int64_t out_off = 0;
+      for (int d = 0; d < D; ++d) {
+        if (d != axis) {
+          in_off += idx[static_cast<size_t>(d)] *
+                    in_strides[static_cast<size_t>(d)];
+          out_off += idx[static_cast<size_t>(d)] *
+                     out_strides[static_cast<size_t>(d)];
+        }
+      }
+
+      if (replicate) {
+        const Scalar value = in[in_off];
+        const int64_t out_stride = out_strides[static_cast<size_t>(axis)];
+        for (int l = 0; l < outN_line; ++l) {
+          out[out_off + static_cast<int64_t>(l) * out_stride] = value;
+        }
+      } else if (projected_singleton) {
+        const int64_t in_stride = in_strides[static_cast<size_t>(axis)];
+        long double sum = 0.0L;
+        for (int i = 0; i < N_line; ++i) {
+          sum += static_cast<long double>(
+              in[in_off + static_cast<int64_t>(i) * in_stride]);
+        }
+        out[out_off] = static_cast<Scalar>(
+            sum / static_cast<long double>(N_line));
+      } else {
+        const int64_t in_stride = in_strides[static_cast<size_t>(axis)];
+        const int left = (N_line - 1) / 2;
+        const int right = N_line / 2;
+        const long double center =
+            (static_cast<long double>(
+                 in[in_off + static_cast<int64_t>(left) * in_stride]) +
+             static_cast<long double>(
+                 in[in_off + static_cast<int64_t>(right) * in_stride])) *
+            0.5L;
+        out[out_off] = static_cast<Scalar>(center);
+      }
+    }
+    return;
+  }
+
+  // A reusable N-D plan supplies its immutable Plan1D directly.  The local
+  // shared_ptr keeps the ordinary cached path alive for the duration of this
+  // pass without imposing a cache lookup on preplanned execution.
+  std::shared_ptr<const Plan1D> plan_handle;
+  if (preplanned == nullptr) {
+    plan_handle = get_plan_1d_cached(N_line, p);
+    preplanned = plan_handle.get();
+  }
+  const Plan1D& plan = *preplanned;
 
   const BatchedAxisMode axis_mode = batched_axis_mode();
 
@@ -3847,7 +3940,9 @@ static void resize_2d_linear_t(
   const std::vector<int64_t>& in_shape,
   const std::vector<int64_t>& out_shape,
   const LSParams& p0,
-  const LSParams& p1)
+  const LSParams& p1,
+  const Plan1D* preplanned0 = nullptr,
+  const Plan1D* preplanned1 = nullptr)
 {
   LSRESIZE_PROFILE_SCOPE(profile::Phase::Fused2DLinearTotal);
 
@@ -3857,12 +3952,18 @@ static void resize_2d_linear_t(
   const int64_t out_w = out_shape[1];
   using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
 
-  const auto row_plan_handle =
-      get_plan_1d_cached(static_cast<int>(in_h), p0);
-  const auto col_plan_handle =
-      get_plan_1d_cached(static_cast<int>(in_w), p1);
-  const Plan1D& row_plan = *row_plan_handle;
-  const Plan1D& col_plan = *col_plan_handle;
+  std::shared_ptr<const Plan1D> row_plan_handle;
+  std::shared_ptr<const Plan1D> col_plan_handle;
+  if (preplanned0 == nullptr) {
+    row_plan_handle = get_plan_1d_cached(static_cast<int>(in_h), p0);
+    preplanned0 = row_plan_handle.get();
+  }
+  if (preplanned1 == nullptr) {
+    col_plan_handle = get_plan_1d_cached(static_cast<int>(in_w), p1);
+    preplanned1 = col_plan_handle.get();
+  }
+  const Plan1D& row_plan = *preplanned0;
+  const Plan1D& col_plan = *preplanned1;
 
   const auto row_direct = direct_linear_plan_view<Accum>(row_plan);
   const auto col_direct = direct_linear_plan_view<Accum>(col_plan);
@@ -4093,7 +4194,10 @@ static void resize_3d_linear_t(
   const std::vector<int64_t>& out_shape,
   const LSParams& p0,
   const LSParams& p1,
-  const LSParams& p2)
+  const LSParams& p2,
+  const Plan1D* preplanned0 = nullptr,
+  const Plan1D* preplanned1 = nullptr,
+  const Plan1D* preplanned2 = nullptr)
 {
   LSRESIZE_PROFILE_SCOPE(profile::Phase::Fused3DLinearTotal);
 
@@ -4107,15 +4211,24 @@ static void resize_3d_linear_t(
   const int64_t in_s1 = in_n2;
   using Accum = std::conditional_t<std::is_same_v<Scalar, float>, float, double>;
 
-  const auto plan0_handle =
-      get_plan_1d_cached(static_cast<int>(in_n0), p0);
-  const auto plan1_handle =
-      get_plan_1d_cached(static_cast<int>(in_n1), p1);
-  const auto plan2_handle =
-      get_plan_1d_cached(static_cast<int>(in_n2), p2);
-  const Plan1D& plan0 = *plan0_handle;
-  const Plan1D& plan1 = *plan1_handle;
-  const Plan1D& plan2 = *plan2_handle;
+  std::shared_ptr<const Plan1D> plan0_handle;
+  std::shared_ptr<const Plan1D> plan1_handle;
+  std::shared_ptr<const Plan1D> plan2_handle;
+  if (preplanned0 == nullptr) {
+    plan0_handle = get_plan_1d_cached(static_cast<int>(in_n0), p0);
+    preplanned0 = plan0_handle.get();
+  }
+  if (preplanned1 == nullptr) {
+    plan1_handle = get_plan_1d_cached(static_cast<int>(in_n1), p1);
+    preplanned1 = plan1_handle.get();
+  }
+  if (preplanned2 == nullptr) {
+    plan2_handle = get_plan_1d_cached(static_cast<int>(in_n2), p2);
+    preplanned2 = plan2_handle.get();
+  }
+  const Plan1D& plan0 = *preplanned0;
+  const Plan1D& plan1 = *preplanned1;
+  const Plan1D& plan2 = *preplanned2;
 
   const auto direct0 = direct_linear_plan_view<Accum>(plan0);
   const auto direct1 = direct_linear_plan_view<Accum>(plan1);
@@ -4132,9 +4245,11 @@ static void resize_3d_linear_t(
         static_cast<size_t>(out_n0) *
         static_cast<size_t>(out_n1) *
         static_cast<size_t>(in_n2));
-    resize_along_axis_t(in, tmp1.data(), in_shape, shape1, 0, p0);
-    resize_along_axis_t(tmp1.data(), tmp2.data(), shape1, shape2, 1, p1);
-    resize_along_axis_t(tmp2.data(), out, shape2, out_shape, 2, p2);
+    resize_along_axis_t(in, tmp1.data(), in_shape, shape1, 0, p0, &plan0);
+    resize_along_axis_t(
+        tmp1.data(), tmp2.data(), shape1, shape2, 1, p1, &plan1);
+    resize_along_axis_t(
+        tmp2.data(), out, shape2, out_shape, 2, p2, &plan2);
     return;
   }
 
@@ -4464,7 +4579,9 @@ static void resize_3d_linear_axis02_t(
   const std::vector<int64_t>& in_shape,
   const std::vector<int64_t>& out_shape,
   const LSParams& p0,
-  const LSParams& p2)
+  const LSParams& p2,
+  const Plan1D* preplanned0 = nullptr,
+  const Plan1D* preplanned2 = nullptr)
 {
   LSRESIZE_PROFILE_SCOPE(profile::Phase::Fused3DLinearTotal);
 
@@ -4484,12 +4601,18 @@ static void resize_3d_linear_axis02_t(
     return;
   }
 
-  const auto plan0_handle =
-      get_plan_1d_cached(static_cast<int>(in_n0), p0);
-  const auto plan2_handle =
-      get_plan_1d_cached(static_cast<int>(in_n2), p2);
-  const Plan1D& plan0 = *plan0_handle;
-  const Plan1D& plan2 = *plan2_handle;
+  std::shared_ptr<const Plan1D> plan0_handle;
+  std::shared_ptr<const Plan1D> plan2_handle;
+  if (preplanned0 == nullptr) {
+    plan0_handle = get_plan_1d_cached(static_cast<int>(in_n0), p0);
+    preplanned0 = plan0_handle.get();
+  }
+  if (preplanned2 == nullptr) {
+    plan2_handle = get_plan_1d_cached(static_cast<int>(in_n2), p2);
+    preplanned2 = plan2_handle.get();
+  }
+  const Plan1D& plan0 = *preplanned0;
+  const Plan1D& plan2 = *preplanned2;
   const auto direct0 = direct_linear_plan_view<Accum>(plan0);
   const auto direct2 = direct_linear_plan_view<Accum>(plan2);
 
@@ -4499,8 +4622,9 @@ static void resize_3d_linear_axis02_t(
         static_cast<size_t>(out_n0) *
         static_cast<size_t>(in_n1) *
         static_cast<size_t>(in_n2));
-    resize_along_axis_t(in, tmp.data(), in_shape, shape1, 0, p0);
-    resize_along_axis_t(tmp.data(), out, shape1, out_shape, 2, p2);
+    resize_along_axis_t(in, tmp.data(), in_shape, shape1, 0, p0, &plan0);
+    resize_along_axis_t(
+        tmp.data(), out, shape1, out_shape, 2, p2, &plan2);
     return;
   }
 
@@ -4605,7 +4729,9 @@ static void resize_3d_linear_axis12_t(
   const std::vector<int64_t>& in_shape,
   const std::vector<int64_t>& out_shape,
   const LSParams& p1,
-  const LSParams& p2)
+  const LSParams& p2,
+  const Plan1D* preplanned1 = nullptr,
+  const Plan1D* preplanned2 = nullptr)
 {
   LSRESIZE_PROFILE_SCOPE(profile::Phase::Fused3DLinearTotal);
 
@@ -4626,12 +4752,18 @@ static void resize_3d_linear_axis12_t(
     return;
   }
 
-  const auto plan1_handle =
-      get_plan_1d_cached(static_cast<int>(in_n1), p1);
-  const auto plan2_handle =
-      get_plan_1d_cached(static_cast<int>(in_n2), p2);
-  const Plan1D& plan1 = *plan1_handle;
-  const Plan1D& plan2 = *plan2_handle;
+  std::shared_ptr<const Plan1D> plan1_handle;
+  std::shared_ptr<const Plan1D> plan2_handle;
+  if (preplanned1 == nullptr) {
+    plan1_handle = get_plan_1d_cached(static_cast<int>(in_n1), p1);
+    preplanned1 = plan1_handle.get();
+  }
+  if (preplanned2 == nullptr) {
+    plan2_handle = get_plan_1d_cached(static_cast<int>(in_n2), p2);
+    preplanned2 = plan2_handle.get();
+  }
+  const Plan1D& plan1 = *preplanned1;
+  const Plan1D& plan2 = *preplanned2;
   const auto direct1 = direct_linear_plan_view<Accum>(plan1);
   const auto direct2 = direct_linear_plan_view<Accum>(plan2);
 
@@ -4641,8 +4773,9 @@ static void resize_3d_linear_axis12_t(
         static_cast<size_t>(in_n0) *
         static_cast<size_t>(out_n1) *
         static_cast<size_t>(in_n2));
-    resize_along_axis_t(in, tmp.data(), in_shape, shape1, 1, p1);
-    resize_along_axis_t(tmp.data(), out, shape1, out_shape, 2, p2);
+    resize_along_axis_t(in, tmp.data(), in_shape, shape1, 1, p1, &plan1);
+    resize_along_axis_t(
+        tmp.data(), out, shape1, out_shape, 2, p2, &plan2);
     return;
   }
 
@@ -4767,6 +4900,32 @@ void resize_along_axis_f32(
   resize_along_axis_t<float>(in, out, in_shape, out_shape, axis, p);
 }
 
+void resize_along_axis_preplanned(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  int axis,
+  const LSParams& p,
+  const Plan1D& plan)
+{
+  resize_along_axis_t<double>(
+      in, out, in_shape, out_shape, axis, p, &plan);
+}
+
+void resize_along_axis_preplanned_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  int axis,
+  const LSParams& p,
+  const Plan1D& plan)
+{
+  resize_along_axis_t<float>(
+      in, out, in_shape, out_shape, axis, p, &plan);
+}
+
 void resize_2d_linear(
   const double* LS_RESTRICT in,
   double* LS_RESTRICT out,
@@ -4787,6 +4946,34 @@ void resize_2d_linear_f32(
   const LSParams& p1)
 {
   resize_2d_linear_t<float>(in, out, in_shape, out_shape, p0, p1);
+}
+
+void resize_2d_linear_preplanned(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1,
+  const Plan1D& plan0,
+  const Plan1D& plan1)
+{
+  resize_2d_linear_t<double>(
+      in, out, in_shape, out_shape, p0, p1, &plan0, &plan1);
+}
+
+void resize_2d_linear_preplanned_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1,
+  const Plan1D& plan0,
+  const Plan1D& plan1)
+{
+  resize_2d_linear_t<float>(
+      in, out, in_shape, out_shape, p0, p1, &plan0, &plan1);
 }
 
 void resize_3d_linear(
@@ -4813,6 +5000,40 @@ void resize_3d_linear_f32(
   resize_3d_linear_t<float>(in, out, in_shape, out_shape, p0, p1, p2);
 }
 
+void resize_3d_linear_preplanned(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1,
+  const LSParams& p2,
+  const Plan1D& plan0,
+  const Plan1D& plan1,
+  const Plan1D& plan2)
+{
+  resize_3d_linear_t<double>(
+      in, out, in_shape, out_shape, p0, p1, p2,
+      &plan0, &plan1, &plan2);
+}
+
+void resize_3d_linear_preplanned_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p1,
+  const LSParams& p2,
+  const Plan1D& plan0,
+  const Plan1D& plan1,
+  const Plan1D& plan2)
+{
+  resize_3d_linear_t<float>(
+      in, out, in_shape, out_shape, p0, p1, p2,
+      &plan0, &plan1, &plan2);
+}
+
 void resize_3d_linear_axis02(
   const double* LS_RESTRICT in,
   double* LS_RESTRICT out,
@@ -4835,6 +5056,34 @@ void resize_3d_linear_axis02_f32(
   resize_3d_linear_axis02_t<float>(in, out, in_shape, out_shape, p0, p2);
 }
 
+void resize_3d_linear_axis02_preplanned(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p2,
+  const Plan1D& plan0,
+  const Plan1D& plan2)
+{
+  resize_3d_linear_axis02_t<double>(
+      in, out, in_shape, out_shape, p0, p2, &plan0, &plan2);
+}
+
+void resize_3d_linear_axis02_preplanned_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p0,
+  const LSParams& p2,
+  const Plan1D& plan0,
+  const Plan1D& plan2)
+{
+  resize_3d_linear_axis02_t<float>(
+      in, out, in_shape, out_shape, p0, p2, &plan0, &plan2);
+}
+
 void resize_3d_linear_axis12(
   const double* LS_RESTRICT in,
   double* LS_RESTRICT out,
@@ -4855,6 +5104,34 @@ void resize_3d_linear_axis12_f32(
   const LSParams& p2)
 {
   resize_3d_linear_axis12_t<float>(in, out, in_shape, out_shape, p1, p2);
+}
+
+void resize_3d_linear_axis12_preplanned(
+  const double* LS_RESTRICT in,
+  double* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p1,
+  const LSParams& p2,
+  const Plan1D& plan1,
+  const Plan1D& plan2)
+{
+  resize_3d_linear_axis12_t<double>(
+      in, out, in_shape, out_shape, p1, p2, &plan1, &plan2);
+}
+
+void resize_3d_linear_axis12_preplanned_f32(
+  const float* LS_RESTRICT in,
+  float* LS_RESTRICT out,
+  const std::vector<int64_t>& in_shape,
+  const std::vector<int64_t>& out_shape,
+  const LSParams& p1,
+  const LSParams& p2,
+  const Plan1D& plan1,
+  const Plan1D& plan2)
+{
+  resize_3d_linear_axis12_t<float>(
+      in, out, in_shape, out_shape, p1, p2, &plan1, &plan2);
 }
 
 } // namespace lsresize

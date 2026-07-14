@@ -196,7 +196,6 @@ def _apply_resize(
             interp_degree=degree,
             analy_degree=degree,
             synthe_degree=degree,
-            inversable=False,
         )
 
     raise ValueError(f"Unknown method '{method}'")

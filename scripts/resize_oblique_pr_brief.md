@@ -1,5 +1,14 @@
 # Oblique Antialiasing Resize PR Brief
 
+> [!WARNING]
+> **Historical and superseded (2026-06-17).** This brief preserves the PR
+> framing and benchmark evidence available at that checkpoint; its numerical
+> rationale is not the current resize contract. In particular, public
+> zero-shift projections with analysis degree one or greater now use stable
+> direct compact cross-Gram rows. See the current
+> [resize API guide](../docs/api/02_resize.rst) and
+> [resize user guide](../docs/user-guide/02_resize.rst).
+
 Date: 2026-06-17
 
 ## Headline

@@ -17,6 +17,7 @@ endif()
 set(PYBIND11_FINDPYTHON ON)
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
+find_package(Threads REQUIRED)
 
 # ---- Absolute source paths (robust on Windows) ----
 set(LSRESIZE_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cpp/lsresize/src")
@@ -24,12 +25,14 @@ set(PYBIND_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/cpp/pybind")
 
 add_library(lsresize STATIC
   "${LSRESIZE_SRC_DIR}/filters.cpp"
+  "${LSRESIZE_SRC_DIR}/parallel_executor.cpp"
   "${LSRESIZE_SRC_DIR}/profile_utils.cpp"
   "${LSRESIZE_SRC_DIR}/resize_1d.cpp"
   "${LSRESIZE_SRC_DIR}/resize_nd.cpp"
 )
 target_include_directories(lsresize PUBLIC "${LSRESIZE_SRC_DIR}")
 target_compile_features(lsresize PUBLIC cxx_std_17)
+target_link_libraries(lsresize PUBLIC Threads::Threads)
 
 # Always use std::thread backend
 target_compile_definitions(lsresize PUBLIC LSRESIZE_WITH_STDTHREAD=1)

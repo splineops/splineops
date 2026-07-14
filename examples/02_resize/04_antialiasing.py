@@ -395,7 +395,6 @@ resized_2d_ls = resize_degrees(
     interp_degree=3,
     analy_degree=3,
     synthe_degree=3,
-    inversable=False,
 )
 t1 = time.perf_counter()
 recovered_2d_ls = resize_degrees(
@@ -404,7 +403,6 @@ recovered_2d_ls = resize_degrees(
     interp_degree=3,
     analy_degree=3,
     synthe_degree=3,
-    inversable=False,
 )
 t2 = time.perf_counter()
 

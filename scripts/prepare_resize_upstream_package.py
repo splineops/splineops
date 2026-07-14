@@ -106,8 +106,8 @@ comparisons. It is the first thing to keep clear in any upstream discussion.
 | Operation family | splineops API | Closest SciPy/PyTorch surface | Semantic relationship | Upstream role |
 | --- | --- | --- | --- | --- |
 | Pure spline interpolation | `resize(..., method="linear"|"quadratic"|"cubic")` | `scipy.ndimage.zoom(order=1..3, mode="mirror", prefilter=order>1)` | Closest like-for-like family when output shape, boundary mode and coordinate mapping are aligned. | Best first SciPy optimization target. |
-| Oblique antialiasing projection | `resize(..., method="*-antialiasing")` | No direct SciPy or PyTorch equivalent. | Same spline framework, but adds finite-difference integration/projection before sampling. | RFC/API discussion after same-semantics acceleration evidence. |
-| Equal-degree least-squares projection | `resize_degrees(..., interp_degree=d, analy_degree=d, synthe_degree=d)` | No direct SciPy/PyTorch public equivalent. | Orthogonal projection reference, useful for validation, slower for routine downsampling. | Keep as reference evidence, not first upstream surface. |
+| Oblique antialiasing projection | `resize(..., method="*-antialiasing")` | No direct SciPy or PyTorch equivalent. | Same spline framework with projection before sampling. On the public zero-shift grid, analysis degree one uses direct compact cross-Gram rows; analysis degree zero retains the finite-difference form. | RFC/API discussion after same-semantics acceleration evidence. |
+| Equal-degree least-squares projection | `resize_degrees(..., interp_degree=d, analy_degree=d, synthe_degree=d)` | No direct SciPy/PyTorch public equivalent. | Orthogonal projection control. At analysis degree one or greater it uses stable direct compact cross-Gram rows, with support and plan cost depending on the degree. | Keep as advanced degree-control evidence, not a separate preset. |
 | PyTorch image interpolation | `torch.nn.functional.interpolate` | PyTorch tensor resize modes. | Different tensor layout, coordinate conventions, antialias support, device dispatch and autograd expectations. | Prototype as custom op before upstreaming. |
 | OpenCV/Pillow/skimage image resize | External benchmark rows | Contextual image-processing baselines. | Often different coordinate rules, filters, boundaries and dtype behavior. | Do not use as correctness evidence. |
 
@@ -252,8 +252,9 @@ semantics before discussing any new antialiasing/projection API.
 - This is not a request to replace all SciPy image interpolation.
 - This does not claim OpenCV/PyTorch/Pillow rows are equivalent operations.
 - This does not claim oblique projection is the orthogonal least-squares
-  optimum. Equal-degree least-squares remains a reference; oblique is the
-  production speed/robustness tradeoff.
+  optimum. Equal-degree least-squares remains an advanced explicit control;
+  oblique is the public quality/cost preset family. Relative speed and quality
+  claims must come from the current benchmark bundle.
 
 ## Links
 

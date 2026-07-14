@@ -121,7 +121,6 @@ def _time_resize_ls(
         interp_degree=degree,
         analy_degree=degree,
         synthe_degree=degree,
-        inversable=False,
     )
     best = float("inf")
     for _ in range(repeats):
@@ -132,7 +131,6 @@ def _time_resize_ls(
             interp_degree=degree,
             analy_degree=degree,
             synthe_degree=degree,
-            inversable=False,
         )
         best = min(best, time.perf_counter() - t0)
         out = out_tmp

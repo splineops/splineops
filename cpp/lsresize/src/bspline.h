@@ -54,6 +54,11 @@ inline double beta(
       if (x < 4.0)  { double a = 4.0 - x; double t = a*a*a; return t*t*a * (1.0/5040.0); }
       return 0.0;
   }
+
+  // The range check above and the explicit degree-0/1 cases make this
+  // unreachable.  Keep a defensive terminator so all compilers can prove
+  // that this non-void function returns or throws on every control path.
+  throw std::logic_error("beta: unreachable spline degree");
 }
 
 } // namespace lsresize
