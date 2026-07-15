@@ -13,13 +13,14 @@ exhibit repeating, self-similar patterns.
 
 You will find:
 
-* Exact 1D routine:
-  Works on a 1D array and returns the mathematically exact
-  fractional-spline result.
+* Fractional 1D routine:
+  Implements the periodized fractional-spline frequency response on a real,
+  uniformly sampled signal.
 
-* Isotropic N-D routine:
-  Extends the idea to 2D pictures or 3D volumes through one FFT;
-  internally it uses a Butterworth low-pass filter.
+* Isotropic N-D approximation:
+  Applies a radial Butterworth-like frequency response to periodic real data.
+  It is useful, but is not the same discrete operator as the exact 1D
+  fractional-spline construction.
 
 * Fast linear shortcut:
   A lightweight forward/backward IIR filter that implements the
@@ -164,11 +165,23 @@ With that number in hand the algorithm is
 
       s[k]\leftarrow (1-z_1)^2\,s[k].
 
-The two passes yield the same zero-phase result as applying :math:`H(\omega)`
-in the Fourier domain, but at a cost that is strictly linear in the number
-of samples and with constant memory. A detailed derivation (including
-boundary handling for finite-length signals) appears in [4]_, Sections II-B
-and II-D.
+The two passes realize this response with a steady-state end treatment at a
+cost linear in the number of samples.  It is not identical to circular FFT
+filtering on finite signals because their boundary assumptions differ.  A
+detailed derivation appears in [4]_, Sections II-B and II-D.
+
+Current contract
+----------------
+
+The public smoothing functions accept finite, real-valued arrays.  The 1D
+fractional and N-D FFT methods assume periodic extension.  The recursive
+method uses steady-state causal and anticausal initialization.  These routines
+remain experimental because the three formulations intentionally implement
+different operators.  Current independent checks cover identity at zero
+regularization, the analytical response of periodic N-D cosine modes, a dense
+linear-system reference for the recursive boundary equations, and constant
+preservation.  These checks support the stated contracts but do not make the
+three methods interchangeable.
 
 .. note::
 

@@ -5,7 +5,9 @@
 Differentials
 =============
 
-The :class:`~splineops.differentials.differentials` class implements a suite of functions to compute image differentials using cubic B-spline interpolation, including:
+The preferred public name is :class:`splineops.differentials.Differentials`;
+the historical lowercase ``differentials`` name remains available.  The class
+computes image differentials using cubic B-spline interpolation, including:
 
 - **Gradient Magnitude** - the rate of intensity change.
 - **Gradient Direction** - the orientation of maximum change.
@@ -13,6 +15,13 @@ The :class:`~splineops.differentials.differentials` class implements a suite of 
 - **Largest Hessian Eigenvalue** - the maximal curvature.
 - **Smallest Hessian Eigenvalue** - the minimal curvature.
 - **Hessian Orientation** - the principal direction of curvature.
+
+``run()`` returns a raw result and preserves the source image.  Visualization
+normalization is opt-in through ``normalize=True`` and is rejected for angular
+outputs.  Physical sample spacing is accepted as
+``spacing=(row_spacing, column_spacing)``.  ``gradient_components()`` returns
+``(vertical, horizontal)`` and ``hessian_components()`` returns
+``(vertical, cross, horizontal)``.
 
 .. automodule:: splineops.differentials.differentials
    :members:

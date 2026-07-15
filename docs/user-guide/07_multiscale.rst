@@ -57,7 +57,9 @@ Wavelet Decomposition
 ---------------------
 
 We construct a spline-based multiscale basis (wavelets) by capturing the detail lost at each reduction step. 
-The wavelet (detail) coefficients together with the final coarse approximation allow perfect reconstruction (synthesis).
+For the explicitly supported shape and scale combinations, the wavelet
+(detail) coefficients together with the final coarse approximation allow
+perfect reconstruction (synthesis).
 
 The next figure, from
 :ref:`sphx_glr_auto_examples_07_multiscale_02_wavelet_decomposition.py`,
@@ -84,6 +86,26 @@ Implementation Details
 - Reduce and expand features perform the core downsampling and upsampling based on spline filters.
 - Wavelet transforms such as Haar wavelets or spline wavelets (analysis and synthesis) are implemented by the combination of pyramid steps with detail sub-bands.
 - Various spline degrees (e.g., degree 3) are supported. They allow one to control how the data are dispatched in the approximation channel and the sub-bands.
+
+Supported shapes and boundaries
+-------------------------------
+
+The pyramid functions accept non-empty real 1D signals and 2D arrays and use
+their documented mirror mappings.  Reducing an odd length returns
+``floor(n / 2)`` samples; expanding that result therefore does not recover the
+dropped extent.  A singleton is preserved exactly.
+
+The multiscale Haar and spline-wavelet classes currently support non-empty 2D
+arrays whose two dimensions are divisible by ``2**scales``.  Unsupported odd
+or too-small scale regions are rejected instead of silently losing samples.
+Perfect reconstruction is tested for even square and rectangular arrays for
+Haar and the cubic spline-wavelet implementation.  The order-1 spline filter
+reconstructs the audited float64 cases within ``2e-7``.  The inherited order-5
+filter coefficients contain only roughly five to six significant digits and
+produce errors up to about ``2e-3`` in the current randomized rectangular
+audit.  Order 5 is therefore an approximate research implementation, not a
+perfect-reconstruction transform.  The test suite records that limitation so
+it cannot silently become a stronger claim.
 
 Multiscale Examples
 -------------------

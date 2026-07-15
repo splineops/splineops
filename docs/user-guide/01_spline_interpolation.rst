@@ -266,7 +266,7 @@ Comparison
      - Generic spline interpolant: evaluate :math:`f(\mathbf{x})` at arbitrary coordinates.
      - High-level N-D resizing on uniform grids (images, volumes, time series).
    * - Grid / coordinates
-     - Arbitrary coordinate arrays (not necessarily uniform).
+     - A uniform construction grid, followed by evaluation at arbitrary finite coordinates.
      - Uniform grids only; you specify zoom factors or output size.
    * - Bases / degrees
      - Many bases (B-splines 0–9, OMOMS, Keys, …), any supported degree of the chosen basis.
@@ -275,10 +275,10 @@ Comparison
      - Modes per axis (``"mirror"``, ``"zero"``, ``"periodic"``, …).
      - Currently uses mirror-like handling, tailored for resizing.
    * - Implementation / performance
-     - Pure Python (with optional CuPy for GPU); very flexible but slower.
+     - Vectorized Python with bounded evaluation tiles. Experimental CuPy interoperability exists for selected paths.
      - C++ backend when available, with Python fallback; much faster and more memory-friendly.
    * - Typical use
-     - Custom interpolation at arbitrary points, nonuniform sampling, algorithm prototyping.
+     - Continuous spline models evaluated at arbitrary points or tensor grids.
      - Production resizing, antialiasing downsampling, and large N-D data processing.
 
 Equivalence for Standard Interpolation
@@ -322,7 +322,7 @@ Using :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline` direct
 .. code-block:: python
 
    import numpy as np
-   from splineops.spline_interpolation.tensor_spline import TensorSpline
+   from splineops import TensorSpline
 
    # 2-D data on a uniform grid
    data = np.random.randn(64, 64).astype(np.float32)
@@ -341,6 +341,43 @@ Using :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline` direct
    x_fine = np.linspace(0, data.shape[0] - 1, 2 * data.shape[0], dtype=data.dtype)
    y_fine = np.linspace(0, data.shape[1] - 1, 2 * data.shape[1], dtype=data.dtype)
    data_upsampled = ts(coordinates=(x_fine, y_fine))
+
+Construction and evaluation contract
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Construction coordinates are one-dimensional, finite, strictly ascending,
+uniformly spaced arrays whose lengths match ``data.shape``.  Their floating
+precision must match the real precision of the data.  Evaluation coordinates
+may be arbitrary finite locations on that same array backend.
+
+With ``grid=True``, the final dimension of each coordinate array defines one
+tensor-grid axis; any leading batch shape must agree across axes.  With
+``grid=False``, coordinate arrays must have identical shapes, or may be passed
+as one stacked array whose leading dimension is ``data.ndim``.  Large queries
+are evaluated in bounded internal tiles; the public result is still allocated
+at its requested shape.
+
+Reusable fixed-coordinate queries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When one spline is evaluated repeatedly at exactly the same coordinates,
+``TensorSpline.query_plan`` can retain the support indexes and basis weights:
+
+.. code-block:: python
+
+   row = np.random.uniform(0, data.shape[0] - 1, 200_000)
+   column = np.random.uniform(0, data.shape[1] - 1, 200_000)
+   plan = ts.query_plan((row, column), grid=False)
+
+   first_result = plan.apply()
+   second_result = plan()  # equivalent shorthand
+
+Plans are experimental and bound to the ``TensorSpline`` that created them.
+They are intended for repeated coordinates, not one-shot work.  Construction
+costs time and retained memory; ``max_retained_bytes`` enforces an explicit
+cap (256 MiB by default).  Unbatched tensor grids and arbitrary-shaped point
+queries are supported.  See :doc:`../performance` for a measured break-even
+example.
 
 Using :func:`~splineops.resize.resize` for the same operation:
 

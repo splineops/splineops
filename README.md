@@ -1,103 +1,144 @@
-<!-- splineops/README.md -->
+# SplineOps
 
-# SplineOps: Spline Operations
+SplineOps is a Python and C++ library for precise spline interpolation and
+projection-based resizing of data sampled on regular N-dimensional grids. Its
+native resize backend is designed for mathematically explicit, repeatable 2-D
+and 3-D workloads—including antialiased volumetric downsampling—not merely for
+generic image scaling.
 
-`SplineOps` is a Python and C++-based N-dimensional signal-processing library with support for GPU computing.
+The project also develops independent spline-based tools for affine transforms,
+differentials, smoothing, sparse regression, pyramids, and wavelets. Those
+modules remain available while their numerical contracts and edge cases are
+being strengthened; they are not folded into the resize API.
+
+## What is ready today
+
+| Module | Status | Strength |
+| --- | --- | --- |
+| `resize`, `ResizePlan` | Stable | Native N-D interpolation and projection-based antialiasing with a Python reference path |
+| `TensorSpline` | Stabilizing | Continuous tensor-product models with B-spline, O-MOMS, and other bases |
+| Affine and differentials | Experimental | Spline-evaluated rotations and spline-derived image derivatives |
+| Smoothing and adaptive regression | Experimental | Fractional smoothing and sparse piecewise-linear models |
+| Pyramids and wavelets | Experimental | Spline multiscale analysis and reconstruction |
+
+"Experimental" describes API and validation maturity, not the importance of
+the underlying methods. See the
+[project status](https://splineops.github.io/project-status.html) and
+[development roadmap](https://splineops.github.io/roadmap.html) for the exact
+graduation criteria.
 
 ## Installation
 
-You need at least `Python 3.11` to install `SplineOps`.
-
-Create and activate your Python virtual environment (on Unix or MacOS)
+SplineOps requires Python 3.11 or newer:
 
 ```shell
-python -m venv splineops-env
-source splineops-env/bin/activate
+python -m pip install splineops
 ```
 
-On Windows,
+The published wheels include the native resize extension on supported
+platforms. A pure-Python resize reference implementation remains available for
+parity checks and unsupported build environments.
+
+## Resize example
+
+```python
+import numpy as np
+from splineops import resize
+
+volume = np.random.default_rng(0).random((64, 192, 192), dtype=np.float32)
+smaller = resize(
+    volume,
+    output_size=(32, 96, 96),
+    axes=(0, 1, 2),
+    method="cubic-antialiasing",
+)
+```
+
+The `*-antialiasing` methods use spline projection rather than treating
+downsampling as interpolation alone. For repeated fixed-geometry workloads,
+`splineops.resize.ResizePlan` reuses geometry and workspace state.
+
+## TensorSpline example
+
+`TensorSpline` remains a separate continuous-model abstraction:
+
+```python
+import numpy as np
+from splineops.spline_interpolation.tensor_spline import TensorSpline
+
+samples = np.array([0.0, 1.0, 0.0, -1.0])
+grid = np.arange(samples.size, dtype=np.float64)
+spline = TensorSpline(
+    data=samples,
+    coordinates=(grid,),
+    bases="bspline3",
+    modes="mirror",
+)
+
+values = spline(coordinates=(np.linspace(0.0, 3.0, 31),))
+```
+
+For repeated fixed coordinates, `spline.query_plan(...)` can retain support
+geometry behind an explicit memory cap. Resize and `TensorSpline` share only
+carefully validated internals where their mathematical contracts match; they
+retain distinct APIs, coordinate contracts, and optimized execution paths.
+
+## Performance position
+
+SplineOps does not claim to be the fastest generic 2-D image resizer. OpenCV or
+PyTorch can be faster when their different coordinate, boundary, kernel, and
+antialiasing conventions are acceptable.
+
+SplineOps is strongest when the spline model itself matters: explicit degrees,
+defined boundaries and sampling grids, N-D projection antialiasing, native and
+reference parity, and repeated volumetric workloads. The benchmark tools report
+both runtime and numerical differences so contextual comparisons are not
+presented as equivalent algorithms.
+
+## Backend support
+
+- NumPy is the supported array backend across the package.
+- The native C++ backend accelerates resize on CPU.
+- CuPy interoperability exists in parts of `TensorSpline`, but GPU support is
+  experimental until it has dedicated continuous-integration coverage.
+
+Set `SPLINEOPS_ACCEL=never` to force the Python resize reference path or
+`SPLINEOPS_ACCEL=always` to require the native extension.
+
+## Development
 
 ```shell
-python -m venv splineops-env
-./splineops-env/Scripts/Activate
+git clone https://github.com/splineops/splineops.git
+cd splineops
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+python -m pytest -q
 ```
 
-To deactivate the environment use
+Useful resize evidence commands include:
 
 ```shell
-deactivate
+python scripts/benchmark_resize_pr.py --profile smoke --output-dir /tmp/splineops-smoke
+python scripts/benchmark_resize_native.py --backend both --output-csv /tmp/splineops-native.csv
+python scripts/benchmark_resize_libraries.py --output-csv /tmp/splineops-libraries.csv
 ```
 
-Minimal requirement:
+Historical optimization and upstream-PR notes under `scripts/` are retained as
+engineering records. Files that describe the pre-2.0 projection pipeline are
+not the current numerical contract; consult the resize API guide, changelog,
+and newly generated benchmark artifacts for current behavior.
 
-```shell
-pip install numpy scipy matplotlib
-```
+## Documentation and provenance
 
-Simply install `SplineOps` using `pip`
+- [Documentation](https://splineops.github.io/)
+- [Resize API](https://splineops.github.io/api/02_resize.html)
+- [Project status](https://splineops.github.io/project-status.html)
+- [Roadmap](https://splineops.github.io/roadmap.html)
+- [Provenance inventory](https://splineops.github.io/provenance.html)
+- [Changelog](https://github.com/splineops/splineops/blob/main/CHANGELOG.md)
 
-```shell
-pip install splineops
-```
-
-## GPU Compatibility
-
-You can benefit of `cupy` to deploy the `Spline Interpolation` module in `SplineOps`. If a specific CUDA version is required, do
-
-```shell
-pip install cupy cuda-version=12.3
-```
-
-Install cupy development environment in editable mode
-
-```shell
-pip install -e .[dev_cupy]
-```
-
-Potential other CuPy libraries
-([CuPy from Conda-Forge](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-conda-forge))
-
-```shell
-pip install cupy cutensor cudnn nccl
-```
-
-## Development Environment
-
-Install development environment in editable mode
-
-```shell
-pip install -e .[dev]
-```
-
-## Resize Native Backend
-
-The resize module uses the native CPU `_lsresize` extension when it is available.
-Set `SPLINEOPS_ACCEL=never` to force the Python fallback, or
-`SPLINEOPS_ACCEL=always` to require the native extension during benchmarking.
-
-Useful benchmark entry points:
-
-```shell
-python scripts/benchmark_resize_pr.py --profile oblique-pr --output-dir /tmp/splineops_resize_pr_oblique_pr
-python scripts/benchmark_resize_pr.py --output-dir /tmp/splineops_resize_pr_current
-python scripts/benchmark_resize_projection_methods.py --profile standard --output-csv /tmp/splineops_projection_methods.csv
-python scripts/benchmark_resize_native.py --backend both --output-csv /tmp/splineops_native.csv
-python scripts/benchmark_resize_libraries.py --output-csv /tmp/splineops_libraries.csv
-python scripts/summarize_resize_benchmarks.py report \
-  --native /tmp/splineops_native.csv \
-  --libraries /tmp/splineops_libraries.csv \
-  --output /tmp/splineops_resize_report.md
-```
-
-Current resize behavior and numerical policy are documented in the
-[resize API guide](https://splineops.github.io/api/02_resize.html) and
-[resize user guide](https://splineops.github.io/user-guide/02_resize.html).
-Breaking changes and migration guidance are recorded in the
-[changelog](https://github.com/splineops/splineops/blob/main/CHANGELOG.md).
-
-The dated PR preparation notes in `scripts/resize_pr_readiness.md`,
-`scripts/resize_oblique_pr_brief.md`, and
-`scripts/resize_upstream_pr_description.md`, together with the close-out
-`scripts/resize_session_handoff.md`, are historical records. They describe the
-implementation and benchmark evidence available at the time, not the current
-resize contract.
+SplineOps builds on decades of spline research and software associated with the
+Biomedical Imaging Group at EPFL and its collaborators. The project records
+method citations and source provenance explicitly so that this lineage is a
+strength users can inspect, reproduce, and credit.

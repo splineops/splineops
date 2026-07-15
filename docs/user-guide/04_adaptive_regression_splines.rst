@@ -17,8 +17,8 @@ use few knots, giving very compact models.
 Key Features
 ~~~~~~~~~~~~
 
-* Guarantees piecewise-linear solutions with few knots.
-* Provides a fast two-step algorithm that returns the sparsest solution found.
+* Produces piecewise-linear solutions with few knots.
+* Provides a two-step denoising and sparsification implementation.
 * Works for both interpolation (exact fit) and regression (noisy data).
 
 These properties are valuable in machine learning (where sparsity improves
@@ -73,9 +73,10 @@ where
 Uniqueness and Sparsity
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The g-BLASSO may admit multiple solutions, but the algorithm implemented here
-leverages the theoretical analysis of [1]_ to always return the sparsest
-one (minimum K).
+The g-BLASSO may admit multiple solutions.  The method in [1]_ characterizes a
+sparsest solution; this implementation follows that construction and is kept
+experimental while its numerical behavior is validated beyond the current
+deterministic synthetic cases.
 
 Algorithm
 ---------
@@ -93,8 +94,8 @@ The solver uses two stages\*:
 Advantages and Applications
 ---------------------------
 
-* Few-knot guarantee: the returned spline is the sparsest among all
-  feasible solutions.
+* Compact representation: redundant numerical knots are pruned while the
+  reconstructed piecewise-linear function is checked at the samples.
 * Exact interpolation: with :math:`\lambda=0`, the method finds the least
   angular spline through every point.
 * Segmented regression: ideal for interpretable fits in finance,
@@ -112,6 +113,30 @@ Choosing :math:`\lambda`:
 
 Practical tip: run the solver on a grid of :math:`\lambda` values and
 *plot sparsity vs. data-fidelity* (e.g., root-MSE) to pick a balanced point.
+
+Convergence diagnostics
+-----------------------
+
+``denoise_y`` keeps its historical array return by default.  Set
+``return_diagnostics=True`` to receive a ``DenoisingDiagnostics`` record with
+the iteration count, convergence flag, and final primal and dual residuals:
+
+.. code-block:: python
+
+   from splineops.adaptive_regression_splines import denoise_y
+
+   denoised, diagnostics = denoise_y(
+       x,
+       y,
+       lamb=1e-3,
+       rho=1e-3,
+       return_diagnostics=True,
+   )
+
+The record makes an exhausted iteration budget visible instead of implying
+convergence.  Zero regularization and the linear-regression limit are solved
+without ADMM and report zero iterations.  ``rho`` affects convergence speed;
+for difficult cases it should be tuned together with :math:`\lambda`.
 
 The figure below, taken from
 :ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_01_adaptive_regression_splines_module.py`,

@@ -1,4 +1,8 @@
-# Resize Benchmark Report - 2026-06-16
+# Resize Benchmark Report - 2026-06-16 Historical Snapshot
+
+> This report predates the 2.0 direct cross-Gram projection pipeline. Do not
+> treat its projection results as current; regenerate benchmarks with the
+> versioned scripts described in `docs/performance.rst`.
 
 Commit measured: `4aa3846 Implement optimization pass`
 

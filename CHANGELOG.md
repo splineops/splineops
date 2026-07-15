@@ -2,6 +2,50 @@
 
 All notable changes to SplineOps are documented here.
 
+## Unreleased
+
+### Contracts and correctness
+
+- Added stable top-level imports for `TensorSpline`, `ResizePlan`, `resize`,
+  and `resize_degrees` while keeping their public modules independent.
+- Defined uniform construction-grid, arbitrary evaluation-coordinate, batch,
+  dtype, finiteness, backend, singleton, short-periodic, and output-shape
+  contracts for `TensorSpline`.
+- Added bounded-memory tiled `TensorSpline` evaluation with a direct fast path
+  for small grids, plus a reproducible runtime/peak-memory benchmark.
+- Corrected N-D coefficient prefiltering for non-contiguous intermediate axes;
+  B-spline degrees 0--5 now have SciPy parity coverage through four dimensions.
+- Added experimental, memory-capped `TensorSplineQueryPlan` support for repeated
+  fixed-coordinate evaluation, with measured construction break-even evidence.
+- Replaced affine full-volume coordinate meshgrids with tiled pull-back
+  evaluation, made integer promotion and degree validation explicit, and added
+  matched SciPy comparisons across degrees 0--5.
+- Made differential operations return raw results without replacing the source
+  image, removed implicit normalization and console output, and vectorized
+  row/column spline prefiltering. Added physical spacing, standard increasing-
+  coordinate directions, direct gradient/Hessian components, and analytical
+  polynomial and trigonometric tests.
+- Corrected adaptive-regression amplitude sparsification, eliminated caller
+  mutation, added opt-in convergence diagnostics, removed a duplicate smoothing
+  implementation, and tightened research-module parameter validation.
+- Defined reversible wavelet shape requirements, singleton/odd pyramid
+  behavior, and rectangular reconstruction audits. Haar and cubic spline
+  transforms meet tight reconstruction bounds; order 5 is explicitly documented
+  as approximate because the inherited taps have limited precision.
+
+### Project maturity
+
+- Published module maturity, provenance, internal compatibility, performance,
+  and execution-roadmap documentation.
+- Narrowed project-wide GPU and universal speed claims; CuPy remains an
+  experimental TensorSpline interoperability path.
+- Added Python 3.13 to the declared CI and wheel matrix, strict documentation,
+  formatting, scoped static typing, coverage, package-build, and clean-wheel
+  quality gates.
+- Added machine-readable TensorSpline memory/query-plan, affine, and
+  differentials benchmark paths. Equivalent affine comparisons report the
+  current SciPy performance advantage instead of implying a SplineOps win.
+
 ## 2.0.0 - 2026-07-14
 
 Version 2.0 establishes one resize contract and replaces the numerically

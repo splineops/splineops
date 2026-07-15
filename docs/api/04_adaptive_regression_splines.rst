@@ -7,6 +7,11 @@ Adaptive Regression Splines
 
 Functions to perform regression on 1D data.
 
+.. automodule:: splineops.adaptive_regression_splines.denoising
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: splineops.adaptive_regression_splines.sparsification
    :members:
    :undoc-members:

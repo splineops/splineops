@@ -1,4 +1,8 @@
-# Resize Optimization Notes
+# Resize Optimization Notes (Historical Pre-v2 Work)
+
+> This document includes work on projection paths superseded by the 2.0 direct
+> cross-Gram implementation. Use the versioned benchmark scripts for current
+> evidence; see `docs/performance.rst`.
 
 Date: 2026-06-12
 

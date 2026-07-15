@@ -20,6 +20,12 @@ It offers several operations such as
 - Smallest Hessian Eigenvalue: the minimal curvature; and
 - Hessian Orientation: the principal orientation of the curvature.
 
+The stable numerical behavior is deliberately separate from visualization:
+``Differentials.run`` returns raw values, does not replace the source image,
+and performs no console output.  ``normalize=True`` is an explicit convenience
+for non-angular display maps.  ``spacing=(row_spacing, column_spacing)`` gives
+derivatives in physical coordinate units; both values default to one.
+
 Image Representation
 --------------------
 
@@ -62,7 +68,8 @@ Based on the spline representation, the module computes several differential ope
 
   .. math::
 
-      \theta(x,y) = \arctan\!\Bigl(\tfrac{f_2}{f_1}\Bigr).
+      \theta(x,y) = \operatorname{atan2}\!\bigl(f_\mathrm{row},
+      f_\mathrm{column}\bigr).
 
 - Laplacian:  
   A second-order operator that highlights regions of rapid intensity change as
@@ -103,6 +110,23 @@ Implementation Details
 The *Differentials* class implements these operations as follows: the input image is provided by its samples. We assume it to be a cubic B-spline and first determine 
 its interpolation coefficients. The differential-based computations that we perform are then perfectly consistent with this continuously defined function.
 We finally build the output image by sampling the ideal, continuously defined intermediate result.
+
+The preferred public class is ``Differentials``; the historical lowercase
+``differentials`` alias remains available.  Direct component methods avoid
+reconstructing quantities from composite maps:
+
+.. code-block:: python
+
+   from splineops.differentials import Differentials
+
+   operator = Differentials(image, spacing=(0.7, 1.3))
+   vertical, horizontal = operator.gradient_components()
+   vertical2, cross, horizontal2 = operator.hessian_components()
+
+``vertical`` follows increasing row coordinates and ``horizontal`` follows
+increasing column coordinates.  Mirror-boundary derivatives are zero at the
+outermost sample for the antisymmetric first-derivative filter.  Polynomial
+and trigonometric fields are used as analytical tests away from that boundary.
 
 The following figure, taken from
 :ref:`sphx_glr_auto_examples_06_differentials_01_differentials_module.py`,

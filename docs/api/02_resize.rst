@@ -56,5 +56,5 @@ unbounded retained-memory cache.
 See also
 --------
 
-:class:`~splineops.interpolate.tensor_spline.TensorSpline`
+:class:`~splineops.spline_interpolation.tensor_spline.TensorSpline`
    The base class used internally for spline interpolation.

@@ -1,4 +1,7 @@
-# Resize Optimization Progress Report
+# Resize Optimization Progress Report (Historical Pre-v2 Work)
+
+> Some paths discussed here were replaced in 2.0. This is engineering history,
+> not a current performance report; see `docs/performance.rst`.
 
 Date: 2026-06-15
 Branch: `feature/publication`

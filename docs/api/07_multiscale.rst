@@ -12,6 +12,15 @@ Pyramid Module
 
 The :mod:`splineops.multiscale.pyramid` module implements 1D and 2D REDUCE/EXPAND operations with mirror boundary handling. These form the foundation for many wavelet constructions.
 
+Reduction uses ``floor(n / 2)`` for odd lengths, so pyramid reduce/expand is
+not a reversible shape operation in that case.  Wavelet analysis is stricter:
+both dimensions must be divisible by ``2**scales``.
+
+Perfect reconstruction is established for Haar and the cubic spline filter on
+the tested even rectangular shapes.  Order 1 has small truncation error and
+order 5 is approximate because its inherited taps have limited precision; see
+the multiscale user guide for the measured bounds.
+
 Key functionalities:
 
 - **get_pyramid_filter**  
@@ -92,4 +101,3 @@ API Reference: Wavelets
    :undoc-members:
    :show-inheritance:
    :exclude-members: analysis1, synthesis1
-

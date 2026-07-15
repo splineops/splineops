@@ -104,9 +104,25 @@ dimensions while minimizing artifacts like aliasing. The process asks one to fir
 with the origin, then to apply the appropriate 2D or 3D rotation matrix to the recentered coordinates, followed by a translation of the rotated recentered coordinates 
 back to their original reference frame, to compensate for the recentering step, and finally to use spline interpolation to determine the data values at these new positions.
 
+``rotate`` implements a pull-back transform about the array center by default,
+or about an explicit center in array-axis coordinates.  The output shape is the
+input shape, samples outside the domain use whole-sample mirror extension, and
+degrees 0 through 7 are supported.  Degrees 0 through 5 in two and three
+dimensions are tested against equivalently configured
+``scipy.ndimage.affine_transform`` (SciPy's maximum spline order is 5).
+Coordinates are generated in bounded tiles rather than as a complete stacked
+volume.
+
 .. note::
    The geometry of the transform (center, axis, angle) is identical across methods; what changes is the spline used for resampling. 
    Different spline degrees trade sharpness for smoothness (e.g., degree 0/nearest → blocky but fast; degree 1/linear → slight blur; degree 3/cubic → smoother, higher-quality edges).
+
+.. note::
+
+   This module favors a clear spline contract and integration with
+   ``TensorSpline``.  It is currently substantially slower than SciPy's
+   specialized affine kernels; see :doc:`../performance`.  SplineOps does not
+   present rotation as a speed advantage.
 
 The following figure from
 :ref:`sphx_glr_auto_examples_03_affine_01_rotate_image.py`
