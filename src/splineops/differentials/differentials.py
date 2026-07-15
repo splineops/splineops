@@ -1,9 +1,11 @@
 # splineops/src/splineops/differentials/differentials.py
 
 import numpy as np
-import time
 
-class differentials:
+from splineops.spline_interpolation.utils import _data_to_coeffs
+
+
+class Differentials:
     """
     Class for computing image differentials using cubic B-spline interpolation.
 
@@ -40,7 +42,7 @@ class differentials:
 
     FLT_EPSILON = np.finfo(np.float32).eps
 
-    def __init__(self, image):
+    def __init__(self, image, spacing=(1.0, 1.0)):
         """
         Initialize a new differentials instance.
 
@@ -48,16 +50,48 @@ class differentials:
         ----------
         image : ndarray
             Input grayscale image as a 2D numpy array.
+        spacing : tuple of float, optional
+            Physical sample spacing as ``(row_spacing, column_spacing)``.
+            Both values must be finite and positive.  The default is unit
+            pixel spacing.
         """
-        self.image = image.astype(np.float32)
+        if not isinstance(image, np.ndarray):
+            raise TypeError("'image' must be a NumPy array.")
+        if image.ndim != 2:
+            raise ValueError("'image' must be a two-dimensional grayscale array.")
+        if any(length == 0 for length in image.shape):
+            raise ValueError("'image' dimensions must be non-empty.")
+        if not np.issubdtype(image.dtype, np.number) or np.iscomplexobj(image):
+            raise TypeError("'image' must have a real numeric dtype.")
+        if not np.all(np.isfinite(image)):
+            raise ValueError("'image' must contain only finite values.")
+        try:
+            spacing = tuple(spacing)
+        except TypeError as exc:
+            raise TypeError("'spacing' must contain two positive real values.") from exc
+        if len(spacing) != 2:
+            raise ValueError("'spacing' must contain row and column spacing.")
+        if any(
+            isinstance(value, (bool, np.bool_))
+            or not np.isscalar(value)
+            or not np.isreal(value)
+            for value in spacing
+        ):
+            raise TypeError("'spacing' must contain two positive real values.")
+        spacing = tuple(float(value) for value in spacing)
+        if not all(np.isfinite(value) and value > 0 for value in spacing):
+            raise ValueError("'spacing' values must be finite and positive.")
+        work_dtype = (
+            image.dtype
+            if np.issubdtype(image.dtype, np.floating)
+            else np.dtype(np.float64)
+        )
+        self.image = image.astype(work_dtype, copy=True)
+        self.spacing = spacing
         self.height, self.width = image.shape
         self.operation = self.LAPLACIAN
-        self.completed = 1
-        self.process_duration = 1
-        self.stack_size = 1
-        self.last_time = time.time()
 
-    def run(self, operation=None):
+    def run(self, operation=None, *, normalize=False):
         """
         Execute the selected differential operation on the image.
 
@@ -65,30 +99,132 @@ class differentials:
         ----------
         operation : int, optional
             Operation to perform. If None, the default operation (Laplacian) is used.
+        normalize : bool, optional
+            If true, scale non-angular results to the interval [0, 1].  The
+            default is false so the numerical API returns raw derivatives.
+
+        Returns
+        -------
+        ndarray
+            A newly computed differential image.  The source stored in
+            ``image`` is not replaced, so repeated calls are independent.
         """
         if operation is not None:
             self.operation = operation
 
-        start_time = time.time()
-
         if self.operation == self.GRADIENT_MAGNITUDE:
-            self.image = self.gradient_magnitude()
+            result = self.gradient_magnitude()
         elif self.operation == self.GRADIENT_DIRECTION:
-            self.image = self.gradient_direction()
+            result = self.gradient_direction()
         elif self.operation == self.LAPLACIAN:
-            self.image = self.laplacian()
+            result = self.laplacian()
         elif self.operation == self.LARGEST_HESSIAN:
-            self.image = self.largest_hessian()
+            result = self.largest_hessian()
         elif self.operation == self.SMALLEST_HESSIAN:
-            self.image = self.smallest_hessian()
+            result = self.smallest_hessian()
         elif self.operation == self.HESSIAN_ORIENTATION:
-            self.image = self.hessian_orientation()
+            result = self.hessian_orientation()
+        else:
+            raise ValueError(f"Unknown differential operation {self.operation!r}.")
 
-        if self.operation not in [self.GRADIENT_DIRECTION, self.HESSIAN_ORIENTATION]:
-            self.image -= self.image.min()
-            self.image /= self.image.max()
+        if normalize:
+            if self.operation in [self.GRADIENT_DIRECTION, self.HESSIAN_ORIENTATION]:
+                raise ValueError(
+                    "Angular differential results cannot be normalized as intensities."
+                )
+            result = result - result.min()
+            maximum = result.max()
+            if maximum != 0:
+                result = result / maximum
 
-        print(f"Completed in {time.time() - start_time:.2f} seconds")
+        return result
+
+    def _coefficients_along_axis(self, image, axis):
+        """Return cubic B-spline coefficients along one image axis."""
+        # ``_data_to_coeffs`` works in place.  ``ascontiguousarray`` alone may
+        # return ``image`` itself when the selected axis is already last,
+        # which would silently mutate the source and make repeated calls
+        # order-dependent.
+        coefficients = np.array(np.moveaxis(image, axis, -1), copy=True, order="C")
+        if coefficients.shape[-1] > 1:
+            pole = np.array([np.sqrt(3.0) - 2.0])
+            _data_to_coeffs(
+                coefficients,
+                poles=pole,
+                boundary="mirror",
+                tol=self.FLT_EPSILON,
+            )
+        return np.moveaxis(coefficients, -1, axis)
+
+    def _gradient_along_axis(self, image, axis):
+        coefficients = self._coefficients_along_axis(image, axis)
+        result = np.zeros_like(coefficients)
+        middle = [slice(None)] * 2
+        previous = [slice(None)] * 2
+        following = [slice(None)] * 2
+        middle[axis] = slice(1, -1)
+        previous[axis] = slice(None, -2)
+        following[axis] = slice(2, None)
+        result[tuple(middle)] = (
+            0.5
+            * (coefficients[tuple(following)] - coefficients[tuple(previous)])
+            / self.spacing[axis]
+        )
+        return result
+
+    def horizontal_gradient(self):
+        """Return the derivative along increasing column coordinates."""
+        return self._gradient_along_axis(self.image, axis=1)
+
+    def vertical_gradient(self):
+        """Return the derivative along increasing row coordinates."""
+        return self._gradient_along_axis(self.image, axis=0)
+
+    def gradient_components(self):
+        """Return ``(vertical, horizontal)`` first-derivative components."""
+        return self.vertical_gradient(), self.horizontal_gradient()
+
+    def horizontal_hessian(self):
+        """Return the second derivative along column coordinates."""
+        return self._hessian_along_axis(self.image, axis=1)
+
+    def vertical_hessian(self):
+        """Return the second derivative along row coordinates."""
+        return self._hessian_along_axis(self.image, axis=0)
+
+    def cross_hessian(self):
+        """Return the mixed row-column second derivative."""
+        return self._gradient_along_axis(self.horizontal_gradient(), axis=0)
+
+    def hessian_components(self):
+        """Return ``(vertical, cross, horizontal)`` Hessian components."""
+        return self.vertical_hessian(), self.cross_hessian(), self.horizontal_hessian()
+
+    def _hessian_along_axis(self, image, axis):
+        coefficients = self._coefficients_along_axis(image, axis)
+        if coefficients.shape[axis] < 2:
+            return np.zeros_like(coefficients)
+        result = -2.0 * coefficients
+        middle = [slice(None)] * 2
+        previous = [slice(None)] * 2
+        following = [slice(None)] * 2
+        middle[axis] = slice(1, -1)
+        previous[axis] = slice(None, -2)
+        following[axis] = slice(2, None)
+        result[tuple(middle)] += (
+            coefficients[tuple(previous)] + coefficients[tuple(following)]
+        )
+        first = [slice(None)] * 2
+        second = [slice(None)] * 2
+        last = [slice(None)] * 2
+        penultimate = [slice(None)] * 2
+        first[axis] = 0
+        second[axis] = 1
+        last[axis] = -1
+        penultimate[axis] = -2
+        result[tuple(first)] += 2.0 * coefficients[tuple(second)]
+        result[tuple(last)] += 2.0 * coefficients[tuple(penultimate)]
+        return result / self.spacing[axis] ** 2
 
     def get_cross_hessian(self, image, tolerance):
         """
@@ -128,13 +264,7 @@ class differentials:
         ndarray
             Horizontal gradient of the image.
         """
-        output = np.zeros_like(image)
-        for y in range(self.height):
-            line = image[y, :]
-            self.get_spline_interpolation_coefficients(line, tolerance)
-            gradient = self.get_gradient(line)
-            output[y, :] = gradient
-        return output
+        return self._gradient_along_axis(image, axis=1)
 
     def get_horizontal_hessian(self, image, tolerance):
         """
@@ -152,13 +282,7 @@ class differentials:
         ndarray
             Horizontal Hessian of the image.
         """
-        output = np.zeros_like(image)
-        for y in range(self.height):
-            line = image[y, :]
-            self.get_spline_interpolation_coefficients(line, tolerance)
-            hessian = self.get_hessian(line)
-            output[y, :] = hessian
-        return output
+        return self._hessian_along_axis(image, axis=1)
 
     def get_vertical_gradient(self, image, tolerance):
         """
@@ -176,13 +300,7 @@ class differentials:
         ndarray
             Vertical gradient of the image.
         """
-        output = np.zeros_like(image)
-        for x in range(self.width):
-            line = image[:, x]
-            self.get_spline_interpolation_coefficients(line, tolerance)
-            gradient = self.get_gradient(line)
-            output[:, x] = gradient
-        return output
+        return self._gradient_along_axis(image, axis=0)
 
     def get_vertical_hessian(self, image, tolerance):
         """
@@ -200,13 +318,7 @@ class differentials:
         ndarray
             Vertical Hessian of the image.
         """
-        output = np.zeros_like(image)
-        for x in range(self.width):
-            line = image[:, x]
-            self.get_spline_interpolation_coefficients(line, tolerance)
-            hessian = self.get_hessian(line)
-            output[:, x] = hessian
-        return output
+        return self._hessian_along_axis(image, axis=0)
 
     def anti_symmetric_fir_mirror_on_bounds(self, h, c):
         """
@@ -276,7 +388,7 @@ class differentials:
         ndarray
             Computed gradient of the input signal.
         """
-        h = np.array([0.0, -1.0 / 2.0])
+        h = np.array([0.0, 1.0 / 2.0])
         return self.anti_symmetric_fir_mirror_on_bounds(h, c)
 
     def get_hessian(self, c):
@@ -313,17 +425,21 @@ class differentials:
         # If the signal has less than 2 elements, no interpolation is needed.
         if len(c) < 2:
             return
-    
+
         z = [np.sqrt(3.0) - 2.0]
         lambda_ = 1.0
         for zk in z:
             lambda_ *= (1.0 - zk) * (1.0 - 1.0 / zk)
         c *= lambda_
         for zk in z:
-            c[0] = self.get_initial_causal_coefficient_mirror_on_bounds(c, zk, tolerance)
+            c[0] = self.get_initial_causal_coefficient_mirror_on_bounds(
+                c, zk, tolerance
+            )
             for n in range(1, len(c)):
                 c[n] += zk * c[n - 1]
-            c[-1] = self.get_initial_anti_causal_coefficient_mirror_on_bounds(c, zk, tolerance)
+            c[-1] = self.get_initial_anti_causal_coefficient_mirror_on_bounds(
+                c, zk, tolerance
+            )
             for n in range(len(c) - 2, -1, -1):
                 c[n] = zk * (c[n + 1] - c[n])
 
@@ -376,7 +492,7 @@ class differentials:
         float
             The initial anti-causal coefficient.
         """
-        return (z * c[-2] + c[-1]) * z / (z ** 2 - 1.0)
+        return (z * c[-2] + c[-1]) * z / (z**2 - 1.0)
 
     def gradient_magnitude(self):
         """
@@ -387,9 +503,8 @@ class differentials:
         ndarray
             Image representing the gradient magnitude.
         """
-        h_grad = self.get_horizontal_gradient(self.image.copy(), self.FLT_EPSILON)
-        v_grad = self.get_vertical_gradient(self.image.copy(), self.FLT_EPSILON)
-        return np.sqrt(h_grad ** 2 + v_grad ** 2)
+        v_grad, h_grad = self.gradient_components()
+        return np.sqrt(h_grad**2 + v_grad**2)
 
     def gradient_direction(self):
         """
@@ -400,8 +515,7 @@ class differentials:
         ndarray
             Image representing the gradient direction (in radians).
         """
-        h_grad = self.get_horizontal_gradient(self.image.copy(), self.FLT_EPSILON)
-        v_grad = self.get_vertical_gradient(self.image.copy(), self.FLT_EPSILON)
+        v_grad, h_grad = self.gradient_components()
         return np.arctan2(v_grad, h_grad)
 
     def laplacian(self):
@@ -413,8 +527,7 @@ class differentials:
         ndarray
             Image representing the Laplacian.
         """
-        h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
-        v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
+        v_hess, _, h_hess = self.hessian_components()
         return h_hess + v_hess
 
     def largest_hessian(self):
@@ -426,10 +539,10 @@ class differentials:
         ndarray
             Image representing the largest Hessian eigenvalue.
         """
-        h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
-        v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
-        hv_hess = self.get_cross_hessian(self.image.copy(), self.FLT_EPSILON)
-        return 0.5 * (h_hess + v_hess + np.sqrt(4.0 * hv_hess**2 + (h_hess - v_hess)**2))
+        v_hess, hv_hess, h_hess = self.hessian_components()
+        return 0.5 * (
+            h_hess + v_hess + np.sqrt(4.0 * hv_hess**2 + (h_hess - v_hess) ** 2)
+        )
 
     def smallest_hessian(self):
         """
@@ -440,10 +553,10 @@ class differentials:
         ndarray
             Image representing the smallest Hessian eigenvalue.
         """
-        h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
-        v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
-        hv_hess = self.get_cross_hessian(self.image.copy(), self.FLT_EPSILON)
-        return 0.5 * (h_hess + v_hess - np.sqrt(4.0 * hv_hess ** 2 + (h_hess - v_hess) ** 2))
+        v_hess, hv_hess, h_hess = self.hessian_components()
+        return 0.5 * (
+            h_hess + v_hess - np.sqrt(4.0 * hv_hess**2 + (h_hess - v_hess) ** 2)
+        )
 
     def hessian_orientation(self):
         """
@@ -454,13 +567,16 @@ class differentials:
         ndarray
             Image representing the Hessian orientation (in radians).
         """
-        h_hess = self.get_horizontal_hessian(self.image.copy(), self.FLT_EPSILON)
-        v_hess = self.get_vertical_hessian(self.image.copy(), self.FLT_EPSILON)
-        hv_hess = self.get_cross_hessian(self.image.copy(), self.FLT_EPSILON)
-        
-        denominator = np.sqrt(4.0 * hv_hess ** 2 + (h_hess - v_hess) ** 2)
+        v_hess, hv_hess, h_hess = self.hessian_components()
+
+        denominator = np.sqrt(4.0 * hv_hess**2 + (h_hess - v_hess) ** 2)
         # Avoid division by zero by setting denominator to a small value where it is zero
         denominator[denominator == 0] = self.FLT_EPSILON
-        
+
         orientation = np.arccos((h_hess - v_hess) / denominator)
         return np.where(hv_hess < 0, -0.5 * orientation, 0.5 * orientation)
+
+
+# Backward-compatible historical class name.  New code should use
+# ``Differentials`` from ``splineops.differentials``.
+differentials = Differentials
