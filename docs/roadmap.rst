@@ -52,7 +52,9 @@ implementation completeness and API stability are different promises.
 
 One evidence gate intentionally remains open: GPU-backed CuPy CI.  The
 Linux/macOS/Windows development smoke matrix passed for commit ``32b9d8c`` and
-the standard matrix was reviewed during the sixth pass.  Standard results
+the `standard matrix 29429054363
+<https://github.com/splineops/splineops/actions/runs/29429054363>`_ passed and was
+reviewed during the sixth pass.  Standard results
 confirmed numerical portability but not universal explicit-axis speedups, so
 the policy and performance claims were narrowed instead of tuning thresholds to
 one machine.  The manual resize and development matrices provide deeper

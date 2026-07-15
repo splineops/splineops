@@ -101,9 +101,12 @@ Windows differential row measured 1.01x.  Numerical equivalence still passed.
 These APIs are consequently documented as orchestration and allocation
 contracts with platform-dependent timing, not universal speedups.  The policy
 retains its 0.5x complete-workflow regression floor and strict numerical gates.
+The calibrated `standard run 29429054363
+<https://github.com/splineops/splineops/actions/runs/29429054363>`_ then passed on
+all three platforms and published a complete artifact bundle for each runner.
 
-This pass is eligible for a graduation review only after the standard artifacts
-and the two workloads have been reviewed.  Promotion is still not automatic:
+The standard artifacts and both workloads have now been reviewed.  Promotion
+is still not automatic:
 Affine and Differentials remain experimental until their soak period reveals no
 contract changes, and ``TensorSpline`` remains stabilizing until dedicated CuPy
 CI and broader backend evidence exist.

@@ -199,6 +199,16 @@ instrumentation identifies coefficient evaluation as the dominant in-call
 phase, but matched SciPy affine execution remains faster.  This remains an
 unreleased development pass.
 
+The subsequent `standard development run 29429054363
+<https://github.com/splineops/splineops/actions/runs/29429054363>`_ passed on
+Linux, macOS, and Windows for commit ``2b84cbe`` and published one complete
+ten-benchmark artifact bundle per runner.  The accompanying `nine-job library
+matrix 29429054290
+<https://github.com/splineops/splineops/actions/runs/29429054290>`_ and `quality
+workflow 29429054326
+<https://github.com/splineops/splineops/actions/runs/29429054326>`_ also passed.
+No release or tag was created.
+
 Stability-soak and graduation review
 ------------------------------------
 
