@@ -53,15 +53,15 @@ from PIL import Image
 DTYPE = np.float32
 
 # ROI / detail-window configuration
-ROI_SIZE_PX = 256              # approximate ROI size in original image
+ROI_SIZE_PX = 256  # approximate ROI size in original image
 ROI_CENTER_FRAC = (0.40, 0.65)  # (row_frac, col_frac) in [0, 1]
-ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
+ROI_MAG_TARGET = 256  # target height for nearest-neighbour zoom tiles
 
 # Whether to use a local square ROI window (True) or the full image (False)
 USE_WINDOW_ROI_DEFAULT = False  # set to False to make "full image ROI" the default
 
 # Plot appearance for slide-friendly export
-PLOT_FIGSIZE = (14, 7)      # same 2:1 ratio as (10, 5), just larger
+PLOT_FIGSIZE = (14, 7)  # same 2:1 ratio as (10, 5), just larger
 PLOT_TITLE_FONTSIZE = 18
 PLOT_LABEL_FONTSIZE = 18
 PLOT_TICK_FONTSIZE = 18
@@ -126,6 +126,7 @@ from PyQt5 import QtWidgets
 # Optional: runtime specs (Python/OS/libs/etc.)
 try:
     from splineops.utils.specs import print_runtime_context as _print_runtime_context
+
     _HAS_SPECS = True
 except Exception:
     _print_runtime_context = None
@@ -134,6 +135,7 @@ except Exception:
 # ---------------------------
 # Utilities
 # ---------------------------
+
 
 def _snr_db(x: np.ndarray, y: np.ndarray) -> float:
     num = float(np.sum(x * x, dtype=np.float64))
@@ -184,6 +186,7 @@ def _nearest_big(roi: np.ndarray, target_h: int) -> np.ndarray:
     out = np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
     return out
 
+
 def _fft_log_magnitude(img: np.ndarray) -> np.ndarray:
     """2D FFT log-magnitude (un-normalized, centered) for visualization."""
     f = np.fft.fft2(img.astype(np.float64, copy=False))
@@ -191,6 +194,7 @@ def _fft_log_magnitude(img: np.ndarray) -> np.ndarray:
     mag = np.abs(fshift)
     logmag = np.log1p(mag)  # log(1 + |F|)
     return logmag
+
 
 def _show_tiles_montage(
     tiles: List[Tuple[str, np.ndarray]],
@@ -239,6 +243,7 @@ def _show_tiles_montage(
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
+
 def _diff_normalized(orig: np.ndarray, rec: np.ndarray) -> np.ndarray:
     """
     Normalize signed difference into [0,1] for display.
@@ -253,6 +258,7 @@ def _diff_normalized(orig: np.ndarray, rec: np.ndarray) -> np.ndarray:
     norm = np.clip(norm, 0.0, 1.0)
     return norm.astype(DTYPE, copy=False)
 
+
 def _load_image_any(path_or_url: str) -> Image.Image:
     if "://" in path_or_url:
         if not _HAS_REQUESTS:
@@ -265,10 +271,7 @@ def _load_image_any(path_or_url: str) -> Image.Image:
 
 def _choose_image_dialog() -> Optional[str]:
     """Use a Qt file dialog to pick an image. If cancelled, ask for a URL."""
-    filters = (
-        "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff);;"
-        "All files (*)"
-    )
+    filters = "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff);;" "All files (*)"
 
     path, _ = QtWidgets.QFileDialog.getOpenFileName(
         None,
@@ -350,6 +353,7 @@ def _to_gray01(im: Image.Image) -> np.ndarray:
 # ---------------------------
 # Backends: first-pass + round-trip
 # ---------------------------
+
 
 def _rt_splineops(
     gray: np.ndarray, z: float, preset: str
@@ -451,6 +455,7 @@ def _rt_opencv(
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
+
 
 def _rt_pillow(
     gray: np.ndarray, z: float, which: str
@@ -570,9 +575,11 @@ def _rt_torch(
     except Exception as e:
         return gray, gray, str(e)
 
+
 # ---------------------------
 # Benchmark harness
 # ---------------------------
+
 
 def _avg_time(fn, repeats: int = 10, warmup: bool = True):
     """
@@ -613,6 +620,7 @@ def _avg_time(fn, repeats: int = 10, warmup: bool = True):
 # ---------------------------
 # Initial 2×2 figure helper
 # ---------------------------
+
 
 def _show_initial_original_vs_aa(
     gray: np.ndarray,
@@ -731,9 +739,11 @@ def _show_initial_original_vs_aa(
     fig.tight_layout()
     plt.show()
 
+
 # ---------------------------
 # main
 # ---------------------------
+
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
@@ -947,7 +957,9 @@ def main(argv=None):
             center_r_res = int(round(center_r * z))
             center_c_res = int(round(center_c * z))
             row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res))
-            col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res))
+            col_left_res = int(
+                np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res)
+            )
             first_roi = first[
                 row_top_res : row_top_res + roi_h_res,
                 col_left_res : col_left_res + roi_w_res,
@@ -1049,7 +1061,8 @@ def main(argv=None):
         # --- SNR + SSIM bar chart (round-trip) ---
         if _HAS_SKIMAGE and _ssim is not None:
             valid = [
-                r for r in rows
+                r
+                for r in rows
                 if np.isfinite(r.get("snr", np.nan))
                 and np.isfinite(r.get("ssim", np.nan))
             ]
@@ -1081,8 +1094,12 @@ def main(argv=None):
                     alpha=0.85,
                     color=snr_color,
                 )
-                ax1.set_ylabel("SNR (dB)", color=snr_color, fontsize=PLOT_LABEL_FONTSIZE)
-                ax1.tick_params(axis="y", labelcolor=snr_color, labelsize=PLOT_TICK_FONTSIZE)
+                ax1.set_ylabel(
+                    "SNR (dB)", color=snr_color, fontsize=PLOT_LABEL_FONTSIZE
+                )
+                ax1.tick_params(
+                    axis="y", labelcolor=snr_color, labelsize=PLOT_TICK_FONTSIZE
+                )
                 ax1.set_xticks(x)
                 ax1.set_xticklabels(
                     names,
@@ -1103,7 +1120,9 @@ def main(argv=None):
                     color=ssim_color,
                 )
                 ax2.set_ylabel("SSIM", color=ssim_color, fontsize=PLOT_LABEL_FONTSIZE)
-                ax2.tick_params(axis="y", labelcolor=ssim_color, labelsize=PLOT_TICK_FONTSIZE)
+                ax2.tick_params(
+                    axis="y", labelcolor=ssim_color, labelsize=PLOT_TICK_FONTSIZE
+                )
 
                 ax1.set_title(
                     f"SNR / SSIM vs Method (H×W = {H}×{W}, zoom ×{z:g}, degree={degree_label})",

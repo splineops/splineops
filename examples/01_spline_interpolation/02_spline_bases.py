@@ -91,6 +91,7 @@ def plot_bases(names, x_values, title, show_legend=True):
         show_legend=show_legend,
     )
 
+
 # %%
 # Bases
 # -----
@@ -190,7 +191,7 @@ plot_lines_1d(
 # argument of β, which changes the effective width of its support.
 
 shift = 1.0 / 3.0
-scale = 0.5   # same as "/ 0.5" in the text
+scale = 0.5  # same as "/ 0.5" in the text
 
 plot_lines_1d(
     x=x_values,
@@ -228,20 +229,29 @@ plot_lines_1d(
 # Use several combinations of (shift, shrink, weight) to obtain different
 # functions, all of which are still cubic B-splines up to their parameters.
 
+
 def beta3_shift_scale(x, shift, scale, amp=1.0):
     """Shift, scale, and weight the cubic B-spline."""
     return amp * beta3((x + shift) / scale)
 
 
 curves = [
-    ("0.25 β((x - 1/3)/0.5, 3)",
-     lambda x: beta3_shift_scale(x, shift=-1.0/3.0, scale=0.5, amp=0.25)),
-    ("0.8 β((x + 5/3)/1.2, 3)",
-     lambda x: beta3_shift_scale(x, shift=+5.0/3.0, scale=1.2, amp=0.8)),
-    ("-0.25 β((x + 4/5)/0.2, 3)",
-     lambda x: beta3_shift_scale(x, shift=+4.0/5.0, scale=0.2, amp=-0.25)),
-    ("-0.2 β((x - 1)/1, 3)",
-     lambda x: beta3_shift_scale(x, shift=-1.0, scale=1.0, amp=-0.2)),
+    (
+        "0.25 β((x - 1/3)/0.5, 3)",
+        lambda x: beta3_shift_scale(x, shift=-1.0 / 3.0, scale=0.5, amp=0.25),
+    ),
+    (
+        "0.8 β((x + 5/3)/1.2, 3)",
+        lambda x: beta3_shift_scale(x, shift=+5.0 / 3.0, scale=1.2, amp=0.8),
+    ),
+    (
+        "-0.25 β((x + 4/5)/0.2, 3)",
+        lambda x: beta3_shift_scale(x, shift=+4.0 / 5.0, scale=0.2, amp=-0.25),
+    ),
+    (
+        "-0.2 β((x - 1)/1, 3)",
+        lambda x: beta3_shift_scale(x, shift=-1.0, scale=1.0, amp=-0.2),
+    ),
 ]
 
 plot_lines_1d(
@@ -263,8 +273,10 @@ plot_lines_1d(
 # Sum these functions together to obtain a new combined function. It is
 # built from cubic B-splines but is itself no longer a basis function.
 
+
 def combined_spline(x):
     return sum(f(x) for _, f in curves)
+
 
 plot_lines_1d(
     x=x_values,
@@ -291,6 +303,7 @@ k_vals = np.arange(-4, 5)
 # Same coefficients as in the original notebook:
 coeffs = np.array([-2, -3, 4, 1, -5, -1, 2, 6, -4], dtype=float)
 
+
 def spline_from_coeffs(x):
     """Uniform spline f(x) = Σ_k c[k] β³(x - k)."""
     x = np.asarray(x)
@@ -299,13 +312,16 @@ def spline_from_coeffs(x):
         y += ck * beta3(x - k)
     return y
 
+
 def spline_term(k, x):
     """Single term c[k] β³(x - k) for integer k in [-4, 4]."""
     return coeffs[k + 4] * beta3(x - k)
 
+
 # Common grids for these examples
 x_plot = np.linspace(-3.1, 3.1, 2000)
 x_samples = np.arange(-3, 4)  # integer sample positions
+
 
 def spline_samples():
     """Return integer sample positions and corresponding spline values."""

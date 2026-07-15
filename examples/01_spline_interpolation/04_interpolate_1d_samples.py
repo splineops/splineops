@@ -8,7 +8,7 @@ Interpolate 1D Samples
 
 Interpolate 1D samples with standard interpolation.
 
-1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid. 
+1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid.
 
 2. From the samples, recover the continuously defined spline :math:`f(x)`.
 """
@@ -21,15 +21,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from splineops.spline_interpolation.tensor_spline import TensorSpline
 from splineops.spline_interpolation.bases.utils import create_basis
+
 # sphinx_gallery_thumbnail_number = 2  # show second figure as thumbnail
 
-plt.rcParams.update({
-    "font.size": 14,       # Base font size
-    "axes.titlesize": 18,  # Title font size
-    "axes.labelsize": 16,  # Label font size
-    "xtick.labelsize": 14,
-    "ytick.labelsize": 14,
-})
+plt.rcParams.update(
+    {
+        "font.size": 14,  # Base font size
+        "axes.titlesize": 18,  # Title font size
+        "axes.labelsize": 16,  # Label font size
+        "xtick.labelsize": 14,
+        "ytick.labelsize": 14,
+    }
+)
 
 # %%
 # Helper for Basis Decomposition
@@ -41,6 +44,7 @@ plt.rcParams.update({
 # The grid is constructed with a rational step 1 / samples_per_unit so
 # that all integer positions k are *exactly* included, i.e. we always
 # sample each basis function at its center x = k.
+
 
 def plot_basis_decomposition(
     f_support,
@@ -99,12 +103,13 @@ def plot_basis_decomposition(
     plt.tight_layout()
     plt.show()
 
+
 # %%
 # Initial 1D Samples
 # ------------------
 #
 # We generate 1D samples and treat them as discrete signal points.
-# 
+#
 # Let :math:`\mathbf{f} = (f[0], f[1], f[2], \dots, f[K-1])` be a 1D array of data.
 #
 # These are the input samples that we are going to interpolate.
@@ -114,13 +119,38 @@ number_of_samples = 27
 f_support = np.arange(number_of_samples, dtype=np.float64)
 f_support_length = len(f_support)  # It's equal to number_of_samples
 
-f_samples = np.array([
-    -0.657391, -0.641319, -0.613081, -0.518523, -0.453829, -0.385138,
-    -0.270688, -0.179849, -0.11805, -0.0243016, 0.0130667, 0.0355389,
-    0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
-    -0.00811776, 0.0153119, 0.106126, 0.21688, 0.347629, 0.419532,
-    0.50695, 0.544767, 0.555373
-], dtype=np.float64)
+f_samples = np.array(
+    [
+        -0.657391,
+        -0.641319,
+        -0.613081,
+        -0.518523,
+        -0.453829,
+        -0.385138,
+        -0.270688,
+        -0.179849,
+        -0.11805,
+        -0.0243016,
+        0.0130667,
+        0.0355389,
+        0.0901577,
+        0.219599,
+        0.374669,
+        0.384896,
+        0.301386,
+        0.128646,
+        -0.00811776,
+        0.0153119,
+        0.106126,
+        0.21688,
+        0.347629,
+        0.419532,
+        0.50695,
+        0.544767,
+        0.555373,
+    ],
+    dtype=np.float64,
+)
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples")
@@ -147,7 +177,9 @@ plt.show()
 # coefficients c[k] computed internally by TensorSpline.
 
 # Build a TensorSpline to obtain the true cubic coefficients c[k]
-cubic_spline = TensorSpline(data=f_samples, coordinates=f_support, bases="bspline3", modes="mirror")
+cubic_spline = TensorSpline(
+    data=f_samples, coordinates=f_support, bases="bspline3", modes="mirror"
+)
 cubic_coeffs = cubic_spline.coefficients
 
 plot_basis_decomposition(
@@ -193,10 +225,9 @@ mode = "mirror"
 
 f = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
 
-f_coords = np.array([
-    q / plot_points_per_unit
-    for q in range(plot_points_per_unit * f_support_length)
-])
+f_coords = np.array(
+    [q / plot_points_per_unit for q in range(plot_points_per_unit * f_support_length)]
+)
 
 # Syntax hint: pass (plot_coords,) not plot_coords
 f_data = f(coordinates=(f_coords,), grid=False)
@@ -219,15 +250,15 @@ desired_length = plot_points_per_unit * f_support_length
 f_coords_resize = np.linspace(0, f_support_length - 1, desired_length, dtype=np.float64)
 
 f_data_resize = resize(
-    data=f_samples,             # 1D input
+    data=f_samples,  # 1D input
     output_size=(desired_length,),
-    method="cubic",             # ensures TensorSpline standard interpolation, not least-squares or oblique
+    method="cubic",  # ensures TensorSpline standard interpolation, not least-squares or oblique
 )
 
 # Ensure both arrays have identical shapes
 f_data_spline = f(coordinates=(f_coords_resize,), grid=False)
 assert f_data_spline.shape == f_data_resize.shape, "Arrays must match in shape."
-mse_diff = np.mean((f_data_spline - f_data_resize)**2)
+mse_diff = np.mean((f_data_spline - f_data_resize) ** 2)
 print(f"MSE between TensorSpline result and resize result = {mse_diff:.6e}")
 
 # %%
@@ -260,7 +291,9 @@ plt.show()
 # instead of the cubic one, and the corresponding linear spline
 # coefficients c[k].
 
-linear_spline = TensorSpline(data=f_samples, coordinates=f_support, bases="bspline1", modes="mirror")
+linear_spline = TensorSpline(
+    data=f_samples, coordinates=f_support, bases="bspline1", modes="mirror"
+)
 linear_coeffs = linear_spline.coefficients
 
 plot_basis_decomposition(
@@ -283,7 +316,9 @@ plot_basis_decomposition(
 base_lin = "bspline1"
 mode_lin = "mirror"
 
-f_lin = TensorSpline(data=f_samples, coordinates=f_support, bases=base_lin, modes=mode_lin)
+f_lin = TensorSpline(
+    data=f_samples, coordinates=f_support, bases=base_lin, modes=mode_lin
+)
 
 # Reuse the same dense coordinate grid as for the cubic case so that
 # the two interpolants can be visually compared if desired.

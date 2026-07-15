@@ -12,7 +12,6 @@ from splineops.resize._pycore.params import LSParams, Work1D
 from splineops.resize._pycore.plan_1d import make_plan_1d
 from splineops.resize._pycore.resize_1d import resize_1d_ws
 
-
 PROJECTION_DEGREES = [
     pytest.param((1, 0, 1), id="linear-oblique"),
     pytest.param((2, 1, 2), id="quadratic-oblique"),
@@ -331,10 +330,38 @@ def test_projection_matches_arbitrary_precision_fixture(
 
 _STRONG_REDUCTION_INPUT = np.array(
     [
-        0.0, 1.0, -2.0, 3.5, 0.25, -1.5, 2.25, 4.0,
-        -3.0, 0.75, 1.25, -0.5, 2.75, -4.0, 0.5, 3.0,
-        -1.25, 2.5, 0.125, -2.75, 4.5, -0.25, 1.75, -3.5,
-        2.0, 0.625, -1.0, 3.25, -2.25, 4.25, 0.375, -0.75,
+        0.0,
+        1.0,
+        -2.0,
+        3.5,
+        0.25,
+        -1.5,
+        2.25,
+        4.0,
+        -3.0,
+        0.75,
+        1.25,
+        -0.5,
+        2.75,
+        -4.0,
+        0.5,
+        3.0,
+        -1.25,
+        2.5,
+        0.125,
+        -2.75,
+        4.5,
+        -0.25,
+        1.75,
+        -3.5,
+        2.0,
+        0.625,
+        -1.0,
+        3.25,
+        -2.25,
+        4.25,
+        0.375,
+        -0.75,
     ],
     dtype=np.float64,
 )
@@ -386,13 +413,9 @@ def test_direct_plan_is_tail_and_padding_free_for_strong_reduction(degrees):
     assert plan.length_total == size
     assert plan.left_pad == plan.right_pad == 0
     assert plan.weights2d.size < 9 * size
-    np.testing.assert_allclose(
-        plan.weights2d.sum(axis=1), 1.0, rtol=0.0, atol=4e-15
-    )
+    np.testing.assert_allclose(plan.weights2d.sum(axis=1), 1.0, rtol=0.0, atol=4e-15)
 
-    unwrapped = plan.kmin[:, None] + np.arange(
-        plan.win_len_max, dtype=np.int64
-    )
+    unwrapped = plan.kmin[:, None] + np.arange(plan.win_len_max, dtype=np.int64)
     period = 2 * size - 2
     expected = np.mod(unwrapped, period)
     expected = np.where(expected >= size, period - expected, expected)
@@ -484,9 +507,7 @@ def test_native_batched_and_python_direct_projection_agree(degrees, monkeypatch)
     )
     from splineops import _lsresize
 
-    actual = _lsresize.resize_nd(
-        values, zoom, interp, analy, synthe, (1,)
-    )
+    actual = _lsresize.resize_nd(values, zoom, interp, analy, synthe, (1,))
 
     np.testing.assert_allclose(actual, expected, rtol=0.0, atol=2e-10)
 
@@ -503,9 +524,7 @@ def test_native_forced_float32_direct_projection_agrees_with_python(
         pytest.skip("native resize extension is not available")
     monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "on")
     monkeypatch.setenv("LSRESIZE_PRECISION", "float32")
-    values = np.random.default_rng(7).standard_normal((24, 129)).astype(
-        np.float32
-    )
+    values = np.random.default_rng(7).standard_normal((24, 129)).astype(np.float32)
     zoom = (1.0, 0.37)
     interp, analy, synthe = degrees
 
@@ -519,9 +538,7 @@ def test_native_forced_float32_direct_projection_agrees_with_python(
     )
     from splineops import _lsresize
 
-    actual = _lsresize.resize_nd(
-        values, zoom, interp, analy, synthe, (1,)
-    )
+    actual = _lsresize.resize_nd(values, zoom, interp, analy, synthe, (1,))
 
     np.testing.assert_allclose(actual, expected, rtol=3e-5, atol=3e-5)
 

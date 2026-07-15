@@ -17,6 +17,7 @@ from .diff_integ import do_integ_batch, do_diff_batch
 
 # ------------------------------ knobs / toggles ------------------------------
 
+
 # Batch size (lines processed together)
 def _int_env(name: str, default: int) -> int:
     try:
@@ -24,24 +25,31 @@ def _int_env(name: str, default: int) -> int:
     except Exception:
         return default
 
+
 def _bool_env(name: str, default_true: bool = True) -> bool:
     v = os.environ.get(name, "1" if default_true else "0").lower()
     return v not in ("0", "false", "no", "off")
 
-_BATCH  = max(1, _int_env("SPLINEOPS_BLOCK", 256))
-_ACCUM  = os.environ.get("SPLINEOPS_ACCUM", "support").lower()
+
+_BATCH = max(1, _int_env("SPLINEOPS_BLOCK", 256))
+_ACCUM = os.environ.get("SPLINEOPS_ACCUM", "support").lower()
 if _ACCUM not in ("mulsum", "einsum", "support"):
     _ACCUM = "support"
 _TILE_W = max(0, _int_env("SPLINEOPS_TILE_W", 0))
 
 # Auto-tuner (off by default)
-_AUTOTUNE        = _bool_env("SPLINEOPS_AUTOTUNE", False)
-_AT_REPEATS      = max(1, _int_env("SPLINEOPS_AT_REPEATS", 1))
+_AUTOTUNE = _bool_env("SPLINEOPS_AUTOTUNE", False)
+_AT_REPEATS = max(1, _int_env("SPLINEOPS_AT_REPEATS", 1))
 # Candidates (comma-separated envs if you want to change them)
 _AT_ACCUM_CHOICES = tuple(
-    a for a in os.environ.get("SPLINEOPS_AT_ACCUM", "support,einsum,mulsum").lower().split(",")
+    a
+    for a in os.environ.get("SPLINEOPS_AT_ACCUM", "support,einsum,mulsum")
+    .lower()
+    .split(",")
     if a in ("mulsum", "einsum", "support")
 ) or ("support", "einsum", "mulsum")
+
+
 def _parse_list(name: str, default: str) -> list[int]:
     txt = os.environ.get(name, default)
     out = []
@@ -52,8 +60,11 @@ def _parse_list(name: str, default: str) -> list[int]:
             pass
     return out
 
-_AT_TILE_CHOICES  = [t for t in _parse_list("SPLINEOPS_AT_TILES", "0,64") if t >= 0]
-_AT_BATCH_CHOICES = [b for b in _parse_list("SPLINEOPS_AT_BATCH", "64,128,256,512") if b > 0]
+
+_AT_TILE_CHOICES = [t for t in _parse_list("SPLINEOPS_AT_TILES", "0,64") if t >= 0]
+_AT_BATCH_CHOICES = [
+    b for b in _parse_list("SPLINEOPS_AT_BATCH", "64,128,256,512") if b > 0
+]
 
 # Plan cache (reuse Plan1D across calls with the same realized signature).
 # Both limits are read at use time so a long-lived process can reduce or clear
@@ -99,15 +110,9 @@ def _plan_cache_limits() -> tuple[int, int, bool]:
         _DEFAULT_PLAN_CACHE_BYTES,
     )
     enabled = (
-        _bool_env("SPLINEOPS_PLAN_CACHE", True)
-        and capacity > 0
-        and byte_capacity > 0
+        _bool_env("SPLINEOPS_PLAN_CACHE", True) and capacity > 0 and byte_capacity > 0
     )
-    return (
-        (capacity, byte_capacity, True)
-        if enabled
-        else (0, 0, False)
-    )
+    return (capacity, byte_capacity, True) if enabled else (0, 0, False)
 
 
 def _plan_memory_bytes(plan: Plan1D) -> int:
@@ -138,23 +143,16 @@ def _plan_memory_bytes(plan: Plan1D) -> int:
     return total
 
 
-def _evict_plan_cache_locked(
-    capacity: int, byte_capacity: int
-) -> list[Plan1D]:
+def _evict_plan_cache_locked(capacity: int, byte_capacity: int) -> list[Plan1D]:
     global _PLAN_CACHE_BYTES_USED
 
     evicted: list[Plan1D] = []
-    while (
-        len(_PLAN_CACHE) > capacity
-        or _PLAN_CACHE_BYTES_USED > byte_capacity
-    ):
+    while len(_PLAN_CACHE) > capacity or _PLAN_CACHE_BYTES_USED > byte_capacity:
         if not _PLAN_CACHE:
             _PLAN_CACHE_BYTES_USED = 0
             break
         _, (plan, memory_bytes) = _PLAN_CACHE.popitem(last=False)
-        _PLAN_CACHE_BYTES_USED = max(
-            0, _PLAN_CACHE_BYTES_USED - memory_bytes
-        )
+        _PLAN_CACHE_BYTES_USED = max(0, _PLAN_CACHE_BYTES_USED - memory_bytes)
         evicted.append(plan)
     return evicted
 
@@ -167,8 +165,13 @@ def _build_plan(
     zoom: float,
     shift: float,
 ) -> Plan1D:
-    p = LSParams(interp_degree=interp, analy_degree=analy, synthe_degree=synthe,
-                 zoom=zoom, shift=shift)
+    p = LSParams(
+        interp_degree=interp,
+        analy_degree=analy,
+        synthe_degree=synthe,
+        zoom=zoom,
+        shift=shift,
+    )
     return make_plan_1d(N, p)
 
 
@@ -229,11 +232,10 @@ def _get_plan(N: int, p: LSParams) -> Plan1D:
             else:
                 _PLAN_CACHE[key] = (built, memory_bytes)
                 _PLAN_CACHE_BYTES_USED += memory_bytes
-                evicted.extend(
-                    _evict_plan_cache_locked(capacity, byte_capacity)
-                )
+                evicted.extend(_evict_plan_cache_locked(capacity, byte_capacity))
     del evicted
     return selected
+
 
 # Cache auto-tuner decisions per "plan signature"
 _AT_DECISION_CACHE: dict[tuple, tuple[str, int, int]] = {}
@@ -241,14 +243,23 @@ _AT_DECISION_CACHE: dict[tuple, tuple[str, int, int]] = {}
 
 # -------------------------------- autotuner ----------------------------------
 
+
 def _plan_key(plan, p: LSParams) -> tuple:
     # Enough to uniquely identify cost shape
     return (
-        int(plan.N), int(plan.out_total), int(plan.win_len_max),
-        int(plan.left_pad), int(plan.right_pad), int(plan.outN),
-        int(p.interp_degree), int(p.analy_degree), int(p.synthe_degree),
-        round(float(p.zoom), 12), round(float(p.shift), 12)
+        int(plan.N),
+        int(plan.out_total),
+        int(plan.win_len_max),
+        int(plan.left_pad),
+        int(plan.right_pad),
+        int(plan.outN),
+        int(p.interp_degree),
+        int(p.analy_degree),
+        int(p.synthe_degree),
+        round(float(p.zoom), 12),
+        round(float(p.shift), 12),
     )
+
 
 def _bench_block(Xb: np.ndarray, plan, p: LSParams, accum: str, tile_w: int) -> float:
     """
@@ -256,35 +267,41 @@ def _bench_block(Xb: np.ndarray, plan, p: LSParams, accum: str, tile_w: int) -> 
     Returns best of _AT_REPEATS in seconds.
     """
     B, N = Xb.shape
-    out_total  = plan.out_total
-    outN       = plan.outN
+    out_total = plan.out_total
+    outN = plan.outN
     length_total = plan.length_total
-    full_len   = plan.left_pad + plan.length_total + plan.right_pad
-    Wmax       = plan.win_len_max
-    corr_degree = p.interp_degree if p.analy_degree < 0 else (p.analy_degree + p.synthe_degree + 1)
+    full_len = plan.left_pad + plan.length_total + plan.right_pad
+    Wmax = plan.win_len_max
+    corr_degree = (
+        p.interp_degree
+        if p.analy_degree < 0
+        else (p.analy_degree + p.synthe_degree + 1)
+    )
 
     # allocate once
-    coeffB   = np.empty((B, N),            dtype=np.float64)
+    coeffB = np.empty((B, N), dtype=np.float64)
     extB = (
         None
         if plan.direct_projection
         else np.empty((B, length_total), dtype=np.float64)
     )
     extFullB = (
-        None
-        if plan.direct_projection
-        else np.empty((B, full_len), dtype=np.float64)
+        None if plan.direct_projection else np.empty((B, full_len), dtype=np.float64)
     )
-    yBlock   = np.empty((B, out_total),    dtype=np.float64)
+    yBlock = np.empty((B, out_total), dtype=np.float64)
 
     use_tiling = (accum != "support") and (tile_w > 0) and (Wmax > tile_w)
     if use_tiling and Wmax > 0 and out_total > 0:
         gather_tile = np.empty((B, out_total, tile_w), dtype=np.float64)
-        tmp2D       = np.empty((B, out_total),         dtype=np.float64)
+        tmp2D = np.empty((B, out_total), dtype=np.float64)
     elif accum == "support" and Wmax > 0 and out_total > 0:
-        tmp2D       = np.empty((B, out_total),         dtype=np.float64)
+        tmp2D = np.empty((B, out_total), dtype=np.float64)
     else:
-        gather3D    = np.empty((B, out_total, Wmax),   dtype=np.float64) if (Wmax > 0 and out_total > 0) else None
+        gather3D = (
+            np.empty((B, out_total, Wmax), dtype=np.float64)
+            if (Wmax > 0 and out_total > 0)
+            else None
+        )
 
     best = float("inf")
     for _ in range(_AT_REPEATS):
@@ -323,12 +340,26 @@ def _bench_block(Xb: np.ndarray, plan, p: LSParams, accum: str, tile_w: int) -> 
                 for t0w in range(0, Wmax, tile_w):
                     t1w = min(Wmax, t0w + tile_w)
                     wtile = plan.weights2d[:, t0w:t1w]  # (L,w)
-                    np.take(sampleB, plan.idx2d[:, t0w:t1w], axis=1, out=gather_tile[:, :, :t1w-t0w])
+                    np.take(
+                        sampleB,
+                        plan.idx2d[:, t0w:t1w],
+                        axis=1,
+                        out=gather_tile[:, :, : t1w - t0w],
+                    )
                     if accum == "einsum":
-                        yBlock[:, :] += np.einsum('lw,blw->bl', wtile, gather_tile[:, :, :t1w-t0w], optimize=True)
+                        yBlock[:, :] += np.einsum(
+                            "lw,blw->bl",
+                            wtile,
+                            gather_tile[:, :, : t1w - t0w],
+                            optimize=True,
+                        )
                     else:
-                        np.multiply(gather_tile[:, :, :t1w-t0w], wtile[None, :, :], out=gather_tile[:, :, :t1w-t0w])
-                        np.sum(gather_tile[:, :, :t1w-t0w], axis=2, out=tmp2D)
+                        np.multiply(
+                            gather_tile[:, :, : t1w - t0w],
+                            wtile[None, :, :],
+                            out=gather_tile[:, :, : t1w - t0w],
+                        )
+                        np.sum(gather_tile[:, :, : t1w - t0w], axis=2, out=tmp2D)
                         yBlock[:, :] += tmp2D
             elif accum == "support":
                 yBlock[:, :] = 0.0
@@ -339,7 +370,13 @@ def _bench_block(Xb: np.ndarray, plan, p: LSParams, accum: str, tile_w: int) -> 
             else:
                 np.take(sampleB, plan.idx2d, axis=1, out=gather3D)
                 if accum == "einsum":
-                    np.einsum('lw,blw->bl', plan.weights2d, gather3D, out=yBlock, optimize=True)
+                    np.einsum(
+                        "lw,blw->bl",
+                        plan.weights2d,
+                        gather3D,
+                        out=yBlock,
+                        optimize=True,
+                    )
                 else:
                     np.multiply(gather3D, plan.weights2d[None, :, :], out=gather3D)
                     np.sum(gather3D, axis=2, out=yBlock)
@@ -356,9 +393,11 @@ def _bench_block(Xb: np.ndarray, plan, p: LSParams, accum: str, tile_w: int) -> 
 
         _ = yBlock[:, :outN]  # crop (not used)
         dt = perf_counter() - t0
-        if dt < best: best = dt
+        if dt < best:
+            best = dt
 
     return best
+
 
 def _autotune(plan, p: LSParams, X: np.ndarray) -> tuple[str, int, int]:
     """
@@ -376,8 +415,10 @@ def _autotune(plan, p: LSParams, X: np.ndarray) -> tuple[str, int, int]:
         return decision
 
     # Build candidate lists, capped by current problem
-    batch_cands = sorted({min(b, cols) for b in _AT_BATCH_CHOICES if b > 0} | {min(_BATCH, cols)})
-    tile_cands  = sorted({t for t in _AT_TILE_CHOICES if t >= 0})
+    batch_cands = sorted(
+        {min(b, cols) for b in _AT_BATCH_CHOICES if b > 0} | {min(_BATCH, cols)}
+    )
+    tile_cands = sorted({t for t in _AT_TILE_CHOICES if t >= 0})
     if plan.win_len_max <= 0:
         tile_cands = [0]  # no kernel width to tile
     accum_cands = _AT_ACCUM_CHOICES
@@ -396,7 +437,9 @@ def _autotune(plan, p: LSParams, X: np.ndarray) -> tuple[str, int, int]:
     _AT_DECISION_CACHE[key] = decision
     return decision
 
+
 # ---------------------------------- core -------------------------------------
+
 
 def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
     """
@@ -428,27 +471,20 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
         right = N_line // 2
         if left == right:
             return np.take(a, [left], axis=axis)
-        return 0.5 * (
-            np.take(a, [left], axis=axis)
-            + np.take(a, [right], axis=axis)
-        )
+        return 0.5 * (np.take(a, [left], axis=axis) + np.take(a, [right], axis=axis))
 
     # When the input and output grids are identical, projection between the
     # same interpolation/synthesis spaces is exactly the identity operator.
     # Base this on integer grid sizes, not on the nominal size-request zoom.
-    if (
-        outN == N_line
-        and abs(p.shift) <= 1e-15
-        and p.synthe_degree == p.interp_degree
-    ):
+    if outN == N_line and abs(p.shift) <= 1e-15 and p.synthe_degree == p.interp_degree:
         return a.copy()
 
     plan = _get_plan(N_line, p)
 
     # Move target axis to last so lines are contiguous
-    x_last = np.moveaxis(a, axis, -1)                      # (..., N)
+    x_last = np.moveaxis(a, axis, -1)  # (..., N)
     cols = int(np.prod(x_last.shape[:-1] or (1,)))
-    X = x_last.reshape(cols, N_line)                       # (cols, N), rows contiguous
+    X = x_last.reshape(cols, N_line)  # (cols, N), rows contiguous
 
     # Decide runtime strategy (autotune or env)
     if _AUTOTUNE:
@@ -456,20 +492,20 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
         B_eff = max(1, min(B_eff, cols))
     else:
         accum_use = _ACCUM
-        tile_use  = _TILE_W
-        B_eff     = max(1, min(_BATCH, cols))
+        tile_use = _TILE_W
+        B_eff = max(1, min(_BATCH, cols))
 
-    Y = np.empty((cols, plan.outN), dtype=np.float64)      # (cols, outN)
+    Y = np.empty((cols, plan.outN), dtype=np.float64)  # (cols, outN)
 
     # Preallocate block work buffers according to chosen batch
     N = N_line
-    out_total  = plan.out_total
-    outN       = plan.outN
+    out_total = plan.out_total
+    outN = plan.outN
     length_total = plan.length_total
-    full_len   = plan.left_pad + plan.length_total + plan.right_pad
-    Wmax       = plan.win_len_max
+    full_len = plan.left_pad + plan.length_total + plan.right_pad
+    Wmax = plan.win_len_max
 
-    coeffB   = np.empty((B_eff, N),            dtype=np.float64)
+    coeffB = np.empty((B_eff, N), dtype=np.float64)
     extB = (
         None
         if plan.direct_projection
@@ -480,24 +516,32 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
         if plan.direct_projection
         else np.empty((B_eff, full_len), dtype=np.float64)
     )
-    yBlock   = np.empty((B_eff, out_total),    dtype=np.float64)
+    yBlock = np.empty((B_eff, out_total), dtype=np.float64)
 
     use_tiling = (accum_use != "support") and (tile_use > 0) and (Wmax > tile_use)
     if use_tiling:
         gather_tile = np.empty((B_eff, out_total, tile_use), dtype=np.float64)
-        tmp2D       = np.empty((B_eff, out_total),          dtype=np.float64)
+        tmp2D = np.empty((B_eff, out_total), dtype=np.float64)
     elif accum_use == "support":
-        tmp2D       = np.empty((B_eff, out_total),          dtype=np.float64)
+        tmp2D = np.empty((B_eff, out_total), dtype=np.float64)
     else:
-        gather3D    = np.empty((B_eff, out_total, Wmax),    dtype=np.float64) if (Wmax > 0 and out_total > 0) else None
+        gather3D = (
+            np.empty((B_eff, out_total, Wmax), dtype=np.float64)
+            if (Wmax > 0 and out_total > 0)
+            else None
+        )
 
-    corr_degree = p.interp_degree if p.analy_degree < 0 else (p.analy_degree + p.synthe_degree + 1)
+    corr_degree = (
+        p.interp_degree
+        if p.analy_degree < 0
+        else (p.analy_degree + p.synthe_degree + 1)
+    )
 
     for i in range(0, cols, B_eff):
         b = min(B_eff, cols - i)
 
         # 1) coefficients (batched IIR)
-        np.copyto(coeffB[:b, :], X[i:i+b, :])
+        np.copyto(coeffB[:b, :], X[i : i + b, :])
         get_interpolation_coefficients_batch(coeffB[:b, :], p.interp_degree)
 
         # 2) optional integration (in-place); keep per-line averages
@@ -530,27 +574,55 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
                 yBlock[:b, :] = 0.0
                 for t0 in range(0, Wmax, tile_use):
                     t1 = min(Wmax, t0 + tile_use)
-                    wtile = plan.weights2d[:, t0:t1]              # (L, w)
+                    wtile = plan.weights2d[:, t0:t1]  # (L, w)
                     # gather tile
-                    np.take(sampleB, plan.idx2d[:, t0:t1], axis=1, out=gather_tile[:b, :, :t1-t0])
+                    np.take(
+                        sampleB,
+                        plan.idx2d[:, t0:t1],
+                        axis=1,
+                        out=gather_tile[:b, :, : t1 - t0],
+                    )
                     if accum_use == "einsum":
-                        yBlock[:b, :] += np.einsum('lw,blw->bl', wtile, gather_tile[:b, :, :t1-t0], optimize=True)
+                        yBlock[:b, :] += np.einsum(
+                            "lw,blw->bl",
+                            wtile,
+                            gather_tile[:b, :, : t1 - t0],
+                            optimize=True,
+                        )
                     else:
-                        np.multiply(gather_tile[:b, :, :t1-t0], wtile[None, :, :], out=gather_tile[:b, :, :t1-t0])
-                        np.sum(gather_tile[:b, :, :t1-t0], axis=2, out=tmp2D[:b, :])
+                        np.multiply(
+                            gather_tile[:b, :, : t1 - t0],
+                            wtile[None, :, :],
+                            out=gather_tile[:b, :, : t1 - t0],
+                        )
+                        np.sum(gather_tile[:b, :, : t1 - t0], axis=2, out=tmp2D[:b, :])
                         yBlock[:b, :] += tmp2D[:b, :]
             elif accum_use == "support":
                 yBlock[:b, :] = 0.0
                 for tw in range(Wmax):
                     np.take(sampleB, plan.idx2d[:, tw], axis=1, out=tmp2D[:b, :])
-                    np.multiply(tmp2D[:b, :], plan.weights2d[None, :, tw], out=tmp2D[:b, :])
+                    np.multiply(
+                        tmp2D[:b, :], plan.weights2d[None, :, tw], out=tmp2D[:b, :]
+                    )
                     yBlock[:b, :] += tmp2D[:b, :]
             else:
-                np.take(sampleB, plan.idx2d, axis=1, out=gather3D[:b, :, :])   # (b, L, W)
+                np.take(
+                    sampleB, plan.idx2d, axis=1, out=gather3D[:b, :, :]
+                )  # (b, L, W)
                 if accum_use == "einsum":
-                    np.einsum('lw,blw->bl', plan.weights2d, gather3D[:b, :, :], out=yBlock[:b, :], optimize=True)
+                    np.einsum(
+                        "lw,blw->bl",
+                        plan.weights2d,
+                        gather3D[:b, :, :],
+                        out=yBlock[:b, :],
+                        optimize=True,
+                    )
                 else:
-                    np.multiply(gather3D[:b, :, :], plan.weights2d[None, :, :], out=gather3D[:b, :, :])
+                    np.multiply(
+                        gather3D[:b, :, :],
+                        plan.weights2d[None, :, :],
+                        out=gather3D[:b, :, :],
+                    )
                     np.sum(gather3D[:b, :, :], axis=2, out=yBlock[:b, :])
         else:
             yBlock[:b, :] = 0.0
@@ -564,7 +636,7 @@ def resize_along_axis(arr: np.ndarray, axis: int, p: LSParams) -> np.ndarray:
             get_samples_batch(yBlock[:b, :], p.synthe_degree)
 
         # 6) crop to outN and store
-        Y[i:i+b, :] = yBlock[:b, :outN]
+        Y[i : i + b, :] = yBlock[:b, :outN]
 
     # Reshape back and restore axis
     out_last = Y.reshape(x_last.shape[:-1] + (outN,))

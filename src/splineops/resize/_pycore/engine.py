@@ -30,6 +30,7 @@ def _normalize_axes(axes: Sequence[int] | None, ndim: int) -> tuple[int, ...]:
         normalized.append(int(axis))
     return tuple(normalized)
 
+
 def compute_zoom(
     input_img: np.ndarray,
     output_img: np.ndarray,

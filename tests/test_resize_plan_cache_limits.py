@@ -12,7 +12,6 @@ import pytest
 from splineops.resize._pycore import resize_nd as core
 from splineops.resize._pycore.params import LSParams
 
-
 _CACHE_ENV = (
     "SPLINEOPS_PLAN_CACHE",
     "SPLINEOPS_PLAN_CACHE_SIZE",
@@ -103,9 +102,7 @@ def test_byte_weight_evicts_least_recent_plan(monkeypatch):
 def test_plan_memory_accounting_covers_numpy_payloads():
     plan = core._get_plan(262, _PARAMS)
     array_bytes = sum(
-        value.nbytes
-        for value in vars(plan).values()
-        if isinstance(value, np.ndarray)
+        value.nbytes for value in vars(plan).values() if isinstance(value, np.ndarray)
     )
 
     assert core._plan_memory_bytes(plan) >= array_bytes

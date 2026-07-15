@@ -49,7 +49,9 @@ class PlanBenchResult:
 
 def bench_cases(profile: str) -> list[PlanBenchCase]:
     smoke = [
-        PlanBenchCase("2d_cubic_down_f32", (256, 256), (0.37, 0.37), "cubic", "float32"),
+        PlanBenchCase(
+            "2d_cubic_down_f32", (256, 256), (0.37, 0.37), "cubic", "float32"
+        ),
         PlanBenchCase(
             "2d_cubic_aa_down_f32",
             (256, 256),
@@ -63,9 +65,15 @@ def bench_cases(profile: str) -> list[PlanBenchCase]:
     if profile != "standard":
         raise ValueError(f"unknown profile {profile!r}")
     return smoke + [
-        PlanBenchCase("2d_linear_down_f32", (512, 512), (0.37, 0.37), "linear", "float32"),
-        PlanBenchCase("2d_linear_aniso_f32", (512, 512), (1.0, 0.37), "linear", "float32"),
-        PlanBenchCase("2d_cubic_aniso_f32", (512, 512), (1.0, 0.37), "cubic", "float32"),
+        PlanBenchCase(
+            "2d_linear_down_f32", (512, 512), (0.37, 0.37), "linear", "float32"
+        ),
+        PlanBenchCase(
+            "2d_linear_aniso_f32", (512, 512), (1.0, 0.37), "linear", "float32"
+        ),
+        PlanBenchCase(
+            "2d_cubic_aniso_f32", (512, 512), (1.0, 0.37), "cubic", "float32"
+        ),
         PlanBenchCase(
             "2d_linear_aa_down_f32",
             (512, 512),
@@ -73,7 +81,9 @@ def bench_cases(profile: str) -> list[PlanBenchCase]:
             "linear-antialiasing",
             "float32",
         ),
-        PlanBenchCase("2d_cubic_down_f64", (512, 512), (0.37, 0.37), "cubic", "float64"),
+        PlanBenchCase(
+            "2d_cubic_down_f64", (512, 512), (0.37, 0.37), "cubic", "float64"
+        ),
         PlanBenchCase(
             "3d_cubic_aniso_f32",
             (96, 96, 24),
@@ -105,7 +115,9 @@ def bench_cases(profile: str) -> list[PlanBenchCase]:
     ]
 
 
-def run_timed(fn, frames: list[np.ndarray], repeats: int, warmups: int) -> tuple[float, float]:
+def run_timed(
+    fn, frames: list[np.ndarray], repeats: int, warmups: int
+) -> tuple[float, float]:
     for _ in range(warmups):
         for frame in frames:
             fn(frame)
@@ -180,9 +192,7 @@ def run_case(
     )
     speedup = oneshot_median / plan_median if plan_median > 0.0 else float("inf")
     into_speedup = (
-        oneshot_median / plan_into_median
-        if plan_into_median > 0.0
-        else float("inf")
+        oneshot_median / plan_into_median if plan_into_median > 0.0 else float("inf")
     )
 
     return PlanBenchResult(

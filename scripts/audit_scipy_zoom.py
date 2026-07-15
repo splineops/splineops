@@ -29,7 +29,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Iterable
 
-
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
@@ -37,12 +36,19 @@ os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
 import numpy as np
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCIPY_ZOOM_DOC = "https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.zoom.html"
-SCIPY_BENCHMARK_DOC = "https://docs.scipy.org/doc/scipy/dev/contributor/benchmarking.html"
-SCIPY_INTERPOLATION_SRC = "https://github.com/scipy/scipy/blob/main/scipy/ndimage/src/ni_interpolation.c"
-SCIPY_SPLINES_SRC = "https://github.com/scipy/scipy/blob/main/scipy/ndimage/src/ni_splines.c"
+SCIPY_ZOOM_DOC = (
+    "https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.zoom.html"
+)
+SCIPY_BENCHMARK_DOC = (
+    "https://docs.scipy.org/doc/scipy/dev/contributor/benchmarking.html"
+)
+SCIPY_INTERPOLATION_SRC = (
+    "https://github.com/scipy/scipy/blob/main/scipy/ndimage/src/ni_interpolation.c"
+)
+SCIPY_SPLINES_SRC = (
+    "https://github.com/scipy/scipy/blob/main/scipy/ndimage/src/ni_splines.c"
+)
 
 
 @dataclass(frozen=True)
@@ -209,20 +215,61 @@ def _case(
 def smoke_cases() -> list[ZoomCase]:
     return [
         _case("1d_linear_down_ramp_f64", (129,), (0.5,), 1, "float64", "ramp"),
-        _case("2d_linear_down_random_f32", (192, 160), (0.5, 0.5), 1, "float32", "random"),
-        _case("2d_cubic_down_random_f32", (160, 192), (0.5, 0.5), 3, "float32", "random"),
+        _case(
+            "2d_linear_down_random_f32", (192, 160), (0.5, 0.5), 1, "float32", "random"
+        ),
+        _case(
+            "2d_cubic_down_random_f32", (160, 192), (0.5, 0.5), 3, "float32", "random"
+        ),
     ]
 
 
 def standard_cases() -> list[ZoomCase]:
     return smoke_cases() + [
-        _case("2d_linear_aniso_random_f32", (384, 320), (1.0, 0.37), 1, "float32", "random"),
-        _case("2d_linear_up_sinusoid_f64", (192, 224), (1.25, 1.25), 1, "float64", "sinusoid"),
-        _case("2d_cubic_down_random_f64", (256, 256), (0.37, 0.37), 3, "float64", "random"),
-        _case("2d_cubic_up_sinusoid_f32", (160, 192), (1.7, 1.25), 3, "float32", "sinusoid"),
+        _case(
+            "2d_linear_aniso_random_f32",
+            (384, 320),
+            (1.0, 0.37),
+            1,
+            "float32",
+            "random",
+        ),
+        _case(
+            "2d_linear_up_sinusoid_f64",
+            (192, 224),
+            (1.25, 1.25),
+            1,
+            "float64",
+            "sinusoid",
+        ),
+        _case(
+            "2d_cubic_down_random_f64", (256, 256), (0.37, 0.37), 3, "float64", "random"
+        ),
+        _case(
+            "2d_cubic_up_sinusoid_f32",
+            (160, 192),
+            (1.7, 1.25),
+            3,
+            "float32",
+            "sinusoid",
+        ),
         _case("2d_cubic_short_axis_f64", (7, 96), (1.0, 0.5), 3, "float64", "random"),
-        _case("3d_linear_down_random_f32", (80, 72, 28), (0.5, 0.5, 0.5), 1, "float32", "random"),
-        _case("3d_cubic_down_random_f32", (64, 56, 24), (0.5, 0.5, 0.5), 3, "float32", "random"),
+        _case(
+            "3d_linear_down_random_f32",
+            (80, 72, 28),
+            (0.5, 0.5, 0.5),
+            1,
+            "float32",
+            "random",
+        ),
+        _case(
+            "3d_cubic_down_random_f32",
+            (64, 56, 24),
+            (0.5, 0.5, 0.5),
+            3,
+            "float32",
+            "random",
+        ),
     ]
 
 
@@ -230,11 +277,46 @@ def full_cases() -> list[ZoomCase]:
     return standard_cases() + [
         _case("1d_nearest_up_impulse_f64", (257,), (1.75,), 0, "float64", "impulse"),
         _case("1d_quadratic_down_ramp_f64", (257,), (0.37,), 2, "float64", "ramp"),
-        _case("2d_quadratic_down_random_f32", (320, 320), (0.5, 0.5), 2, "float32", "random"),
-        _case("2d_linear_down_random_f32_large", (768, 768), (0.37, 0.37), 1, "float32", "random"),
-        _case("2d_cubic_down_random_f32_large", (768, 768), (0.37, 0.37), 3, "float32", "random"),
-        _case("3d_linear_aniso_random_f32", (96, 96, 32), (1.0, 0.5, 1.0), 1, "float32", "random"),
-        _case("3d_cubic_aniso_random_f32", (80, 80, 28), (1.0, 0.5, 1.0), 3, "float32", "random"),
+        _case(
+            "2d_quadratic_down_random_f32",
+            (320, 320),
+            (0.5, 0.5),
+            2,
+            "float32",
+            "random",
+        ),
+        _case(
+            "2d_linear_down_random_f32_large",
+            (768, 768),
+            (0.37, 0.37),
+            1,
+            "float32",
+            "random",
+        ),
+        _case(
+            "2d_cubic_down_random_f32_large",
+            (768, 768),
+            (0.37, 0.37),
+            3,
+            "float32",
+            "random",
+        ),
+        _case(
+            "3d_linear_aniso_random_f32",
+            (96, 96, 32),
+            (1.0, 0.5, 1.0),
+            1,
+            "float32",
+            "random",
+        ),
+        _case(
+            "3d_cubic_aniso_random_f32",
+            (80, 80, 28),
+            (1.0, 0.5, 1.0),
+            3,
+            "float32",
+            "random",
+        ),
     ]
 
 
@@ -321,7 +403,12 @@ def time_call(
 
     if out is None:
         out = np.asarray(func())
-    return out, min(samples), float(statistics.median(samples)), float(statistics.fmean(samples))
+    return (
+        out,
+        min(samples),
+        float(statistics.median(samples)),
+        float(statistics.fmean(samples)),
+    )
 
 
 def run_splineops(
@@ -361,7 +448,9 @@ def run_scipy(
         )
 
 
-def quality_metrics(candidate: np.ndarray, reference: np.ndarray) -> tuple[float, float, float, float]:
+def quality_metrics(
+    candidate: np.ndarray, reference: np.ndarray
+) -> tuple[float, float, float, float]:
     diff = np.abs(candidate.astype(np.float64) - reference.astype(np.float64))
     max_abs = float(np.max(diff)) if diff.size else 0.0
     mean_abs = float(np.mean(diff)) if diff.size else 0.0
@@ -876,21 +965,34 @@ def render_report(
     )
     lines.extend(
         _markdown_table(
-            ["Scope", "Rows", "Median Potential SciPy Speedup", "Mean Potential SciPy Speedup"],
+            [
+                "Scope",
+                "Rows",
+                "Median Potential SciPy Speedup",
+                "Mean Potential SciPy Speedup",
+            ],
             [
                 [
                     "All successful rows",
                     str(len(ok_rows)),
                     _fmt(
-                        statistics.median(_float_values(ok_rows, "potential_scipy_speedup"))
-                        if ok_rows
-                        else None,
+                        (
+                            statistics.median(
+                                _float_values(ok_rows, "potential_scipy_speedup")
+                            )
+                            if ok_rows
+                            else None
+                        ),
                         suffix="x",
                     ),
                     _fmt(
-                        statistics.fmean(_float_values(ok_rows, "potential_scipy_speedup"))
-                        if ok_rows
-                        else None,
+                        (
+                            statistics.fmean(
+                                _float_values(ok_rows, "potential_scipy_speedup")
+                            )
+                            if ok_rows
+                            else None
+                        ),
                         suffix="x",
                     ),
                 ],
@@ -898,15 +1000,23 @@ def render_report(
                     f"Exact-ish rows (`rel_l2 < {exact_rel_l2:g}`)",
                     str(len(exact_rows)),
                     _fmt(
-                        statistics.median(_float_values(exact_rows, "potential_scipy_speedup"))
-                        if exact_rows
-                        else None,
+                        (
+                            statistics.median(
+                                _float_values(exact_rows, "potential_scipy_speedup")
+                            )
+                            if exact_rows
+                            else None
+                        ),
                         suffix="x",
                     ),
                     _fmt(
-                        statistics.fmean(_float_values(exact_rows, "potential_scipy_speedup"))
-                        if exact_rows
-                        else None,
+                        (
+                            statistics.fmean(
+                                _float_values(exact_rows, "potential_scipy_speedup")
+                            )
+                            if exact_rows
+                            else None
+                        ),
                         suffix="x",
                     ),
                 ],
@@ -914,15 +1024,19 @@ def render_report(
                     "Same-semantics first-pass candidates",
                     str(len(candidates)),
                     _fmt(
-                        statistics.median(candidate_speedups)
-                        if candidate_speedups
-                        else None,
+                        (
+                            statistics.median(candidate_speedups)
+                            if candidate_speedups
+                            else None
+                        ),
                         suffix="x",
                     ),
                     _fmt(
-                        statistics.fmean(candidate_speedups)
-                        if candidate_speedups
-                        else None,
+                        (
+                            statistics.fmean(candidate_speedups)
+                            if candidate_speedups
+                            else None
+                        ),
                         suffix="x",
                     ),
                 ],
@@ -1028,7 +1142,9 @@ def render_report(
 def write_csv(path: Path, rows: list[ZoomAuditResult]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     dict_rows = [asdict(row) for row in rows]
-    fieldnames = list(dict_rows[0]) if dict_rows else list(ZoomAuditResult.__dataclass_fields__)
+    fieldnames = (
+        list(dict_rows[0]) if dict_rows else list(ZoomAuditResult.__dataclass_fields__)
+    )
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -1048,7 +1164,11 @@ def print_result(row: ZoomAuditResult) -> None:
     assert row.splineops_median_ms is not None
     assert row.potential_scipy_speedup is not None
     assert row.rel_l2_diff is not None
-    marker = "candidate" if row.same_semantics_candidate else ("exactish" if row.exactish else "context")
+    marker = (
+        "candidate"
+        if row.same_semantics_candidate
+        else ("exactish" if row.exactish else "context")
+    )
     print(
         f"{row.case:34s} "
         f"{row.scipy_variant:42s} "
@@ -1062,7 +1182,9 @@ def print_result(row: ZoomAuditResult) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=("smoke", "standard", "full"), default="standard")
+    parser.add_argument(
+        "--profile", choices=("smoke", "standard", "full"), default="standard"
+    )
     parser.add_argument(
         "--variant-profile",
         choices=("focused", "broad"),

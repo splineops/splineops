@@ -12,7 +12,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "splineops"
 version = "2.0.0"
-description = "Spline signal processing in N-D with support for GPU computing."
+description = "Precise spline interpolation and projection-based N-D resizing."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -36,10 +36,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.urls]
@@ -56,6 +57,7 @@ visualization = [
 tests = [
     "tox >=4.13",
     "pytest >=6.0",
+    "pytest-cov >=5.0",
 ]
 dev = [
     "splineops[visualization,tests]",
@@ -115,3 +117,20 @@ xfail_strict = true
 filterwarnings = ["error"]
 log_cli_level = "info"
 testpaths = ["tests"]
+
+[tool.black]
+target-version = ["py311"]
+line-length = 88
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "splineops.resize.*",
+    "splineops.utils.*",
+    "splineops.multiscale.wavelets.spline_wavelets_tool",
+]
+ignore_errors = true

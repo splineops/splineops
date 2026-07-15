@@ -30,17 +30,13 @@ from PIL import Image
 # scale its intensity back to [0, 255] before rotation.
 
 # Load the 'kodim17.png' image
-url = 'https://r0k.us/graphics/kodak/kodak/kodim22.png'
+url = "https://r0k.us/graphics/kodak/kodak/kodim22.png"
 with urlopen(url, timeout=10) as resp:
     img = Image.open(resp)
 data = np.array(img, dtype=np.float64)
 
 # Convert to grayscale using a standard formula
-data_gray = (
-    data[:, :, 0] * 0.2989 +
-    data[:, :, 1] * 0.5870 +
-    data[:, :, 2] * 0.1140
-)
+data_gray = data[:, :, 0] * 0.2989 + data[:, :, 1] * 0.5870 + data[:, :, 2] * 0.1140
 
 # Normalize the grayscale image to [0,1]
 data_normalized = data_gray / 255.0
@@ -50,11 +46,7 @@ zoom_factors = (0.3, 0.3)
 interp_method = "cubic"
 
 # Resize the image using spline interpolation (this returns image in [0,1])
-image_resized = resize(
-    data_normalized, 
-    zoom_factors=zoom_factors, 
-    method=interp_method
-)
+image_resized = resize(data_normalized, zoom_factors=zoom_factors, method=interp_method)
 
 # Bring the resized image back to [0,255]
 image_resized = (image_resized * 255.0).astype(np.float32)
@@ -66,11 +58,7 @@ rotation_angle = 45
 custom_center = (image_resized.shape[0] // 2, image_resized.shape[1] // 2)
 
 # Rotate the image (now in [0,255])
-rotated_image = rotate(
-    image_resized,
-    angle=rotation_angle,
-    center=custom_center
-)
+rotated_image = rotate(image_resized, angle=rotation_angle, center=custom_center)
 
 # Create a circular mask
 radius = min(image_resized.shape) // 2
@@ -88,10 +76,7 @@ ax[0].axis("off")
 # Display the rotated image
 ax[1].imshow(rotated_image, cmap="gray", vmin=0, vmax=255)
 ax[1].scatter(
-    custom_center[1], 
-    custom_center[0], 
-    color="red", 
-    label="Center of Rotation"
+    custom_center[1], custom_center[0], color="red", label="Center of Rotation"
 )
 ax[1].set_title(f"Rotated Image ({rotation_angle}°)")
 ax[1].axis("off")

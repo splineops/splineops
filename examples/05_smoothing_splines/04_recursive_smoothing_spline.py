@@ -32,8 +32,8 @@ lam_values = [0.1]  # You can try smaller or larger values
 
 # Apply fractional smoothing spline as a baseline for comparison
 lambda_ = 0.1  # Regularization parameter for fractional method
-m = 1          # No upsampling
-gamma = 0.6    # Spline order parameter
+m = 1  # No upsampling
+gamma = 0.6  # Spline order parameter
 _, smoothed_fractional = smoothing_spline(signal, lambda_, m, gamma)
 
 # Compute MSE values for different recursive smoothing spline parameters
@@ -47,11 +47,11 @@ plt.plot(x, smoothed_fractional, label="Fractional Smoothing Spline", color="red
 # Apply and plot recursive smoothing spline for each lambda value
 for lam_recursive in lam_values:
     smoothed_recursive = recursive_smoothing_spline(signal, lamb=lam_recursive)
-    
+
     # Compute MSE
     mse = np.mean((smoothed_recursive - smoothed_fractional) ** 2)
     mse_values.append(mse)
-    
+
     plt.plot(x, smoothed_recursive, label=f"Recursive Smoothing (λ={lam_recursive})")
 
 # Print MSE values

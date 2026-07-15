@@ -33,10 +33,12 @@ from typing import Optional, Tuple, List, Dict
 try:
     from PyQt5 import QtWidgets  # single GUI toolkit for dialogs
     import matplotlib as mpl
+
     mpl.use("QtAgg")  # Use Qt-based backend on all platforms
 except Exception:
     # Fallback: no PyQt5 available, let Matplotlib pick a default backend
     import matplotlib as mpl
+
     QtWidgets = None  # type: ignore[assignment]
 
 import matplotlib.pyplot as plt
@@ -47,6 +49,7 @@ from PIL import Image
 # Optional ICC → sRGB (safe to skip if unavailable)
 try:
     from PIL import ImageCms  # type: ignore
+
     _HAS_IMAGECMS = True
 except Exception:
     _HAS_IMAGECMS = False
@@ -58,13 +61,20 @@ from PyQt5 import QtWidgets  # type: ignore[assignment]
 
 # Import splineops (works when run directly or as module)
 try:
-    from splineops.resize import resize as sp_resize, resize_degrees as sp_resize_degrees
+    from splineops.resize import (
+        resize as sp_resize,
+        resize_degrees as sp_resize_degrees,
+    )
 except Exception:
     repo_root = Path(__file__).resolve().parents[1]
-    src_dir   = repo_root / "src"
+    src_dir = repo_root / "src"
     if src_dir.exists() and str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
-    from splineops.resize import resize as sp_resize, resize_degrees as sp_resize_degrees
+    from splineops.resize import (
+        resize as sp_resize,
+        resize_degrees as sp_resize_degrees,
+    )
+
 
 # -------------------------------
 # Image I/O → grayscale [0,1]
@@ -113,6 +123,7 @@ def _open_as_gray01(path: Path) -> np.ndarray:
     im.close()
     return np.clip(arr, 0.0, 1.0).astype(DTYPE, copy=False)
 
+
 # -------------------------------
 # Display helpers
 # -------------------------------
@@ -121,24 +132,32 @@ def _as_rgb_u8(img01: np.ndarray) -> np.ndarray:
     u8 = np.rint(a * 255.0).astype(np.uint8)
     return np.repeat(u8[..., None], 3, axis=2)
 
+
 # -------------------------------
 # Method mapping
 # -------------------------------
 DEGREES = ("linear", "quadratic", "cubic")
 FAMILIES = (
-    ("scipy",   "SciPy"),
-    ("standard","Standard"),
-    ("aa",      "Antialiasing"),
-    ("ls",      "Least-Squares"),
+    ("scipy", "SciPy"),
+    ("standard", "Standard"),
+    ("aa", "Antialiasing"),
+    ("ls", "Least-Squares"),
 )
-METHOD_LABELS = [f"{fam_name} {deg.title()}" for fam_key, fam_name in FAMILIES for deg in DEGREES]
-LABEL_TO_KEY = {f"{fam_name} {deg.title()}": f"{fam_key}-{deg}"
-                for fam_key, fam_name in FAMILIES for deg in DEGREES}
+METHOD_LABELS = [
+    f"{fam_name} {deg.title()}" for fam_key, fam_name in FAMILIES for deg in DEGREES
+]
+LABEL_TO_KEY = {
+    f"{fam_name} {deg.title()}": f"{fam_key}-{deg}"
+    for fam_key, fam_name in FAMILIES
+    for deg in DEGREES
+}
 KEY_TO_LABEL = {v: k for k, v in LABEL_TO_KEY.items()}
+
 
 def _parse_method_key(method_key: str) -> Tuple[str, str]:
     family, degree = method_key.split("-", 1)
     return family, degree
+
 
 def _avg_runtime(fn, runs: int = 10, warmup: bool = True) -> float:
     if warmup:
@@ -148,19 +167,30 @@ def _avg_runtime(fn, runs: int = 10, warmup: bool = True) -> float:
         fn()
     return (time.perf_counter() - t0) / runs
 
+
 # -------------------------------
 # Resizing backends (grayscale)
 # -------------------------------
 def _scipy_zoom_gray(data01: np.ndarray, z: float, degree: str) -> np.ndarray:
     from scipy.ndimage import zoom as ndi_zoom
+
     order_map = {"linear": 1, "quadratic": 2, "cubic": 3}
     order = order_map[degree]
-    need_prefilter = (order >= 3)
-    out = ndi_zoom(data01, (z, z), order=order, prefilter=need_prefilter,
-                   mode="reflect", grid_mode=False)
+    need_prefilter = order >= 3
+    out = ndi_zoom(
+        data01,
+        (z, z),
+        order=order,
+        prefilter=need_prefilter,
+        mode="reflect",
+        grid_mode=False,
+    )
     return np.clip(out, 0.0, 1.0)
 
-def _splineops_resize_gray(data01: np.ndarray, z: float, family: str, degree: str) -> np.ndarray:
+
+def _splineops_resize_gray(
+    data01: np.ndarray, z: float, family: str, degree: str
+) -> np.ndarray:
     if family == "standard":
         # Pure interpolation (no antialiasing)
         sp_method = degree
@@ -184,16 +214,19 @@ def _splineops_resize_gray(data01: np.ndarray, z: float, family: str, degree: st
         raise ValueError(f"Unsupported family for splineops: {family}")
     return np.clip(out, 0.0, 1.0)
 
+
 def _resize_gray(gray01: np.ndarray, method_key: str, zoom: float) -> np.ndarray:
     family, degree = _parse_method_key(method_key)
     if family == "scipy":
         return _scipy_zoom_gray(gray01, zoom, degree)
     return _splineops_resize_gray(gray01, zoom, family, degree)
 
+
 def _fmt_time(sec: Optional[float]) -> str:
     if sec is None:
         return "n/a"
     return f"{sec*1000:.1f} ms" if sec < 1.0 else f"{sec:.3f} s"
+
 
 # ------------------------
 # Tiny settings UI (PyQt5)
@@ -288,10 +321,13 @@ class SettingsDialog(QtWidgets.QDialog):
         self._result = (z, key)
         self.accept()
 
+
 # ------------------------
 # UI helpers
 # ------------------------
-def _select_image_with_dialog(parent: Optional[QtWidgets.QWidget] = None) -> Optional[Path]:
+def _select_image_with_dialog(
+    parent: Optional[QtWidgets.QWidget] = None,
+) -> Optional[Path]:
     filters = (
         "Image files (*.png *.jpg *.jpeg *.tif *.tiff);;"
         "PNG (*.png);;"
@@ -307,6 +343,7 @@ def _select_image_with_dialog(parent: Optional[QtWidgets.QWidget] = None) -> Opt
     )
     return Path(path).expanduser() if path else None
 
+
 def _show_gray_image(img01: np.ndarray):
     rgb = _as_rgb_u8(img01)
     h, w = rgb.shape[:2]
@@ -317,15 +354,16 @@ def _show_gray_image(img01: np.ndarray):
     ax.set_axis_off()
     plt.show()
 
+
 # ------------------------
 # Timing + comparison plot
 # ------------------------
 def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
     families = [
-        ("scipy",   "SciPy"),
-        ("standard","Standard"),
-        ("aa",      "Antialiasing"),
-        ("ls",      "Least-Squares"),
+        ("scipy", "SciPy"),
+        ("standard", "Standard"),
+        ("aa", "Antialiasing"),
+        ("ls", "Least-Squares"),
     ]
     results: List[Dict] = []
     for fam_key, fam_name in families:
@@ -336,31 +374,38 @@ def _measure_families_at_degree(gray01: np.ndarray, zoom: float, degree: str):
         err: Optional[str] = None
         try:
             img = _resize_gray(gray01, key, zoom)
-            elapsed = _avg_runtime(lambda: _resize_gray(gray01, key, zoom),
-                                   runs=10, warmup=True)
+            elapsed = _avg_runtime(
+                lambda: _resize_gray(gray01, key, zoom), runs=10, warmup=True
+            )
         except Exception as e:
             err = str(e)
-        results.append({"key": key, "label": label,
-                        "img": img, "time": elapsed, "error": err})
+        results.append(
+            {"key": key, "label": label, "img": img, "time": elapsed, "error": err}
+        )
     return results
 
-def _comparison_figure(orig_gray: np.ndarray,
-                       results: List[Dict],
-                       zoom: float,
-                       degree: str,
-                       base_shape: Tuple[int, int]):
+
+def _comparison_figure(
+    orig_gray: np.ndarray,
+    results: List[Dict],
+    zoom: float,
+    degree: str,
+    base_shape: Tuple[int, int],
+):
     """
     Show a comparison figure with the original image plus the resized outputs.
     """
     panels: List[Dict] = []
 
     # First panel: original image
-    panels.append({
-        "label": "Original",
-        "img": orig_gray,
-        "time": None,
-        "error": None,
-    })
+    panels.append(
+        {
+            "label": "Original",
+            "img": orig_gray,
+            "time": None,
+            "error": None,
+        }
+    )
 
     # Then each family result
     panels.extend(results)
@@ -372,7 +417,8 @@ def _comparison_figure(orig_gray: np.ndarray,
         else:
             h = max(1, int(round(base_shape[0] * zoom)))
             w = max(1, int(round(base_shape[1] * zoom)))
-        heights.append(h); widths.append(w)
+        heights.append(h)
+        widths.append(w)
 
     ratios = [w / max(h, 1) for w, h in zip(widths, heights)]
     panel_h_in = 3.4
@@ -406,13 +452,21 @@ def _comparison_figure(orig_gray: np.ndarray,
                 msg = "SciPy error"
             ax.text(0.5, 0.40, f"{msg}", ha="center", va="center", fontsize=9)
             if detail:
-                ax.text(0.5, 0.28, detail[:48] + ("…" if len(detail) > 48 else ""),
-                        ha="center", va="center", fontsize=8)
+                ax.text(
+                    0.5,
+                    0.28,
+                    detail[:48] + ("…" if len(detail) > 48 else ""),
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                )
             ax.set_title(f"{p['label']}\navg(10): {_fmt_time(None)}", fontsize=10)
 
-    fig.suptitle(f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}",
-                 fontsize=12)
+    fig.suptitle(
+        f"Resize comparison @ zoom ×{zoom:g} — Degree: {degree.title()}", fontsize=12
+    )
     plt.show()
+
 
 # ------------------------
 # Main flow
@@ -424,7 +478,11 @@ def main(argv=None) -> int:
         app = QtWidgets.QApplication(sys.argv)
 
     cli_path = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else None
-    img_path = cli_path if (cli_path and cli_path.exists()) else _select_image_with_dialog(parent=None)
+    img_path = (
+        cli_path
+        if (cli_path and cli_path.exists())
+        else _select_image_with_dialog(parent=None)
+    )
     if img_path is None:
         return 0  # cancelled
 
@@ -466,6 +524,7 @@ def main(argv=None) -> int:
         pass
 
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

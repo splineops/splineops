@@ -1,0 +1,80 @@
+name: Development benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "benchmark profile"
+        required: true
+        default: "standard"
+        type: choice
+        options: [smoke, standard]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    env:
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Benchmark construction, evaluation, and peak memory
+        run: >-
+          python scripts/benchmark_tensorspline.py
+          --profile "${{ inputs.profile }}"
+          --output-json tensorspline.json
+          --output-csv tensorspline.csv
+
+      - name: Benchmark TensorSpline memory scaling
+        run: >-
+          python scripts/benchmark_tensorspline_memory_scaling.py
+          --output-json tensorspline-memory.json
+          --output-csv tensorspline-memory.csv
+
+      - name: Benchmark repeated TensorSpline coordinates
+        run: >-
+          python scripts/benchmark_tensorspline_query_plan.py
+          --output-json tensorspline-query-plan.json
+          --output-csv tensorspline-query-plan.csv
+
+      - name: Benchmark equivalent affine rotation
+        run: >-
+          python scripts/benchmark_affine.py
+          --profile "${{ inputs.profile }}"
+          --output-json affine.json
+          --output-csv affine.csv
+
+      - name: Benchmark vectorized differentials
+        run: >-
+          python scripts/benchmark_differentials.py
+          --profile "${{ inputs.profile }}"
+          --output-json differentials.json
+          --output-csv differentials.csv
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: development-benchmarks-${{ inputs.profile }}-${{ github.sha }}
+          path: |
+            tensorspline.json
+            tensorspline.csv
+            tensorspline-memory.json
+            tensorspline-memory.csv
+            tensorspline-query-plan.json
+            tensorspline-query-plan.csv
+            affine.json
+            affine.csv
+            differentials.json
+            differentials.csv
+          if-no-files-found: error

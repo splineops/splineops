@@ -5,6 +5,7 @@ from .params import LSParams, Plan1D, Work1D
 from .filters import get_interpolation_coefficients, get_samples
 from .diff_integ import do_integ, do_diff
 
+
 def _ensure_ws(ws: Work1D, plan: Plan1D, N: int) -> None:
     if ws.coeff.size != N:
         ws.coeff = np.empty(N, dtype=np.float64)
@@ -23,6 +24,7 @@ def _ensure_ws(ws: Work1D, plan: Plan1D, N: int) -> None:
     if ws.gather2d.shape != (plan.out_total, plan.win_len_max):
         ws.gather2d = np.empty((plan.out_total, plan.win_len_max), dtype=np.float64)
 
+
 def _build_extension_inplace(coeff: np.ndarray, plan: Plan1D, ws: Work1D) -> None:
     N = coeff.size
     ext = ws.ext
@@ -37,7 +39,14 @@ def _build_extension_inplace(coeff: np.ndarray, plan: Plan1D, ws: Work1D) -> Non
     if plan.right_pad > 0:
         ext_full[plan.left_pad + plan.length_total :] = ext[-1]
 
-def resize_1d_ws(in_line: np.ndarray, p: LSParams, plan: Plan1D, ws: Work1D, out: np.ndarray | None = None) -> np.ndarray:
+
+def resize_1d_ws(
+    in_line: np.ndarray,
+    p: LSParams,
+    plan: Plan1D,
+    ws: Work1D,
+    out: np.ndarray | None = None,
+) -> np.ndarray:
     # Explicit definitions for endpoint-grid degeneracies.  These mirror the
     # batched N-D path and keep projection away from an undefined zero scale.
     if in_line.size == 1:
@@ -77,7 +86,7 @@ def resize_1d_ws(in_line: np.ndarray, p: LSParams, plan: Plan1D, ws: Work1D, out
     _ensure_ws(ws, plan, in_line.size)
 
     # 1) coefficients
-    ws.coeff[...] = in_line    # contiguous row from resizend
+    ws.coeff[...] = in_line  # contiguous row from resizend
     get_interpolation_coefficients(ws.coeff, p.interp_degree)
 
     # 2) optional integration
@@ -104,12 +113,16 @@ def resize_1d_ws(in_line: np.ndarray, p: LSParams, plan: Plan1D, ws: Work1D, out
         if not plan.direct_projection:
             do_diff(ws.y, p.analy_degree + 1)
             ws.y += average
-        corr_degree = p.interp_degree if p.analy_degree < 0 else (p.analy_degree + p.synthe_degree + 1)
+        corr_degree = (
+            p.interp_degree
+            if p.analy_degree < 0
+            else (p.analy_degree + p.synthe_degree + 1)
+        )
         get_interpolation_coefficients(ws.y, corr_degree)
         get_samples(ws.y, p.synthe_degree)
 
     # 6) crop (optionally write into provided buffer)
-    view = ws.y[:plan.outN]
+    view = ws.y[: plan.outN]
     if out is not None:
         np.copyto(out, view)
         return out

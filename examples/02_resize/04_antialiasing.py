@@ -84,9 +84,9 @@ input_image_normalized = input_image_normalized.astype(DTYPE, copy=False)
 h_img, w_img = input_image_normalized.shape
 
 # Shared parameters
-zoom = np.e / 9          # ≈ 0.3020313142732272
+zoom = np.e / 9  # ≈ 0.3020313142732272
 zoom_factors_2d = (zoom, zoom)
-border_fraction = 0.3    # central crop for SNR/MSE
+border_fraction = 0.3  # central crop for SNR/MSE
 ROI_SIZE_PX = 64
 
 # Face-centered 64×64 ROI (for visual comparisons)
@@ -100,7 +100,7 @@ roi_rect = (row_top, col_left, ROI_SIZE_PX, ROI_SIZE_PX)  # (r, c, h, w)
 roi_kwargs = dict(
     roi_height_frac=ROI_SIZE_PX / h_img,  # keeps height at 64 px (square ROI)
     grayscale=True,
-    roi_xy=(row_top, col_left),           # top-left of the ROI
+    roi_xy=(row_top, col_left),  # top-left of the ROI
 )
 
 # Mapping for resized-space ROI (used by both resized displays)
@@ -128,9 +128,9 @@ recovered_2d_std = resize(
 )
 t2 = time.perf_counter()
 
-time_2d_std_fwd = t1 - t0         # forward resize (down/up)
-time_2d_std_back = t2 - t1        # backward resize (return to original size)
-time_2d_std = t2 - t0             # total pipeline time
+time_2d_std_fwd = t1 - t0  # forward resize (down/up)
+time_2d_std_back = t2 - t1  # backward resize (return to original size)
+time_2d_std = t2 - t0  # total pipeline time
 
 # SNR/MSE on central region (no ROI cropping here)
 snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
@@ -174,19 +174,27 @@ snr_2d_aa, mse_2d_aa = compute_snr_and_mse_region(
 # Build a quick ROI triptych (nearest-neighbour magnification) from the
 # recovered images for visual comparison.
 
+
 def _nearest_big(roi: np.ndarray, target_h: int) -> np.ndarray:
     h, w = roi.shape
     mag = max(1, int(round(target_h / h)))
     return np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
 
-roi_orig = input_image_normalized[row_top:row_top+ROI_SIZE_PX, col_left:col_left+ROI_SIZE_PX]
-roi_std  = recovered_2d_std[row_top:row_top+ROI_SIZE_PX, col_left:col_left+ROI_SIZE_PX]
-roi_aa   = recovered_2d_aa[row_top:row_top+ROI_SIZE_PX, col_left:col_left+ROI_SIZE_PX]
+
+roi_orig = input_image_normalized[
+    row_top : row_top + ROI_SIZE_PX, col_left : col_left + ROI_SIZE_PX
+]
+roi_std = recovered_2d_std[
+    row_top : row_top + ROI_SIZE_PX, col_left : col_left + ROI_SIZE_PX
+]
+roi_aa = recovered_2d_aa[
+    row_top : row_top + ROI_SIZE_PX, col_left : col_left + ROI_SIZE_PX
+]
 
 DISPLAY_H = 256
 roi_big_orig = _nearest_big(roi_orig, DISPLAY_H)
-roi_big_std  = _nearest_big(roi_std,  DISPLAY_H)
-roi_big_aa   = _nearest_big(roi_aa,   DISPLAY_H)
+roi_big_std = _nearest_big(roi_std, DISPLAY_H)
+roi_big_aa = _nearest_big(roi_aa, DISPLAY_H)
 
 fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.6))
 
@@ -214,9 +222,7 @@ plt.show()
 # -----------------
 
 _ = show_roi_zoom(
-    input_image_normalized,
-    ax_titles=("Original Image", None),
-    **roi_kwargs
+    input_image_normalized, ax_titles=("Original Image", None), **roi_kwargs
 )
 
 # %%
@@ -232,7 +238,9 @@ h_res_aa, w_res_aa = resized_2d_aa.shape
 row_top_res_aa = int(np.clip(center_r_res - roi_h_res // 2, 0, h_res_aa - roi_h_res))
 col_left_res_aa = int(np.clip(center_c_res - roi_w_res // 2, 0, w_res_aa - roi_w_res))
 
-canvas_aa = np.ones((h_img, w_img), dtype=resized_2d_aa.dtype)  # white background in [0,1]
+canvas_aa = np.ones(
+    (h_img, w_img), dtype=resized_2d_aa.dtype
+)  # white background in [0,1]
 canvas_aa[:h_res_aa, :w_res_aa] = resized_2d_aa
 
 roi_kwargs_on_canvas_aa = dict(
@@ -247,7 +255,7 @@ _ = show_roi_zoom(
         f"Resized Image (antialiasing, {fmt_ms(time_2d_aa_fwd)})",
         None,
     ),
-    **roi_kwargs_on_canvas_aa
+    **roi_kwargs_on_canvas_aa,
 )
 
 # %%
@@ -274,7 +282,7 @@ _ = show_roi_zoom(
         f"Resized Image (standard, {fmt_ms(time_2d_std_fwd)})",
         None,
     ),
-    **roi_kwargs_on_canvas_std
+    **roi_kwargs_on_canvas_std,
 )
 
 # %%
@@ -291,7 +299,7 @@ _ = show_roi_zoom(
         f"Recovered Image (antialiased, {fmt_ms(time_2d_aa_back)})",
         None,
     ),
-    **roi_kwargs
+    **roi_kwargs,
 )
 
 # %%
@@ -304,7 +312,7 @@ _ = show_roi_zoom(
         f"Recovered Image (standard interpolation, {fmt_ms(time_2d_std_back)})",
         None,
     ),
-    **roi_kwargs
+    **roi_kwargs,
 )
 
 # %%
@@ -355,8 +363,8 @@ plot_difference_image(
 # standard interpolation and antialiased shrink/expand.
 
 methods = [
-    ("Standard Interpolation (cubic)",          snr_2d_std, mse_2d_std, time_2d_std),
-    ("Antialiasing (cubic shrink, cubic up)",   snr_2d_aa,  mse_2d_aa,  time_2d_aa),
+    ("Standard Interpolation (cubic)", snr_2d_std, mse_2d_std, time_2d_std),
+    ("Antialiasing (cubic shrink, cubic up)", snr_2d_aa, mse_2d_aa, time_2d_aa),
 ]
 
 header_line = f"{'Method':<40} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
@@ -364,12 +372,7 @@ print(header_line)
 print("-" * len(header_line))
 
 for name, snr_val, mse_val, t in methods:
-    print(
-        f"{name:<40} "
-        f"{snr_val:>10.2f} "
-        f"{mse_val:>16.2e} "
-        f"{t:>12.4f}"
-    )
+    print(f"{name:<40} " f"{snr_val:>10.2f} " f"{mse_val:>16.2e} " f"{t:>12.4f}")
 
 # %%
 # Least-Squares vs Antialiasing
@@ -418,7 +421,7 @@ snr_2d_ls, mse_2d_ls = compute_snr_and_mse_region(
 
 methods_ls_vs_aa = [
     ("Antialiasing (cubic shrink, cubic up)", snr_2d_aa, mse_2d_aa, time_2d_aa),
-    ("Least-Squares (cubic) shrink+up",       snr_2d_ls, mse_2d_ls, time_2d_ls),
+    ("Least-Squares (cubic) shrink+up", snr_2d_ls, mse_2d_ls, time_2d_ls),
 ]
 
 header_line_ls = f"{'Method':<40} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
@@ -427,9 +430,4 @@ print(header_line_ls)
 print("-" * len(header_line_ls))
 
 for name, snr_val, mse_val, t in methods_ls_vs_aa:
-    print(
-        f"{name:<40} "
-        f"{snr_val:>10.2f} "
-        f"{mse_val:>16.2e} "
-        f"{t:>12.4f}"
-    )
+    print(f"{name:<40} " f"{snr_val:>10.2f} " f"{mse_val:>16.2e} " f"{t:>12.4f}")

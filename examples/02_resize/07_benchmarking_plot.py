@@ -61,6 +61,7 @@ from PIL import Image
 # Optional SciPy
 try:
     from scipy.ndimage import zoom as ndi_zoom
+
     _HAS_SCIPY = True
 except Exception:
     _HAS_SCIPY = False
@@ -69,15 +70,17 @@ except Exception:
 try:
     import torch
     import torch.nn.functional as F
+
     _HAS_TORCH = True
 except Exception:
     _HAS_TORCH = False
     torch = None  # type: ignore[assignment]
-    F = None      # type: ignore[assignment]
+    F = None  # type: ignore[assignment]
 
 # Optional OpenCV (for comparison)
 try:
     import cv2
+
     _HAS_CV2 = True
     # Undo OpenCV's Qt plugin path override to avoid conflicts with Matplotlib backends
     os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
@@ -88,6 +91,7 @@ except Exception:
 try:
     from skimage.transform import resize as sk_resize
     from skimage.metrics import structural_similarity as sk_ssim  # SSIM
+
     _HAS_SKIMAGE = True
 except Exception:
     _HAS_SKIMAGE = False
@@ -95,8 +99,10 @@ except Exception:
 
 # SplineOps
 from splineops.resize import resize as spl_resize
+
 try:
     from splineops.utils.specs import print_runtime_context
+
     _HAS_SPECS = True
 except Exception:
     print_runtime_context = None  # type: ignore[assignment]
@@ -124,12 +130,13 @@ SPLINEOPS_CURVE_COLORS = {
 
 # --- Cool palette for non-SplineOps methods (avoid Matplotlib's orange/red cycle) ---
 OTHER_CURVE_COLORS = {
-    "SciPy":        "#2563EB",  # blue
-    "PyTorch":      "#0EA5E9",  # sky/cyan
-    "OpenCV":       "#6366F1",  # indigo
-    "Pillow":       "#14B8A6",  # teal
+    "SciPy": "#2563EB",  # blue
+    "PyTorch": "#0EA5E9",  # sky/cyan
+    "OpenCV": "#6366F1",  # indigo
+    "Pillow": "#14B8A6",  # teal
     "scikit-image": "#64748B",  # slate
 }
+
 
 def _color_for_curve(name: str) -> str | None:
     """SplineOps -> warm highlight; others -> cool palette; else None."""
@@ -141,6 +148,7 @@ def _color_for_curve(name: str) -> str | None:
             return col
     return None
 
+
 # Show markers only on every N-th point (sparser markers).
 # All methods share the same stride but use different phase offsets
 # so their markers don't sit on top of each other.
@@ -148,15 +156,16 @@ MARK_EVERY_BASE = 8
 
 # ---------------- Method toggles ----------------
 # Set any of these to False to skip computing/plotting that method.
-ENABLE_SCIPY                   = True
-ENABLE_SPLINEOPS_STANDARD      = True
-ENABLE_SPLINEOPS_ANTIALIASING  = True
-ENABLE_TORCH                   = True
-ENABLE_OPENCV                  = True
-ENABLE_PILLOW                  = True
-ENABLE_SKIMAGE                 = True
+ENABLE_SCIPY = True
+ENABLE_SPLINEOPS_STANDARD = True
+ENABLE_SPLINEOPS_ANTIALIASING = True
+ENABLE_TORCH = True
+ENABLE_OPENCV = True
+ENABLE_PILLOW = True
+ENABLE_SKIMAGE = True
 
 VERBOSE_PROGRESS = False  # set to True if you want CLI progress printing
+
 
 # ------------------------
 # Small helpers
@@ -211,9 +220,10 @@ def average_time(run, repeats: int = 10) -> Tuple[np.ndarray, float, float]:
         times.append(dt)
     times_arr = np.asarray(times, dtype=np.float64)
     mean_t = float(times_arr.mean())
-    sd_t   = float(times_arr.std(ddof=1 if times_arr.size > 1 else 0))
+    sd_t = float(times_arr.std(ddof=1 if times_arr.size > 1 else 0))
     assert rec is not None
     return rec, mean_t, sd_t
+
 
 # %%
 # Load and Normalize an Image
@@ -233,11 +243,7 @@ def _load_kodak_gray(url: str) -> np.ndarray:
 
     if arr.ndim == 3 and arr.shape[2] >= 3:
         arr01 = arr / 255.0
-        gray = (
-            0.2989 * arr01[..., 0]
-            + 0.5870 * arr01[..., 1]
-            + 0.1140 * arr01[..., 2]
-        )
+        gray = 0.2989 * arr01[..., 0] + 0.5870 * arr01[..., 1] + 0.1140 * arr01[..., 2]
     else:
         vmax = float(arr.max()) or 1.0
         gray = arr / vmax
@@ -276,9 +282,8 @@ plt.show()
 # - once for **cubic** interpolation,
 # - once for **linear** interpolation.
 
-def scipy_roundtrip(
-    img: np.ndarray, z: float, degree: str
-) -> Tuple[np.ndarray, float]:
+
+def scipy_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip with SciPy ndimage.zoom using order=1 (linear) or 3 (cubic),
     reflect boundary; prefilter is used only for cubic.
@@ -315,9 +320,7 @@ def scipy_roundtrip(
     return rec.astype(img.dtype, copy=False), dt
 
 
-def spl_roundtrip(
-    img: np.ndarray, z: float, method: str
-) -> Tuple[np.ndarray, float]:
+def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, float]:
     """
     SplineOps round-trip using a single preset string:
 
@@ -336,9 +339,7 @@ def spl_roundtrip(
     return rec.astype(img.dtype, copy=False), dt
 
 
-def torch_roundtrip(
-    img: np.ndarray, z: float, degree: str
-) -> Tuple[np.ndarray, float]:
+def torch_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip using torch.nn.functional.interpolate with bilinear (linear)
     or bicubic (cubic). Runs on CPU.
@@ -421,9 +422,7 @@ def opencv_roundtrip(
     return rec.astype(img.dtype, copy=False), dt
 
 
-def pillow_roundtrip(
-    img: np.ndarray, z: float, which: str
-) -> Tuple[np.ndarray, float]:
+def pillow_roundtrip(img: np.ndarray, z: float, which: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip with Pillow's resize using BILINEAR/BICUBIC.
 
@@ -513,16 +512,17 @@ def skimage_roundtrip(
 #
 # We exclude zoom factors too close to 1.0 to avoid trivial "identity" spikes.
 
-SAMPLES_DOWN = 80        # zoom samples in (0, 1)
-SAMPLES_UP   = 80        # zoom samples in (1, 2)
-REPEATS      = 10        # timing repetitions per (method, zoom)
-NEAR_ONE_EPS = 1e-2      # exclude zoom factors with |z - 1| < NEAR_ONE_EPS
-NEAR_MAX_EPS = 1e-2      # keep z at least this far from 2.0
+SAMPLES_DOWN = 80  # zoom samples in (0, 1)
+SAMPLES_UP = 80  # zoom samples in (1, 2)
+REPEATS = 10  # timing repetitions per (method, zoom)
+NEAR_ONE_EPS = 1e-2  # exclude zoom factors with |z - 1| < NEAR_ONE_EPS
+NEAR_MAX_EPS = 1e-2  # keep z at least this far from 2.0
 
 eps = 1e-6
 z_down = np.linspace(0.001, 1.0 - eps, SAMPLES_DOWN, endpoint=True, dtype=np.float64)
-z_up   = np.linspace(1.0 + eps, 2.0 - NEAR_MAX_EPS, SAMPLES_UP,
-                     endpoint=True, dtype=np.float64)
+z_up = np.linspace(
+    1.0 + eps, 2.0 - NEAR_MAX_EPS, SAMPLES_UP, endpoint=True, dtype=np.float64
+)
 
 z_candidates = np.concatenate([z_down, z_up])
 z_candidates = z_candidates[(z_candidates > 0.0) & (z_candidates < 2.0 - NEAR_MAX_EPS)]
@@ -541,7 +541,10 @@ print(
 # Method Construction
 # -------------------
 
-def build_methods_for_degree(degree: str) -> Tuple[Dict[str, Tuple[str, str | None]], str]:
+
+def build_methods_for_degree(
+    degree: str,
+) -> Tuple[Dict[str, Tuple[str, str | None]], str]:
     """
     Build the METHODS dictionary for a given degree ('linear' or 'cubic').
 
@@ -599,9 +602,12 @@ def build_methods_for_degree(degree: str) -> Tuple[Dict[str, Tuple[str, str | No
         if _HAS_SKIMAGE:
             METHODS[f"scikit-image ({degree_label}, AA)"] = ("skimage", degree)
         else:
-            print("[info] scikit-image not found; 'scikit-image' curve will be omitted.")
+            print(
+                "[info] scikit-image not found; 'scikit-image' curve will be omitted."
+            )
 
     return METHODS, degree_label
+
 
 def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]], str]:
     """
@@ -623,13 +629,13 @@ def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]]
             if kind == "scipy":
                 runner = lambda z=z, deg=param: scipy_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
             elif kind == "SplineOps":
-                runner = lambda z=z, m=param: spl_roundtrip(img_gray, z, m)        # type: ignore[arg-type]
+                runner = lambda z=z, m=param: spl_roundtrip(img_gray, z, m)  # type: ignore[arg-type]
             elif kind == "torch":
                 runner = lambda z=z, deg=param: torch_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
             elif kind == "opencv":
-                runner = lambda z=z, deg=param: opencv_roundtrip(img_gray, z, deg) # type: ignore[arg-type]
+                runner = lambda z=z, deg=param: opencv_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
             elif kind == "pillow":
-                runner = lambda z=z, w=param: pillow_roundtrip(img_gray, z, w)     # type: ignore[arg-type]
+                runner = lambda z=z, w=param: pillow_roundtrip(img_gray, z, w)  # type: ignore[arg-type]
             elif kind == "skimage":
                 runner = lambda z=z, deg=param: skimage_roundtrip(img_gray, z, deg)  # type: ignore[arg-type]
             else:
@@ -665,9 +671,11 @@ def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]]
     print(f"\nDone for degree={degree_label}.")
     return results, degree_label
 
+
 # %%
 # Plotting Helpers
 # ----------------
+
 
 def _plot_timing(
     results: Dict[str, Dict[str, List[float]]],
@@ -698,8 +706,8 @@ def _plot_timing(
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,                 # SAME for everyone
-            color=_color_for_curve(name),         # warm for SplineOps, cool for others
+            linewidth=LINEWIDTH,  # SAME for everyone
+            color=_color_for_curve(name),  # warm for SplineOps, cool for others
             label=name,
         )
         any_curve = True
@@ -751,8 +759,8 @@ def _plot_snr(
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,                 # SAME for everyone
-            color=_color_for_curve(name),         # warm for SplineOps, cool for others
+            linewidth=LINEWIDTH,  # SAME for everyone
+            color=_color_for_curve(name),  # warm for SplineOps, cool for others
             label=name,
         )
         any_curve = True
@@ -805,8 +813,8 @@ def _plot_ssim(
             marker=marker_for.get(name, "o"),
             markevery=markevery_for.get(name, (0, MARK_EVERY_BASE)),
             markersize=MARKER_SIZE,
-            linewidth=LINEWIDTH,                 # SAME for everyone
-            color=_color_for_curve(name),         # warm for SplineOps, cool for others
+            linewidth=LINEWIDTH,  # SAME for everyone
+            color=_color_for_curve(name),  # warm for SplineOps, cool for others
             label=name,
         )
         any_curve = True
@@ -824,6 +832,7 @@ def _plot_ssim(
         plt.legend(fontsize=PLOT_LEGEND_FONTSIZE)
         plt.tight_layout()
     plt.show()
+
 
 def _filter_results_z_range(
     results: Dict[str, Dict[str, List[float]]],
@@ -860,6 +869,7 @@ def _filter_results_z_range(
                 filtered[name][key] = list(vals[mask])
 
     return filtered
+
 
 # %%
 # Benchmark for Cubic Degree

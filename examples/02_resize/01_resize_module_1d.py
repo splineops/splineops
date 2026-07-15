@@ -30,14 +30,16 @@ We build up the visualization step-by-step:
 import numpy as np
 import matplotlib.pyplot as plt
 
-from splineops.resize import resize                 # core 1-D spline resizer
+from splineops.resize import resize  # core 1-D spline resizer
 from splineops.spline_interpolation.tensor_spline import TensorSpline
 
-plt.rcParams.update({
-    "font.size": 14,
-    "axes.titlesize": 18,
-    "axes.labelsize": 16,
-})
+plt.rcParams.update(
+    {
+        "font.size": 14,
+        "axes.titlesize": 18,
+        "axes.labelsize": 16,
+    }
+)
 
 # %%
 # 1D Resize-Based Coarsening
@@ -53,13 +55,38 @@ plt.rcParams.update({
 # 1) Original 1D samples f[k] (same as in 02_01 / 02_02)
 number_of_samples = 27
 f_support_1d = np.arange(number_of_samples, dtype=np.float64)
-f_samples_1d = np.array([
-    -0.657391, -0.641319, -0.613081, -0.518523, -0.453829, -0.385138,
-    -0.270688, -0.179849, -0.11805, -0.0243016, 0.0130667, 0.0355389,
-    0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
-    -0.00811776, 0.0153119, 0.106126, 0.21688, 0.347629, 0.419532,
-    0.50695, 0.544767, 0.555373
-], dtype=np.float64)
+f_samples_1d = np.array(
+    [
+        -0.657391,
+        -0.641319,
+        -0.613081,
+        -0.518523,
+        -0.453829,
+        -0.385138,
+        -0.270688,
+        -0.179849,
+        -0.11805,
+        -0.0243016,
+        0.0130667,
+        0.0355389,
+        0.0901577,
+        0.219599,
+        0.374669,
+        0.384896,
+        0.301386,
+        0.128646,
+        -0.00811776,
+        0.0153119,
+        0.106126,
+        0.21688,
+        0.347629,
+        0.419532,
+        0.50695,
+        0.544767,
+        0.555373,
+    ],
+    dtype=np.float64,
+)
 
 # %%
 # Original Samples
@@ -97,10 +124,12 @@ f_1d = TensorSpline(
 )
 
 # Dense evaluation grid for the fine spline
-f_coords_1d = np.array([
-    q / plot_points_per_unit_1d
-    for q in range(plot_points_per_unit_1d * number_of_samples)
-])
+f_coords_1d = np.array(
+    [
+        q / plot_points_per_unit_1d
+        for q in range(plot_points_per_unit_1d * number_of_samples)
+    ]
+)
 f_data_1d = f_1d(coordinates=(f_coords_1d,), grid=False)
 
 plt.figure(figsize=(10, 4))
@@ -130,10 +159,10 @@ plt.show()
 # 2) Choose a coarse length: round(27 // π)
 val_T = np.pi
 K = number_of_samples
-g_support_length = round(K // val_T)   # e.g., 27 // π ≈ 8
+g_support_length = round(K // val_T)  # e.g., 27 // π ≈ 8
 
 # Express this as a zoom factor for resize
-zoom_1d = g_support_length / K        # e.g., 8 / 27
+zoom_1d = g_support_length / K  # e.g., 8 / 27
 
 # 3) Coarse samples via resize: cubic and cubic-antialiasing
 g_samples_cubic = resize(
@@ -175,7 +204,7 @@ g_aa_ts = TensorSpline(
 # Evaluate both coarse splines on the same dense grid as f(x)
 g_coords_dense = f_coords_1d
 g_cubic_data = g_cubic_ts(coordinates=(g_coords_dense,), grid=False)
-g_aa_data    = g_aa_ts(coordinates=(g_coords_dense,), grid=False)
+g_aa_data = g_aa_ts(coordinates=(g_coords_dense,), grid=False)
 
 # Optional sanity check at the coarse nodes: resize(cubic) vs fine spline sampled at x_l
 f_at_xg = f_1d(coordinates=(g_support_x,), grid=False)
@@ -278,7 +307,7 @@ plt.vlines(
 plt.plot(
     g_support_x,
     g_samples_aa,
-    "ro",   # red circles, hollow
+    "ro",  # red circles, hollow
     mfc="none",
     markersize=8,
     markeredgewidth=2,

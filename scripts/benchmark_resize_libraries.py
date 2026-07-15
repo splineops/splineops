@@ -156,7 +156,9 @@ def method_order(method: str) -> int:
     raise ValueError(f"unsupported method {method!r}")
 
 
-def run_splineops(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]) -> tuple[np.ndarray, str]:
+def run_splineops(
+    arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]
+) -> tuple[np.ndarray, str]:
     os.environ["SPLINEOPS_ACCEL"] = "always"
     from splineops.resize import resize
 
@@ -164,7 +166,9 @@ def run_splineops(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]
     return np.asarray(out), "splineops.resize"
 
 
-def run_scipy_ndimage(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]) -> tuple[np.ndarray, str]:
+def run_scipy_ndimage(
+    arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]
+) -> tuple[np.ndarray, str]:
     from scipy import ndimage
 
     order = method_order(case.method)
@@ -180,7 +184,9 @@ def run_scipy_ndimage(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, 
     return np.asarray(out), f"scipy.ndimage.zoom(order={order}, mode=mirror, no-aa)"
 
 
-def run_skimage_resize(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]) -> tuple[np.ndarray, str]:
+def run_skimage_resize(
+    arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]
+) -> tuple[np.ndarray, str]:
     from skimage.transform import resize
 
     order = method_order(case.method)
@@ -199,7 +205,9 @@ def run_skimage_resize(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int,
     )
 
 
-def run_opencv(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]) -> tuple[np.ndarray, str]:
+def run_opencv(
+    arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]
+) -> tuple[np.ndarray, str]:
     if arr.ndim != 2:
         raise NotImplementedError("OpenCV backend is limited to 2-D scalar arrays")
 
@@ -227,7 +235,9 @@ def run_opencv(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]) -
     return np.asarray(out), f"cv2.resize({label})"
 
 
-def run_torch_interpolate(arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]) -> tuple[np.ndarray, str]:
+def run_torch_interpolate(
+    arr: np.ndarray, case: LibraryCase, out_shape: tuple[int, ...]
+) -> tuple[np.ndarray, str]:
     import torch
     import torch.nn.functional as F
 
@@ -245,7 +255,9 @@ def run_torch_interpolate(arr: np.ndarray, case: LibraryCase, out_shape: tuple[i
         x = torch.from_numpy(np.ascontiguousarray(arr))[None, None]
     elif arr.ndim == 3:
         if antialias:
-            raise NotImplementedError("PyTorch antialias is not available for 3-D interpolate")
+            raise NotImplementedError(
+                "PyTorch antialias is not available for 3-D interpolate"
+            )
         if base == "fast":
             mode = "nearest"
         elif base == "linear":
@@ -254,7 +266,9 @@ def run_torch_interpolate(arr: np.ndarray, case: LibraryCase, out_shape: tuple[i
             raise NotImplementedError(f"PyTorch unsupported 3-D method {case.method!r}")
         x = torch.from_numpy(np.ascontiguousarray(arr))[None, None]
     else:
-        raise NotImplementedError("PyTorch backend supports only 2-D and 3-D scalar arrays")
+        raise NotImplementedError(
+            "PyTorch backend supports only 2-D and 3-D scalar arrays"
+        )
 
     kwargs: dict[str, object] = {"size": out_shape, "mode": mode}
     if mode != "nearest":
@@ -280,8 +294,22 @@ BACKENDS: dict[str, tuple[str, Runner]] = {
 
 def smoke_cases() -> list[LibraryCase]:
     return [
-        LibraryCase("2d_linear_down_ramp_f32", (256, 256), (0.5, 0.5), "linear", "float32", "ramp"),
-        LibraryCase("2d_cubic_down_random_f32", (256, 256), (0.37, 0.37), "cubic", "float32", "random"),
+        LibraryCase(
+            "2d_linear_down_ramp_f32",
+            (256, 256),
+            (0.5, 0.5),
+            "linear",
+            "float32",
+            "ramp",
+        ),
+        LibraryCase(
+            "2d_cubic_down_random_f32",
+            (256, 256),
+            (0.37, 0.37),
+            "cubic",
+            "float32",
+            "random",
+        ),
         LibraryCase(
             "2d_cubic_aa_down_checker_f32",
             (256, 256),
@@ -295,13 +323,62 @@ def smoke_cases() -> list[LibraryCase]:
 
 def standard_cases() -> list[LibraryCase]:
     return smoke_cases() + [
-        LibraryCase("2d_linear_down_random_f32", (512, 512), (0.37, 0.37), "linear", "float32", "random"),
-        LibraryCase("2d_linear_aniso_random_f32", (512, 512), (1.0, 0.37), "linear", "float32", "random"),
-        LibraryCase("2d_linear_up_sinusoid_f32", (512, 512), (1.25, 1.25), "linear", "float32", "sinusoid"),
-        LibraryCase("2d_linear_down_random_f64", (512, 512), (0.37, 0.37), "linear", "float64", "random"),
-        LibraryCase("2d_linear_aniso_random_f64", (512, 512), (1.0, 0.37), "linear", "float64", "random"),
-        LibraryCase("2d_linear_up_sinusoid_f64", (512, 512), (1.25, 1.25), "linear", "float64", "sinusoid"),
-        LibraryCase("2d_cubic_up_sinusoid_f32", (256, 256), (1.7, 1.7), "cubic", "float32", "sinusoid"),
+        LibraryCase(
+            "2d_linear_down_random_f32",
+            (512, 512),
+            (0.37, 0.37),
+            "linear",
+            "float32",
+            "random",
+        ),
+        LibraryCase(
+            "2d_linear_aniso_random_f32",
+            (512, 512),
+            (1.0, 0.37),
+            "linear",
+            "float32",
+            "random",
+        ),
+        LibraryCase(
+            "2d_linear_up_sinusoid_f32",
+            (512, 512),
+            (1.25, 1.25),
+            "linear",
+            "float32",
+            "sinusoid",
+        ),
+        LibraryCase(
+            "2d_linear_down_random_f64",
+            (512, 512),
+            (0.37, 0.37),
+            "linear",
+            "float64",
+            "random",
+        ),
+        LibraryCase(
+            "2d_linear_aniso_random_f64",
+            (512, 512),
+            (1.0, 0.37),
+            "linear",
+            "float64",
+            "random",
+        ),
+        LibraryCase(
+            "2d_linear_up_sinusoid_f64",
+            (512, 512),
+            (1.25, 1.25),
+            "linear",
+            "float64",
+            "sinusoid",
+        ),
+        LibraryCase(
+            "2d_cubic_up_sinusoid_f32",
+            (256, 256),
+            (1.7, 1.7),
+            "cubic",
+            "float32",
+            "sinusoid",
+        ),
         LibraryCase(
             "2d_linear_aa_down_random_f32",
             (512, 512),
@@ -326,8 +403,22 @@ def standard_cases() -> list[LibraryCase]:
             "float64",
             "random",
         ),
-        LibraryCase("3d_linear_down_random_f32", (96, 96, 32), (0.5, 0.5, 0.5), "linear", "float32", "random"),
-        LibraryCase("3d_cubic_down_random_f32", (96, 96, 32), (0.5, 0.5, 0.5), "cubic", "float32", "random"),
+        LibraryCase(
+            "3d_linear_down_random_f32",
+            (96, 96, 32),
+            (0.5, 0.5, 0.5),
+            "linear",
+            "float32",
+            "random",
+        ),
+        LibraryCase(
+            "3d_cubic_down_random_f32",
+            (96, 96, 32),
+            (0.5, 0.5, 0.5),
+            "cubic",
+            "float32",
+            "random",
+        ),
         LibraryCase(
             "3d_cubic_aa_down_random_f32",
             (64, 64, 24),
@@ -341,10 +432,38 @@ def standard_cases() -> list[LibraryCase]:
 
 def full_cases() -> list[LibraryCase]:
     return standard_cases() + [
-        LibraryCase("2d_linear_down_random_f32_large", (1024, 1024), (0.37, 0.37), "linear", "float32", "random"),
-        LibraryCase("2d_linear_aniso_random_f32_large", (1024, 1024), (1.0, 0.37), "linear", "float32", "random"),
-        LibraryCase("2d_linear_up_sinusoid_f32_large", (1024, 1024), (1.25, 1.25), "linear", "float32", "sinusoid"),
-        LibraryCase("2d_cubic_down_random_f64", (1024, 1024), (0.37, 0.37), "cubic", "float64", "random"),
+        LibraryCase(
+            "2d_linear_down_random_f32_large",
+            (1024, 1024),
+            (0.37, 0.37),
+            "linear",
+            "float32",
+            "random",
+        ),
+        LibraryCase(
+            "2d_linear_aniso_random_f32_large",
+            (1024, 1024),
+            (1.0, 0.37),
+            "linear",
+            "float32",
+            "random",
+        ),
+        LibraryCase(
+            "2d_linear_up_sinusoid_f32_large",
+            (1024, 1024),
+            (1.25, 1.25),
+            "linear",
+            "float32",
+            "sinusoid",
+        ),
+        LibraryCase(
+            "2d_cubic_down_random_f64",
+            (1024, 1024),
+            (0.37, 0.37),
+            "cubic",
+            "float64",
+            "random",
+        ),
         LibraryCase(
             "2d_cubic_aa_down_random_f64_large",
             (1024, 1024),
@@ -353,7 +472,14 @@ def full_cases() -> list[LibraryCase]:
             "float64",
             "random",
         ),
-        LibraryCase("3d_cubic_aniso_random_f32", (128, 128, 32), (1.0, 0.5, 1.0), "cubic", "float32", "random"),
+        LibraryCase(
+            "3d_cubic_aniso_random_f32",
+            (128, 128, 32),
+            (1.0, 0.5, 1.0),
+            "cubic",
+            "float32",
+            "random",
+        ),
         LibraryCase(
             "3d_cubic_aa_down_random_f32_large",
             (96, 96, 32),
@@ -420,7 +546,9 @@ def time_runner(
     return np.asarray(out), implementation, samples
 
 
-def quality_metrics(candidate: np.ndarray, reference: np.ndarray) -> tuple[float, float, float, float]:
+def quality_metrics(
+    candidate: np.ndarray, reference: np.ndarray
+) -> tuple[float, float, float, float]:
     diff = np.abs(candidate.astype(np.float64) - reference.astype(np.float64))
     max_abs = float(np.max(diff)) if diff.size else 0.0
     mean_abs = float(np.mean(diff)) if diff.size else 0.0
@@ -512,7 +640,11 @@ def run_case(
             continue
         module_name, runner = BACKENDS[backend]
         if not has_module(module_name):
-            results.append(skipped_result(backend, case, f"missing optional dependency {module_name!r}"))
+            results.append(
+                skipped_result(
+                    backend, case, f"missing optional dependency {module_name!r}"
+                )
+            )
             continue
 
         try:
@@ -525,7 +657,9 @@ def run_case(
                 warmups,
             )
             if tuple(out.shape) != out_shape:
-                raise RuntimeError(f"returned shape {tuple(out.shape)}, expected {out_shape}")
+                raise RuntimeError(
+                    f"returned shape {tuple(out.shape)}, expected {out_shape}"
+                )
             max_abs, mean_abs, p99, rel_l2 = quality_metrics(out, reference)
             median_ms = float(statistics.median(samples))
             results.append(
@@ -546,7 +680,9 @@ def run_case(
                     best_ms=min(samples),
                     median_ms=median_ms,
                     mean_ms=float(statistics.mean(samples)),
-                    speedup_vs_splineops=ref_median / median_ms if median_ms > 0.0 else float("inf"),
+                    speedup_vs_splineops=(
+                        ref_median / median_ms if median_ms > 0.0 else float("inf")
+                    ),
                     max_abs_diff=max_abs,
                     mean_abs_diff=mean_abs,
                     p99_abs_diff=p99,
@@ -571,7 +707,9 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
 def write_csv(path: Path, results: list[LibraryResult]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = [asdict(r) for r in results]
-    fieldnames = list(rows[0].keys()) if rows else list(LibraryResult.__dataclass_fields__)
+    fieldnames = (
+        list(rows[0].keys()) if rows else list(LibraryResult.__dataclass_fields__)
+    )
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -580,7 +718,9 @@ def write_csv(path: Path, results: list[LibraryResult]) -> None:
 
 def print_result(result: LibraryResult) -> None:
     if result.status != "ok":
-        print(f"{result.case:34s} {result.backend:9s} {result.status:7s} {result.reason}")
+        print(
+            f"{result.case:34s} {result.backend:9s} {result.status:7s} {result.reason}"
+        )
         return
     assert result.median_ms is not None
     assert result.speedup_vs_splineops is not None
@@ -606,7 +746,9 @@ def print_summary(results: list[LibraryResult]) -> None:
 
     for backend in sorted(by_backend):
         rows = by_backend[backend]
-        speedups = [r.speedup_vs_splineops for r in rows if r.speedup_vs_splineops is not None]
+        speedups = [
+            r.speedup_vs_splineops for r in rows if r.speedup_vs_splineops is not None
+        ]
         rel = [r.rel_l2_diff for r in rows if r.rel_l2_diff is not None]
         if not speedups:
             continue
@@ -622,8 +764,12 @@ def print_summary(results: list[LibraryResult]) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=["smoke", "standard", "full"], default="standard")
-    parser.add_argument("--backends", type=parse_backends, default=parse_backends("all"))
+    parser.add_argument(
+        "--profile", choices=["smoke", "standard", "full"], default="standard"
+    )
+    parser.add_argument(
+        "--backends", type=parse_backends, default=parse_backends("all")
+    )
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--output-json", type=Path)
@@ -727,7 +873,9 @@ def main() -> int:
             "warmups": args.warmups,
             "backends": args.backends,
             "LSRESIZE_NUM_THREADS": os.environ.get("LSRESIZE_NUM_THREADS", "<default>"),
-            "LSRESIZE_BATCHED_AXIS": os.environ.get("LSRESIZE_BATCHED_AXIS", "<default:auto>"),
+            "LSRESIZE_BATCHED_AXIS": os.environ.get(
+                "LSRESIZE_BATCHED_AXIS", "<default:auto>"
+            ),
             "LSRESIZE_AVX2_LINEAR": os.environ.get(
                 "LSRESIZE_AVX2_LINEAR",
                 "<default:on-if-supported>",

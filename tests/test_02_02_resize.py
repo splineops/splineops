@@ -149,8 +149,8 @@ def test_resize_plan_python_fallback_matches_resize(monkeypatch):
 def _apply_resize(
     data: np.ndarray,
     *,
-    method: str,            # "least-squares" | "oblique" | "interpolation" | "standard"
-    degree: int,            # 0..3
+    method: str,  # "least-squares" | "oblique" | "interpolation" | "standard"
+    degree: int,  # 0..3
     zoom_factors=None,
     output_size=None,
 ) -> np.ndarray:
@@ -217,6 +217,7 @@ def _analy_degree_of(method: str, degree: int) -> int:
         return 0 if degree == 1 else 1
     raise ValueError(f"Unknown method '{method}'")
 
+
 def _axis_shift(analy_degree: int, zoom: float) -> float:
     """
     Match the per-axis shift used in the implementation:
@@ -228,9 +229,11 @@ def _axis_shift(analy_degree: int, zoom: float) -> float:
     t = (analy_degree + 1.0) / 2.0
     return (t - np.floor(t)) * (1.0 / float(zoom) - 1.0)
 
+
 def _per_axis_analy_degrees(method: str, degree: int, zoom_factors):
     base = _analy_degree_of(method, degree)
     return [base for _ in zoom_factors]
+
 
 # --- central crop helpers (dimension- & zoom-aware) ---
 def _central_crop_nd(arr: np.ndarray, pads):
@@ -244,6 +247,7 @@ def _central_crop_nd(arr: np.ndarray, pads):
         else:
             slices.append(slice(p, n - p))
     return arr[tuple(slices)]
+
 
 def _pads_for_crop(shape_out, degree: int, pattern_name: str, zoom_factors):
     """
@@ -274,31 +278,40 @@ def _pads_for_crop(shape_out, degree: int, pattern_name: str, zoom_factors):
         pads.append(pad)
     return pads
 
+
 # --- mathematical patterns on continuous coordinates ---
 def expected_gradient_value(coords, shape):
     return sum(coord / dim_len for coord, dim_len in zip(coords, shape)) / len(shape)
 
+
 def expected_sinusoidal_value(coords, shape, freqs=None):
     if freqs is None:
         freqs = [5 * (i + 1) for i in range(len(shape))]
-    values = [np.sin(2 * np.pi * freq * coord / dim_len)
-              for coord, dim_len, freq in zip(coords, shape, freqs)]
+    values = [
+        np.sin(2 * np.pi * freq * coord / dim_len)
+        for coord, dim_len, freq in zip(coords, shape, freqs)
+    ]
     return (np.sum(values) / len(values)) * 0.25 + 0.5
 
+
 def expected_checkerboard_value(coords, square_sizes):
-    indices = [int(coord // square_size) for coord, square_size
-               in zip(coords, square_sizes)]
+    indices = [
+        int(coord // square_size) for coord, square_size in zip(coords, square_sizes)
+    ]
     return (sum(indices) % 2) * 1.0  # 1.0 for white, 0.0 for black
 
+
 # --- expected generation with algorithm-matched back-mapping + crop ---
-def calculate_mse_with_expected(pattern_name,
-                                shape,
-                                zoom_factors,
-                                resized_image,
-                                freqs=None,
-                                square_sizes=None,
-                                degree=None,
-                                method=None):
+def calculate_mse_with_expected(
+    pattern_name,
+    shape,
+    zoom_factors,
+    resized_image,
+    freqs=None,
+    square_sizes=None,
+    degree=None,
+    method=None,
+):
     """
     Build the expected field by mapping each output index back to input
     coordinates using the *same* per-axis mapping as the resampler:
@@ -315,7 +328,7 @@ def calculate_mse_with_expected(pattern_name,
     def map_back(point):
         coords = []
         for i, (p, s) in enumerate(zip(point, shifts)):
-            nin  = shape[i]
+            nin = shape[i]
             nout = resized_image.shape[i]
             if nout > 1:
                 step = (nin - 1) / float(nout - 1)
@@ -326,48 +339,78 @@ def calculate_mse_with_expected(pattern_name,
 
     if pattern_name == "Gradient":
         expected = np.array(
-            [expected_gradient_value(map_back(pt), shape)
-             for pt in zip(*[g.flat for g in grids])]
+            [
+                expected_gradient_value(map_back(pt), shape)
+                for pt in zip(*[g.flat for g in grids])
+            ]
         ).reshape(target_shape)
     elif pattern_name == "Sinusoidal":
         expected = np.array(
-            [expected_sinusoidal_value(map_back(pt), shape, freqs)
-             for pt in zip(*[g.flat for g in grids])]
+            [
+                expected_sinusoidal_value(map_back(pt), shape, freqs)
+                for pt in zip(*[g.flat for g in grids])
+            ]
         ).reshape(target_shape)
     elif pattern_name == "Checkerboard":
         expected = np.array(
-            [expected_checkerboard_value(map_back(pt), square_sizes)
-             for pt in zip(*[g.flat for g in grids])]
+            [
+                expected_checkerboard_value(map_back(pt), square_sizes)
+                for pt in zip(*[g.flat for g in grids])
+            ]
         ).reshape(target_shape)
     else:
         raise ValueError("Unknown pattern name")
 
-    pads = _pads_for_crop(target_shape, (degree if degree is not None else 1),
-                          pattern_name, zoom_factors)
+    pads = _pads_for_crop(
+        target_shape, (degree if degree is not None else 1), pattern_name, zoom_factors
+    )
     rr = _central_crop_nd(resized_image, pads)
     ee = _central_crop_nd(expected, pads)
     return float(np.mean((ee - rr) ** 2))
 
+
 # --- synthetic pattern generation on the *input* grid ---
 def generate_pattern(pattern_name, shape, zoom_factors, freqs=None, square_sizes=None):
-    grid = np.meshgrid(*[np.linspace(0, dim_len - 1, dim_len)
-                         for dim_len in shape], indexing="ij")
+    grid = np.meshgrid(
+        *[np.linspace(0, dim_len - 1, dim_len) for dim_len in shape], indexing="ij"
+    )
     if pattern_name == "Gradient":
-        pattern = np.array([expected_gradient_value(coords, shape)
-                            for coords in zip(*[g.flat for g in grid])]).reshape(shape)
+        pattern = np.array(
+            [
+                expected_gradient_value(coords, shape)
+                for coords in zip(*[g.flat for g in grid])
+            ]
+        ).reshape(shape)
     elif pattern_name == "Sinusoidal":
-        pattern = np.array([expected_sinusoidal_value(coords, shape, freqs)
-                            for coords in zip(*[g.flat for g in grid])]).reshape(shape)
+        pattern = np.array(
+            [
+                expected_sinusoidal_value(coords, shape, freqs)
+                for coords in zip(*[g.flat for g in grid])
+            ]
+        ).reshape(shape)
     elif pattern_name == "Checkerboard":
-        pattern = np.array([expected_checkerboard_value(coords, square_sizes)
-                            for coords in zip(*[g.flat for g in grid])]).reshape(shape)
+        pattern = np.array(
+            [
+                expected_checkerboard_value(coords, square_sizes)
+                for coords in zip(*[g.flat for g in grid])
+            ]
+        ).reshape(shape)
     else:
         raise ValueError("Unknown pattern name")
     return pattern
 
+
 # --- test driver ---
-def resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, method,
-                                     freqs=None, square_sizes=None, dtype=np.float64):
+def resize_pattern_and_calculate_mse(
+    pattern_name,
+    shape,
+    zoom_factors,
+    degree,
+    method,
+    freqs=None,
+    square_sizes=None,
+    dtype=np.float64,
+):
     # Generate pattern in float64, then cast once
     pattern = generate_pattern(
         pattern_name,
@@ -397,23 +440,85 @@ def resize_pattern_and_calculate_mse(pattern_name, shape, zoom_factors, degree, 
     psnr = 10 * np.log10(1 / mse) if mse != 0 else float("inf")
     return mse, psnr
 
+
 # --- parametrized tests (patterns) ---
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
-@pytest.mark.parametrize("pattern_name, shape, zoom_factors, degree, method, mse_threshold, psnr_threshold, freqs, square_sizes", [
-    ("Gradient", (100,), (0.5,), 3, "least-squares", 1e-3, 40, None, None),
-    ("Gradient", (100, 100), (0.75, 1.5), 1, "oblique", 1e-3, 60, None, None),
-    ("Gradient", (50, 50, 50), (0.8, 2.8, 0.5), 3, "least-squares", 1e-3, 40, None, None),
-
-    ("Sinusoidal", (100,), (0.5,), 1, "oblique", 4e-3, 23, [10], None),
-    ("Sinusoidal", (100, 100), (0.314, 0.5), 3, "least-squares", 0.3, 6, [10, 5], None),
-    ("Sinusoidal", (50, 50, 50), (1.8, 0.8, 0.5), 3, "least-squares", 0.3, 6, [10, 5, 3], None),
-
-    ("Checkerboard", (100,), (0.5,), 3, "least-squares", 2e-2, 19, None, [10]),
-    ("Checkerboard", (1000, 1000), (0.3, 1.6), 1, "oblique", 1e-2, 22, None, [100, 100]),
-    ("Checkerboard", (50, 50, 50), (0.8, 1.2, 0.6), 1, "oblique", 0.1, 10, None, [10, 10, 10]),
-])
-def test_resize_n_dimensional_pattern(pattern_name, shape, zoom_factors, degree,
-                                      method, mse_threshold, psnr_threshold, freqs, square_sizes, dtype):
+@pytest.mark.parametrize(
+    "pattern_name, shape, zoom_factors, degree, method, mse_threshold, psnr_threshold, freqs, square_sizes",
+    [
+        ("Gradient", (100,), (0.5,), 3, "least-squares", 1e-3, 40, None, None),
+        ("Gradient", (100, 100), (0.75, 1.5), 1, "oblique", 1e-3, 60, None, None),
+        (
+            "Gradient",
+            (50, 50, 50),
+            (0.8, 2.8, 0.5),
+            3,
+            "least-squares",
+            1e-3,
+            40,
+            None,
+            None,
+        ),
+        ("Sinusoidal", (100,), (0.5,), 1, "oblique", 4e-3, 23, [10], None),
+        (
+            "Sinusoidal",
+            (100, 100),
+            (0.314, 0.5),
+            3,
+            "least-squares",
+            0.3,
+            6,
+            [10, 5],
+            None,
+        ),
+        (
+            "Sinusoidal",
+            (50, 50, 50),
+            (1.8, 0.8, 0.5),
+            3,
+            "least-squares",
+            0.3,
+            6,
+            [10, 5, 3],
+            None,
+        ),
+        ("Checkerboard", (100,), (0.5,), 3, "least-squares", 2e-2, 19, None, [10]),
+        (
+            "Checkerboard",
+            (1000, 1000),
+            (0.3, 1.6),
+            1,
+            "oblique",
+            1e-2,
+            22,
+            None,
+            [100, 100],
+        ),
+        (
+            "Checkerboard",
+            (50, 50, 50),
+            (0.8, 1.2, 0.6),
+            1,
+            "oblique",
+            0.1,
+            10,
+            None,
+            [10, 10, 10],
+        ),
+    ],
+)
+def test_resize_n_dimensional_pattern(
+    pattern_name,
+    shape,
+    zoom_factors,
+    degree,
+    method,
+    mse_threshold,
+    psnr_threshold,
+    freqs,
+    square_sizes,
+    dtype,
+):
     mse, psnr = resize_pattern_and_calculate_mse(
         pattern_name,
         shape,
@@ -424,19 +529,27 @@ def test_resize_n_dimensional_pattern(pattern_name, shape, zoom_factors, degree,
         square_sizes=square_sizes,
         dtype=dtype,
     )
-    assert mse < mse_threshold, f"{pattern_name} pattern MSE {mse} exceeds threshold {mse_threshold}"
-    assert psnr > psnr_threshold, f"{pattern_name} pattern PSNR {psnr} dB below threshold {psnr_threshold}"
+    assert (
+        mse < mse_threshold
+    ), f"{pattern_name} pattern MSE {mse} exceeds threshold {mse_threshold}"
+    assert (
+        psnr > psnr_threshold
+    ), f"{pattern_name} pattern PSNR {psnr} dB below threshold {psnr_threshold}"
+
 
 # --------------------------------------------------------------------
 # Identity & polynomial-reproduction tests for Standard interpolation
 # --------------------------------------------------------------------
-@pytest.mark.parametrize("shape, degree", [
-    ((64,), 0),
-    ((64,), 1),
-    ((48, 32), 1),
-    ((48, 32), 2),
-    ((24, 20, 16), 3),
-])
+@pytest.mark.parametrize(
+    "shape, degree",
+    [
+        ((64,), 0),
+        ((64,), 1),
+        ((48, 32), 1),
+        ((48, 32), 2),
+        ((24, 20, 16), 3),
+    ],
+)
 def test_standard_identity_zoom_one(shape, degree):
     rng = np.random.default_rng(0)
     x = rng.random(shape, dtype=np.float64)
@@ -467,22 +580,28 @@ def test_cubic_oblique_long_ramp_stays_bounded():
     assert y.max() < 1.0 + 1e-3
 
 
-@pytest.mark.parametrize("method", [
-    "quadratic",
-    "cubic",
-    "linear-antialiasing",
-    "quadratic-antialiasing",
-    "cubic-antialiasing",
-])
-@pytest.mark.parametrize("shape, zoom_factors", [
-    ((4,), (0.5,)),
-    ((8,), (0.5,)),
-    ((32,), (0.37,)),
-    ((4, 4), (0.5, 0.5)),
-    ((8, 8), (0.5, 0.5)),
-    ((32, 32), (0.37, 0.37)),
-    ((5, 7), (0.6, 0.5)),
-])
+@pytest.mark.parametrize(
+    "method",
+    [
+        "quadratic",
+        "cubic",
+        "linear-antialiasing",
+        "quadratic-antialiasing",
+        "cubic-antialiasing",
+    ],
+)
+@pytest.mark.parametrize(
+    "shape, zoom_factors",
+    [
+        ((4,), (0.5,)),
+        ((8,), (0.5,)),
+        ((32,), (0.37,)),
+        ((4, 4), (0.5, 0.5)),
+        ((8, 8), (0.5, 0.5)),
+        ((32, 32), (0.37, 0.37)),
+        ((5, 7), (0.6, 0.5)),
+    ],
+)
 def test_resize_preserves_short_constants(method, shape, zoom_factors):
     x = np.ones(shape, dtype=np.float64)
 
@@ -512,10 +631,11 @@ def _poly_expected(shape, zf, degree):
         if degree >= 1:
             f += a1[i] * u
         if degree >= 2:
-            f += a2[i] * (u ** 2)
+            f += a2[i] * (u**2)
         if degree >= 3:
-            f += a3[i] * (u ** 3)
+            f += a3[i] * (u**3)
     return f
+
 
 def _poly_tolerances(shape, deg_poly, deg_interp):
     """
@@ -528,20 +648,24 @@ def _poly_tolerances(shape, deg_poly, deg_interp):
     # 3D case (small shapes like 20×16×12 with mixed zooms)
     return 8e-4, 2e-4
 
-@pytest.mark.parametrize("shape, zf, deg_poly, deg_interp", [
-    # 1D
-    ((64,), (0.7,), 1, 1),
-    ((64,), (1.3,), 2, 2),
-    ((64,), (0.65,), 3, 3),
-    # 2D mixed zooms
-    ((48, 32), (0.7, 1.2), 1, 1),
-    ((48, 32), (1.3, 0.75), 2, 2),
-    ((48, 32), (0.6, 0.8), 3, 3),
-    # 3D mixed zooms
-    ((20, 16, 12), (0.8, 1.25, 0.7), 1, 1),
-    ((20, 16, 12), (1.2, 0.7, 0.9), 2, 2),
-    ((20, 16, 12), (0.65, 1.4, 0.75), 3, 3),
-])
+
+@pytest.mark.parametrize(
+    "shape, zf, deg_poly, deg_interp",
+    [
+        # 1D
+        ((64,), (0.7,), 1, 1),
+        ((64,), (1.3,), 2, 2),
+        ((64,), (0.65,), 3, 3),
+        # 2D mixed zooms
+        ((48, 32), (0.7, 1.2), 1, 1),
+        ((48, 32), (1.3, 0.75), 2, 2),
+        ((48, 32), (0.6, 0.8), 3, 3),
+        # 3D mixed zooms
+        ((20, 16, 12), (0.8, 1.25, 0.7), 1, 1),
+        ((20, 16, 12), (1.2, 0.7, 0.9), 2, 2),
+        ((20, 16, 12), (0.65, 1.4, 0.75), 3, 3),
+    ],
+)
 def test_standard_polynomial_reproduction(shape, zf, deg_poly, deg_interp):
     """
     Standard (interpolation) of degree >= k should reproduce any polynomial
@@ -561,20 +685,20 @@ def test_standard_polynomial_reproduction(shape, zf, deg_poly, deg_interp):
         if deg_poly >= 1:
             src += a1[i] * xi
         if deg_poly >= 2:
-            src += a2[i] * (xi ** 2)
+            src += a2[i] * (xi**2)
         if deg_poly >= 3:
-            src += a3[i] * (xi ** 3)
+            src += a3[i] * (xi**3)
 
     name = _DEGREE_TO_NAME[deg_interp]
     y = resize(src, zoom_factors=zf, method=name)
     y_ref = _poly_expected(shape, zf, deg_poly)
 
     pads = _pads_for_crop(y.shape, deg_interp, "Polynomial", zf)
-    y_c   = _central_crop_nd(y, pads)
+    y_c = _central_crop_nd(y, pads)
     ref_c = _central_crop_nd(y_ref, pads)
 
     linf = float(np.max(np.abs(y_c - ref_c)))
-    l1   = float(np.mean(np.abs(y_c - ref_c)))
+    l1 = float(np.mean(np.abs(y_c - ref_c)))
 
     tol_inf, tol_l1 = _poly_tolerances(shape, deg_poly, deg_interp)
     assert linf < tol_inf and l1 < tol_l1, (

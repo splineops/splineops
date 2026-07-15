@@ -46,7 +46,6 @@ from splineops.resize._pycore.resize_1d import (  # noqa: E402
     resize_1d_ws,
 )
 
-
 METHOD_PARAMS: dict[str, tuple[int, int, int]] = {
     "linear": (1, -1, 1),
     "cubic": (3, -1, 3),
@@ -193,7 +192,9 @@ def build_matrix(n: int, p: LSParams, stage: str) -> np.ndarray:
     return mat
 
 
-def threshold_stats(mat: np.ndarray, threshold: float, abs_floor: float) -> tuple[float, int, float, int]:
+def threshold_stats(
+    mat: np.ndarray, threshold: float, abs_floor: float
+) -> tuple[float, int, float, int]:
     counts: list[int] = []
     spans: list[int] = []
     for row in mat:
@@ -209,7 +210,9 @@ def threshold_stats(mat: np.ndarray, threshold: float, abs_floor: float) -> tupl
     )
 
 
-def energy_outside_stats(mat: np.ndarray, centers: np.ndarray, radius: int) -> tuple[float, float]:
+def energy_outside_stats(
+    mat: np.ndarray, centers: np.ndarray, radius: int
+) -> tuple[float, float]:
     outside: list[float] = []
     cols = np.arange(mat.shape[1], dtype=np.float64)
     for row, center in zip(mat, centers):
@@ -273,8 +276,7 @@ def summarize_matrix(
         rng = np.random.default_rng(seed)
         samples = rng.standard_normal((truncation_trials, mat.shape[1]))
     trunc_by_radius = {
-        radius: truncation_stats(mat, centers, radius, samples)
-        for radius in radii
+        radius: truncation_stats(mat, centers, radius, samples) for radius in radii
     }
     for threshold in thresholds:
         median_count, max_count, median_span, max_span = threshold_stats(
@@ -282,7 +284,9 @@ def summarize_matrix(
         )
         for radius in radii:
             median_energy, max_energy = energy_outside_stats(mat, centers, radius)
-            trunc_rel_median, trunc_rel_max, trunc_abs_median, trunc_abs_max = trunc_by_radius[radius]
+            trunc_rel_median, trunc_rel_max, trunc_abs_median, trunc_abs_max = (
+                trunc_by_radius[radius]
+            )
             rows.append(
                 SummaryRow(
                     method=method,

@@ -16,8 +16,7 @@ import pytest
     reason="native resize extension is not available",
 )
 def test_profile_counters_are_process_local_after_fork() -> None:
-    script = textwrap.dedent(
-        """
+    script = textwrap.dedent("""
         import os
         import sys
 
@@ -41,8 +40,7 @@ def test_profile_counters_are_process_local_after_fork() -> None:
         waited, status = os.waitpid(child, 0)
         if waited != child or not os.WIFEXITED(status) or os.WEXITSTATUS(status):
             raise SystemExit(3)
-        """
-    )
+        """)
     env = os.environ.copy()
     env.update(
         {

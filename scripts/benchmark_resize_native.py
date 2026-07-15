@@ -169,8 +169,12 @@ def batched_axis_label() -> str:
 
 def native_knobs() -> dict[str, str]:
     return {
-        "LSRESIZE_BATCHED_AXIS": os.environ.get("LSRESIZE_BATCHED_AXIS", "<default:auto>"),
-        "LSRESIZE_BATCH_LINES": os.environ.get("LSRESIZE_BATCH_LINES", "<default:adaptive>"),
+        "LSRESIZE_BATCHED_AXIS": os.environ.get(
+            "LSRESIZE_BATCHED_AXIS", "<default:auto>"
+        ),
+        "LSRESIZE_BATCH_LINES": os.environ.get(
+            "LSRESIZE_BATCH_LINES", "<default:adaptive>"
+        ),
         "LSRESIZE_ROW_GATHER": os.environ.get("LSRESIZE_ROW_GATHER", "<default:on>"),
         "LSRESIZE_STRIDED_OFFSET_GATHER": os.environ.get(
             "LSRESIZE_STRIDED_OFFSET_GATHER",
@@ -248,14 +252,18 @@ def native_knobs() -> dict[str, str]:
             "LSRESIZE_PRECISION",
             "<default:auto-f32-2d/3d-interp+3d-down-proj-else-float64>",
         ),
-        "LSRESIZE_NUM_THREADS": os.environ.get("LSRESIZE_NUM_THREADS", "<default:auto>"),
+        "LSRESIZE_NUM_THREADS": os.environ.get(
+            "LSRESIZE_NUM_THREADS", "<default:auto>"
+        ),
         "LSRESIZE_PERSISTENT_THREADS": os.environ.get(
             "LSRESIZE_PERSISTENT_THREADS", "<default:on>"
         ),
         "LSRESIZE_PLAN_CACHE_BYTES": os.environ.get(
             "LSRESIZE_PLAN_CACHE_BYTES", "<default:134217728>"
         ),
-        "LSRESIZE_PLAN_CACHE_SIZE": os.environ.get("LSRESIZE_PLAN_CACHE_SIZE", "<default:32>"),
+        "LSRESIZE_PLAN_CACHE_SIZE": os.environ.get(
+            "LSRESIZE_PLAN_CACHE_SIZE", "<default:32>"
+        ),
         "LSRESIZE_WORKSPACE_CACHE_BYTES": os.environ.get(
             "LSRESIZE_WORKSPACE_CACHE_BYTES", "<default:134217728>"
         ),
@@ -271,9 +279,15 @@ def python_knobs() -> dict[str, str]:
         "SPLINEOPS_PLAN_CACHE_BYTES": os.environ.get(
             "SPLINEOPS_PLAN_CACHE_BYTES", "<default:134217728>"
         ),
-        "SPLINEOPS_PLAN_CACHE_SIZE": os.environ.get("SPLINEOPS_PLAN_CACHE_SIZE", "<default:32>"),
-        "LSRESIZE_PLAN_CACHE_BYTES": os.environ.get("LSRESIZE_PLAN_CACHE_BYTES", "<unset>"),
-        "LSRESIZE_PLAN_CACHE_SIZE": os.environ.get("LSRESIZE_PLAN_CACHE_SIZE", "<unset>"),
+        "SPLINEOPS_PLAN_CACHE_SIZE": os.environ.get(
+            "SPLINEOPS_PLAN_CACHE_SIZE", "<default:32>"
+        ),
+        "LSRESIZE_PLAN_CACHE_BYTES": os.environ.get(
+            "LSRESIZE_PLAN_CACHE_BYTES", "<unset>"
+        ),
+        "LSRESIZE_PLAN_CACHE_SIZE": os.environ.get(
+            "LSRESIZE_PLAN_CACHE_SIZE", "<unset>"
+        ),
         "SPLINEOPS_AUTOTUNE": os.environ.get("SPLINEOPS_AUTOTUNE", "<default:off>"),
     }
 
@@ -351,7 +365,9 @@ def check_against_reference(
         mode = "never"
     elif backend == "python":
         if not has_cpp():
-            raise RuntimeError("Native extension is not available for Python backend parity check")
+            raise RuntimeError(
+                "Native extension is not available for Python backend parity check"
+            )
         mode = "always"
     else:
         raise ValueError(f"Unsupported backend: {backend}")
@@ -446,15 +462,65 @@ def standard_cases() -> list[BenchCase]:
             )
     cases.extend(
         [
-            BenchCase("3d_linear_down_f32", (128, 128, 32), (0.5, 0.5, 0.5), "linear", "float32"),
-            BenchCase("3d_linear_two_axis01_f32", (128, 128, 32), (0.5, 0.5, 1.0), "linear", "float32"),
-            BenchCase("3d_linear_two_axis02_f32", (128, 128, 32), (0.5, 1.0, 0.5), "linear", "float32"),
-            BenchCase("3d_linear_two_axis12_f32", (128, 128, 32), (1.0, 0.5, 0.5), "linear", "float32"),
-            BenchCase("3d_linear_aniso_f32", (128, 128, 32), (1.0, 0.5, 1.0), "linear", "float32"),
-            BenchCase("3d_cubic_down_f32", (128, 128, 32), (0.5, 0.5, 0.5), "cubic", "float32"),
-            BenchCase("3d_cubic_aniso_f32", (128, 128, 32), (1.0, 0.5, 1.0), "cubic", "float32"),
-            BenchCase("3d_linear_aa_down_f32", (96, 96, 24), (0.5, 0.5, 0.5), "linear-antialiasing", "float32"),
-            BenchCase("3d_cubic_aa_down_f32", (96, 96, 24), (0.5, 0.5, 0.5), "cubic-antialiasing", "float32"),
+            BenchCase(
+                "3d_linear_down_f32",
+                (128, 128, 32),
+                (0.5, 0.5, 0.5),
+                "linear",
+                "float32",
+            ),
+            BenchCase(
+                "3d_linear_two_axis01_f32",
+                (128, 128, 32),
+                (0.5, 0.5, 1.0),
+                "linear",
+                "float32",
+            ),
+            BenchCase(
+                "3d_linear_two_axis02_f32",
+                (128, 128, 32),
+                (0.5, 1.0, 0.5),
+                "linear",
+                "float32",
+            ),
+            BenchCase(
+                "3d_linear_two_axis12_f32",
+                (128, 128, 32),
+                (1.0, 0.5, 0.5),
+                "linear",
+                "float32",
+            ),
+            BenchCase(
+                "3d_linear_aniso_f32",
+                (128, 128, 32),
+                (1.0, 0.5, 1.0),
+                "linear",
+                "float32",
+            ),
+            BenchCase(
+                "3d_cubic_down_f32", (128, 128, 32), (0.5, 0.5, 0.5), "cubic", "float32"
+            ),
+            BenchCase(
+                "3d_cubic_aniso_f32",
+                (128, 128, 32),
+                (1.0, 0.5, 1.0),
+                "cubic",
+                "float32",
+            ),
+            BenchCase(
+                "3d_linear_aa_down_f32",
+                (96, 96, 24),
+                (0.5, 0.5, 0.5),
+                "linear-antialiasing",
+                "float32",
+            ),
+            BenchCase(
+                "3d_cubic_aa_down_f32",
+                (96, 96, 24),
+                (0.5, 0.5, 0.5),
+                "cubic-antialiasing",
+                "float32",
+            ),
         ]
     )
     return cases
@@ -490,9 +556,27 @@ def full_cases() -> list[BenchCase]:
         )
     cases.extend(
         [
-            BenchCase("3d_cubic_down_large_f32", (256, 256, 64), (0.37, 0.37, 0.37), "cubic", "float32"),
-            BenchCase("3d_cubic_aniso_large_f32", (256, 256, 64), (1.0, 0.5, 1.0), "cubic", "float32"),
-            BenchCase("3d_cubic_aa_down_large_f32", (128, 128, 32), (0.5, 0.5, 0.5), "cubic-antialiasing", "float32"),
+            BenchCase(
+                "3d_cubic_down_large_f32",
+                (256, 256, 64),
+                (0.37, 0.37, 0.37),
+                "cubic",
+                "float32",
+            ),
+            BenchCase(
+                "3d_cubic_aniso_large_f32",
+                (256, 256, 64),
+                (1.0, 0.5, 1.0),
+                "cubic",
+                "float32",
+            ),
+            BenchCase(
+                "3d_cubic_aa_down_large_f32",
+                (128, 128, 32),
+                (0.5, 0.5, 0.5),
+                "cubic-antialiasing",
+                "float32",
+            ),
         ]
     )
     return cases
@@ -518,7 +602,9 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 def write_csv(path: Path, results: list[BenchResult]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = [asdict(r) for r in results]
-    fieldnames = list(rows[0].keys()) if rows else list(BenchResult.__dataclass_fields__)
+    fieldnames = (
+        list(rows[0].keys()) if rows else list(BenchResult.__dataclass_fields__)
+    )
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -546,7 +632,9 @@ def print_result(result: BenchResult) -> None:
     )
 
 
-def print_batch_sweep_summary(results: list[BenchResult], batch_values: list[int | None]) -> None:
+def print_batch_sweep_summary(
+    results: list[BenchResult], batch_values: list[int | None]
+) -> None:
     if len(batch_values) <= 1:
         return
 
@@ -565,7 +653,9 @@ def print_batch_sweep_summary(results: list[BenchResult], batch_values: list[int
         if baseline is None:
             baseline = group[0]
         best = min(group, key=lambda r: r.best_ms)
-        speedup = baseline.best_ms / best.best_ms if best.best_ms > 0.0 else float("inf")
+        speedup = (
+            baseline.best_ms / best.best_ms if best.best_ms > 0.0 else float("inf")
+        )
         backend, case, dtype, threads = key
         print(
             f"{backend:6s} {case:30s} {dtype:7s} thr={threads:>7s} "
@@ -583,8 +673,12 @@ def parse_args() -> argparse.Namespace:
         default="standard",
         help="Benchmark case profile.",
     )
-    parser.add_argument("--repeats", type=int, default=5, help="Timed repeats per case.")
-    parser.add_argument("--warmups", type=int, default=1, help="Warmup calls before timing.")
+    parser.add_argument(
+        "--repeats", type=int, default=5, help="Timed repeats per case."
+    )
+    parser.add_argument(
+        "--warmups", type=int, default=1, help="Warmup calls before timing."
+    )
     parser.add_argument(
         "--backend",
         choices=("native", "python", "both"),
@@ -603,9 +697,15 @@ def parse_args() -> argparse.Namespace:
         default=300_000,
         help="Run Python fallback parity checks only when input size is at most this value.",
     )
-    parser.add_argument("--skip-checks", action="store_true", help="Disable Python fallback checks.")
-    parser.add_argument("--atol", type=float, default=5e-5, help="Absolute tolerance for parity checks.")
-    parser.add_argument("--rtol", type=float, default=5e-5, help="Relative tolerance for parity checks.")
+    parser.add_argument(
+        "--skip-checks", action="store_true", help="Disable Python fallback checks."
+    )
+    parser.add_argument(
+        "--atol", type=float, default=5e-5, help="Absolute tolerance for parity checks."
+    )
+    parser.add_argument(
+        "--rtol", type=float, default=5e-5, help="Relative tolerance for parity checks."
+    )
     parser.add_argument(
         "--batched-axis",
         choices=("env", "off", "on", "auto"),
@@ -627,9 +727,15 @@ def parse_args() -> argparse.Namespace:
             "When set, this overrides --batch-lines and runs each case for each value."
         ),
     )
-    parser.add_argument("--cases", help="Comma-separated benchmark case names to include.")
-    parser.add_argument("--output-json", type=Path, default=None, help="Optional JSON output path.")
-    parser.add_argument("--output-csv", type=Path, default=None, help="Optional CSV output path.")
+    parser.add_argument(
+        "--cases", help="Comma-separated benchmark case names to include."
+    )
+    parser.add_argument(
+        "--output-json", type=Path, default=None, help="Optional JSON output path."
+    )
+    parser.add_argument(
+        "--output-csv", type=Path, default=None, help="Optional CSV output path."
+    )
     return parser.parse_args()
 
 
@@ -654,7 +760,9 @@ def main() -> int:
         print("--batch-lines must be positive", file=sys.stderr)
         return 2
     if args.batch_lines_sweep is not None and args.batched_axis == "off":
-        print("--batch-lines-sweep has no effect with --batched-axis off", file=sys.stderr)
+        print(
+            "--batch-lines-sweep has no effect with --batched-axis off", file=sys.stderr
+        )
         return 2
 
     set_batched_axis(args.batched_axis)
@@ -695,7 +803,9 @@ def main() -> int:
 
     for case in cases:
         input_size = int(np.prod(case.shape))
-        should_check = (not args.skip_checks) and (input_size <= args.check_max_elements)
+        should_check = (not args.skip_checks) and (
+            input_size <= args.check_max_elements
+        )
 
         for backend in backends:
             thread_values = args.threads if backend == "native" else ["<n/a>"]
@@ -723,12 +833,14 @@ def main() -> int:
                     max_abs_diff: float | None = None
                     mean_abs_diff: float | None = None
                     if should_check and (backend == "native" or cpp_available):
-                        passed_check, max_abs_diff, mean_abs_diff = check_against_reference(
-                            case,
-                            out,
-                            backend=backend,
-                            atol=args.atol,
-                            rtol=args.rtol,
+                        passed_check, max_abs_diff, mean_abs_diff = (
+                            check_against_reference(
+                                case,
+                                out,
+                                backend=backend,
+                                atol=args.atol,
+                                rtol=args.rtol,
+                            )
                         )
 
                     result = BenchResult(
@@ -740,7 +852,9 @@ def main() -> int:
                         method=case.method,
                         dtype=case.dtype,
                         threads=thread_value,
-                        batched_axis=batched_axis_label() if backend == "native" else "<n/a>",
+                        batched_axis=(
+                            batched_axis_label() if backend == "native" else "<n/a>"
+                        ),
                         batch_lines=(
                             os.environ.get("LSRESIZE_BATCH_LINES", "<unset>")
                             if backend == "native"
@@ -771,7 +885,9 @@ def main() -> int:
             "threads": args.threads,
             "batched_axis": batched_axis_label(),
             "batched_axis_env": os.environ.get("LSRESIZE_BATCHED_AXIS"),
-            "batch_lines": [None if v is None else int(v) for v in native_batch_line_values],
+            "batch_lines": [
+                None if v is None else int(v) for v in native_batch_line_values
+            ],
             "native_knobs": native_knobs(),
             "python_knobs": python_knobs(),
             "check_max_elements": args.check_max_elements,

@@ -22,6 +22,7 @@ from splineops.spline_interpolation.tensor_spline import TensorSpline
 
 x_values = np.linspace(0, 6, 101)
 
+
 def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_height=5):
     linear_part = x_values
     bump = np.where(
@@ -31,6 +32,7 @@ def create_signal_with_bump(x_values, bump_location=3, bump_width=0.5, bump_heig
         0,
     )
     return linear_part + bump
+
 
 def plot_extension_modes_for_bump_function(mode_name, x_values, title):
     plt.figure(figsize=(12, 6))
@@ -49,6 +51,7 @@ def plot_extension_modes_for_bump_function(mode_name, x_values, title):
     plt.grid(True)
     plt.legend()
     plt.show()
+
 
 # %%
 # Finite-Support Coefficients

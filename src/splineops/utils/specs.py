@@ -55,8 +55,10 @@ class RuntimeContext:
 
     # Process-level threading info
     process_pid: int
-    python_threads: int           # threading.active_count()
-    process_threads: Optional[int]  # OS threads in this process (via psutil, if available)
+    python_threads: int  # threading.active_count()
+    process_threads: Optional[
+        int
+    ]  # OS threads in this process (via psutil, if available)
 
     # splineops / lsresize-specific config (derived from env)
     lsresize_num_threads: Optional[int]
@@ -78,6 +80,7 @@ def _safe_import_version(pkg: str) -> str:
 def _matplotlib_info() -> tuple[str, str]:
     try:
         import matplotlib as mpl
+
         return getattr(mpl, "__version__", "n/a"), mpl.get_backend()
     except Exception:
         return "n/a", "n/a"
@@ -87,6 +90,7 @@ def _splineops_info() -> tuple[str, bool]:
     try:
         import importlib.util as _util
         import splineops as _sops
+
         ver = getattr(_sops, "__version__", "<dev>")
         native = _util.find_spec("splineops._lsresize") is not None
         return ver, native
@@ -176,6 +180,7 @@ def collect_runtime_context(include_threadpools: bool = True) -> RuntimeContext:
     if include_threadpools:
         try:
             from threadpoolctl import threadpool_info  # type: ignore
+
             for info in threadpool_info():
                 tps.append(
                     {

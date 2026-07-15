@@ -34,6 +34,7 @@ _ZoomT = Union[Sequence[float], Tuple[float, float], float]
 # Internal utilities
 # -----------------------------------------------------------------------------#
 
+
 def _to_uint8(arr: np.ndarray) -> np.ndarray:
     """Scale *arr* linearly to 0–255 and cast to uint8 (for display only)."""
     a_min, a_max = arr.min(), arr.max()
@@ -47,6 +48,7 @@ def _to_uint8(arr: np.ndarray) -> np.ndarray:
 # -----------------------------------------------------------------------------#
 # Public plotting helpers
 # -----------------------------------------------------------------------------#
+
 
 def plot_resized_image(
     original: np.ndarray,
@@ -73,8 +75,7 @@ def plot_resized_image(
     plt.figure(figsize=(5, 5))
     plt.imshow(display, cmap="gray", aspect="equal")
     plt.title(
-        f"{method.capitalize()} Resized\n"
-        f"Zoom: {zs}, Time: {time_elapsed:.4f}s"
+        f"{method.capitalize()} Resized\n" f"Zoom: {zs}, Time: {time_elapsed:.4f}s"
     )
     plt.axis("off")
     plt.show()
@@ -125,7 +126,7 @@ def plot_difference_image(
         region_label = " (masked)"
     elif roi is not None:
         r, c, h, w = roi
-        diff = diff_full[r:r + h, c:c + w]
+        diff = diff_full[r : r + h, c : c + w]
         region_label = " (ROI)"
     else:
         diff = diff_full
@@ -228,11 +229,7 @@ def show_roi_zoom(
     # 2. Optional grayscale conversion                                   #
     # ------------------------------------------------------------------ #
     if grayscale and img.ndim == 3 and img.shape[2] != 1:
-        img = (
-            0.2989 * img[..., 0] +
-            0.5870 * img[..., 1] +
-            0.1140 * img[..., 2]
-        )
+        img = 0.2989 * img[..., 0] + 0.5870 * img[..., 1] + 0.1140 * img[..., 2]
         img = img[..., None]  # keep channel dim for consistency
 
     # Drop trailing channel dim for plotting if grayscale
@@ -256,9 +253,9 @@ def show_roi_zoom(
         col0 = np.clip(roi_xy[1], 0, w_img - roi_size)
 
     if plot_img.ndim == 2:
-        roi = plot_img[row0:row0 + roi_size, col0:col0 + roi_size]
+        roi = plot_img[row0 : row0 + roi_size, col0 : col0 + roi_size]
     else:
-        roi = plot_img[row0:row0 + roi_size, col0:col0 + roi_size, :]
+        roi = plot_img[row0 : row0 + roi_size, col0 : col0 + roi_size, :]
 
     # ------------------------------------------------------------------ #
     # 4. Magnify ROI with nearest-neighbour                              #
@@ -275,7 +272,8 @@ def show_roi_zoom(
         fig_size = (10.0, 5.5)
 
     fig, ax = plt.subplots(
-        1, 2,
+        1,
+        2,
         figsize=fig_size,
         gridspec_kw={"width_ratios": [w_img, roi_big.shape[1]]},
         constrained_layout=True,

@@ -47,15 +47,17 @@ DTYPE = np.float32
 URL_A = "https://r0k.us/graphics/kodak/kodak/kodim14.png"
 URL_B = "https://r0k.us/graphics/kodak/kodak/kodim08.png"
 
-ROI_SIZE_PX = 64               # original ROI side (pixels)
+ROI_SIZE_PX = 64  # original ROI side (pixels)
 FACE_ROW, FACE_COL = 250, 445  # ROI center (approx) in ORIGINAL coordinates
 
-ZOOM = (0.5, 0.5)              # 0.5× downsampling demo
+ZOOM = (0.5, 0.5)  # 0.5× downsampling demo
+
 
 def to_gray01(img_rgb_uint8: np.ndarray) -> np.ndarray:
     g = img_rgb_uint8.astype(np.float64) / 255.0
     gray = 0.2989 * g[..., 0] + 0.5870 * g[..., 1] + 0.1140 * g[..., 2]
     return gray.astype(DTYPE)
+
 
 with urlopen(URL_A, timeout=10) as resp:
     A = to_gray01(np.array(Image.open(resp)))
@@ -76,7 +78,7 @@ rel_center_c = FACE_COL / w_img
 roi_kwargs_orig = dict(
     roi_height_frac=ROI_SIZE_PX / h_img,  # keeps height at 64 px (square ROI)
     grayscale=True,
-    roi_xy=(row_top, col_left),           # top-left of the ROI
+    roi_xy=(row_top, col_left),  # top-left of the ROI
 )
 
 # %%
@@ -119,6 +121,7 @@ res_std = resize(
     method="cubic",  # standard (no explicit anti-aliasing)
 )
 
+
 def show_resized_on_original_canvas_same_relpos(resized: np.ndarray, title: str):
     h_res, w_res = resized.shape
 
@@ -140,12 +143,13 @@ def show_resized_on_original_canvas_same_relpos(resized: np.ndarray, title: str)
 
     # Use ORIGINAL canvas height so 32 px is respected visually (no forced shrinking)
     roi_kwargs_canvas = dict(
-        roi_height_frac=(ROI_SIZE_PX // 2) / h_img,   # 32 / original height
+        roi_height_frac=(ROI_SIZE_PX // 2) / h_img,  # 32 / original height
         grayscale=True,
-        roi_xy=(row_top_res, col_left_res),           # ROI within the pasted resized patch
+        roi_xy=(row_top_res, col_left_res),  # ROI within the pasted resized patch
     )
 
     return show_roi_zoom(canvas, ax_titles=(title, None), **roi_kwargs_canvas)
+
 
 _ = show_resized_on_original_canvas_same_relpos(
     res_std, "Downsampled 0.5× (standard cubic, no AA)"
@@ -184,8 +188,9 @@ center_r_std = int(round(rel_center_r * h_std))
 center_c_std = int(round(rel_center_c * w_std))
 row_top_std = int(np.clip(center_r_std - roi_side_res // 2, 0, h_std - roi_side_res))
 col_left_std = int(np.clip(center_c_std - roi_side_res // 2, 0, w_std - roi_side_res))
-roi_std = res_std[row_top_std : row_top_std + roi_side_res,
-                  col_left_std : col_left_std + roi_side_res]
+roi_std = res_std[
+    row_top_std : row_top_std + roi_side_res, col_left_std : col_left_std + roi_side_res
+]
 
 # ROI in antialiased result (same physical location)
 h_aa, w_aa = res_aa.shape
@@ -193,16 +198,19 @@ center_r_aa = int(round(rel_center_r * h_aa))
 center_c_aa = int(round(rel_center_c * w_aa))
 row_top_aa = int(np.clip(center_r_aa - roi_side_res // 2, 0, h_aa - roi_side_res))
 col_left_aa = int(np.clip(center_c_aa - roi_side_res // 2, 0, w_aa - roi_side_res))
-roi_aa = res_aa[row_top_aa : row_top_aa + roi_side_res,
-                col_left_aa : col_left_aa + roi_side_res]
+roi_aa = res_aa[
+    row_top_aa : row_top_aa + roi_side_res, col_left_aa : col_left_aa + roi_side_res
+]
+
 
 def _nearest_big(roi: np.ndarray, target_h: int = 256) -> np.ndarray:
     h, w = roi.shape
     mag = max(1, int(round(target_h / h)))
     return np.repeat(np.repeat(roi, mag, axis=0), mag, axis=1)
 
+
 roi_big_std = _nearest_big(roi_std, 256)
-roi_big_aa  = _nearest_big(roi_aa, 256)
+roi_big_aa = _nearest_big(roi_aa, 256)
 
 fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 for ax, im, title in zip(

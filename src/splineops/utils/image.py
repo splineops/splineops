@@ -25,6 +25,7 @@ __all__: list[str] = [
 # Public utilities
 # --------------------------------------------------------------------------- #
 
+
 def crop_to_central_region(img: np.ndarray, frac: float) -> np.ndarray:
     """
     Return the central region of *img* after discarding ``frac`` (0–1) of the
@@ -65,5 +66,7 @@ def adjust_size_for_zoom(img: np.ndarray, zoom: float) -> np.ndarray:
     new_h = round(round(h / inv) * inv)
     new_w = round(round(w / inv) * inv)
 
-    factors: Tuple[float, ...] = (new_h / h, new_w / w) + (() if img.ndim == 2 else (1,))
+    factors: Tuple[float, ...] = (new_h / h, new_w / w) + (
+        () if img.ndim == 2 else (1,)
+    )
     return _ndi_zoom(img, factors, order=1)

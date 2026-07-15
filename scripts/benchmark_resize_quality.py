@@ -144,7 +144,9 @@ def make_pattern(case: QualityCase, rng: np.random.Generator) -> np.ndarray:
     raise ValueError(f"unknown pattern {case.pattern!r}")
 
 
-def timed_resize(arr: np.ndarray, case: QualityCase, precision: str | None) -> tuple[np.ndarray, float]:
+def timed_resize(
+    arr: np.ndarray, case: QualityCase, precision: str | None
+) -> tuple[np.ndarray, float]:
     if precision is None:
         os.environ.pop("LSRESIZE_PRECISION", None)
     else:
@@ -235,7 +237,11 @@ def main() -> int:
     results = [run_case(case, rng) for case in quality_cases(args.profile)]
 
     for result in results:
-        speedup = result.default_ms / result.float32_ms if result.float32_ms > 0.0 else float("inf")
+        speedup = (
+            result.default_ms / result.float32_ms
+            if result.float32_ms > 0.0
+            else float("inf")
+        )
         print(
             f"{result.case:28s} "
             f"max={result.max_abs_diff:.3e} "

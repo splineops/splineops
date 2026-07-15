@@ -73,9 +73,7 @@ def test_constants_are_preserved_for_regular_and_degenerate_grids(
 ):
     data = np.full(shape, 2.75)
 
-    actual = resize_module.resize(
-        data, output_size=output_size, method=method
-    )
+    actual = resize_module.resize(data, output_size=output_size, method=method)
 
     assert actual.shape == output_size
     assert np.isfinite(actual).all()
@@ -86,9 +84,7 @@ def test_constants_are_preserved_for_regular_and_degenerate_grids(
 def test_singleton_input_axis_replicates(resize_module, method):
     data = np.array([[-2.0], [3.5]])
 
-    actual = resize_module.resize(
-        data, output_size=(6,), axes=(1,), method=method
-    )
+    actual = resize_module.resize(data, output_size=(6,), axes=(1,), method=method)
 
     np.testing.assert_array_equal(actual, np.repeat(data, 6, axis=1))
 
@@ -116,9 +112,7 @@ def test_single_output_interpolation_uses_symmetric_center(resize_module):
 def test_single_output_projection_is_line_mean(resize_module, method):
     data = np.array([[0.0, 1.0, 4.0, 9.0], [2.0, 8.0, -1.0, 3.0]])
 
-    actual = resize_module.resize(
-        data, output_size=(1,), axes=(1,), method=method
-    )
+    actual = resize_module.resize(data, output_size=(1,), axes=(1,), method=method)
 
     np.testing.assert_array_equal(actual[:, 0], np.mean(data, axis=1))
 
@@ -137,9 +131,7 @@ def test_positive_zoom_uses_half_away_rounding_and_never_emits_zero(
 def test_axes_limit_geometry_and_normalize_negative_indices(resize_module):
     data = np.arange(2 * 5 * 3, dtype=np.float64).reshape(2, 5, 3)
 
-    actual = resize_module.resize(
-        data, output_size=(7,), axes=(-2,), method="linear"
-    )
+    actual = resize_module.resize(data, output_size=(7,), axes=(-2,), method="linear")
     plan = resize_module.ResizePlan(
         data.shape, zoom_factors=(0.5, 2.0), axes=(2, 0), method="linear"
     )
@@ -153,9 +145,7 @@ def test_axes_limit_geometry_and_normalize_negative_indices(resize_module):
 def test_scalar_zoom_broadcasts_only_to_selected_axes(resize_module):
     data = np.ones((4, 5, 6))
 
-    actual = resize_module.resize(
-        data, zoom_factors=0.5, axes=(0, 2), method="linear"
-    )
+    actual = resize_module.resize(data, zoom_factors=0.5, axes=(0, 2), method="linear")
 
     assert actual.shape == (2, 5, 3)
 
@@ -281,9 +271,7 @@ def test_plan_applies_same_validation_and_axes_contract(resize_module):
     with pytest.raises(TypeError, match="real integer or floating dtype"):
         plan.apply(np.ones((3, 4), dtype=np.complex128))
     with pytest.raises(TypeError, match="real integer or floating dtype"):
-        plan.apply(
-            np.ones((3, 4)), output=np.empty((3, 7), dtype=np.complex128)
-        )
+        plan.apply(np.ones((3, 4)), output=np.empty((3, 7), dtype=np.complex128))
 
 
 def test_tiny_positive_zoom_uses_canonical_singleton_shape(resize_module):
@@ -294,15 +282,30 @@ def test_tiny_positive_zoom_uses_canonical_singleton_shape(resize_module):
 
 def test_retired_size_policy_is_absent_from_public_signatures(resize_module):
     assert tuple(inspect.signature(resize_module.resize_degrees).parameters) == (
-        "data", "zoom_factors", "output", "output_size", "axes",
-        "interp_degree", "analy_degree", "synthe_degree",
+        "data",
+        "zoom_factors",
+        "output",
+        "output_size",
+        "axes",
+        "interp_degree",
+        "analy_degree",
+        "synthe_degree",
     )
     assert tuple(inspect.signature(resize_module.ResizePlan).parameters) == (
-        "input_shape", "zoom_factors", "output_size", "axes", "method",
+        "input_shape",
+        "zoom_factors",
+        "output_size",
+        "axes",
+        "method",
     )
     assert tuple(
         inspect.signature(resize_module.ResizePlan.from_degrees).parameters
     ) == (
-        "input_shape", "zoom_factors", "output_size", "axes",
-        "interp_degree", "analy_degree", "synthe_degree",
+        "input_shape",
+        "zoom_factors",
+        "output_size",
+        "axes",
+        "interp_degree",
+        "analy_degree",
+        "synthe_degree",
     )

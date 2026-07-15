@@ -7,7 +7,6 @@ import importlib.util
 import numpy as np
 import pytest
 
-
 pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("splineops._lsresize") is None,
     reason="native resize extension is not available",
@@ -143,8 +142,10 @@ def test_identity_channel_axis_matches_independent_channel_resizes(degrees):
 
     actual = _resize_native(values, (0.47, 1.0), degrees)
     expected = np.stack(
-        [_resize_native(values[:, channel], (0.47,), degrees)
-         for channel in range(values.shape[1])],
+        [
+            _resize_native(values[:, channel], (0.47,), degrees)
+            for channel in range(values.shape[1])
+        ],
         axis=1,
     )
 
@@ -189,9 +190,7 @@ def test_native_axes_none_means_all_and_empty_means_none():
 
     values = np.arange(20.0).reshape(4, 5)
     default = _lsresize.resize_nd(values, (0.5, 0.6), 1, -1, 1)
-    explicit_all = _lsresize.resize_nd(
-        values, (0.5, 0.6), 1, -1, 1, (0, 1)
-    )
+    explicit_all = _lsresize.resize_nd(values, (0.5, 0.6), 1, -1, 1, (0, 1))
     no_axes = _lsresize.resize_nd(values, (0.5, 0.6), 3, 1, 1, [])
 
     np.testing.assert_array_equal(default, explicit_all)
@@ -213,23 +212,15 @@ def test_native_plan_normalizes_and_exposes_axes():
 def test_native_fused_linear_axes_ignore_unselected_zoom(dtype):
     from splineops import _lsresize
 
-    values = np.random.default_rng(20260714).standard_normal((17, 19, 7)).astype(
-        dtype
-    )
+    values = np.random.default_rng(20260714).standard_normal((17, 19, 7)).astype(dtype)
     identity_zoom = (0.53, 0.61, 1.0)
     ignored_zoom = (0.53, 0.61, 4.25)
-    expected = _lsresize.resize_nd(
-        values, identity_zoom, 1, -1, 1, (0, 1)
-    )
-    actual = _lsresize.resize_nd(
-        values, ignored_zoom, 1, -1, 1, (0, 1)
-    )
+    expected = _lsresize.resize_nd(values, identity_zoom, 1, -1, 1, (0, 1))
+    actual = _lsresize.resize_nd(values, ignored_zoom, 1, -1, 1, (0, 1))
 
     np.testing.assert_array_equal(actual, expected)
 
-    plan = _lsresize.ResizePlan(
-        values.shape, ignored_zoom, 1, -1, 1, (0, 1)
-    )
+    plan = _lsresize.ResizePlan(values.shape, ignored_zoom, 1, -1, 1, (0, 1))
     assert plan.zoom_factors == identity_zoom
     np.testing.assert_array_equal(plan.apply(values), expected)
 
@@ -240,7 +231,12 @@ def test_native_fused_linear_axes_ignore_unselected_zoom(dtype):
 
 @pytest.mark.parametrize(
     "axes,exception",
-    [((0, 0), ValueError), ((2,), ValueError), ((0.5,), TypeError), ((True,), TypeError)],
+    [
+        ((0, 0), ValueError),
+        ((2,), ValueError),
+        ((0.5,), TypeError),
+        ((True,), TypeError),
+    ],
 )
 def test_native_rejects_invalid_axes(axes, exception):
     from splineops import _lsresize

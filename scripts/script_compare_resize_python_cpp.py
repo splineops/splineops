@@ -147,16 +147,18 @@ DTYPES = (np.float32, np.float64)
 images: list[tuple[str, np.ndarray]] = []
 for dtype in DTYPES:
     suffix = "f32" if dtype == np.float32 else "f64"
-    images.append((f"synthetic_1024x1024_{suffix}", rng.random((1024, 1024), dtype=dtype)))
-    images.append((f"synthetic_640x480_{suffix}",   rng.random((480, 640),  dtype=dtype)))
+    images.append(
+        (f"synthetic_1024x1024_{suffix}", rng.random((1024, 1024), dtype=dtype))
+    )
+    images.append((f"synthetic_640x480_{suffix}", rng.random((480, 640), dtype=dtype)))
 
 # Methods & zoom scenarios
 # kind: "preset" → use _time_resize with arg=preset string
 #       "ls"     → use _time_resize_ls with arg=degree
 methods = [
-    ("Standard (cubic)",      "preset", "cubic"),
-    ("Least-Squares (cubic)", "ls",     3),
-    ("Antialiasing (cubic)",  "preset", "cubic-antialiasing"),
+    ("Standard (cubic)", "preset", "cubic"),
+    ("Least-Squares (cubic)", "ls", 3),
+    ("Antialiasing (cubic)", "preset", "cubic-antialiasing"),
 ]
 zooms = [
     ("↓0.5×", (0.5, 0.5)),
@@ -197,8 +199,8 @@ for img_name, img in images:
             speed = (t_py / t_cpp) if (HAS_CPP and t_cpp > 0) else float("nan")
 
             cxx_str = "n/a" if not HAS_CPP else f"{t_cpp*1000:7.1f} ms"
-            py_str  = f"{t_py*1000:7.1f} ms"
-            sp_str  = "n/a" if not HAS_CPP else f"×{speed:4.1f}"
+            py_str = f"{t_py*1000:7.1f} ms"
+            sp_str = "n/a" if not HAS_CPP else f"×{speed:4.1f}"
             diff_str = "n/a" if not HAS_CPP else f"{maxdiff:.2e}"
 
             print(
@@ -206,7 +208,9 @@ for img_name, img in images:
                 f"C++ {cxx_str}  Py {py_str}  {sp_str}  max|Δ|={diff_str}"
             )
 
-            all_rows.append((img_name, meth_label, zoom_label, t_cpp, t_py, speed, maxdiff))
+            all_rows.append(
+                (img_name, meth_label, zoom_label, t_cpp, t_py, speed, maxdiff)
+            )
 
 
 # ------------------------------------------------------------------ #
@@ -217,7 +221,7 @@ if SHOW_PLOT and len(all_rows) > 0:
     # Build labels & speedups; skip NaNs if C++ not available
     labels = []
     speedups = []
-    for (img_name, meth_label, zoom_label, t_cpp, t_py, speed, _) in all_rows:
+    for img_name, meth_label, zoom_label, t_cpp, t_py, speed, _ in all_rows:
         if not HAS_CPP or not np.isfinite(speed):
             continue
         labels.append(f"{img_name}\n{meth_label}\n{zoom_label}")
@@ -231,7 +235,14 @@ if SHOW_PLOT and len(all_rows) > 0:
         ax.set_ylabel("Speedup (Python time / C++ time)")
         ax.set_title("C++ vs Python – Standard / LS / Antialiasing (best-of-5)")
         for i, s in enumerate(speedups):
-            ax.text(i, bars[i].get_height(), f"×{s:.1f}", ha="center", va="bottom", fontsize=9)
+            ax.text(
+                i,
+                bars[i].get_height(),
+                f"×{s:.1f}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+            )
         fig.tight_layout()
         plt.show()
     else:

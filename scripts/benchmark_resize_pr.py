@@ -19,7 +19,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -224,8 +223,12 @@ def main() -> int:
 
     native_csv = output_dir / f"resize_native_{args.native_profile}_{args.tag}.csv"
     native_json = output_dir / f"resize_native_{args.native_profile}_{args.tag}.json"
-    libraries_csv = output_dir / f"resize_libraries_{args.library_profile}_{args.tag}.csv"
-    libraries_json = output_dir / f"resize_libraries_{args.library_profile}_{args.tag}.json"
+    libraries_csv = (
+        output_dir / f"resize_libraries_{args.library_profile}_{args.tag}.csv"
+    )
+    libraries_json = (
+        output_dir / f"resize_libraries_{args.library_profile}_{args.tag}.json"
+    )
     plan_csv = output_dir / f"resize_plan_{args.plan_profile}_{args.tag}.csv"
     plan_json = output_dir / f"resize_plan_{args.plan_profile}_{args.tag}.json"
     projection_methods_csv = output_dir / (
@@ -242,82 +245,90 @@ def main() -> int:
     py = sys.executable
 
     if not args.skip_native:
-        commands.append([
-            py,
-            str(SCRIPT_DIR / "benchmark_resize_native.py"),
-            "--profile",
-            args.native_profile,
-            "--backend",
-            "both",
-            "--threads",
-            args.threads,
-            "--repeats",
-            str(args.native_repeats),
-            "--warmups",
-            str(args.native_warmups),
-            "--output-csv",
-            str(native_csv),
-            "--output-json",
-            str(native_json),
-        ])
+        commands.append(
+            [
+                py,
+                str(SCRIPT_DIR / "benchmark_resize_native.py"),
+                "--profile",
+                args.native_profile,
+                "--backend",
+                "both",
+                "--threads",
+                args.threads,
+                "--repeats",
+                str(args.native_repeats),
+                "--warmups",
+                str(args.native_warmups),
+                "--output-csv",
+                str(native_csv),
+                "--output-json",
+                str(native_json),
+            ]
+        )
 
     if not args.skip_libraries:
-        commands.append([
-            py,
-            str(SCRIPT_DIR / "benchmark_resize_libraries.py"),
-            "--profile",
-            args.library_profile,
-            "--backends",
-            "all",
-            "--repeats",
-            str(args.library_repeats),
-            "--warmups",
-            str(args.library_warmups),
-            "--splineops-threads",
-            args.library_splineops_threads,
-            "--output-csv",
-            str(libraries_csv),
-            "--output-json",
-            str(libraries_json),
-        ])
+        commands.append(
+            [
+                py,
+                str(SCRIPT_DIR / "benchmark_resize_libraries.py"),
+                "--profile",
+                args.library_profile,
+                "--backends",
+                "all",
+                "--repeats",
+                str(args.library_repeats),
+                "--warmups",
+                str(args.library_warmups),
+                "--splineops-threads",
+                args.library_splineops_threads,
+                "--output-csv",
+                str(libraries_csv),
+                "--output-json",
+                str(libraries_json),
+            ]
+        )
 
     if not args.skip_plan:
-        commands.append([
-            py,
-            str(SCRIPT_DIR / "benchmark_resize_plan.py"),
-            "--profile",
-            args.plan_profile,
-            "--frames",
-            str(args.plan_frames),
-            "--repeats",
-            str(args.plan_repeats),
-            "--warmups",
-            str(args.plan_warmups),
-            "--output-csv",
-            str(plan_csv),
-            "--output-json",
-            str(plan_json),
-        ])
+        commands.append(
+            [
+                py,
+                str(SCRIPT_DIR / "benchmark_resize_plan.py"),
+                "--profile",
+                args.plan_profile,
+                "--frames",
+                str(args.plan_frames),
+                "--repeats",
+                str(args.plan_repeats),
+                "--warmups",
+                str(args.plan_warmups),
+                "--output-csv",
+                str(plan_csv),
+                "--output-json",
+                str(plan_json),
+            ]
+        )
 
     if not args.skip_projection_methods:
-        commands.append([
-            py,
-            str(SCRIPT_DIR / "benchmark_resize_projection_methods.py"),
-            "--profile",
-            args.projection_methods_profile,
-            "--repeats",
-            str(args.projection_methods_repeats),
-            "--warmups",
-            str(args.projection_methods_warmups),
-            "--degrees",
-            args.projection_methods_degrees,
-            "--dtypes",
-            args.projection_methods_dtypes,
-            "--output-csv",
-            str(projection_methods_csv),
-            "--output-json",
-            str(projection_methods_json),
-        ])
+        commands.append(
+            [
+                py,
+                str(SCRIPT_DIR / "benchmark_resize_projection_methods.py"),
+                "--profile",
+                args.projection_methods_profile,
+                "--repeats",
+                str(args.projection_methods_repeats),
+                "--warmups",
+                str(args.projection_methods_warmups),
+                "--degrees",
+                args.projection_methods_degrees,
+                "--dtypes",
+                args.projection_methods_dtypes,
+                "--output-csv",
+                str(projection_methods_csv),
+                "--output-json",
+                str(projection_methods_json),
+            ]
+        )
 
     report_cmd = [
         py,

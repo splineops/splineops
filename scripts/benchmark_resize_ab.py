@@ -91,7 +91,9 @@ def run_variant(
     )
 
 
-def compare_outputs(a: np.ndarray, b: np.ndarray, atol: float, rtol: float) -> tuple[bool, float, float]:
+def compare_outputs(
+    a: np.ndarray, b: np.ndarray, atol: float, rtol: float
+) -> tuple[bool, float, float]:
     if a.shape != b.shape:
         return False, float("inf"), float("inf")
     diff = np.abs(a.astype(np.float64) - b.astype(np.float64))
@@ -156,11 +158,19 @@ def summarize(results: list[ABResult]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=["smoke", "standard", "full"], default="standard")
+    parser.add_argument(
+        "--profile", choices=["smoke", "standard", "full"], default="standard"
+    )
     parser.add_argument("--flag", required=True, help="Environment variable to toggle.")
-    parser.add_argument("--a", default="0", help="Baseline value. Use <unset> to unset the variable.")
-    parser.add_argument("--b", default="1", help="Candidate value. Use <unset> to unset the variable.")
-    parser.add_argument("--threads", type=native.parse_threads, default=native.parse_threads("default"))
+    parser.add_argument(
+        "--a", default="0", help="Baseline value. Use <unset> to unset the variable."
+    )
+    parser.add_argument(
+        "--b", default="1", help="Candidate value. Use <unset> to unset the variable."
+    )
+    parser.add_argument(
+        "--threads", type=native.parse_threads, default=native.parse_threads("default")
+    )
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--warmups", type=int, default=2)
     parser.add_argument("--cases", help="Comma-separated case names to include.")
@@ -220,7 +230,8 @@ def main() -> int:
                 )
 
                 passed, max_abs, mean_abs = compare_outputs(
-                    a_out, b_out, args.atol, args.rtol)
+                    a_out, b_out, args.atol, args.rtol
+                )
                 result = ABResult(
                     case=case.name,
                     shape=case.shape,
@@ -239,8 +250,10 @@ def main() -> int:
                     a_mean_ms=statistics.fmean(a_samples) * 1000.0,
                     b_mean_ms=statistics.fmean(b_samples) * 1000.0,
                     best_speedup=min(a_samples) / min(b_samples),
-                    median_speedup=statistics.median(a_samples) / statistics.median(b_samples),
-                    mean_speedup=statistics.fmean(a_samples) / statistics.fmean(b_samples),
+                    median_speedup=statistics.median(a_samples)
+                    / statistics.median(b_samples),
+                    mean_speedup=statistics.fmean(a_samples)
+                    / statistics.fmean(b_samples),
                     repeats=args.repeats,
                     warmups=args.warmups,
                     max_abs_diff=max_abs,

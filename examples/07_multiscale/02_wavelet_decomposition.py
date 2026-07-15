@@ -28,10 +28,10 @@ from splineops.multiscale.wavelets.haar import HaarWavelets
 # Load and Normalize a 2D Image
 # -----------------------------
 #
-# Here, we load an example image from an online repository. 
+# Here, we load an example image from an online repository.
 # We convert it to grayscale in [0,1].
 
-url = 'https://r0k.us/graphics/kodak/kodak/kodim07.png'
+url = "https://r0k.us/graphics/kodak/kodak/kodim07.png"
 with urlopen(url, timeout=10) as resp:
     img = Image.open(resp)
 
@@ -43,9 +43,9 @@ image_color /= 255.0
 
 # Convert to grayscale using standard weights
 image_gray = (
-    image_color[:, :, 0] * 0.2989 +
-    image_color[:, :, 1] * 0.5870 +
-    image_color[:, :, 2] * 0.1140
+    image_color[:, :, 0] * 0.2989
+    + image_color[:, :, 1] * 0.5870
+    + image_color[:, :, 2] * 0.1140
 )
 
 ny, nx = image_gray.shape
@@ -55,15 +55,17 @@ print(f"Downloaded image shape = {ny} x {nx}")
 base_width = 8.0
 figsize = (base_width, base_width * ny / nx)
 
+
 def imshow_matched_LL(
     coeffs,
     levels,
-    orig_image,          # full-resolution grayscale image
-    detail_pct=95,       # percentile for LH/HL/HH stretch
-    ll_low=2, ll_high=98,# LL stretch percentiles
+    orig_image,  # full-resolution grayscale image
+    detail_pct=95,  # percentile for LH/HL/HH stretch
+    ll_low=2,
+    ll_high=98,  # LL stretch percentiles
     ax=None,
     title=None,
-    cmap='gray',
+    cmap="gray",
 ):
     """
     Visualise a wavelet pyramid so that
@@ -89,42 +91,43 @@ def imshow_matched_LL(
     if ax is None:
         ax = plt.gca()
 
-    vis      = np.empty_like(coeffs, dtype=np.float64)
-    ny, nx   = vis.shape
-    ny_ll    = ny // (2 ** levels)
-    nx_ll    = nx // (2 ** levels)
+    vis = np.empty_like(coeffs, dtype=np.float64)
+    ny, nx = vis.shape
+    ny_ll = ny // (2**levels)
+    nx_ll = nx // (2**levels)
 
     # ─────────────────── 1.  LL block ───────────────────
-    ll            = coeffs[:ny_ll, :nx_ll]
-    lo, hi        = np.percentile(ll, [ll_low, ll_high])
-    hi            = max(hi, lo + 1e-12)                 # avoid zero division
-    ll_lin        = np.clip((ll - lo) / (hi - lo), 0, 1)
+    ll = coeffs[:ny_ll, :nx_ll]
+    lo, hi = np.percentile(ll, [ll_low, ll_high])
+    hi = max(hi, lo + 1e-12)  # avoid zero division
+    ll_lin = np.clip((ll - lo) / (hi - lo), 0, 1)
 
     # ▸ match mean brightness to original image
-    mean_orig     = float(np.mean(orig_image))
-    mean_ll       = float(np.mean(ll_lin))
-    if mean_ll < 1e-12:         # degenerate (all black): avoid log(0)
+    mean_orig = float(np.mean(orig_image))
+    mean_ll = float(np.mean(ll_lin))
+    if mean_ll < 1e-12:  # degenerate (all black): avoid log(0)
         gamma = 1.0
     else:
         gamma = np.log(mean_orig + 1e-12) / np.log(mean_ll + 1e-12)
-    ll_matched    = ll_lin ** gamma
+    ll_matched = ll_lin**gamma
     vis[:ny_ll, :nx_ll] = ll_matched
 
     # ─────────────────── 2.  Detail bands ───────────────
-    detail_mask   = np.ones_like(coeffs, dtype=bool)
+    detail_mask = np.ones_like(coeffs, dtype=bool)
     detail_mask[:ny_ll, :nx_ll] = False
     if detail_mask.any():
-        dvals   = coeffs[detail_mask]
+        dvals = coeffs[detail_mask]
         d_scale = np.percentile(np.abs(dvals), detail_pct)
         d_scale = max(d_scale, 1e-12)
-        d_norm  = np.clip(dvals / d_scale, -1, 1) / 2 + 0.5   # [-1,1]→[0,1]
+        d_norm = np.clip(dvals / d_scale, -1, 1) / 2 + 0.5  # [-1,1]→[0,1]
         vis[detail_mask] = d_norm
 
     # ─────────────────── 3.  Display ────────────────────
-    ax.imshow(vis, cmap=cmap, vmin=0, vmax=1, interpolation='nearest')
-    ax.axis('off')
+    ax.imshow(vis, cmap=cmap, vmin=0, vmax=1, interpolation="nearest")
+    ax.axis("off")
     if title:
         ax.set_title(title, fontsize=14)
+
 
 # %%
 # 2D Wavelet Decomposition
@@ -142,13 +145,14 @@ max_err_haar = np.abs(err_haar).max()
 print("[Wavelets 2D Haar Test]")
 print(f"Max error after 3-scale decomposition: {max_err_haar}")
 
+
 # Helper function for visualization
 def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
     """
     Perform multi-scale wavelet analysis in-place so that at each level the
     new coarse approximation is stored in the quadrant corresponding to the
     previous level's coarse region.
-    
+
     Parameters
     ----------
     wavelet : AbstractWavelets instance
@@ -157,7 +161,7 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
         Input 2D array (e.g., grayscale image).
     num_levels : int
         The number of decomposition levels to perform.
-        
+
     Returns
     -------
     coeffs : np.ndarray
@@ -165,30 +169,37 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
     """
     out = np.copy(inp)
     ny, nx = out.shape[:2]
-    
+
     for level in range(num_levels):
         # Process the current top-left subarray
         sub = out[:ny, :nx]
         sub_out = wavelet.analysis1(sub)
         out[:ny, :nx] = sub_out
-        
+
         # Update region size for next level (halve each dimension)
         nx = max(1, nx // 2)
         ny = max(1, ny // 2)
-        
+
     return out
+
 
 # %%
 # 1-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet1 = HaarWavelets(scales=1)
-coeffs1  = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
+coeffs1 = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
 
 plt.figure(figsize=figsize)
-imshow_matched_LL(coeffs1, levels=1, orig_image=image_gray,
-                  detail_pct=95, ll_low=5, ll_high=99,
-                  title="Haar 1-Level Decomposition")
+imshow_matched_LL(
+    coeffs1,
+    levels=1,
+    orig_image=image_gray,
+    detail_pct=95,
+    ll_low=5,
+    ll_high=99,
+    title="Haar 1-Level Decomposition",
+)
 plt.tight_layout()
 plt.show()
 
@@ -197,12 +208,18 @@ plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet2 = HaarWavelets(scales=2)
-coeffs2  = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
+coeffs2 = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
 
 plt.figure(figsize=figsize)
-imshow_matched_LL(coeffs2, levels=2, orig_image=image_gray,
-                  detail_pct=95, ll_low=5, ll_high=99,
-                  title="Haar 2-Level Decomposition")
+imshow_matched_LL(
+    coeffs2,
+    levels=2,
+    orig_image=image_gray,
+    detail_pct=95,
+    ll_low=5,
+    ll_high=99,
+    title="Haar 2-Level Decomposition",
+)
 plt.tight_layout()
 plt.show()
 
@@ -211,11 +228,17 @@ plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~
 
 wavelet3 = HaarWavelets(scales=3)
-coeffs3  = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
+coeffs3 = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)
 
 plt.figure(figsize=figsize)
-imshow_matched_LL(coeffs3, levels=3, orig_image=image_gray,
-                  detail_pct=95, ll_low=5, ll_high=99,
-                  title="Haar 3-Level Decomposition")
+imshow_matched_LL(
+    coeffs3,
+    levels=3,
+    orig_image=image_gray,
+    detail_pct=95,
+    ll_low=5,
+    ll_high=99,
+    title="Haar 3-Level Decomposition",
+)
 plt.tight_layout()
 plt.show()

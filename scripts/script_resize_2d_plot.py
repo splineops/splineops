@@ -88,14 +88,14 @@ DTYPE = np.float32
 DTYPE_NAME = np.dtype(DTYPE).name
 
 # Plot appearance for slide-friendly export
-PLOT_FIGSIZE = (14, 7)      # wider, 2:1-ish
+PLOT_FIGSIZE = (14, 7)  # wider, 2:1-ish
 PLOT_TITLE_FONTSIZE = 18
 PLOT_LABEL_FONTSIZE = 18
 PLOT_TICK_FONTSIZE = 18
 PLOT_LEGEND_FONTSIZE = 18
 
-MARKER_SIZE = 6             # bigger markers
-LINEWIDTH = 2.0             # thicker lines
+MARKER_SIZE = 6  # bigger markers
+LINEWIDTH = 2.0  # thicker lines
 
 # Show markers only on every N-th point (sparser markers).
 # All methods share the same stride but use different phase offsets
@@ -104,13 +104,13 @@ MARK_EVERY_BASE = 8
 
 # ---------------- Method toggles ----------------
 # Set any of these to False to skip computing/plotting that method.
-ENABLE_SCIPY                   = True
-ENABLE_SPLINEOPS_STANDARD      = True
-ENABLE_SPLINEOPS_ANTIALIASING  = True
-ENABLE_TORCH                   = True
-ENABLE_OPENCV                  = True
-ENABLE_PILLOW                  = True
-ENABLE_SKIMAGE                 = True
+ENABLE_SCIPY = True
+ENABLE_SPLINEOPS_STANDARD = True
+ENABLE_SPLINEOPS_ANTIALIASING = True
+ENABLE_TORCH = True
+ENABLE_OPENCV = True
+ENABLE_PILLOW = True
+ENABLE_SKIMAGE = True
 
 # -------------------------- UI / I/O helpers --------------------------
 
@@ -174,11 +174,7 @@ def load_image_any(path_or_url: str, grayscale: bool = True) -> np.ndarray:
     else:
         out = arr / 255.0
         if grayscale:
-            out = (
-                0.2989 * out[..., 0]
-                + 0.5870 * out[..., 1]
-                + 0.1140 * out[..., 2]
-            )
+            out = 0.2989 * out[..., 0] + 0.5870 * out[..., 1] + 0.1140 * out[..., 2]
     out = np.clip(out, 0.0, 1.0)
     return np.ascontiguousarray(out, dtype=DTYPE)
 
@@ -211,9 +207,7 @@ def snr_db(x: np.ndarray, y: np.ndarray) -> float:
 # ----------------------------- runners ------------------------------
 
 
-def scipy_roundtrip(
-    img: np.ndarray, z: float, degree: str
-) -> Tuple[np.ndarray, float]:
+def scipy_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip with SciPy ndimage.zoom using order=1 (linear) or 3 (cubic)
     and reflect boundary; prefilter is used only for cubic.
@@ -265,9 +259,7 @@ def spl_roundtrip(img: np.ndarray, z: float, method: str) -> Tuple[np.ndarray, f
     return rec.astype(img.dtype, copy=False), dt
 
 
-def torch_roundtrip(
-    img: np.ndarray, z: float, degree: str
-) -> Tuple[np.ndarray, float]:
+def torch_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip using torch.nn.functional.interpolate with bilinear (linear)
     or bicubic (cubic). Runs on CPU.
@@ -333,13 +325,7 @@ def torch_roundtrip(
             align_corners=False,
             antialias=False,
         )
-        rec = (
-            y2[0]
-            .permute(1, 2, 0)
-            .cpu()
-            .numpy()
-            .astype(arr.dtype, copy=False)
-        )
+        rec = y2[0].permute(1, 2, 0).cpu().numpy().astype(arr.dtype, copy=False)
     else:
         raise ValueError("Expected 2D (H×W) or 3D (H×W×C) image for PyTorch path.")
 
@@ -349,9 +335,7 @@ def torch_roundtrip(
     return rec, dt
 
 
-def opencv_roundtrip(
-    img: np.ndarray, z: float, which: str
-) -> Tuple[np.ndarray, float]:
+def opencv_roundtrip(img: np.ndarray, z: float, which: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip with OpenCV resize using INTER_LINEAR or INTER_CUBIC.
 
@@ -378,9 +362,7 @@ def opencv_roundtrip(
     return rec.astype(img.dtype, copy=False), dt
 
 
-def pillow_roundtrip(
-    img: np.ndarray, z: float, which: str
-) -> Tuple[np.ndarray, float]:
+def pillow_roundtrip(img: np.ndarray, z: float, which: str) -> Tuple[np.ndarray, float]:
     """
     Round-trip with Pillow's resize using BILINEAR/BICUBIC/LANCZOS.
 
@@ -390,8 +372,8 @@ def pillow_roundtrip(
     """
     resample_map = {
         "bilinear": Image.Resampling.BILINEAR,
-        "bicubic":  Image.Resampling.BICUBIC,
-        "lanczos":  Image.Resampling.LANCZOS,
+        "bicubic": Image.Resampling.BICUBIC,
+        "lanczos": Image.Resampling.LANCZOS,
     }
     if which not in resample_map:
         raise ValueError(f"Unsupported Pillow kernel: {which}")
@@ -424,7 +406,9 @@ def pillow_roundtrip(
     return rec_arr, dt
 
 
-def skimage_roundtrip(img: np.ndarray, z: float, degree: str) -> Tuple[np.ndarray, float]:
+def skimage_roundtrip(
+    img: np.ndarray, z: float, degree: str
+) -> Tuple[np.ndarray, float]:
     """
     Round-trip with scikit-image.transform.resize using order=1 (linear) or
     order=3 (cubic). Supports 2D (H,W) and 3D (H,W,C) arrays.
@@ -506,7 +490,9 @@ def average_time(run, repeats: int = 10, warmup: bool = True):
     sd_t = float(times_arr.std(ddof=1 if times_arr.size > 1 else 0))
     return rec, mean_t, sd_t
 
+
 # ------------------------------ main -------------------------------
+
 
 def main():
     ap = argparse.ArgumentParser(
@@ -709,20 +695,22 @@ def main():
             if kind == "scipy":
                 runner = lambda z=z, deg=method: scipy_roundtrip(img, z, deg)  # type: ignore[arg-type]
             elif kind == "splineops":
-                runner = lambda z=z, m=method: spl_roundtrip(img, z, m)        # type: ignore[arg-type]
+                runner = lambda z=z, m=method: spl_roundtrip(img, z, m)  # type: ignore[arg-type]
             elif kind == "torch":
                 runner = lambda z=z, deg=method: torch_roundtrip(img, z, deg)  # type: ignore[arg-type]
             elif kind == "opencv":
-                runner = lambda z=z, w=method: opencv_roundtrip(img, z, w)     # type: ignore[arg-type]
+                runner = lambda z=z, w=method: opencv_roundtrip(img, z, w)  # type: ignore[arg-type]
             elif kind == "pillow":
-                runner = lambda z=z, w=method: pillow_roundtrip(img, z, w)     # type: ignore[arg-type]
+                runner = lambda z=z, w=method: pillow_roundtrip(img, z, w)  # type: ignore[arg-type]
             elif kind == "skimage":
                 runner = lambda z=z, deg=method: skimage_roundtrip(img, z, deg)  # type: ignore[arg-type]
             else:
                 continue
 
             try:
-                rec, t_mean, t_sd = average_time(runner, repeats=args.repeats, warmup=True)
+                rec, t_mean, t_sd = average_time(
+                    runner, repeats=args.repeats, warmup=True
+                )
             except Exception as e:
                 # If any method fails at a particular zoom, skip that sample
                 print(f"\n[warn] {name} failed at z={z:.5f}: {e}")
@@ -865,7 +853,9 @@ def main():
             )
         if any_curve:
             plt.xlabel("Zoom factor", fontsize=PLOT_LABEL_FONTSIZE)
-            plt.ylabel("SNR (dB)  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
+            plt.ylabel(
+                "SNR (dB)  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE
+            )
             plt.title(
                 f"Round-Trip SNR vs Zoom{title_suffix}  "
                 f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",
@@ -903,7 +893,9 @@ def main():
                 )
             if any_curve:
                 plt.xlabel("Zoom factor", fontsize=PLOT_LABEL_FONTSIZE)
-                plt.ylabel("SSIM  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE)
+                plt.ylabel(
+                    "SSIM  [original vs recovered]", fontsize=PLOT_LABEL_FONTSIZE
+                )
                 plt.title(
                     f"Round-Trip SSIM vs Zoom{title_suffix}  "
                     f"(H×W = {H}×{W}, dtype={DTYPE_NAME}, degree={degree_label})",

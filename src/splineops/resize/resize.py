@@ -24,13 +24,16 @@ import numpy as np
 import numpy.typing as npt
 
 from splineops.resize._pycore.engine import python_resize as _python_fallback_resize
-from splineops.resize._pycore.utils import calculate_output_size_1d as _calculate_output_size_1d
+from splineops.resize._pycore.utils import (
+    calculate_output_size_1d as _calculate_output_size_1d,
+)
 
 # Attempt to import the native acceleration module (optional)
 try:
     from splineops._lsresize import resize_nd as _resize_nd_cpp  # type: ignore[attr-defined]
     from splineops._lsresize import resize_nd_into as _resize_nd_into_cpp  # type: ignore[attr-defined]
     from splineops._lsresize import ResizePlan as _ResizePlanCpp  # type: ignore[attr-defined]
+
     _HAS_CPP = True
     _NATIVE_IMPORT_ERROR: Optional[BaseException] = None
 except Exception as exc:  # pragma: no cover - if extension isn't built
@@ -49,11 +52,7 @@ _SUPPORTED_REAL_KINDS = frozenset("iuf")
 
 def _require_native_if_requested() -> None:
     if _ACCEL_ENV == "always" and not _HAS_CPP:
-        detail = (
-            f": {_NATIVE_IMPORT_ERROR}"
-            if _NATIVE_IMPORT_ERROR is not None
-            else ""
-        )
+        detail = f": {_NATIVE_IMPORT_ERROR}" if _NATIVE_IMPORT_ERROR is not None else ""
         raise RuntimeError(
             "SPLINEOPS_ACCEL=always requires the native splineops extension, "
             f"but it could not be imported{detail}"
@@ -74,17 +73,16 @@ def _require_native_if_requested() -> None:
 
 METHOD_MAP: Dict[str, Tuple[int, int, int]] = {
     # Interpolation – no anti-aliasing (analy = -1)
-    "fast":      (0, -1, 0),  # nearest
-    "linear":    (1, -1, 1),
+    "fast": (0, -1, 0),  # nearest
+    "linear": (1, -1, 1),
     "quadratic": (2, -1, 2),
-    "cubic":     (3, -1, 3),
-
+    "cubic": (3, -1, 3),
     # Antialiasing (projection-based), recommended for down-sampling.
     # These are the classic Muñoz/Unser “oblique” combinations:
     #   (1, 0, 1), (2, 1, 2), (3, 1, 3)
-    "linear-antialiasing":    (1, 0, 1),
+    "linear-antialiasing": (1, 0, 1),
     "quadratic-antialiasing": (2, 1, 2),
-    "cubic-antialiasing":     (3, 1, 3),
+    "cubic-antialiasing": (3, 1, 3),
 }
 
 
@@ -321,9 +319,7 @@ def _resolve_geometry_for_shape(
     """Return normalized axes, full zoom vector, and output shape."""
     shape = tuple(int(n) for n in input_shape)
     selected_axes = _normalize_axes(axes, len(shape))
-    normalized_output_size = (
-        tuple(output_size) if output_size is not None else None
-    )
+    normalized_output_size = tuple(output_size) if output_size is not None else None
     full_zoom = _resolve_zoom_for_shape(
         shape,
         zoom_factors=zoom_factors,
@@ -443,13 +439,11 @@ class ResizePlan:
             interp_degree, analy_degree, synthe_degree
         )
         shape = _normalize_shape(input_shape)
-        selected_axes, zoom, output_shape = (
-            _resolve_geometry_for_shape(
-                shape,
-                zoom_factors=zoom_factors,
-                output_size=output_size,
-                axes=axes,
-            )
+        selected_axes, zoom, output_shape = _resolve_geometry_for_shape(
+            shape,
+            zoom_factors=zoom_factors,
+            output_size=output_size,
+            axes=axes,
         )
 
         self._input_shape = shape
@@ -528,7 +522,9 @@ class ResizePlan:
         _validate_output(output, self.output_shape)
 
         if isinstance(output, np.ndarray):
-            if self._native_plan is not None and hasattr(self._native_plan, "apply_into"):
+            if self._native_plan is not None and hasattr(
+                self._native_plan, "apply_into"
+            ):
                 native_dtype = (
                     np.dtype(np.float32)
                     if arr.dtype == np.dtype(np.float32)
@@ -567,9 +563,13 @@ class ResizePlan:
     __call__ = apply
 
     def __repr__(self) -> str:
-        label = f"method={self.method!r}" if self.method is not None else (
-            "degrees="
-            f"({self.interp_degree}, {self.analy_degree}, {self.synthe_degree})"
+        label = (
+            f"method={self.method!r}"
+            if self.method is not None
+            else (
+                "degrees="
+                f"({self.interp_degree}, {self.analy_degree}, {self.synthe_degree})"
+            )
         )
         return (
             "ResizePlan("
@@ -659,13 +659,11 @@ def resize_degrees(
     )
 
     arr = _normalize_input(data)
-    selected_axes, full_zoom, output_shape = (
-        _resolve_geometry_for_shape(
-            arr.shape,
-            zoom_factors=zoom_factors,
-            output_size=output_size,
-            axes=axes,
-        )
+    selected_axes, full_zoom, output_shape = _resolve_geometry_for_shape(
+        arr.shape,
+        zoom_factors=zoom_factors,
+        output_size=output_size,
+        axes=axes,
     )
     _validate_output(output, output_shape)
 

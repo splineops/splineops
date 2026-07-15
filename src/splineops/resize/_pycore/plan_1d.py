@@ -5,11 +5,7 @@ from .params import LSParams, Plan1D
 from .bspline import beta
 from .utils import border, calculate_output_size_1d
 
-
-_GAUSS_RULES = {
-    order: np.polynomial.legendre.leggauss(order)
-    for order in range(1, 5)
-}
+_GAUSS_RULES = {order: np.polynomial.legendre.leggauss(order) for order in range(1, 5)}
 
 _NATIVE_INT_MIN = -(1 << 31)
 _NATIVE_INT_MAX = (1 << 31) - 1
@@ -76,12 +72,8 @@ def _cross_gram_weights_gauss(
     if positions.size == 0:
         return result
 
-    input_knots = a * np.arange(
-        -input_radius, input_radius + 0.5, 1.0
-    )
-    analysis_knots = np.arange(
-        -analysis_radius, analysis_radius + 0.5, 1.0
-    )
+    input_knots = a * np.arange(-input_radius, input_radius + 0.5, 1.0)
+    analysis_knots = np.arange(-analysis_radius, analysis_radius + 0.5, 1.0)
     nodes, gauss_weights = _GAUSS_RULES[(n + m + 2) // 2]
     chunk_size = 4096
     for begin in range(0, positions.size, chunk_size):
@@ -123,6 +115,7 @@ def _cross_gram_weights_gauss(
         flat_result[selected] = subtotal
     return result
 
+
 def make_plan_1d(N: int, p: LSParams) -> Plan1D:
     outN = calculate_output_size_1d(N, p.zoom)
 
@@ -138,12 +131,9 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
         effective_zoom = 1.0
         step = 0.0
 
-    pure_interp = (p.analy_degree < 0)
+    pure_interp = p.analy_degree < 0
     visible_projection = (
-        not pure_interp
-        and float(p.shift) == 0.0
-        and N > 1
-        and outN > 1
+        not pure_interp and float(p.shift) == 0.0 and N > 1 and outN > 1
     )
     direct_projection = visible_projection and p.analy_degree >= 1
 
@@ -152,7 +142,9 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
     half_support = 0.5 * (total_degree + 1)
 
     # Correlation degree (projection tail)
-    corr_degree = p.interp_degree if pure_interp else (p.analy_degree + p.synthe_degree + 1)
+    corr_degree = (
+        p.interp_degree if pure_interp else (p.analy_degree + p.synthe_degree + 1)
+    )
 
     # Native shift policy for analysis stage (Muñoz correction for analy >= 0)
     shift = float(p.shift)
@@ -166,8 +158,8 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
     # must see that same mirror endpoint.  A tail is retained only for the
     # internal non-zero-shift path, where that symmetry proof does not apply.
     if pure_interp:
-        add_border   = 0
-        out_total    = outN
+        add_border = 0
+        out_total = outN
         length_total = _checked_axis_length(
             N + int(np.ceil(max(0.0, shift + half_support))),
             "interpolation extension exceeds native limits",
@@ -186,7 +178,7 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
                 "projection extension exceeds native limits",
             )
     else:
-        add_border   = max(border(outN, corr_degree), total_degree)
+        add_border = max(border(outN, corr_degree), total_degree)
         out_total = _checked_axis_length(
             outN + add_border,
             "projection output length exceeds native limits",
@@ -209,9 +201,7 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
         # spline centred at k is centred at effective_zoom*k.
         x = l
         cross_radius = 0.5 * (
-            (p.interp_degree + 1) * effective_zoom
-            + p.analy_degree
-            + 1.0
+            (p.interp_degree + 1) * effective_zoom + p.analy_degree + 1.0
         )
         kmin = _checked_index_array(
             (x - cross_radius) / effective_zoom,
@@ -249,22 +239,14 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
     tgrid = np.arange(win_len_max, dtype=np.int64)[None, :]
     kgrid = kmin[:, None] + tgrid
     ks = kgrid.astype(np.float64)
-    dx = (
-        x[:, None] - effective_zoom * ks
-        if direct_projection
-        else x[:, None] - ks
-    )
+    dx = x[:, None] - effective_zoom * ks if direct_projection else x[:, None] - ks
 
     # Analysis scaling factor (Unser–Muñoz step 3 factor)
-    fact = (
-        effective_zoom ** (p.analy_degree + 1)
-        if p.analy_degree >= 0
-        else 1.0
-    )
+    fact = effective_zoom ** (p.analy_degree + 1) if p.analy_degree >= 0 else 1.0
 
     # Weights for all rows (rectangular), then mask out-of-support columns
     if win_len_max > 0 and out_total > 0:
-        mask = (tgrid < wlen[:, None])
+        mask = tgrid < wlen[:, None]
         if direct_projection:
             weights2d = _cross_gram_weights_gauss(
                 dx,
@@ -277,9 +259,7 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
             # after floating-point quadrature to avoid accumulating plan error.
             row_sum = np.sum(weights2d, axis=1)
             if np.any(row_sum <= 0.0):
-                raise RuntimeError(
-                    "direct projection cross-Gram row has zero weight"
-                )
+                raise RuntimeError("direct projection cross-Gram row has zero weight")
             weights2d /= row_sum[:, None]
         else:
             weights2d = fact * beta(dx, total_degree)
@@ -335,8 +315,8 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
             lp_src = np.clip(t - 1, 0, N - 1).astype(np.intp)
             lp_sign = -1.0
     else:
-        lp_dst  = np.empty(0, dtype=np.intp)
-        lp_src  = np.empty(0, dtype=np.intp)
+        lp_dst = np.empty(0, dtype=np.intp)
+        lp_src = np.empty(0, dtype=np.intp)
         lp_sign = 1.0 if symmetric_ext else -1.0
 
     # Right extension for ext[N: length_total] = rp_sign * coeff[rp_src]
@@ -362,17 +342,28 @@ def make_plan_1d(N: int, p: LSParams) -> Plan1D:
         lk = np.clip(lk, 0, N - 1)
         rp_src = lk.astype(np.intp)
     else:
-        rp_src  = np.empty(0, dtype=np.intp)
+        rp_src = np.empty(0, dtype=np.intp)
         rp_sign = 1.0 if symmetric_ext else -1.0
 
     return Plan1D(
-        N=N, outN=outN, out_total=out_total, length_total=length_total,
+        N=N,
+        outN=outN,
+        out_total=out_total,
+        length_total=length_total,
         symmetric_ext=symmetric_ext,
-        left_pad=left_pad, right_pad=right_pad,
-        kmin=kmin, win_len=wlen, row_ptr=row_ptr,
-        weights=weights, win_len_max=win_len_max,
-        idx2d=idx2d, weights2d=weights2d,
-        lp_dst=lp_dst, lp_src=lp_src, lp_sign=lp_sign,
-        rp_src=rp_src, rp_sign=rp_sign,
+        left_pad=left_pad,
+        right_pad=right_pad,
+        kmin=kmin,
+        win_len=wlen,
+        row_ptr=row_ptr,
+        weights=weights,
+        win_len_max=win_len_max,
+        idx2d=idx2d,
+        weights2d=weights2d,
+        lp_dst=lp_dst,
+        lp_src=lp_src,
+        lp_sign=lp_sign,
+        rp_src=rp_src,
+        rp_sign=rp_sign,
         direct_projection=direct_projection,
     )

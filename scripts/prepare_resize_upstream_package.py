@@ -28,17 +28,26 @@ import tomllib
 from datetime import datetime
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 
-SCIPY_ZOOM_DOC = "https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.zoom.html"
-SCIPY_CONTRIBUTOR_DOC = "https://docs.scipy.org/doc/scipy/dev/contributor/contributor_toc.html"
-SCIPY_INTERPOLATION_SRC = "https://github.com/scipy/scipy/blob/main/scipy/ndimage/src/ni_interpolation.c"
+SCIPY_ZOOM_DOC = (
+    "https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.zoom.html"
+)
+SCIPY_CONTRIBUTOR_DOC = (
+    "https://docs.scipy.org/doc/scipy/dev/contributor/contributor_toc.html"
+)
+SCIPY_INTERPOLATION_SRC = (
+    "https://github.com/scipy/scipy/blob/main/scipy/ndimage/src/ni_interpolation.c"
+)
 PYTORCH_INTERPOLATE_DOC = "https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.interpolate.html"
-PYTORCH_CUSTOM_OP_DOC = "https://docs.pytorch.org/tutorials/advanced/cpp_custom_ops.html"
-PYTORCH_ATEN_NATIVE_DOC = "https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/README.md"
+PYTORCH_CUSTOM_OP_DOC = (
+    "https://docs.pytorch.org/tutorials/advanced/cpp_custom_ops.html"
+)
+PYTORCH_ATEN_NATIVE_DOC = (
+    "https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/README.md"
+)
 
 
 def timestamp_tag() -> str:
@@ -586,7 +595,9 @@ def main() -> int:
         "pytorch_bridge": str(pytorch_bridge),
         "commands": str(commands_txt),
         "benchmark_report": None if benchmark_report is None else str(benchmark_report),
-        "benchmark_manifest": None if benchmark_manifest is None else str(benchmark_manifest),
+        "benchmark_manifest": (
+            None if benchmark_manifest is None else str(benchmark_manifest)
+        ),
     }
     manifest.write_text(
         json.dumps(

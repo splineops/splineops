@@ -41,8 +41,9 @@ try:
 except Exception:
     # Fallback: add ../src to sys.path if running from repo root
     from pathlib import Path
+
     repo_root = Path(__file__).resolve().parents[1]
-    src_dir   = repo_root / "src"
+    src_dir = repo_root / "src"
     if src_dir.exists() and str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
     from splineops.resize import resize as sp_resize
@@ -70,6 +71,7 @@ ZOOM_4D: Tuple[float, float, float, float] = (1.0, 0.6, 1.3, 0.8)
 # --------------------------------------------
 # Helpers
 # --------------------------------------------
+
 
 def _make_3d_volume(shape=(48, 64, 40), seed: int = 0) -> np.ndarray:
     """
@@ -126,6 +128,7 @@ def _show_slice(ax, img2d: np.ndarray, title: str) -> None:
 # Main demo
 # --------------------------------------------
 
+
 def main(argv=None) -> int:
     # ----- 3D volume -----
     vol3d = _make_3d_volume()
@@ -134,24 +137,25 @@ def main(argv=None) -> int:
     z0 = vol3d.shape[0] // 2
     z1 = vol3d_res.shape[0] // 2
     slice3d_orig = vol3d[z0, :, :]
-    slice3d_res  = vol3d_res[z1, :, :]
+    slice3d_res = vol3d_res[z1, :, :]
 
     # ----- 4D volume -----
     vol4d = _make_4d_volume()
     vol4d_res = sp_resize(vol4d, zoom_factors=ZOOM_4D, method=METHOD_4D)
 
-    t0 = vol4d.shape[0] // 2          # time index (unchanged by zoom)
-    z0_4d = vol4d.shape[1] // 2       # original Z
-    z1_4d = vol4d_res.shape[1] // 2   # resized Z (different length)
+    t0 = vol4d.shape[0] // 2  # time index (unchanged by zoom)
+    z0_4d = vol4d.shape[1] // 2  # original Z
+    z1_4d = vol4d_res.shape[1] // 2  # resized Z (different length)
 
     slice4d_orig = vol4d[t0, z0_4d, :, :]
-    slice4d_res  = vol4d_res[t0, z1_4d, :, :]
+    slice4d_res = vol4d_res[t0, z1_4d, :, :]
 
     # ----------------------------------------
     # Plot cross-sections
     # ----------------------------------------
     fig, axes = plt.subplots(
-        nrows=2, ncols=2,
+        nrows=2,
+        ncols=2,
         figsize=(8, 7),
         constrained_layout=True,
     )
@@ -179,8 +183,7 @@ def main(argv=None) -> int:
     )
 
     fig.suptitle(
-        f"ND resize cross-sections\n"
-        f"3D method={METHOD_3D}, 4D method={METHOD_4D}",
+        f"ND resize cross-sections\n" f"3D method={METHOD_3D}, 4D method={METHOD_4D}",
         fontsize=12,
     )
     plt.show()

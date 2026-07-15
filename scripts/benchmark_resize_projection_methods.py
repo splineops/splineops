@@ -31,7 +31,6 @@ from typing import Any, Callable
 
 import numpy as np
 
-
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
@@ -310,7 +309,9 @@ def resize_kind(
     )
 
 
-def timed(fn: Callable[[], np.ndarray], repeats: int, warmups: int) -> tuple[float, np.ndarray]:
+def timed(
+    fn: Callable[[], np.ndarray], repeats: int, warmups: int
+) -> tuple[float, np.ndarray]:
     for _ in range(warmups):
         fn()
     values: list[float] = []
@@ -336,7 +337,9 @@ def run_case(
     timings: dict[str, float] = {}
     for kind in ("least_squares", "oblique", "interpolation"):
         timings[kind], down[kind] = timed(
-            lambda kind=kind: resize_kind(arr, degree=degree, kind=kind, zoom=case.zoom),
+            lambda kind=kind: resize_kind(
+                arr, degree=degree, kind=kind, zoom=case.zoom
+            ),
             repeats,
             warmups,
         )
@@ -372,9 +375,12 @@ def run_case(
         oblique_ms=timings["oblique"],
         interpolation_ms=timings["interpolation"],
         oblique_speedup_vs_least_squares=timings["least_squares"] / timings["oblique"],
-        interpolation_speedup_vs_least_squares=timings["least_squares"] / timings["interpolation"],
+        interpolation_speedup_vs_least_squares=timings["least_squares"]
+        / timings["interpolation"],
         down_rel_l2_oblique_vs_least_squares=rel_l2(oblique_down, ls_down),
-        down_max_abs_oblique_vs_least_squares=float(np.max(np.abs(oblique_down - ls_down))),
+        down_max_abs_oblique_vs_least_squares=float(
+            np.max(np.abs(oblique_down - ls_down))
+        ),
         roundtrip_psnr_least_squares=psnr(rt_crop["least_squares"], arr_crop),
         roundtrip_psnr_oblique=psnr(rt_crop["oblique"], arr_crop),
         roundtrip_psnr_interpolation=psnr(rt_crop["interpolation"], arr_crop),
@@ -405,7 +411,9 @@ def write_csv(path: Path, rows: list[ProjectionResult]) -> None:
         writer.writerows(data)
 
 
-def write_json(path: Path, rows: list[ProjectionResult], args: argparse.Namespace) -> None:
+def write_json(
+    path: Path, rows: list[ProjectionResult], args: argparse.Namespace
+) -> None:
     payload: dict[str, Any] = {
         "metadata": {
             "python": sys.version.split()[0],
@@ -457,14 +465,18 @@ def summarize(rows: list[ProjectionResult]) -> None:
             for row in group
         )
         ssim_rows = [
-            row for row in group
+            row
+            for row in group
             if row.roundtrip_ssim_least_squares is not None
             and row.roundtrip_ssim_oblique is not None
             and row.roundtrip_ssim_interpolation is not None
         ]
         ssim_oblique_wins = sum(
             (row.roundtrip_ssim_oblique or -1.0)
-            >= max(row.roundtrip_ssim_least_squares or -1.0, row.roundtrip_ssim_interpolation or -1.0)
+            >= max(
+                row.roundtrip_ssim_least_squares or -1.0,
+                row.roundtrip_ssim_interpolation or -1.0,
+            )
             for row in ssim_rows
         )
         print(
@@ -478,10 +490,18 @@ def summarize(rows: list[ProjectionResult]) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=["smoke", "standard", "stability"], default="standard")
-    parser.add_argument("--degrees", default="1,3", help="Comma-separated spline degrees.")
-    parser.add_argument("--dtypes", default="float32,float64", help="Comma-separated dtypes.")
-    parser.add_argument("--threads", default="1", help="LSRESIZE_NUM_THREADS value, or 'default'.")
+    parser.add_argument(
+        "--profile", choices=["smoke", "standard", "stability"], default="standard"
+    )
+    parser.add_argument(
+        "--degrees", default="1,3", help="Comma-separated spline degrees."
+    )
+    parser.add_argument(
+        "--dtypes", default="float32,float64", help="Comma-separated dtypes."
+    )
+    parser.add_argument(
+        "--threads", default="1", help="LSRESIZE_NUM_THREADS value, or 'default'."
+    )
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--output-csv", type=Path)
@@ -512,7 +532,9 @@ def main() -> int:
             dtype_from_name(dtype_name)
             for degree in degrees:
                 if degree < 1 or degree > 3:
-                    raise SystemExit("projection method comparison supports degrees 1..3")
+                    raise SystemExit(
+                        "projection method comparison supports degrees 1..3"
+                    )
                 result = run_case(
                     case,
                     degree=degree,

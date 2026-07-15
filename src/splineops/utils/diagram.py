@@ -46,6 +46,7 @@ __all__ = [
 # Canvas / primitives
 # -----------------------------------------------------------------------------#
 
+
 def figure_for_extents(
     xmin: float,
     xmax: float,
@@ -80,7 +81,10 @@ def figure_for_extents(
 
 def box(
     ax: Axes,
-    x1: float, y1: float, x2: float, y2: float,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
     label_text: Optional[str] = None,
     *,
     fontsize: int = 12,
@@ -94,19 +98,33 @@ def box(
     y_lo, y_hi = (y1, y2) if y1 <= y2 else (y2, y1)
     w, h = x_hi - x_lo, y_hi - y_lo
     r = FancyBboxPatch(
-        (x_lo, y_lo), w, h,
+        (x_lo, y_lo),
+        w,
+        h,
         boxstyle=f"round,pad={rounding},rounding_size={rounding}",
-        linewidth=linewidth, edgecolor=edgecolor, facecolor=facecolor,
+        linewidth=linewidth,
+        edgecolor=edgecolor,
+        facecolor=facecolor,
     )
     ax.add_patch(r)
     if label_text:
-        ax.text((x1 + x2) / 2, (y1 + y2) / 2, label_text,
-                ha="center", va="center", fontsize=fontsize)
+        ax.text(
+            (x1 + x2) / 2,
+            (y1 + y2) / 2,
+            label_text,
+            ha="center",
+            va="center",
+            fontsize=fontsize,
+        )
     return r
+
 
 def capsule(
     ax: Axes,
-    x1: float, y1: float, x2: float, y2: float,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
     label_text: Optional[str] = None,
     *,
     fontsize: int = 12,
@@ -121,19 +139,32 @@ def capsule(
     r = min(w, h) * 0.5  # semicircular ends
 
     patch = FancyBboxPatch(
-        (x_lo, y_lo), w, h,
+        (x_lo, y_lo),
+        w,
+        h,
         boxstyle=f"round,pad={padding},rounding_size={r}",
-        linewidth=linewidth, edgecolor=edgecolor, facecolor=facecolor,
+        linewidth=linewidth,
+        edgecolor=edgecolor,
+        facecolor=facecolor,
     )
     ax.add_patch(patch)
     if label_text:
-        ax.text((x1 + x2) / 2, (y1 + y2) / 2, label_text,
-                ha="center", va="center", fontsize=fontsize)
+        ax.text(
+            (x1 + x2) / 2,
+            (y1 + y2) / 2,
+            label_text,
+            ha="center",
+            va="center",
+            fontsize=fontsize,
+        )
     return patch
+
 
 def circle(
     ax: Axes,
-    cx: float, cy: float, radius: float,
+    cx: float,
+    cy: float,
+    radius: float,
     label_text: Optional[str] = None,
     *,
     fontsize: int = 16,
@@ -141,9 +172,14 @@ def circle(
     edgecolor: str = "black",
     facecolor: Optional[str] = None,
 ):
-    c = _Circle((cx, cy), radius, fill=facecolor is not None,
-                linewidth=linewidth, edgecolor=edgecolor,
-                facecolor=facecolor or "none")
+    c = _Circle(
+        (cx, cy),
+        radius,
+        fill=facecolor is not None,
+        linewidth=linewidth,
+        edgecolor=edgecolor,
+        facecolor=facecolor or "none",
+    )
     ax.add_patch(c)
     if label_text is not None:
         ax.text(cx, cy, label_text, ha="center", va="center", fontsize=fontsize)
@@ -156,41 +192,59 @@ def dot(ax: Axes, x: float, y: float, *, size: float = 4.5, color: str = "black"
 
 def seg(
     ax: Axes,
-    x1: float, y1: float, x2: float, y2: float,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
     *,
     style: str = "solid",
     linewidth: float = 1.6,
     color: str = "black",
     zorder: int = 2,
 ):
-    return ax.plot([x1, x2], [y1, y2], linestyle=style,
-                   linewidth=linewidth, color=color, zorder=zorder)[0]
+    return ax.plot(
+        [x1, x2],
+        [y1, y2],
+        linestyle=style,
+        linewidth=linewidth,
+        color=color,
+        zorder=zorder,
+    )[0]
 
 
 def arrow(
     ax: Axes,
-    x1: float, y1: float, x2: float, y2: float,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
     *,
     linewidth: float = 1.6,
     color: str = "black",
 ):
     """Data→data arrow via annotate (gives nicer heads than quiver)."""
     return ax.annotate(
-        "", xy=(x2, y2), xytext=(x1, y1),
-        arrowprops=dict(arrowstyle="->", linewidth=linewidth,
-                        shrinkA=0, shrinkB=0, color=color),
+        "",
+        xy=(x2, y2),
+        xytext=(x1, y1),
+        arrowprops=dict(
+            arrowstyle="->", linewidth=linewidth, shrinkA=0, shrinkB=0, color=color
+        ),
     )
 
 
 def label(
     ax: Axes,
-    x: float, y: float, text: str,
+    x: float,
+    y: float,
+    text: str,
     *,
     fontsize: int = 12,
     ha: str = "center",
     va: str = "center",
 ):
     return ax.text(x, y, text, ha=ha, va=va, fontsize=fontsize)
+
 
 def draw_standard_vs_scipy_pipeline(
     *,
@@ -225,7 +279,7 @@ def draw_standard_vs_scipy_pipeline(
     label(
         ax,
         (10 + (box_left - box_gap)) / 2.0,  # midpoint of the segment
-        13.25 + 0.6,                        # a bit above the line
+        13.25 + 0.6,  # a bit above the line
         "Resized",
         fontsize=12,
     )
@@ -241,7 +295,7 @@ def draw_standard_vs_scipy_pipeline(
     # Method boxes (wider right edge = 21.75)
     ups = "\n$\\uparrow 4$" if include_upsample_labels else ""
     box(ax, box_left, 14, box_right, 12.25, f"Standard Interpolation{ups}", fontsize=12)
-    box(ax, box_left, 9,  box_right, 7.25,  f"SciPy Interpolation{ups}",    fontsize=12)
+    box(ax, box_left, 9, box_right, 7.25, f"SciPy Interpolation{ups}", fontsize=12)
 
     # TensorSpline branch (rail spacing matched to Standard↔SciPy)
     seg(ax, 12, y_scipy, 12, y_ts)
@@ -249,30 +303,41 @@ def draw_standard_vs_scipy_pipeline(
     dot(ax, 12, y_ts)
     # into TensorSpline box (stop before the edge)
     arrow(ax, 12, y_ts, box_left - box_gap, y_ts)
-    box(ax, box_left, y_ts + 0.875, box_right, y_ts - 0.875,
-        f"TensorSpline Interpolation{ups}", fontsize=12)
+    box(
+        ax,
+        box_left,
+        y_ts + 0.875,
+        box_right,
+        y_ts - 0.875,
+        f"TensorSpline Interpolation{ups}",
+        fontsize=12,
+    )
 
     # Rails to the right of the three boxes
-    seg(ax, box_right, y_std,   32.25, y_std)   # Standard rail
-    seg(ax, box_right, y_scipy, 32.25, y_scipy) # SciPy rail
-    seg(ax, box_right, y_ts,    32.25, y_ts)    # TensorSpline rail
+    seg(ax, box_right, y_std, 32.25, y_std)  # Standard rail
+    seg(ax, box_right, y_scipy, 32.25, y_scipy)  # SciPy rail
+    seg(ax, box_right, y_ts, 32.25, y_ts)  # TensorSpline rail
     # Labels over the outgoing rails from each interpolation ("Recovered")
     rail_label_dx, rail_label_dy = 1.75, 0.6
-    label(ax, box_right + rail_label_dx, y_std   + rail_label_dy, "Recovered", fontsize=12)
-    label(ax, box_right + rail_label_dx, y_scipy + rail_label_dy, "Recovered", fontsize=12)
-    label(ax, box_right + rail_label_dx, y_ts    + rail_label_dy, "Recovered", fontsize=12)
+    label(
+        ax, box_right + rail_label_dx, y_std + rail_label_dy, "Recovered", fontsize=12
+    )
+    label(
+        ax, box_right + rail_label_dx, y_scipy + rail_label_dy, "Recovered", fontsize=12
+    )
+    label(ax, box_right + rail_label_dx, y_ts + rail_label_dy, "Recovered", fontsize=12)
 
     # Taps / junction dots
     dot(ax, 27.25, y_std)
     dot(ax, 30.00, y_std)
-    dot(ax, 32.00, y_std)   # tap for Standard↔TensorSpline sum
-    dot(ax, 30.00, y_scipy) # SciPy→sum junction
-    dot(ax, 32.00, y_ts)    # TensorSpline→sum junction
+    dot(ax, 32.00, y_std)  # tap for Standard↔TensorSpline sum
+    dot(ax, 30.00, y_scipy)  # SciPy→sum junction
+    dot(ax, 32.00, y_ts)  # TensorSpline→sum junction
 
     # Standard + SciPy sum
     mid_cx, mid_cy, mid_r = 30.0, 10.75, 1.0
     circle(ax, mid_cx, mid_cy, mid_r, r"$\sum$", fontsize=18)
-    arrow(ax, 30.0, y_std,   mid_cx, mid_cy + mid_r)  # from Standard ↓
+    arrow(ax, 30.0, y_std, mid_cx, mid_cy + mid_r)  # from Standard ↓
     arrow(ax, 30.0, y_scipy, mid_cx, mid_cy - mid_r)  # from SciPy ↑
     seg(ax, mid_cx + mid_r, mid_cy, 33.5, mid_cy)
     dot(ax, 33.5, mid_cy)
@@ -282,8 +347,8 @@ def draw_standard_vs_scipy_pipeline(
     # Standard ± TensorSpline sum (centered between y_scipy & y_ts)
     st_ts_cx, st_ts_cy, st_ts_r = 32.0, (y_scipy + y_ts) / 2.0, 1.0  # 5.875
     circle(ax, st_ts_cx, st_ts_cy, st_ts_r, r"$\sum$", fontsize=18)
-    arrow(ax, 32.0, y_std, st_ts_cx, st_ts_cy + st_ts_r)    # from Standard ↓
-    arrow(ax, st_ts_cx, y_ts, st_ts_cx, st_ts_cy - st_ts_r) # from TensorSpline ↑
+    arrow(ax, 32.0, y_std, st_ts_cx, st_ts_cy + st_ts_r)  # from Standard ↓
+    arrow(ax, st_ts_cx, y_ts, st_ts_cx, st_ts_cy - st_ts_r)  # from TensorSpline ↑
     label(ax, st_ts_cx - 0.7, st_ts_cy + st_ts_r + 0.2, r"$+$", fontsize=18)
     label(ax, st_ts_cx - 0.7, st_ts_cy - st_ts_r - 0.2, r"$-$", fontsize=18)
     exit_x = 34.0
@@ -294,11 +359,11 @@ def draw_standard_vs_scipy_pipeline(
     sum_cx, sum_cy, sum_r = 27.25, 1.25, 1.0
     circle(ax, sum_cx, sum_cy, sum_r, r"$\sum$", fontsize=18)
     label(ax, sum_cx - sum_r - 0.7, sum_cy + 0.6, r"$+$", fontsize=18)
-    label(ax, sum_cx - 0.7,         sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
+    label(ax, sum_cx - 0.7, sum_cy + sum_r + 0.6, r"$-$", fontsize=18)
     # Original lowest rail aligned to bottom sum y
     seg(ax, 5.5, 13.25, 5.5, sum_cy)
     dot(ax, 5.5, 13.25)
-    dot(ax, 5.5, sum_cy)  
+    dot(ax, 5.5, sum_cy)
     arrow(ax, 5.5, sum_cy, 26.25, sum_cy)
     # tap from Standard to bottom sum
     arrow(ax, 27.25, y_std, sum_cx, sum_cy + sum_r)
@@ -309,13 +374,24 @@ def draw_standard_vs_scipy_pipeline(
     collector_gap = 0.25  # how far above the box the arrows should end
 
     # arrows landing just above the collector top (no overlap)
-    arrow(ax, 33.5,  mid_cy,        33.5,  collector_top + collector_gap)   # from Std↔SciPy sum
-    arrow(ax, exit_x, st_ts_cy,     exit_x, collector_top + collector_gap)  # from Std↔TS sum
-    arrow(ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top + collector_gap) # from bottom sum
+    arrow(ax, 33.5, mid_cy, 33.5, collector_top + collector_gap)  # from Std↔SciPy sum
+    arrow(
+        ax, exit_x, st_ts_cy, exit_x, collector_top + collector_gap
+    )  # from Std↔TS sum
+    arrow(
+        ax, sum_cx, sum_cy - sum_r, sum_cx, collector_top + collector_gap
+    )  # from bottom sum
 
     # draw the collector box last
-    capsule(ax, collector_left, collector_top, collector_right, collector_bottom,
-        "Difference Images", fontsize=12)
+    capsule(
+        ax,
+        collector_left,
+        collector_top,
+        collector_right,
+        collector_bottom,
+        "Difference Images",
+        fontsize=12,
+    )
 
     if show_separator:
         seg(ax, 10.75, 15.5, 10.75, 0.25, style="dashed", linewidth=1.2, zorder=1)
@@ -326,6 +402,7 @@ def draw_standard_vs_scipy_pipeline(
     fig.tight_layout(pad=0.4)
     plt.show()
     return fig, ax
+
 
 def draw_two_method_comparisons(
     top_method: str,
@@ -365,14 +442,14 @@ def draw_two_method_comparisons(
     fig, ax = figure_for_extents(-2.5, 35.0, -1.5, 16.0, width=width, ax=ax)
 
     rail_y = 13.25
-    y_top  = rail_y
-    y_bot  = 9.50
+    y_top = rail_y
+    y_bot = 9.50
     bifurc_x = 7.25
 
-    left_box_x1, left_box_x2   = 9.25, 16.50
+    left_box_x1, left_box_x2 = 9.25, 16.50
     right_box_x1, right_box_x2 = 20.75, 28.25
 
-    box_gap_in  = 0.30
+    box_gap_in = 0.30
     box_gap_out = 0.30
 
     ds = f"\n$\\downarrow {scale_factor}$" if include_downsample_labels else ""
@@ -382,30 +459,60 @@ def draw_two_method_comparisons(
     capsule(ax, -2, 14.25, 4.25, 12.5, "Original Image", fontsize=12)
 
     # First bifurcation (T-junction)
-    arrow(ax, 4.25, rail_y, bifurc_x, rail_y); dot(ax, bifurc_x, rail_y)
+    arrow(ax, 4.25, rail_y, bifurc_x, rail_y)
+    dot(ax, bifurc_x, rail_y)
 
     # --- Top rail ---
     arrow(ax, bifurc_x, y_top, left_box_x1 - box_gap_in, y_top)
-    box(ax, left_box_x1, y_top + 1.0, left_box_x2, y_top - 1.0,
-        f"{top_method}{ds}", fontsize=12)
+    box(
+        ax,
+        left_box_x1,
+        y_top + 1.0,
+        left_box_x2,
+        y_top - 1.0,
+        f"{top_method}{ds}",
+        fontsize=12,
+    )
     top_ds_out_x = left_box_x2 + box_gap_out
-    top_us_in_x  = right_box_x1 - box_gap_in
+    top_us_in_x = right_box_x1 - box_gap_in
     arrow(ax, top_ds_out_x, y_top, top_us_in_x, y_top)
     label(ax, (top_ds_out_x + top_us_in_x) / 2.0, y_top + 0.8, "Resized", fontsize=12)
-    box(ax, right_box_x1, y_top + 1.0, right_box_x2, y_top - 1.0,
-        f"{top_method}{ups}", fontsize=12)
+    box(
+        ax,
+        right_box_x1,
+        y_top + 1.0,
+        right_box_x2,
+        y_top - 1.0,
+        f"{top_method}{ups}",
+        fontsize=12,
+    )
 
     # --- Bottom rail ---
-    seg(ax, bifurc_x, rail_y, bifurc_x, y_bot); dot(ax, bifurc_x, y_bot)
+    seg(ax, bifurc_x, rail_y, bifurc_x, y_bot)
+    dot(ax, bifurc_x, y_bot)
     arrow(ax, bifurc_x, y_bot, left_box_x1 - box_gap_in, y_bot)
-    box(ax, left_box_x1, y_bot + 1.0, left_box_x2, y_bot - 1.0,
-        f"{bottom_method}{ds}", fontsize=12)
+    box(
+        ax,
+        left_box_x1,
+        y_bot + 1.0,
+        left_box_x2,
+        y_bot - 1.0,
+        f"{bottom_method}{ds}",
+        fontsize=12,
+    )
     bot_ds_out_x = left_box_x2 + box_gap_out
-    bot_us_in_x  = right_box_x1 - box_gap_in
+    bot_us_in_x = right_box_x1 - box_gap_in
     arrow(ax, bot_ds_out_x, y_bot, bot_us_in_x, y_bot)
     label(ax, (bot_ds_out_x + bot_us_in_x) / 2.0, y_bot + 0.8, "Resized", fontsize=12)
-    box(ax, right_box_x1, y_bot + 1.0, right_box_x2, y_bot - 1.0,
-        f"{bottom_method}{ups}", fontsize=12)
+    box(
+        ax,
+        right_box_x1,
+        y_bot + 1.0,
+        right_box_x2,
+        y_bot - 1.0,
+        f"{bottom_method}{ups}",
+        fontsize=12,
+    )
 
     # Outgoing rails
     seg(ax, right_box_x2, y_top, 33.25, y_top)
@@ -414,33 +521,36 @@ def draw_two_method_comparisons(
     # Taps + labels
     tap_x_top = right_box_x2 + 1.25
     tap_x_bot = right_box_x2 + 4.25
-    dot(ax, tap_x_top, y_top); dot(ax, tap_x_bot, y_bot)
+    dot(ax, tap_x_top, y_top)
+    dot(ax, tap_x_bot, y_bot)
     label(ax, tap_x_top + 0.9, y_top + 0.6, "Recovered", fontsize=12)
     label(ax, tap_x_bot - 1.0, y_bot + 0.6, "Recovered", fontsize=12)
 
     # Bottom sums (keep layout consistent with previous function)
-    sum_r     = 1.0
+    sum_r = 1.0
     sum_y_top = 3.75
     sum_y_bot = 6.25
 
     # Original’s vertical drops + T node + elbow dots
     seg(ax, 5.0, rail_y, 5.0, sum_y_bot)
     seg(ax, 5.0, rail_y, 5.0, sum_y_top)
-    dot(ax, 5.0, rail_y); dot(ax, 5.0, sum_y_top); dot(ax, 5.0, sum_y_bot)
+    dot(ax, 5.0, rail_y)
+    dot(ax, 5.0, sum_y_top)
+    dot(ax, 5.0, sum_y_bot)
 
     # Top sum
     circle(ax, tap_x_top, sum_y_top, sum_r, r"$\sum$", fontsize=18)
     label(ax, tap_x_top - sum_r - 0.7, sum_y_top + 0.6, r"$+$", fontsize=18)
-    label(ax, tap_x_top - 0.7,         sum_y_top + sum_r + 0.6, r"$-$", fontsize=18)
-    arrow(ax, 5.0,       sum_y_top, tap_x_top - 1.0, sum_y_top)
-    arrow(ax, tap_x_top, y_top,      tap_x_top,      sum_y_top + sum_r)
+    label(ax, tap_x_top - 0.7, sum_y_top + sum_r + 0.6, r"$-$", fontsize=18)
+    arrow(ax, 5.0, sum_y_top, tap_x_top - 1.0, sum_y_top)
+    arrow(ax, tap_x_top, y_top, tap_x_top, sum_y_top + sum_r)
 
     # Bottom sum
     circle(ax, tap_x_bot, sum_y_bot, sum_r, r"$\sum$", fontsize=18)
     label(ax, tap_x_bot - sum_r - 0.7, sum_y_bot + 0.6, r"$+$", fontsize=18)
-    label(ax, tap_x_bot - 0.7,         sum_y_bot + sum_r + 0.6, r"$-$", fontsize=18)
-    arrow(ax, 5.0,     sum_y_bot, tap_x_bot - 1.0,  sum_y_bot)
-    arrow(ax, tap_x_bot, y_bot,    tap_x_bot,       sum_y_bot + sum_r)
+    label(ax, tap_x_bot - 0.7, sum_y_bot + sum_r + 0.6, r"$-$", fontsize=18)
+    arrow(ax, 5.0, sum_y_bot, tap_x_bot - 1.0, sum_y_bot)
+    arrow(ax, tap_x_bot, y_bot, tap_x_bot, sum_y_bot + sum_r)
 
     # Collector
     collector_left, collector_right = 23.75, 34.0
@@ -448,8 +558,15 @@ def draw_two_method_comparisons(
     collector_gap = 0.25
     arrow(ax, tap_x_top, sum_y_top - sum_r, tap_x_top, collector_top + collector_gap)
     arrow(ax, tap_x_bot, sum_y_bot - sum_r, tap_x_bot, collector_top + collector_gap)
-    capsule(ax, collector_left, collector_top, collector_right, collector_bottom,
-        "Difference Images", fontsize=12)
+    capsule(
+        ax,
+        collector_left,
+        collector_top,
+        collector_right,
+        collector_bottom,
+        "Difference Images",
+        fontsize=12,
+    )
 
     fig.tight_layout(pad=0.4)
     plt.show()

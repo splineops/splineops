@@ -47,7 +47,6 @@ from typing import Callable, Iterable
 import mpmath as mp
 import numpy as np
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
@@ -225,10 +224,7 @@ def generalized_bspline_truncated_longdouble(
         for j in range(r + 1):
             positive = np.maximum(shifted - i * a - j, 0)
             result += (
-                ((-1) ** (i + j))
-                * math.comb(r, i)
-                * math.comb(r, j)
-                * positive**power
+                ((-1) ** (i + j)) * math.comb(r, i) * math.comb(r, j) * positive**power
             )
     result /= np.longdouble(math.factorial(power)) * a**n
     radius = np.longdouble(r) * (a + 1) / 2
@@ -329,9 +325,7 @@ def make_direct_projection_plan(
 ) -> DirectProjectionPlan:
     """Small/medium validation plan for general oblique projections."""
 
-    p = _projection_params(
-        interp_degree, analysis_degree, synthesis_degree, zoom
-    )
+    p = _projection_params(interp_degree, analysis_degree, synthesis_degree, zoom)
     base = make_plan_1d(input_size, p)
     output_size = base.outN
     a = (output_size - 1) / float(input_size - 1)
@@ -373,14 +367,14 @@ def execute_direct_projection(
     c = x.copy()
     get_interpolation_coefficients(c, plan.interp_degree)
     q = np.sum(plan.weight * c[plan.source_index], axis=1)
-    get_interpolation_coefficients(
-        q, plan.analysis_degree + plan.synthesis_degree + 1
-    )
+    get_interpolation_coefficients(q, plan.analysis_degree + plan.synthesis_degree + 1)
     get_samples(q, plan.synthesis_degree)
     return q
 
 
-def execute_finite_difference(samples: np.ndarray, zoom: float, degree: int) -> np.ndarray:
+def execute_finite_difference(
+    samples: np.ndarray, zoom: float, degree: int
+) -> np.ndarray:
     x = np.asarray(samples, dtype=np.float64)
     p = _params(degree, zoom)
     return resize_1d_ws(x, p, make_plan_1d(x.size, p), Work1D())
@@ -439,9 +433,9 @@ def _integrate_typed(c: np.ndarray, count: int) -> np.generic:
     typ = c.dtype.type
 
     def average(values: np.ndarray) -> np.generic:
-        return (
-            typ(2) * np.sum(values, dtype=c.dtype) - values[0] - values[-1]
-        ) / typ(2 * values.size - 2)
+        return (typ(2) * np.sum(values, dtype=c.dtype) - values[0] - values[-1]) / typ(
+            2 * values.size - 2
+        )
 
     saved_average = typ(0)
     if count >= 1:
@@ -482,11 +476,17 @@ def _differentiate_typed(c: np.ndarray, count: int) -> None:
     if count == 1:
         diff_as()
     elif count == 2:
-        diff_sa(); diff_as()
+        diff_sa()
+        diff_as()
     elif count == 3:
-        diff_as(); diff_sa(); diff_as()
+        diff_as()
+        diff_sa()
+        diff_as()
     else:
-        diff_sa(); diff_as(); diff_sa(); diff_as()
+        diff_sa()
+        diff_as()
+        diff_sa()
+        diff_as()
 
 
 def _projection_beta_longdouble(x: np.ndarray, degree: int) -> np.ndarray:
@@ -506,10 +506,29 @@ def _projection_beta_longdouble(x: np.ndarray, degree: int) -> np.ndarray:
         mask0 = ax < 1
         value = ax[mask0]
         square = value * value
-        out[mask0] = square * (square * (np.longdouble(1) / 4 - value / 12) - np.longdouble(1) / 2) + np.longdouble(11) / 20
+        out[mask0] = (
+            square
+            * (square * (np.longdouble(1) / 4 - value / 12) - np.longdouble(1) / 2)
+            + np.longdouble(11) / 20
+        )
         mask1 = (~mask0) & (ax < 2)
         value = ax[mask1]
-        out[mask1] = value * (value * (value * (value * (value / 24 - np.longdouble(3) / 8) + np.longdouble(5) / 4) - np.longdouble(7) / 4) + np.longdouble(5) / 8) + np.longdouble(17) / 40
+        out[mask1] = (
+            value
+            * (
+                value
+                * (
+                    value
+                    * (
+                        value * (value / 24 - np.longdouble(3) / 8)
+                        + np.longdouble(5) / 4
+                    )
+                    - np.longdouble(7) / 4
+                )
+                + np.longdouble(5) / 8
+            )
+            + np.longdouble(17) / 40
+        )
         mask2 = (~mask0) & (~mask1) & (ax < 3)
         value = 3 - ax[mask2]
         out[mask2] = value**5 / 120
@@ -518,13 +537,70 @@ def _projection_beta_longdouble(x: np.ndarray, degree: int) -> np.ndarray:
         mask0 = ax < 1
         value = ax[mask0]
         square = value * value
-        out[mask0] = square * (square * (square * (value / 144 - np.longdouble(1) / 36) + np.longdouble(1) / 9) - np.longdouble(1) / 3) + np.longdouble(151) / 315
+        out[mask0] = (
+            square
+            * (
+                square
+                * (
+                    square * (value / 144 - np.longdouble(1) / 36)
+                    + np.longdouble(1) / 9
+                )
+                - np.longdouble(1) / 3
+            )
+            + np.longdouble(151) / 315
+        )
         mask1 = (~mask0) & (ax < 2)
         value = ax[mask1]
-        out[mask1] = value * (value * (value * (value * (value * (value * (np.longdouble(1) / 20 - value / 240) - np.longdouble(7) / 30) + np.longdouble(1) / 2) - np.longdouble(7) / 18) - np.longdouble(1) / 10) - np.longdouble(7) / 90) + np.longdouble(103) / 210
+        out[mask1] = (
+            value
+            * (
+                value
+                * (
+                    value
+                    * (
+                        value
+                        * (
+                            value
+                            * (
+                                value * (np.longdouble(1) / 20 - value / 240)
+                                - np.longdouble(7) / 30
+                            )
+                            + np.longdouble(1) / 2
+                        )
+                        - np.longdouble(7) / 18
+                    )
+                    - np.longdouble(1) / 10
+                )
+                - np.longdouble(7) / 90
+            )
+            + np.longdouble(103) / 210
+        )
         mask2 = (~mask0) & (~mask1) & (ax < 3)
         value = ax[mask2]
-        out[mask2] = value * (value * (value * (value * (value * (value * (value / 720 - np.longdouble(1) / 36) + np.longdouble(7) / 30) - np.longdouble(19) / 18) + np.longdouble(49) / 18) - np.longdouble(23) / 6) + np.longdouble(217) / 90) - np.longdouble(139) / 630
+        out[mask2] = (
+            value
+            * (
+                value
+                * (
+                    value
+                    * (
+                        value
+                        * (
+                            value
+                            * (
+                                value * (value / 720 - np.longdouble(1) / 36)
+                                + np.longdouble(7) / 30
+                            )
+                            - np.longdouble(19) / 18
+                        )
+                        + np.longdouble(49) / 18
+                    )
+                    - np.longdouble(23) / 6
+                )
+                + np.longdouble(217) / 90
+            )
+            - np.longdouble(139) / 630
+        )
         mask3 = (~mask0) & (~mask1) & (~mask2) & (ax < 4)
         value = 4 - ax[mask3]
         out[mask3] = value**7 / 5040
@@ -700,10 +776,7 @@ def _mp_cross_kernel(
             value = shifted - i * scale - j
             if value > 0:
                 total += (
-                    (-1) ** (i + j)
-                    * math.comb(rn, i)
-                    * math.comb(rm, j)
-                    * value**power
+                    (-1) ** (i + j) * math.comb(rn, i) * math.comb(rm, j) * value**power
                 )
     return total / (math.factorial(power) * scale**interp_degree)
 
@@ -711,8 +784,7 @@ def _mp_cross_kernel(
 def _mp_samples(values: list[mp.mpf], degree: int) -> None:
     if degree <= 1:
         return
-    taps = [[mp.mpf(3) / 4, mp.mpf(1) / 8],
-            [mp.mpf(2) / 3, mp.mpf(1) / 6]][degree - 2]
+    taps = [[mp.mpf(3) / 4, mp.mpf(1) / 8], [mp.mpf(2) / 3, mp.mpf(1) / 6]][degree - 2]
     result: list[mp.mpf] = []
     for i, center in enumerate(values):
         value = taps[0] * center
@@ -784,7 +856,9 @@ def mp_finite_difference(
         _mp_prefilter(c, degree)
 
         def mean(values: list[mp.mpf]) -> mp.mpf:
-            return (2 * mp.fsum(values) - values[0] - values[-1]) / (2 * len(values) - 2)
+            return (2 * mp.fsum(values) - values[0] - values[-1]) / (
+                2 * len(values) - 2
+            )
 
         average = mean(c)
         c[0] = (c[0] - average) / 2
@@ -810,7 +884,7 @@ def mp_finite_difference(
         extension = c.copy()
         extension.extend(mp.mpf(base.rp_sign) * c[int(i)] for i in base.rp_src)
         shift = (mp.mpf(analysis + 1) / 2 % 1) * (1 / a - 1)
-        fact = a ** integration_count
+        fact = a**integration_count
         q: list[mp.mpf] = []
         total_degree = degree + analysis + 1
         half_support = mp.mpf(total_degree + 1) / 2
@@ -828,8 +902,11 @@ def mp_finite_difference(
                         index, sign = min(-k - 1, len(c) - 1), -1
                 else:
                     index, sign = min(k, len(extension) - 1), 1
-                value += sign * extension[index] * fact * _mp_beta(
-                    coordinate - k, total_degree
+                value += (
+                    sign
+                    * extension[index]
+                    * fact
+                    * _mp_beta(coordinate - k, total_degree)
                 )
             q.append(value)
 
@@ -846,11 +923,17 @@ def mp_finite_difference(
 
         count = integration_count
         if count == 2:
-            diff_sa(); diff_as()
+            diff_sa()
+            diff_as()
         elif count == 3:
-            diff_as(); diff_sa(); diff_as()
+            diff_as()
+            diff_sa()
+            diff_as()
         elif count == 4:
-            diff_sa(); diff_as(); diff_sa(); diff_as()
+            diff_sa()
+            diff_as()
+            diff_sa()
+            diff_as()
         else:
             diff_as()
         q = [v + average for v in q[: base.outN]]
@@ -887,7 +970,9 @@ def _timed(call: Callable[[], np.ndarray], repeats: int) -> tuple[np.ndarray, fl
 
 
 def _error(candidate: np.ndarray, reference: np.ndarray) -> tuple[float, float]:
-    delta = np.asarray(candidate, dtype=np.longdouble) - np.asarray(reference, dtype=np.longdouble)
+    delta = np.asarray(candidate, dtype=np.longdouble) - np.asarray(
+        reference, dtype=np.longdouble
+    )
     denominator = max(float(np.linalg.norm(reference)), 1e-300)
     return float(np.linalg.norm(delta) / denominator), float(np.max(np.abs(delta)))
 
@@ -914,12 +999,24 @@ def run_sweep(
                     ref_name = "mp_direct"
                     mp_fd = mp_finite_difference(samples, zoom, degree)
                     rel, absolute = _error(mp_fd, reference)
-                    rows.append(ResultRow(
-                        degree, size, direct_plan.output_size, pattern, "mp_fd", ref_name,
-                        float("nan"), 0.0, rel, absolute,
-                        float(np.min(mp_fd)), float(np.max(mp_fd)),
-                        bool(np.all(np.isfinite(mp_fd))), 0,
-                    ))
+                    rows.append(
+                        ResultRow(
+                            degree,
+                            size,
+                            direct_plan.output_size,
+                            pattern,
+                            "mp_fd",
+                            ref_name,
+                            float("nan"),
+                            0.0,
+                            rel,
+                            absolute,
+                            float(np.min(mp_fd)),
+                            float(np.max(mp_fd)),
+                            bool(np.all(np.isfinite(mp_fd))),
+                            0,
+                        )
+                    )
                 else:
                     reference = execute_direct_ls(samples, direct_plan)
                     ref_name = "direct_float64"
@@ -928,23 +1025,47 @@ def run_sweep(
                     lambda: execute_direct_ls(samples, direct_plan), repeats
                 )
                 rel, absolute = _error(direct, reference)
-                rows.append(ResultRow(
-                    degree, size, direct_plan.output_size, pattern, "direct_float64", ref_name,
-                    direct_ms, plan_ms, rel, absolute,
-                    float(np.min(direct)), float(np.max(direct)),
-                    bool(np.all(np.isfinite(direct))), direct_plan.nnz,
-                ))
+                rows.append(
+                    ResultRow(
+                        degree,
+                        size,
+                        direct_plan.output_size,
+                        pattern,
+                        "direct_float64",
+                        ref_name,
+                        direct_ms,
+                        plan_ms,
+                        rel,
+                        absolute,
+                        float(np.min(direct)),
+                        float(np.max(direct)),
+                        bool(np.all(np.isfinite(direct))),
+                        direct_plan.nnz,
+                    )
+                )
 
                 fd, fd_ms = _timed(
                     lambda: execute_finite_difference(samples, zoom, degree), repeats
                 )
                 rel, absolute = _error(fd, reference)
-                rows.append(ResultRow(
-                    degree, size, direct_plan.output_size, pattern, "fd_float64_current", ref_name,
-                    fd_ms, 0.0, rel, absolute,
-                    float(np.min(fd)), float(np.max(fd)),
-                    bool(np.all(np.isfinite(fd))), 0,
-                ))
+                rows.append(
+                    ResultRow(
+                        degree,
+                        size,
+                        direct_plan.output_size,
+                        pattern,
+                        "fd_float64_current",
+                        ref_name,
+                        fd_ms,
+                        0.0,
+                        rel,
+                        absolute,
+                        float(np.min(fd)),
+                        float(np.max(fd)),
+                        bool(np.all(np.isfinite(fd))),
+                        0,
+                    )
+                )
 
                 fixed_fd, fixed_fd_ms = _timed(
                     lambda: execute_typed_finite_difference(
@@ -953,24 +1074,48 @@ def run_sweep(
                     repeats,
                 )
                 rel, absolute = _error(fixed_fd, reference)
-                rows.append(ResultRow(
-                    degree, size, direct_plan.output_size, pattern, "fd_float64_endpoint", ref_name,
-                    fixed_fd_ms, 0.0, rel, absolute,
-                    float(np.min(fixed_fd)), float(np.max(fixed_fd)),
-                    bool(np.all(np.isfinite(fixed_fd))), 0,
-                ))
+                rows.append(
+                    ResultRow(
+                        degree,
+                        size,
+                        direct_plan.output_size,
+                        pattern,
+                        "fd_float64_endpoint",
+                        ref_name,
+                        fixed_fd_ms,
+                        0.0,
+                        rel,
+                        absolute,
+                        float(np.min(fixed_fd)),
+                        float(np.max(fixed_fd)),
+                        bool(np.all(np.isfinite(fixed_fd))),
+                        0,
+                    )
+                )
 
                 long_fd, long_ms = _timed(
                     lambda: execute_longdouble_finite_difference(samples, zoom, degree),
                     repeats,
                 )
                 rel, absolute = _error(long_fd, reference)
-                rows.append(ResultRow(
-                    degree, size, direct_plan.output_size, pattern, "fd_longdouble", ref_name,
-                    long_ms, 0.0, rel, absolute,
-                    float(np.min(long_fd)), float(np.max(long_fd)),
-                    bool(np.all(np.isfinite(long_fd))), 0,
-                ))
+                rows.append(
+                    ResultRow(
+                        degree,
+                        size,
+                        direct_plan.output_size,
+                        pattern,
+                        "fd_longdouble",
+                        ref_name,
+                        long_ms,
+                        0.0,
+                        rel,
+                        absolute,
+                        float(np.min(long_fd)),
+                        float(np.max(long_fd)),
+                        bool(np.all(np.isfinite(long_fd))),
+                        0,
+                    )
+                )
 
                 deflated, deflated_ms = _timed(
                     lambda: execute_deflated_finite_difference(
@@ -979,24 +1124,48 @@ def run_sweep(
                     repeats,
                 )
                 rel, absolute = _error(deflated, reference)
-                rows.append(ResultRow(
-                    degree, size, direct_plan.output_size, pattern, "fd_moment_deflated", ref_name,
-                    deflated_ms, 0.0, rel, absolute,
-                    float(np.min(deflated)), float(np.max(deflated)),
-                    bool(np.all(np.isfinite(deflated))), 0,
-                ))
+                rows.append(
+                    ResultRow(
+                        degree,
+                        size,
+                        direct_plan.output_size,
+                        pattern,
+                        "fd_moment_deflated",
+                        ref_name,
+                        deflated_ms,
+                        0.0,
+                        rel,
+                        absolute,
+                        float(np.min(deflated)),
+                        float(np.max(deflated)),
+                        bool(np.all(np.isfinite(deflated))),
+                        0,
+                    )
+                )
 
                 if size <= quad_max_size:
                     start = time.perf_counter()
                     quad = mp_finite_difference(samples, zoom, degree)
                     quad_ms = (time.perf_counter() - start) * 1000.0
                     rel, absolute = _error(quad, reference)
-                    rows.append(ResultRow(
-                        degree, size, direct_plan.output_size, pattern, "fd_mp70", ref_name,
-                        quad_ms, 0.0, rel, absolute,
-                        float(np.min(quad)), float(np.max(quad)),
-                        bool(np.all(np.isfinite(quad))), 0,
-                    ))
+                    rows.append(
+                        ResultRow(
+                            degree,
+                            size,
+                            direct_plan.output_size,
+                            pattern,
+                            "fd_mp70",
+                            ref_name,
+                            quad_ms,
+                            0.0,
+                            rel,
+                            absolute,
+                            float(np.min(quad)),
+                            float(np.max(quad)),
+                            bool(np.all(np.isfinite(quad))),
+                            0,
+                        )
+                    )
                 print(
                     f"degree={degree} N={size} pattern={pattern}: "
                     f"direct={direct_ms:.3f} ms fd={fd_ms:.3f} ms "
@@ -1024,12 +1193,26 @@ def print_summary(rows: list[ResultRow]) -> None:
         ratios = []
         keys = {(r.input_size, r.pattern) for r in rows if r.degree == degree}
         for key in keys:
-            direct = next((r for r in rows if r.degree == degree and
-                           (r.input_size, r.pattern) == key and
-                           r.method == "direct_float64"), None)
-            fd = next((r for r in rows if r.degree == degree and
-                       (r.input_size, r.pattern) == key and
-                       r.method == "fd_float64_endpoint"), None)
+            direct = next(
+                (
+                    r
+                    for r in rows
+                    if r.degree == degree
+                    and (r.input_size, r.pattern) == key
+                    and r.method == "direct_float64"
+                ),
+                None,
+            )
+            fd = next(
+                (
+                    r
+                    for r in rows
+                    if r.degree == degree
+                    and (r.input_size, r.pattern) == key
+                    and r.method == "fd_float64_endpoint"
+                ),
+                None,
+            )
             if direct and fd and direct.runtime_ms > 0:
                 ratios.append(fd.runtime_ms / direct.runtime_ms)
         if ratios:
@@ -1066,7 +1249,11 @@ def main() -> int:
 
     sizes = args.sizes
     if sizes is None:
-        sizes = [32, 128, 4096] if args.profile == "quick" else [32, 128, 4096, 16384, 65536]
+        sizes = (
+            [32, 128, 4096]
+            if args.profile == "quick"
+            else [32, 128, 4096, 16384, 65536]
+        )
 
     rows = run_sweep(
         sizes=sizes,

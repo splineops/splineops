@@ -116,7 +116,9 @@ def export_animation_mp4_and_html(
 </html>
 """
 
-    if force or not (html_path.exists() and html_path.read_text(encoding="utf-8") == html_doc):
+    if force or not (
+        html_path.exists() and html_path.read_text(encoding="utf-8") == html_doc
+    ):
         html_path.write_text(html_doc, encoding="utf-8")
 
     return mp4_path, html_path

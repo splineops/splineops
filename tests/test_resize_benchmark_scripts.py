@@ -158,9 +158,7 @@ def test_scipy_zoom_audit_smoke(tmp_path):
     assert rows
     assert any(row["same_semantics_candidate"] for row in rows)
     assert all("scipy_variant" in row for row in rows)
-    assert (
-        output_dir / "scipy_zoom_audit_report_test_scipy_audit.md"
-    ).exists()
+    assert (output_dir / "scipy_zoom_audit_report_test_scipy_audit.md").exists()
     asv = (output_dir / "scipy_zoom_asv_benchmark_test_scipy_audit.py").read_text(
         encoding="utf-8"
     )
@@ -169,3 +167,188 @@ def test_scipy_zoom_audit_smoke(tmp_path):
         output_dir / "scipy_zoom_source_audit_test_scipy_audit.md"
     ).read_text(encoding="utf-8")
     assert "ni_interpolation.c" in source_audit
+
+
+def test_tensorspline_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "tensorspline.json"
+    output_csv = tmp_path / "tensorspline.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_tensorspline.py"),
+            "--profile",
+            "smoke",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["memory_metric"] == "tracemalloc peak bytes during one call"
+    assert {row["query_kind"] for row in payload["results"]} == {"grid", "points"}
+    assert all(row["evaluation_peak_bytes"] > 0 for row in payload["results"])
+    with output_csv.open(newline="", encoding="utf-8") as handle:
+        assert len(list(csv.DictReader(handle))) == len(payload["results"])
+
+
+def test_tensorspline_memory_scaling_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "tensorspline-memory.json"
+    output_csv = tmp_path / "tensorspline-memory.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_tensorspline_memory_scaling.py"),
+            "--counts",
+            "100,1000",
+            "--shape",
+            "16",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["configuration"]["coordinate_memory_traced"] is False
+    assert [row["query_count"] for row in payload["results"]] == [100, 1000]
+    assert all(row["temporary_overhead_bytes"] > 0 for row in payload["results"])
+
+
+def test_tensorspline_query_plan_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "tensorspline-plan.json"
+    output_csv = tmp_path / "tensorspline-plan.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_tensorspline_query_plan.py"),
+            "--points",
+            "1000",
+            "--repeats",
+            "2",
+            "--shape",
+            "16",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["speedup"] > 0
+    assert {row["path"] for row in payload["results"]} == {
+        "ordinary",
+        "query_plan",
+    }
+    assert payload["results"][1]["retained_bytes"] > 0
+    assert output_csv.exists()
+
+
+def test_affine_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "affine.json"
+    output_csv = tmp_path / "affine.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_affine.py"),
+            "--profile",
+            "smoke",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["semantics"]["boundary"] == "whole-sample mirror"
+    assert {row["case"] for row in payload["results"]} == {
+        "2d_linear",
+        "2d_cubic",
+        "3d_linear",
+        "3d_cubic",
+    }
+    assert all(row["max_abs_difference"] < 1e-10 for row in payload["results"])
+    assert output_csv.exists()
+
+
+def test_differentials_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "differentials.json"
+    output_csv = tmp_path / "differentials.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_differentials.py"),
+            "--profile",
+            "smoke",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["configuration"]["operation"] == "gradient_magnitude"
+    assert payload["vectorized_speedup"] > 0
+    assert payload["max_abs_difference"] < 2e-6
+    assert {row["path"] for row in payload["results"]} == {
+        "vectorized",
+        "scalar_reference",
+    }
+    assert output_csv.exists()

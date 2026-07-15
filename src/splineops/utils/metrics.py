@@ -6,6 +6,7 @@ from .image import crop_to_central_region
 
 __all__ = ["compute_snr_and_mse_region"]
 
+
 def _extract_region(
     a: np.ndarray,
     *,
@@ -19,7 +20,7 @@ def _extract_region(
         return a[mask]
     if roi is not None:
         r, c, h, w = roi
-        return a[r:r + h, c:c + w]
+        return a[r : r + h, c : c + w]
     if border_fraction is not None:
         return crop_to_central_region(a, border_fraction)
     return a  # full image
@@ -48,7 +49,7 @@ def compute_snr_and_mse_region(
     o = o.astype(np.float64)
     p = p.astype(np.float64)
 
-    signal = np.mean(o ** 2)
+    signal = np.mean(o**2)
     noise = np.mean((o - p) ** 2)
     mse = noise
     snr = float("inf") if noise <= 1e-30 else 10.0 * np.log10(signal / noise)

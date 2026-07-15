@@ -8,7 +8,7 @@ Resample a 1D Spline
 
 Resample a 1D spline with different sampling rate.
 
-1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid. 
+1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid.
 
 2. From the samples, recover the continuously defined spline :math:`f(x)`.
 
@@ -27,13 +27,15 @@ from matplotlib.gridspec import GridSpec
 from splineops.spline_interpolation.tensor_spline import TensorSpline
 from splineops.spline_interpolation.bases.utils import create_basis
 
-plt.rcParams.update({
-    "font.size": 14,     # Base font size
-    "axes.titlesize": 18,  # Title font size
-    "axes.labelsize": 16,  # Label font size
-    "xtick.labelsize": 14,
-    "ytick.labelsize": 14
-})
+plt.rcParams.update(
+    {
+        "font.size": 14,  # Base font size
+        "axes.titlesize": 18,  # Title font size
+        "axes.labelsize": 16,  # Label font size
+        "xtick.labelsize": 14,
+        "ytick.labelsize": 14,
+    }
+)
 
 # %%
 # Initial 1D Samples
@@ -47,13 +49,38 @@ number_of_samples = 27
 f_support = np.arange(number_of_samples, dtype=np.float64)
 f_support_length = len(f_support)  # == number_of_samples
 
-f_samples = np.array([
-    -0.657391, -0.641319, -0.613081, -0.518523, -0.453829, -0.385138,
-    -0.270688, -0.179849, -0.11805, -0.0243016, 0.0130667, 0.0355389,
-    0.0901577, 0.219599, 0.374669, 0.384896, 0.301386, 0.128646,
-    -0.00811776, 0.0153119, 0.106126, 0.21688, 0.347629, 0.419532,
-    0.50695, 0.544767, 0.555373
-], dtype=np.float64)
+f_samples = np.array(
+    [
+        -0.657391,
+        -0.641319,
+        -0.613081,
+        -0.518523,
+        -0.453829,
+        -0.385138,
+        -0.270688,
+        -0.179849,
+        -0.11805,
+        -0.0243016,
+        0.0130667,
+        0.0355389,
+        0.0901577,
+        0.219599,
+        0.374669,
+        0.384896,
+        0.301386,
+        0.128646,
+        -0.00811776,
+        0.0153119,
+        0.106126,
+        0.21688,
+        0.347629,
+        0.419532,
+        0.50695,
+        0.544767,
+        0.555373,
+    ],
+    dtype=np.float64,
+)
 
 plot_points_per_unit = 12
 
@@ -63,8 +90,9 @@ mode = "mirror"
 
 f = TensorSpline(data=f_samples, coordinates=f_support, bases=base, modes=mode)
 
-f_coords = np.array([q / plot_points_per_unit
-                     for q in range(plot_points_per_unit * f_support_length)])
+f_coords = np.array(
+    [q / plot_points_per_unit for q in range(plot_points_per_unit * f_support_length)]
+)
 f_data = f(coordinates=(f_coords,), grid=False)
 
 # %%
@@ -107,8 +135,13 @@ ax.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
 
 # g[k] markers at x = T*k
 ax.plot(
-    x_g, g_samples, "rs",
-    mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
+    x_g,
+    g_samples,
+    "rs",
+    mfc="none",
+    markersize=12,
+    markeredgewidth=2,
+    label="g[k] samples",
 )
 
 ax.axhline(0, color="black", linewidth=1, zorder=0)
@@ -190,7 +223,7 @@ g_coeffs = g.coefficients
 basis = create_basis(base)
 
 # Dense x-grids: fine grid for f, coarse-domain grid for g
-x_dense_fine = f_coords        # dense sampling of f(x) on [0, K-1]
+x_dense_fine = f_coords  # dense sampling of f(x) on [0, K-1]
 x_dense_coarse = g_coords_full  # same physical domain, used for g(x)
 
 fig = plt.figure(figsize=(12, 8))
@@ -222,8 +255,13 @@ ax_bottom.set_title("g[k] samples with resized shifted basis functions")
 # Coarse samples g[k] at x = T*k
 ax_bottom.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
 ax_bottom.plot(
-    x_g, g_samples, "rs",
-    mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
+    x_g,
+    g_samples,
+    "rs",
+    mfc="none",
+    markersize=12,
+    markeredgewidth=2,
+    label="g[k] samples",
 )
 
 # Overlay coarse-grid basis functions: c_T[k] · ϕ(x/T − k)
@@ -238,8 +276,8 @@ ax_bottom.grid(True)
 
 # Use coarse-grid ticks (x = kT) with labels k on the bottom axis
 max_k_tick = int(np.floor((f_support_length - 1) / val_T))
-tick_ks = np.arange(max_k_tick + 1)          # coarse indices k = 0,1,...
-tick_positions = tick_ks * val_T            # physical positions x = kT
+tick_ks = np.arange(max_k_tick + 1)  # coarse indices k = 0,1,...
+tick_positions = tick_ks * val_T  # physical positions x = kT
 ax_bottom.set_xticks(tick_positions)
 ax_bottom.set_xticklabels([str(k) for k in tick_ks])
 ax_bottom.set_xlabel("x")
@@ -274,8 +312,13 @@ ax_top.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
 
 # g[k] markers at x = T*k
 ax_top.plot(
-    x_g, g_samples, "rs",
-    mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
+    x_g,
+    g_samples,
+    "rs",
+    mfc="none",
+    markersize=12,
+    markeredgewidth=2,
+    label="g[k] samples",
 )
 
 ax_top.axhline(0, color="black", linewidth=1, zorder=0)
@@ -290,10 +333,17 @@ ax_top.legend()
 ax_bottom.set_title("Interpolated g spline")
 ax_bottom.vlines(x=x_g, ymin=0, ymax=g_samples, color="red", linewidth=2.0)
 ax_bottom.plot(
-    x_g, g_samples, "rs",
-    mfc="none", markersize=12, markeredgewidth=2, label="g[k] samples"
+    x_g,
+    g_samples,
+    "rs",
+    mfc="none",
+    markersize=12,
+    markeredgewidth=2,
+    label="g[k] samples",
 )
-ax_bottom.plot(g_coords_full, g_data_full, color="purple", linewidth=2, label="g spline")
+ax_bottom.plot(
+    g_coords_full, g_data_full, color="purple", linewidth=2, label="g spline"
+)
 
 ax_bottom.axhline(0, color="black", linewidth=1, zorder=0)
 ax_bottom.set_xlim(0, f_support_length - 1)

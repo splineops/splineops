@@ -16,7 +16,6 @@ import pytest
 
 from splineops.resize import ResizePlan, resize, resize_degrees
 
-
 try:
     import splineops._lsresize as _native_resize
 except ImportError:  # pragma: no cover - exercised by fallback-only builds
@@ -73,23 +72,29 @@ def test_output_cast_and_noncontiguous_fallbacks_remain_supported():
     expected = resize(data, output_size=(9, 8), method="cubic")
 
     integer_output = np.empty(expected.shape, dtype=np.int16)
-    assert resize(
-        data,
-        output_size=expected.shape,
-        method="cubic",
-        output=integer_output,
-    ) is integer_output
+    assert (
+        resize(
+            data,
+            output_size=expected.shape,
+            method="cubic",
+            output=integer_output,
+        )
+        is integer_output
+    )
     assert np.array_equal(integer_output, expected.astype(np.int16))
 
     backing = np.empty(expected.shape[::-1], dtype=np.float64)
     noncontiguous_output = backing.T
     assert not noncontiguous_output.flags.c_contiguous
-    assert resize(
-        data,
-        output_size=expected.shape,
-        method="cubic",
-        output=noncontiguous_output,
-    ) is noncontiguous_output
+    assert (
+        resize(
+            data,
+            output_size=expected.shape,
+            method="cubic",
+            output=noncontiguous_output,
+        )
+        is noncontiguous_output
+    )
     assert np.array_equal(noncontiguous_output, expected)
 
 
@@ -113,16 +118,12 @@ def test_native_direct_rejects_output_that_would_require_a_temporary(use_plan):
     data = np.arange(35, dtype=np.float64).reshape(7, 5)
     output_shape = (9, 8)
     zoom = [output_shape[0] / data.shape[0], output_shape[1] / data.shape[1]]
-    native_plan = _native_resize.ResizePlan(
-        list(data.shape), zoom, 3, -1, 3
-    )
+    native_plan = _native_resize.ResizePlan(list(data.shape), zoom, 3, -1, 3)
 
     def apply(output):
         if use_plan:
             return native_plan.apply_into(data, output)
-        return _native_resize.resize_nd_into(
-            data, output, zoom, 3, -1, 3
-        )
+        return _native_resize.resize_nd_into(data, output, zoom, 3, -1, 3)
 
     wrong_dtype = np.full(output_shape, -99, dtype=np.float32)
     with pytest.raises(TypeError, match="output dtype"):
@@ -158,13 +159,9 @@ def test_native_input_is_copied_when_not_naturally_aligned(use_plan):
     assert data.flags.c_contiguous
     assert not data.flags.aligned
 
-    expected = _native_resize.resize_nd(
-        np.array(data, copy=True), zoom, 3, -1, 3
-    )
+    expected = _native_resize.resize_nd(np.array(data, copy=True), zoom, 3, -1, 3)
     if use_plan:
-        native_plan = _native_resize.ResizePlan(
-            list(shape), zoom, 3, -1, 3
-        )
+        native_plan = _native_resize.ResizePlan(list(shape), zoom, 3, -1, 3)
         result = native_plan.apply(data)
     else:
         result = _native_resize.resize_nd(data, zoom, 3, -1, 3)
@@ -178,18 +175,19 @@ def test_public_output_falls_back_safely_when_not_naturally_aligned():
     output_shape = (9, 8)
     expected = resize(data, output_size=output_shape, method="cubic")
     storage = np.empty(np.prod(output_shape) * 8 + 1, dtype=np.uint8)
-    output = np.ndarray(
-        output_shape, dtype=np.float64, buffer=storage, offset=1
-    )
+    output = np.ndarray(output_shape, dtype=np.float64, buffer=storage, offset=1)
     assert output.flags.c_contiguous
     assert not output.flags.aligned
 
-    assert resize(
-        data,
-        output_size=output_shape,
-        method="cubic",
-        output=output,
-    ) is output
+    assert (
+        resize(
+            data,
+            output_size=output_shape,
+            method="cubic",
+            output=output,
+        )
+        is output
+    )
     assert np.array_equal(output, expected)
 
 
@@ -263,9 +261,7 @@ def test_workspace_cache_byte_limit_parsing(monkeypatch, raw, expected):
 @requires_native
 def test_zero_workspace_cache_limit_retains_only_primary(monkeypatch):
     monkeypatch.setenv("LSRESIZE_WORKSPACE_CACHE_BYTES", "0")
-    plan = _native_resize.ResizePlan(
-        (128, 112), (91 / 128, 73 / 112), 3, 1, 3
-    )
+    plan = _native_resize.ResizePlan((128, 112), (91 / 128, 73 / 112), 3, 1, 3)
     data = np.ones((128, 112), dtype=np.float64)
 
     plan.apply(data)
@@ -300,14 +296,10 @@ def test_mixed_dtype_concurrency_obeys_shared_workspace_count(monkeypatch):
 
     assert all(np.isfinite(value) for value in results)
     info = plan._workspace_cache_info
-    assert info["retained_count"] == (
-        info["float32_count"] + info["float64_count"]
-    )
+    assert info["retained_count"] == (info["float32_count"] + info["float64_count"])
     assert info["retained_count"] == info["max_retained_count"] == 4
     assert info["retained_bytes"] <= info["limit_bytes"] == 64 * 1024 * 1024
-    assert info["retained_bytes"] == (
-        info["float32_bytes"] + info["float64_bytes"]
-    )
+    assert info["retained_bytes"] == (info["float32_bytes"] + info["float64_bytes"])
     assert info["float32_scratch_bytes"] == 0
     assert info["float64_scratch_bytes"] == 0
 
@@ -318,8 +310,7 @@ def test_mixed_dtype_concurrency_obeys_shared_workspace_count(monkeypatch):
 )
 @requires_native
 def test_workspace_burst_retained_rss_is_bounded_in_subprocess():
-    script = textwrap.dedent(
-        """
+    script = textwrap.dedent("""
         import ctypes
         import gc
         import json
@@ -368,8 +359,7 @@ def test_workspace_burst_retained_rss_is_bounded_in_subprocess():
             'rss_after': after,
             'info': plan._workspace_cache_info,
         }))
-        """
-    )
+        """)
     environment = os.environ.copy()
     environment["MALLOC_ARENA_MAX"] = "2"
     completed = subprocess.run(
@@ -486,8 +476,7 @@ def test_same_plan_is_safe_under_concurrent_repeated_calls(monkeypatch):
 def test_independent_one_shot_calls_complete_concurrently(monkeypatch):
     monkeypatch.setenv("LSRESIZE_NUM_THREADS", "4")
     inputs = [
-        np.random.default_rng(seed + 80).standard_normal((96, 88))
-        for seed in range(6)
+        np.random.default_rng(seed + 80).standard_normal((96, 88)) for seed in range(6)
     ]
     expected = [
         resize(data, output_size=(67, 59), method="cubic-antialiasing")

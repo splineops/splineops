@@ -106,7 +106,9 @@ def _time_and_run_ls(
         ((24, 20, 16), (0.5, 0.75, 1.25)),
     ],
 )
-def test_batched_axis_matches_default_pure_interpolation(monkeypatch, dtype, method, shape, zoom):
+def test_batched_axis_matches_default_pure_interpolation(
+    monkeypatch, dtype, method, shape, zoom
+):
     rng = np.random.default_rng(123)
     arr = rng.random(shape, dtype=dtype)
 
@@ -141,7 +143,9 @@ def test_batched_axis_matches_default_pure_interpolation(monkeypatch, dtype, met
         ((24, 20, 16), (0.5, 0.75, 1.25)),
     ],
 )
-def test_batched_axis_matches_default_antialiasing(monkeypatch, dtype, method, shape, zoom):
+def test_batched_axis_matches_default_antialiasing(
+    monkeypatch, dtype, method, shape, zoom
+):
     rng = np.random.default_rng(124)
     arr = rng.random(shape, dtype=dtype)
 
@@ -291,7 +295,9 @@ def test_batched_axis_auto_matches_default(monkeypatch, dtype, method, shape, zo
         ("cubic", (24, 20, 16), (0.75, 1.25, 0.5)),
     ],
 )
-def test_batched_row_gather_matches_line_gather(monkeypatch, dtype, method, shape, zoom):
+def test_batched_row_gather_matches_line_gather(
+    monkeypatch, dtype, method, shape, zoom
+):
     rng = np.random.default_rng(131)
     arr = rng.random(shape, dtype=dtype)
 
@@ -521,9 +527,7 @@ def test_3d_axis1_direct_scatter_matches_buffered_scatter(
 )
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 @pytest.mark.parametrize("method", ["quadratic", "cubic"])
-def test_2d_axis0_direct_scatter_matches_buffered_scatter(
-    monkeypatch, dtype, method
-):
+def test_2d_axis0_direct_scatter_matches_buffered_scatter(monkeypatch, dtype, method):
     rng = np.random.default_rng(149)
     arr = rng.random((384, 384), dtype=dtype)
 
@@ -556,9 +560,7 @@ def test_2d_axis0_direct_scatter_matches_buffered_scatter(
         ((64, 72), (1.4, 1.25)),
     ],
 )
-def test_2d_linear_interp_fast_path_matches_disabled(
-    monkeypatch, dtype, shape, zoom
-):
+def test_2d_linear_interp_fast_path_matches_disabled(monkeypatch, dtype, shape, zoom):
     rng = np.random.default_rng(130)
     arr = rng.random(shape, dtype=dtype)
 
@@ -877,11 +879,13 @@ def test_float32_internal_matches_default_precision(
     rz = _load_resize_module(force_reload=True)
     actual = rz.resize(arr, zoom_factors=zoom, method=method)
 
-    max_abs = float(np.max(np.abs(actual.astype(np.float64) - expected.astype(np.float64))))
-    assert actual.dtype == np.float32
-    assert np.allclose(actual, expected, atol=atol, rtol=0.0), (
-        f"{method} float32 internals max|Δ|={max_abs:.3e} exceeds atol={atol}"
+    max_abs = float(
+        np.max(np.abs(actual.astype(np.float64) - expected.astype(np.float64)))
     )
+    assert actual.dtype == np.float32
+    assert np.allclose(
+        actual, expected, atol=atol, rtol=0.0
+    ), f"{method} float32 internals max|Δ|={max_abs:.3e} exceeds atol={atol}"
 
 
 @pytest.mark.skipif(
@@ -922,7 +926,9 @@ def test_float32_internal_preserves_constant_arrays(monkeypatch, method, atol):
         ((32, 24, 16), (0.75, 1.25, 0.5)),
     ],
 )
-def test_float32_auto_precision_for_pure_interpolation(monkeypatch, method, shape, zoom):
+def test_float32_auto_precision_for_pure_interpolation(
+    monkeypatch, method, shape, zoom
+):
     rng = np.random.default_rng(128)
     arr = rng.random(shape, dtype=np.float32)
 
@@ -946,9 +952,9 @@ def test_float32_auto_precision_for_pure_interpolation(monkeypatch, method, shap
     )
     assert automatic.dtype == np.float32
     assert np.array_equal(automatic, forced_f32)
-    assert np.allclose(automatic, forced_f64, atol=2e-6, rtol=0.0), (
-        f"{method} automatic float32 internals max|Δ|={max_abs:.3e}"
-    )
+    assert np.allclose(
+        automatic, forced_f64, atol=2e-6, rtol=0.0
+    ), f"{method} automatic float32 internals max|Δ|={max_abs:.3e}"
 
 
 @pytest.mark.skipif(
@@ -1015,9 +1021,9 @@ def test_float32_auto_precision_uses_3d_downsample_projection(
     )
     assert automatic.dtype == np.float32
     assert np.array_equal(automatic, forced_f32)
-    assert np.allclose(automatic, forced_f64, atol=atol, rtol=0.0), (
-        f"{method} automatic 3-D projection float32 max|Δ|={max_abs:.3e}"
-    )
+    assert np.allclose(
+        automatic, forced_f64, atol=atol, rtol=0.0
+    ), f"{method} automatic 3-D projection float32 max|Δ|={max_abs:.3e}"
 
 
 @pytest.mark.skipif(
@@ -1035,10 +1041,10 @@ def test_float32_auto_precision_uses_3d_downsample_projection(
         (
             "Least-Squares projection (cubic) ↓",
             "ls",
-            3,                     # degree
+            3,  # degree
             (512, 512),
             (0.5, 0.5),
-            1e-5,                  # was 6e-8; relaxed for cross-platform FP
+            1e-5,  # was 6e-8; relaxed for cross-platform FP
         ),
         # Upsample: LS cubic – allow looser tol (zoom > 1)
         (
@@ -1047,7 +1053,7 @@ def test_float32_auto_precision_uses_3d_downsample_projection(
             3,
             (512, 512),
             (2.5, 2.5),
-            5e-3,                  # was 6e-5; macOS max|Δ|≈1.8e-3 with margin
+            5e-3,  # was 6e-5; macOS max|Δ|≈1.8e-3 with margin
         ),
         # Non-uniform zoom (LS cubic)
         (
@@ -1103,7 +1109,6 @@ def test_float32_auto_precision_uses_3d_downsample_projection(
             (0.5, 1.0),
             8e-5,
         ),
-
         # ------------------------------------------------------------------ #
         # Antialiasing (oblique) via preset-based API                        #
         # ------------------------------------------------------------------ #
@@ -1134,7 +1139,6 @@ def test_float32_auto_precision_uses_3d_downsample_projection(
             (2.0, 0.6),
             2e-7,
         ),
-
         # Quadratic Antialiasing ↓
         (
             "Antialiasing (quadratic) ↓",
@@ -1153,7 +1157,6 @@ def test_float32_auto_precision_uses_3d_downsample_projection(
             (2.2, 2.2),
             3e-5,
         ),
-
         # ------------------------------------------------------------------ #
         # Interpolation presets (no projection)                              #
         # ------------------------------------------------------------------ #
@@ -1173,7 +1176,6 @@ def test_float32_auto_precision_uses_3d_downsample_projection(
             (2.3, 2.3),
             5e-7,
         ),
-
         # ------------------------------------------------------------------ #
         # Extra sanity / regression                                          #
         # ------------------------------------------------------------------ #
@@ -1217,17 +1219,21 @@ def test_cpp_vs_python_equality(
     if kind == "preset":
         preset = arg  # type: ignore[assignment]
         t_cpp, y_cpp = _time_and_run_preset("always", arr, zoom, preset, repeats=2)
-        t_py,  y_py  = _time_and_run_preset("never",  arr, zoom, preset, repeats=2)
+        t_py, y_py = _time_and_run_preset("never", arr, zoom, preset, repeats=2)
     elif kind == "ls":
         degree = int(arg)
         t_cpp, y_cpp = _time_and_run_ls("always", arr, zoom, degree, repeats=2)
-        t_py,  y_py  = _time_and_run_ls("never",  arr, zoom, degree, repeats=2)
+        t_py, y_py = _time_and_run_ls("never", arr, zoom, degree, repeats=2)
     else:
         raise ValueError(f"Unknown kind '{kind}'")
 
     # Dtype sanity: both implementations should preserve the input dtype
-    assert y_cpp.dtype == dtype, f"C++ output dtype {y_cpp.dtype} != input dtype {dtype}"
-    assert y_py.dtype == dtype,  f"Python output dtype {y_py.dtype} != input dtype {dtype}"
+    assert (
+        y_cpp.dtype == dtype
+    ), f"C++ output dtype {y_cpp.dtype} != input dtype {dtype}"
+    assert (
+        y_py.dtype == dtype
+    ), f"Python output dtype {y_py.dtype} != input dtype {dtype}"
 
     # Numerical sanity: same result within tolerance
     max_abs = float(np.max(np.abs(y_cpp - y_py)))

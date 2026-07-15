@@ -96,7 +96,8 @@ def _native_speedup_stats(
     for case, group in sorted(by_case.items()):
         py_rows = [r for r in group if r.get("backend") == "python"]
         native_rows = [
-            r for r in group
+            r
+            for r in group
             if r.get("backend") == "native" and _float(r, "median_ms") is not None
         ]
         if not py_rows or not native_rows:
@@ -104,7 +105,9 @@ def _native_speedup_stats(
         py_ms = _float(py_rows[0], "median_ms")
         if py_ms is None:
             continue
-        best_native = min(native_rows, key=lambda r: _float(r, "median_ms") or float("inf"))
+        best_native = min(
+            native_rows, key=lambda r: _float(r, "median_ms") or float("inf")
+        )
         native_ms = _float(best_native, "median_ms")
         if native_ms is None or native_ms <= 0.0:
             continue
@@ -146,28 +149,39 @@ def _native_report_lines(path: Path) -> list[str]:
     ]:
         if not values:
             continue
-        rows.append([
-            label,
-            str(len(values)),
-            _fmt(_median(values), suffix="x"),
-            _fmt(_mean(values), suffix="x"),
-            _fmt(min(values), suffix="x"),
-            _fmt(max(values), suffix="x"),
-        ])
-    lines.extend(_markdown_table(
-        ["Scope", "Cases", "Median", "Mean", "Min", "Max"],
-        rows,
-    ))
+        rows.append(
+            [
+                label,
+                str(len(values)),
+                _fmt(_median(values), suffix="x"),
+                _fmt(_mean(values), suffix="x"),
+                _fmt(min(values), suffix="x"),
+                _fmt(max(values), suffix="x"),
+            ]
+        )
+    lines.extend(
+        _markdown_table(
+            ["Scope", "Cases", "Median", "Mean", "Min", "Max"],
+            rows,
+        )
+    )
     if thread_winners:
-        lines.extend([
-            "",
-            "Best native thread setting by case:",
-            "",
-        ])
-        lines.extend(_markdown_table(
-            ["Thread setting", "Winning cases"],
-            [[f"`{thread}`", str(count)] for thread, count in sorted(thread_winners.items())],
-        ))
+        lines.extend(
+            [
+                "",
+                "Best native thread setting by case:",
+                "",
+            ]
+        )
+        lines.extend(
+            _markdown_table(
+                ["Thread setting", "Winning cases"],
+                [
+                    [f"`{thread}`", str(count)]
+                    for thread, count in sorted(thread_winners.items())
+                ],
+            )
+        )
     lines.append("")
     return lines
 
@@ -188,100 +202,111 @@ def _libraries_report_lines(path: Path, *, exact_rel_l2: float) -> list[str]:
     oblique_rows: list[list[str]] = []
     for backend in ("scipy", "skimage", "opencv", "torch"):
         br = [
-            r for r in rows
-            if r.get("backend") == backend and r.get("status") == "ok"
+            r for r in rows if r.get("backend") == backend and r.get("status") == "ok"
         ]
-        speeds = [
-            v for r in br
-            if (v := _float(r, "speedup_vs_splineops")) is not None
-        ]
-        rel = [
-            v for r in br
-            if (v := _float(r, "rel_l2_diff")) is not None
-        ]
+        speeds = [v for r in br if (v := _float(r, "speedup_vs_splineops")) is not None]
+        rel = [v for r in br if (v := _float(r, "rel_l2_diff")) is not None]
         if speeds:
-            backend_rows.append([
-                backend,
-                str(len(speeds)),
-                f"{sum(v > 1.0 for v in speeds)}/{len(speeds)}",
-                _fmt(_median(speeds), suffix="x"),
-                _fmt(_mean(speeds), suffix="x"),
-                _fmt_sci(_median(rel)),
-            ])
+            backend_rows.append(
+                [
+                    backend,
+                    str(len(speeds)),
+                    f"{sum(v > 1.0 for v in speeds)}/{len(speeds)}",
+                    _fmt(_median(speeds), suffix="x"),
+                    _fmt(_mean(speeds), suffix="x"),
+                    _fmt_sci(_median(rel)),
+                ]
+            )
 
         exact = [
-            r for r in br
-            if (_float(r, "rel_l2_diff") or float("inf")) < exact_rel_l2
+            r for r in br if (_float(r, "rel_l2_diff") or float("inf")) < exact_rel_l2
         ]
         exact_speeds = [
-            v for r in exact
-            if (v := _float(r, "speedup_vs_splineops")) is not None
+            v for r in exact if (v := _float(r, "speedup_vs_splineops")) is not None
         ]
         if exact_speeds:
-            exact_rows.append([
-                backend,
-                str(len(exact_speeds)),
-                f"{sum(v > 1.0 for v in exact_speeds)}/{len(exact_speeds)}",
-                _fmt(_median(exact_speeds), suffix="x"),
-                _fmt(_mean(exact_speeds), suffix="x"),
-            ])
+            exact_rows.append(
+                [
+                    backend,
+                    str(len(exact_speeds)),
+                    f"{sum(v > 1.0 for v in exact_speeds)}/{len(exact_speeds)}",
+                    _fmt(_median(exact_speeds), suffix="x"),
+                    _fmt(_mean(exact_speeds), suffix="x"),
+                ]
+            )
 
         oblique = [r for r in br if _is_oblique_antialiasing(r)]
         oblique_speeds = [
-            v for r in oblique
-            if (v := _float(r, "speedup_vs_splineops")) is not None
+            v for r in oblique if (v := _float(r, "speedup_vs_splineops")) is not None
         ]
         oblique_rel = [
-            v for r in oblique
-            if (v := _float(r, "rel_l2_diff")) is not None
+            v for r in oblique if (v := _float(r, "rel_l2_diff")) is not None
         ]
         if oblique_speeds:
-            oblique_rows.append([
-                backend,
-                str(len(oblique_speeds)),
-                f"{sum(v > 1.0 for v in oblique_speeds)}/{len(oblique_speeds)}",
-                _fmt(_median(oblique_speeds), suffix="x"),
-                _fmt(_mean(oblique_speeds), suffix="x"),
-                _fmt_sci(_median(oblique_rel)),
-            ])
+            oblique_rows.append(
+                [
+                    backend,
+                    str(len(oblique_speeds)),
+                    f"{sum(v > 1.0 for v in oblique_speeds)}/{len(oblique_speeds)}",
+                    _fmt(_median(oblique_speeds), suffix="x"),
+                    _fmt(_mean(oblique_speeds), suffix="x"),
+                    _fmt_sci(_median(oblique_rel)),
+                ]
+            )
 
-    lines.extend(_markdown_table(
-        [
-            "Backend",
-            "Comparable cases",
-            "Faster than splineops",
-            "Median speed",
-            "Mean speed",
-            "Median rel-L2",
-        ],
-        backend_rows,
-    ))
-    lines.extend([
-        "",
-        f"Exact-ish rows use `rel_l2_diff < {exact_rel_l2:g}`.",
-        "",
-    ])
-    lines.extend(_markdown_table(
-        ["Backend", "Exact-ish cases", "Faster than splineops", "Median speed", "Mean speed"],
-        exact_rows,
-    ))
-    if oblique_rows:
-        lines.extend([
-            "",
-            "Oblique antialiasing rows use splineops `*-antialiasing` presets. Other libraries are contextual baselines here, not exact oblique projection implementations.",
-            "",
-        ])
-        lines.extend(_markdown_table(
+    lines.extend(
+        _markdown_table(
             [
                 "Backend",
-                "Oblique cases",
+                "Comparable cases",
                 "Faster than splineops",
                 "Median speed",
                 "Mean speed",
                 "Median rel-L2",
             ],
-            oblique_rows,
-        ))
+            backend_rows,
+        )
+    )
+    lines.extend(
+        [
+            "",
+            f"Exact-ish rows use `rel_l2_diff < {exact_rel_l2:g}`.",
+            "",
+        ]
+    )
+    lines.extend(
+        _markdown_table(
+            [
+                "Backend",
+                "Exact-ish cases",
+                "Faster than splineops",
+                "Median speed",
+                "Mean speed",
+            ],
+            exact_rows,
+        )
+    )
+    if oblique_rows:
+        lines.extend(
+            [
+                "",
+                "Oblique antialiasing rows use splineops `*-antialiasing` presets. Other libraries are contextual baselines here, not exact oblique projection implementations.",
+                "",
+            ]
+        )
+        lines.extend(
+            _markdown_table(
+                [
+                    "Backend",
+                    "Oblique cases",
+                    "Faster than splineops",
+                    "Median speed",
+                    "Mean speed",
+                    "Median rel-L2",
+                ],
+                oblique_rows,
+            )
+        )
     lines.append("")
     return lines
 
@@ -315,17 +340,21 @@ def _legacy_report_lines(path: Path, reference: Path) -> list[str]:
     ]
     rows: list[list[str]] = []
     if ratios:
-        rows.append([
-            str(len(ratios)),
-            _fmt(_median(ratios), suffix="x"),
-            _fmt(_mean(ratios), suffix="x"),
-            _fmt(min(ratios), suffix="x"),
-            _fmt(max(ratios), suffix="x"),
-        ])
-    lines.extend(_markdown_table(
-        ["Cases", "Median", "Mean", "Min", "Max"],
-        rows,
-    ))
+        rows.append(
+            [
+                str(len(ratios)),
+                _fmt(_median(ratios), suffix="x"),
+                _fmt(_mean(ratios), suffix="x"),
+                _fmt(min(ratios), suffix="x"),
+                _fmt(max(ratios), suffix="x"),
+            ]
+        )
+    lines.extend(
+        _markdown_table(
+            ["Cases", "Median", "Mean", "Min", "Max"],
+            rows,
+        )
+    )
     lines.append("")
     return lines
 
@@ -333,8 +362,7 @@ def _legacy_report_lines(path: Path, reference: Path) -> list[str]:
 def _ab_report_lines(path: Path) -> list[str]:
     rows = _rows(path)
     usable = [
-        r for r in rows
-        if (v := _float(r, "median_speedup")) is not None and v > 0.0
+        r for r in rows if (v := _float(r, "median_speedup")) is not None and v > 0.0
     ]
     lines = [
         f"## A/B Sweep: {path.name}",
@@ -351,21 +379,27 @@ def _ab_report_lines(path: Path) -> list[str]:
     b_value = usable[0].get("b_value", "<b>")
     speedups = [_float(r, "median_speedup") or 0.0 for r in usable]
     failed = [r for r in usable if r.get("passed_check") not in ("True", "true", "1")]
-    lines.extend([
-        f"`{flag}`: `{a_value}` to `{b_value}`. Speedup values greater than `1.0x` favor `{b_value}`.",
-        "",
-    ])
-    lines.extend(_markdown_table(
-        ["Rows", "Median", "Mean", "Wins >1.03x", "Losses <0.97x", "Failed checks"],
-        [[
-            str(len(usable)),
-            _fmt(_median(speedups), digits=3, suffix="x"),
-            _fmt(_mean(speedups), digits=3, suffix="x"),
-            str(sum(v > 1.03 for v in speedups)),
-            str(sum(v < 0.97 for v in speedups)),
-            str(len(failed)),
-        ]],
-    ))
+    lines.extend(
+        [
+            f"`{flag}`: `{a_value}` to `{b_value}`. Speedup values greater than `1.0x` favor `{b_value}`.",
+            "",
+        ]
+    )
+    lines.extend(
+        _markdown_table(
+            ["Rows", "Median", "Mean", "Wins >1.03x", "Losses <0.97x", "Failed checks"],
+            [
+                [
+                    str(len(usable)),
+                    _fmt(_median(speedups), digits=3, suffix="x"),
+                    _fmt(_mean(speedups), digits=3, suffix="x"),
+                    str(sum(v > 1.03 for v in speedups)),
+                    str(sum(v < 0.97 for v in speedups)),
+                    str(len(failed)),
+                ]
+            ],
+        )
+    )
 
     thread_rows: list[list[str]] = []
     for threads in sorted({r.get("threads", "<unknown>") for r in usable}):
@@ -374,20 +408,24 @@ def _ab_report_lines(path: Path) -> list[str]:
             for r in usable
             if r.get("threads", "<unknown>") == threads
         ]
-        thread_rows.append([
-            f"`{threads}`",
-            str(len(group)),
-            _fmt(_median(group), digits=3, suffix="x"),
-            _fmt(_mean(group), digits=3, suffix="x"),
-            str(sum(v > 1.03 for v in group)),
-            str(sum(v < 0.97 for v in group)),
-        ])
+        thread_rows.append(
+            [
+                f"`{threads}`",
+                str(len(group)),
+                _fmt(_median(group), digits=3, suffix="x"),
+                _fmt(_mean(group), digits=3, suffix="x"),
+                str(sum(v > 1.03 for v in group)),
+                str(sum(v < 0.97 for v in group)),
+            ]
+        )
     if thread_rows:
         lines.extend(["", "By thread setting:", ""])
-        lines.extend(_markdown_table(
-            ["Threads", "Rows", "Median", "Mean", "Wins", "Losses"],
-            thread_rows,
-        ))
+        lines.extend(
+            _markdown_table(
+                ["Threads", "Rows", "Median", "Mean", "Wins", "Losses"],
+                thread_rows,
+            )
+        )
 
     method_rows: list[list[str]] = []
     for method in sorted({r.get("method", "<unknown>") for r in usable}):
@@ -396,18 +434,22 @@ def _ab_report_lines(path: Path) -> list[str]:
             for r in usable
             if r.get("method", "<unknown>") == method
         ]
-        method_rows.append([
-            f"`{method}`",
-            str(len(group)),
-            _fmt(_median(group), digits=3, suffix="x"),
-            _fmt(_mean(group), digits=3, suffix="x"),
-        ])
+        method_rows.append(
+            [
+                f"`{method}`",
+                str(len(group)),
+                _fmt(_median(group), digits=3, suffix="x"),
+                _fmt(_mean(group), digits=3, suffix="x"),
+            ]
+        )
     if method_rows:
         lines.extend(["", "By method:", ""])
-        lines.extend(_markdown_table(
-            ["Method", "Rows", "Median", "Mean"],
-            method_rows,
-        ))
+        lines.extend(
+            _markdown_table(
+                ["Method", "Rows", "Median", "Mean"],
+                method_rows,
+            )
+        )
 
     ranked = sorted(
         usable,
@@ -430,16 +472,20 @@ def _ab_report_lines(path: Path) -> list[str]:
                 "Highest",
                 row.get("case", "<case>"),
                 f"`{row.get('threads', '<threads>')}`",
-                _fmt(_float(row, "median_speedup") or float("nan"), digits=3, suffix="x"),
+                _fmt(
+                    _float(row, "median_speedup") or float("nan"), digits=3, suffix="x"
+                ),
             ]
             for row in highest
         ]
     )
     lines.extend(["", "Lowest and highest movements:", ""])
-    lines.extend(_markdown_table(
-        ["Type", "Case", "Threads", "Median speedup"],
-        extrema_rows,
-    ))
+    lines.extend(
+        _markdown_table(
+            ["Type", "Case", "Threads", "Median speedup"],
+            extrema_rows,
+        )
+    )
     lines.append("")
     return lines
 
@@ -447,9 +493,12 @@ def _ab_report_lines(path: Path) -> list[str]:
 def _plan_report_lines(path: Path) -> list[str]:
     rows = _rows(path)
     usable = [
-        r for r in rows
-        if (_float(r, "median_speedup") is not None or
-            _float(r, "median_into_speedup") is not None)
+        r
+        for r in rows
+        if (
+            _float(r, "median_speedup") is not None
+            or _float(r, "median_into_speedup") is not None
+        )
     ]
     lines = [
         "## ResizePlan Reuse",
@@ -461,47 +510,62 @@ def _plan_report_lines(path: Path) -> list[str]:
         lines.extend(["No usable ResizePlan rows.", ""])
         return lines
 
-    speedups = [
-        v for r in usable
-        if (v := _float(r, "median_speedup")) is not None
-    ]
+    speedups = [v for r in usable if (v := _float(r, "median_speedup")) is not None]
     into_speedups = [
-        v for r in usable
-        if (v := _float(r, "median_into_speedup")) is not None
+        v for r in usable if (v := _float(r, "median_into_speedup")) is not None
     ]
-    lines.extend(_markdown_table(
-        ["Mode", "Cases", "Median speedup", "Mean speedup"],
-        [
+    lines.extend(
+        _markdown_table(
+            ["Mode", "Cases", "Median speedup", "Mean speedup"],
             [
-                "Plan",
-                str(len(speedups)),
-                _fmt(_median(speedups), digits=3, suffix="x"),
-                _fmt(_mean(speedups), digits=3, suffix="x"),
+                [
+                    "Plan",
+                    str(len(speedups)),
+                    _fmt(_median(speedups), digits=3, suffix="x"),
+                    _fmt(_mean(speedups), digits=3, suffix="x"),
+                ],
+                [
+                    "Plan with output",
+                    str(len(into_speedups)),
+                    _fmt(_median(into_speedups), digits=3, suffix="x"),
+                    _fmt(_mean(into_speedups), digits=3, suffix="x"),
+                ],
             ],
-            [
-                "Plan with output",
-                str(len(into_speedups)),
-                _fmt(_median(into_speedups), digits=3, suffix="x"),
-                _fmt(_mean(into_speedups), digits=3, suffix="x"),
-            ],
-        ],
-    ))
+        )
+    )
     case_rows: list[list[str]] = []
     for row in usable:
         max_abs_diff = _float(row, "max_abs_diff")
-        case_rows.append([
-            row.get("case", "<case>"),
-            f"`{row.get('method', '<method>')}`",
-            f"`{row.get('dtype', '<dtype>')}`",
-            _fmt(_float(row, "median_speedup") or float("nan"), digits=3, suffix="x"),
-            _fmt(_float(row, "median_into_speedup") or float("nan"), digits=3, suffix="x"),
-            _fmt_sci(max_abs_diff if max_abs_diff is not None else float("nan")),
-        ])
+        case_rows.append(
+            [
+                row.get("case", "<case>"),
+                f"`{row.get('method', '<method>')}`",
+                f"`{row.get('dtype', '<dtype>')}`",
+                _fmt(
+                    _float(row, "median_speedup") or float("nan"), digits=3, suffix="x"
+                ),
+                _fmt(
+                    _float(row, "median_into_speedup") or float("nan"),
+                    digits=3,
+                    suffix="x",
+                ),
+                _fmt_sci(max_abs_diff if max_abs_diff is not None else float("nan")),
+            ]
+        )
     lines.extend(["", "Per case:", ""])
-    lines.extend(_markdown_table(
-        ["Case", "Method", "Dtype", "Plan speedup", "Plan output speedup", "Max abs diff"],
-        case_rows,
-    ))
+    lines.extend(
+        _markdown_table(
+            [
+                "Case",
+                "Method",
+                "Dtype",
+                "Plan speedup",
+                "Plan output speedup",
+                "Max abs diff",
+            ],
+            case_rows,
+        )
+    )
     lines.append("")
     return lines
 
@@ -509,8 +573,7 @@ def _plan_report_lines(path: Path) -> list[str]:
 def _projection_methods_report_lines(path: Path) -> list[str]:
     rows = _rows(path)
     usable = [
-        r for r in rows
-        if _float(r, "oblique_speedup_vs_least_squares") is not None
+        r for r in rows if _float(r, "oblique_speedup_vs_least_squares") is not None
     ]
     lines = [
         "## Projection Method Comparison",
@@ -527,10 +590,7 @@ def _projection_methods_report_lines(path: Path) -> list[str]:
     table_rows: list[list[str]] = []
     for degree in sorted({r.get("degree", "<degree>") for r in usable}):
         group = [r for r in usable if r.get("degree", "<degree>") == degree]
-        speedups = [
-            _float(r, "oblique_speedup_vs_least_squares") or 0.0
-            for r in group
-        ]
+        speedups = [_float(r, "oblique_speedup_vs_least_squares") or 0.0 for r in group]
         psnr_ls = psnr_oblique = psnr_interp = 0
         ssim_rows = 0
         ssim_oblique = 0
@@ -558,39 +618,45 @@ def _projection_methods_report_lines(path: Path) -> list[str]:
                 if ssim_values["Oblique"] >= max(ssim_values["LS"], ssim_values["Interp"]):  # type: ignore[arg-type]
                     ssim_oblique += 1
 
-        table_rows.append([
-            f"`{degree}`",
-            str(len(group)),
-            f"{sum(v > 1.0 for v in speedups)}/{len(speedups)}",
-            _fmt(_median(speedups), suffix="x"),
-            f"{psnr_ls}/{psnr_oblique}/{psnr_interp}",
-            f"{ssim_oblique}/{ssim_rows}" if ssim_rows else "n/a",
-        ])
+        table_rows.append(
+            [
+                f"`{degree}`",
+                str(len(group)),
+                f"{sum(v > 1.0 for v in speedups)}/{len(speedups)}",
+                _fmt(_median(speedups), suffix="x"),
+                f"{psnr_ls}/{psnr_oblique}/{psnr_interp}",
+                f"{ssim_oblique}/{ssim_rows}" if ssim_rows else "n/a",
+            ]
+        )
 
-    lines.extend(_markdown_table(
+    lines.extend(
+        _markdown_table(
+            [
+                "Degree",
+                "Cases",
+                "Oblique faster",
+                "Median oblique speedup",
+                "PSNR wins LS/Oblique/Interp",
+                "SSIM oblique wins",
+            ],
+            table_rows,
+        )
+    )
+    lines.extend(
         [
-            "Degree",
-            "Cases",
-            "Oblique faster",
-            "Median oblique speedup",
-            "PSNR wins LS/Oblique/Interp",
-            "SSIM oblique wins",
-        ],
-        table_rows,
-    ))
-    lines.extend([
-        "",
-        (
-            "Interpretation: this artifact reports measured relative speed and "
-            "round-trip quality; it does not establish a numerical-stability "
-            "hierarchy. Equal-degree least-squares is the orthogonal projection "
-            "control, while oblique is the public quality-cost preset family. On "
-            "the public zero-shift grid, analysis degree one or greater uses stable "
-            "direct compact cross-Gram rows and analysis degree zero retains the "
-            "finite-difference form."
-        ),
-        "",
-    ])
+            "",
+            (
+                "Interpretation: this artifact reports measured relative speed and "
+                "round-trip quality; it does not establish a numerical-stability "
+                "hierarchy. Equal-degree least-squares is the orthogonal projection "
+                "control, while oblique is the public quality-cost preset family. On "
+                "the public zero-shift grid, analysis degree one or greater uses stable "
+                "direct compact cross-Gram rows and analysis degree zero retains the "
+                "finite-difference form."
+            ),
+            "",
+        ]
+    )
     return lines
 
 
@@ -644,16 +710,18 @@ def build_markdown_report(
     if projection_methods is not None:
         lines.extend(_projection_methods_report_lines(projection_methods))
 
-    lines.extend([
-        "## PR Interpretation",
-        "",
-        "- Use the native/Python section to justify same-algorithm acceleration.",
-        "- Treat splineops `*-antialiasing` rows as oblique projection presets; do not describe them as equal-degree least-squares defaults.",
-        "- Use exact-ish SciPy or PyTorch rows from the library comparison when arguing about like-for-like semantics.",
-        "- Treat OpenCV, scikit-image and non-exact PyTorch rows as contextual image-resize baselines, because they can use different coordinate, boundary, antialiasing and dtype behavior.",
-        "- Use A/B sections to defend individual default-on knobs and to identify rows that need another pass before an upstream PR.",
-        "",
-    ])
+    lines.extend(
+        [
+            "## PR Interpretation",
+            "",
+            "- Use the native/Python section to justify same-algorithm acceleration.",
+            "- Treat splineops `*-antialiasing` rows as oblique projection presets; do not describe them as equal-degree least-squares defaults.",
+            "- Use exact-ish SciPy or PyTorch rows from the library comparison when arguing about like-for-like semantics.",
+            "- Treat OpenCV, scikit-image and non-exact PyTorch rows as contextual image-resize baselines, because they can use different coordinate, boundary, antialiasing and dtype behavior.",
+            "- Use A/B sections to defend individual default-on knobs and to identify rows that need another pass before an upstream PR.",
+            "",
+        ]
+    )
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -676,7 +744,8 @@ def summarize_native(path: Path) -> None:
     for case, group in sorted(by_case.items()):
         py_rows = [r for r in group if r.get("backend") == "python"]
         native_rows = [
-            r for r in group
+            r
+            for r in group
             if r.get("backend") == "native" and _float(r, "median_ms") is not None
         ]
         if not py_rows or not native_rows:
@@ -684,7 +753,9 @@ def summarize_native(path: Path) -> None:
         py_ms = _float(py_rows[0], "median_ms")
         if py_ms is None:
             continue
-        best_native = min(native_rows, key=lambda r: _float(r, "median_ms") or float("inf"))
+        best_native = min(
+            native_rows, key=lambda r: _float(r, "median_ms") or float("inf")
+        )
         native_ms = _float(best_native, "median_ms")
         if native_ms is None or native_ms <= 0.0:
             continue
@@ -718,8 +789,7 @@ def summarize_native(path: Path) -> None:
         )
     if thread_winners:
         winners = " ".join(
-            f"{thread}:{count}"
-            for thread, count in sorted(thread_winners.items())
+            f"{thread}:{count}" for thread, count in sorted(thread_winners.items())
         )
         print(f"best native thread counts: {winners}")
     for name, values in buckets.items():
@@ -736,17 +806,10 @@ def summarize_libraries(path: Path, *, exact_rel_l2: float) -> None:
     print(f"library artifact: {path}")
     for backend in ("scipy", "skimage", "opencv", "torch"):
         br = [
-            r for r in rows
-            if r.get("backend") == backend and r.get("status") == "ok"
+            r for r in rows if r.get("backend") == backend and r.get("status") == "ok"
         ]
-        speeds = [
-            v for r in br
-            if (v := _float(r, "speedup_vs_splineops")) is not None
-        ]
-        rel = [
-            v for r in br
-            if (v := _float(r, "rel_l2_diff")) is not None
-        ]
+        speeds = [v for r in br if (v := _float(r, "speedup_vs_splineops")) is not None]
+        rel = [v for r in br if (v := _float(r, "rel_l2_diff")) is not None]
         if not speeds:
             continue
         print(
@@ -759,15 +822,13 @@ def summarize_libraries(path: Path, *, exact_rel_l2: float) -> None:
 
     for backend in ("scipy", "torch"):
         br = [
-            r for r in rows
+            r
+            for r in rows
             if r.get("backend") == backend
             and r.get("status") == "ok"
             and (_float(r, "rel_l2_diff") or float("inf")) < exact_rel_l2
         ]
-        speeds = [
-            v for r in br
-            if (v := _float(r, "speedup_vs_splineops")) is not None
-        ]
+        speeds = [v for r in br if (v := _float(r, "speedup_vs_splineops")) is not None]
         if speeds:
             print(
                 f"exact-ish {backend:5s} cases={len(speeds):2d} "
@@ -811,8 +872,7 @@ def summarize_legacy(path: Path, reference: Path) -> None:
 def summarize_ab(path: Path) -> None:
     rows = _rows(path)
     usable = [
-        r for r in rows
-        if (v := _float(r, "median_speedup")) is not None and v > 0.0
+        r for r in rows if (v := _float(r, "median_speedup")) is not None and v > 0.0
     ]
 
     print(f"A/B artifact: {path}")
@@ -942,9 +1002,7 @@ def _best_rows_by_key(
 
 
 def _format_key(key_fields: list[str], key: tuple[str, ...]) -> str:
-    return " ".join(
-        f"{field}={value}" for field, value in zip(key_fields, key)
-    )
+    return " ".join(f"{field}={value}" for field, value in zip(key_fields, key))
 
 
 def compare_artifacts(
@@ -1028,9 +1086,12 @@ def compare_artifacts(
 
     if "backend" in key_fields:
         backend_index = key_fields.index("backend")
-        for backend_name in sorted({key_tuple[backend_index] for _, key_tuple, _, _ in entries}):
+        for backend_name in sorted(
+            {key_tuple[backend_index] for _, key_tuple, _, _ in entries}
+        ):
             group = [
-                speedup for speedup, key_tuple, _, _ in entries
+                speedup
+                for speedup, key_tuple, _, _ in entries
                 if key_tuple[backend_index] == backend_name
             ]
             print(
@@ -1063,7 +1124,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="kind", required=True)
 
-    native = sub.add_parser("native", help="Summarize benchmark_resize_native.py CSV output.")
+    native = sub.add_parser(
+        "native", help="Summarize benchmark_resize_native.py CSV output."
+    )
     native.add_argument("csv", type=Path)
 
     libraries = sub.add_parser(
@@ -1073,7 +1136,9 @@ def main() -> int:
     libraries.add_argument("csv", type=Path)
     libraries.add_argument("--exact-rel-l2", type=float, default=1e-5)
 
-    legacy = sub.add_parser("legacy", help="Summarize legacy Java CSV against a library CSV.")
+    legacy = sub.add_parser(
+        "legacy", help="Summarize legacy Java CSV against a library CSV."
+    )
     legacy.add_argument("csv", type=Path)
     legacy.add_argument("--reference", type=Path, required=True)
 
@@ -1082,8 +1147,12 @@ def main() -> int:
 
     report = sub.add_parser("report", help="Build a Markdown resize benchmark report.")
     report.add_argument("--title", default="Resize Benchmark Report")
-    report.add_argument("--native", type=Path, help="benchmark_resize_native.py CSV output.")
-    report.add_argument("--libraries", type=Path, help="benchmark_resize_libraries.py CSV output.")
+    report.add_argument(
+        "--native", type=Path, help="benchmark_resize_native.py CSV output."
+    )
+    report.add_argument(
+        "--libraries", type=Path, help="benchmark_resize_libraries.py CSV output."
+    )
     report.add_argument("--legacy", type=Path, help="Legacy Java CSV output.")
     report.add_argument(
         "--legacy-reference",
@@ -1097,7 +1166,9 @@ def main() -> int:
         type=Path,
         help="benchmark_resize_ab.py CSV output. May be passed more than once.",
     )
-    report.add_argument("--plan", type=Path, help="benchmark_resize_plan.py CSV output.")
+    report.add_argument(
+        "--plan", type=Path, help="benchmark_resize_plan.py CSV output."
+    )
     report.add_argument(
         "--projection-methods",
         type=Path,
@@ -1139,14 +1210,16 @@ def main() -> int:
     elif args.kind == "ab":
         summarize_ab(args.csv)
     elif args.kind == "report":
-        if not any([
-            args.native,
-            args.libraries,
-            args.legacy,
-            args.ab,
-            args.plan,
-            args.projection_methods,
-        ]):
+        if not any(
+            [
+                args.native,
+                args.libraries,
+                args.legacy,
+                args.ab,
+                args.plan,
+                args.projection_methods,
+            ]
+        ):
             parser.error("report requires at least one artifact argument")
         if args.legacy is not None and args.legacy_reference is None:
             parser.error("report --legacy requires --legacy-reference")

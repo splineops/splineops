@@ -59,12 +59,12 @@ from PIL import Image
 DTYPE = np.float32
 
 # ROI / detail-window configuration
-ROI_MAG_TARGET = 256           # target height for nearest-neighbour zoom tiles
+ROI_MAG_TARGET = 256  # target height for nearest-neighbour zoom tiles
 ROI_TILE_TITLE_FONTSIZE = 12
 ROI_SUPTITLE_FONTSIZE = 14  # currently unused, kept for consistency
 
 # Plot appearance for slide-friendly export
-PLOT_FIGSIZE = (14, 7)      # same 2:1 ratio as (10, 5), just larger
+PLOT_FIGSIZE = (14, 7)  # same 2:1 ratio as (10, 5), just larger
 PLOT_TITLE_FONTSIZE = 18
 PLOT_LABEL_FONTSIZE = 18
 PLOT_TICK_FONTSIZE = 18
@@ -85,9 +85,11 @@ HIGHLIGHT_STYLE = {
 AA_METHOD_LABEL = "SplineOps Antialiasing cubic"
 AA_COLOR = HIGHLIGHT_STYLE[AA_METHOD_LABEL]["color"]
 
+
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' string."""
     return f"{seconds * 1000.0:.1f} ms"
+
 
 # Benchmark configuration
 N_TRIALS = 10
@@ -95,6 +97,7 @@ N_TRIALS = 10
 # Optional deps
 try:
     import cv2
+
     _HAS_CV2 = True
     # Undo OpenCV's Qt plugin path override to keep using the system/PyQt plugins
     os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
@@ -103,6 +106,7 @@ except Exception:
 
 try:
     from scipy.ndimage import zoom as _ndi_zoom
+
     _HAS_SCIPY = True
 except Exception:
     _HAS_SCIPY = False
@@ -110,6 +114,7 @@ except Exception:
 try:
     from skimage.transform import resize as _sk_resize
     from skimage.metrics import structural_similarity as _ssim  # noqa: F401
+
     _HAS_SKIMAGE = True
 except Exception:
     _HAS_SKIMAGE = False
@@ -118,6 +123,7 @@ except Exception:
 try:
     import torch
     import torch.nn.functional as F
+
     _HAS_TORCH = True
 except Exception:
     _HAS_TORCH = False
@@ -125,6 +131,7 @@ except Exception:
 # SplineOps
 try:
     from splineops.resize import resize as sp_resize
+
     _HAS_SPLINEOPS = True
 except Exception as e:
     _HAS_SPLINEOPS = False
@@ -132,6 +139,7 @@ except Exception as e:
 
 try:
     from splineops.utils.specs import print_runtime_context
+
     _HAS_SPECS = True
 except Exception:
     print_runtime_context = None
@@ -203,11 +211,7 @@ def _load_kodak_gray(url: str) -> np.ndarray:
 
     if arr.ndim == 3 and arr.shape[2] >= 3:
         arr01 = arr / 255.0
-        gray = (
-            0.2989 * arr01[..., 0]
-            + 0.5870 * arr01[..., 1]
-            + 0.1140 * arr01[..., 2]
-        )
+        gray = 0.2989 * arr01[..., 0] + 0.5870 * arr01[..., 1] + 0.1140 * arr01[..., 2]
     else:
         vmax = float(arr.max()) or 1.0
         gray = arr / vmax
@@ -229,6 +233,7 @@ def _load_kodak_rgb(url: str) -> np.ndarray:
 # %%
 # Utilities (Metrics, ROI, Plotting)
 # ----------------------------------
+
 
 def _snr_db(x: np.ndarray, y: np.ndarray) -> float:
     num = float(np.sum(x * x, dtype=np.float64))
@@ -300,6 +305,7 @@ def _diff_normalized(
     norm = 0.5 + 0.5 * diff / max_abs
     norm = np.clip(norm, 0.0, 1.0)
     return norm.astype(DTYPE, copy=False)
+
 
 def _show_initial_original_vs_aa(
     gray: np.ndarray,
@@ -447,7 +453,7 @@ def show_intro_color(
     H, W, _ = original_rgb.shape
     row0, col0, roi_h, roi_w = roi_rect
 
-    roi_orig = original_rgb[row0:row0 + roi_h, col0:col0 + roi_w, :]
+    roi_orig = original_rgb[row0 : row0 + roi_h, col0 : col0 + roi_w, :]
     roi_orig_big = _nearest_big_color(roi_orig, target_h=ROI_MAG_TARGET)
 
     Hs, Ws, _ = shrunk_rgb.shape
@@ -469,9 +475,9 @@ def show_intro_color(
         row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, Hs - roi_h_res))
         col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, Ws - roi_w_res))
         roi_shrunk = shrunk_rgb[
-            row_top_res:row_top_res + roi_h_res,
-            col_left_res:col_left_res + roi_w_res,
-            :
+            row_top_res : row_top_res + roi_h_res,
+            col_left_res : col_left_res + roi_w_res,
+            :,
         ]
 
     roi_shrunk_big = _nearest_big_color(roi_shrunk, target_h=ROI_MAG_TARGET)
@@ -558,6 +564,7 @@ def show_intro_color(
     fig.tight_layout()
     plt.show()
 
+
 def _smart_ylim(
     values: np.ndarray,
     *,
@@ -565,7 +572,7 @@ def _smart_ylim(
     lo_cap: float | None = None,
     pad_frac: float = 0.06,
     iqr_k: float = 1.5,
-    q_floor: float = 10.0,   # percentile used when min is an outlier
+    q_floor: float = 10.0,  # percentile used when min is an outlier
     min_span: float | None = None,
 ) -> tuple[float, float] | None:
     """
@@ -585,7 +592,9 @@ def _smart_ylim(
     vmax = float(v.max())
 
     if vmin == vmax:
-        span = float(min_span) if min_span is not None else (1e-3 if vmax <= 1.0 else 1.0)
+        span = (
+            float(min_span) if min_span is not None else (1e-3 if vmax <= 1.0 else 1.0)
+        )
         lo, hi = vmin - 0.5 * span, vmax + 0.5 * span
     else:
         q1, q3 = np.percentile(v, [25.0, 75.0])
@@ -616,10 +625,13 @@ def _smart_ylim(
 
     return lo, hi
 
+
 def _highlight_tile(ax, *, color: str, lw: float = 3.0) -> None:
     # Full-axes border, works even with ax.axis("off")
     rect = patches.Rectangle(
-        (0, 0), 1, 1,
+        (0, 0),
+        1,
+        1,
         transform=ax.transAxes,
         fill=False,
         edgecolor=color,
@@ -628,9 +640,11 @@ def _highlight_tile(ax, *, color: str, lw: float = 3.0) -> None:
     )
     ax.add_patch(rect)
 
+
 # %%
 # Round-Trip Backends and Time
 # ----------------------------
+
 
 def _rt_splineops(
     gray: np.ndarray, z: float, preset: str
@@ -640,9 +654,9 @@ def _rt_splineops(
         return gray, gray, f"SplineOps unavailable: {_SPLINEOPS_IMPORT_ERR}"
     try:
         first = sp_resize(gray, zoom_factors=(z, z), method=preset)
-        rec   = sp_resize(first, output_size=gray.shape, method=preset)
+        rec = sp_resize(first, output_size=gray.shape, method=preset)
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
-        rec   = np.clip(rec,   0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
@@ -679,7 +693,7 @@ def _rt_scipy(
         )
 
         first = np.clip(first, 0.0, 1.0)
-        rec   = np.clip(rec,   0.0, 1.0)
+        rec = np.clip(rec, 0.0, 1.0)
 
         if rec.shape != gray.shape:
             h = min(rec.shape[0], gray.shape[0])
@@ -697,7 +711,11 @@ def _rt_scipy(
             tmp[g0:g1, g2:g3] = rc
             rec = tmp
 
-        return first.astype(gray.dtype, copy=False), rec.astype(gray.dtype, copy=False), None
+        return (
+            first.astype(gray.dtype, copy=False),
+            rec.astype(gray.dtype, copy=False),
+            None,
+        )
     except Exception as e:
         return gray, gray, str(e)
 
@@ -714,10 +732,10 @@ def _rt_opencv(
         W1 = int(round(W * z))
 
         first = cv2.resize(gray, (W1, H1), interpolation=cv2.INTER_CUBIC)
-        rec   = cv2.resize(first, (W,  H),  interpolation=cv2.INTER_CUBIC)
+        rec = cv2.resize(first, (W, H), interpolation=cv2.INTER_CUBIC)
 
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
-        rec   = np.clip(rec,   0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
@@ -737,13 +755,13 @@ def _rt_pillow(
         im = _Image.fromarray(gray.astype(np.float32, copy=False), mode="F")
 
         first_im = im.resize((W1, H1), resample=_Image.Resampling.BICUBIC)
-        rec_im   = first_im.resize((W,  H),  resample=_Image.Resampling.BICUBIC)
+        rec_im = first_im.resize((W, H), resample=_Image.Resampling.BICUBIC)
 
         first = np.asarray(first_im, dtype=np.float32)
-        rec   = np.asarray(rec_im,   dtype=np.float32)
+        rec = np.asarray(rec_im, dtype=np.float32)
 
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
-        rec   = np.clip(rec,   0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
@@ -778,7 +796,7 @@ def _rt_skimage(
         ).astype(np.float64)
 
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
-        rec   = np.clip(rec,   0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
@@ -813,7 +831,7 @@ def _rt_skimage_aa(
         ).astype(np.float64)
 
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
-        rec   = np.clip(rec,   0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
@@ -857,10 +875,10 @@ def _rt_torch(
         )
 
         first = first_t[0, 0].detach().cpu().numpy()
-        rec   = rec_t[0, 0].detach().cpu().numpy()
+        rec = rec_t[0, 0].detach().cpu().numpy()
 
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
-        rec   = np.clip(rec,   0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
@@ -904,10 +922,10 @@ def _rt_torch_aa(
         )
 
         first = first_t[0, 0].detach().cpu().numpy()
-        rec   = rec_t[0, 0].detach().cpu().numpy()
+        rec = rec_t[0, 0].detach().cpu().numpy()
 
         first = np.clip(first, 0.0, 1.0).astype(gray.dtype, copy=False)
-        rec   = np.clip(rec,   0.0, 1.0).astype(gray.dtype, copy=False)
+        rec = np.clip(rec, 0.0, 1.0).astype(gray.dtype, copy=False)
         return first, rec, None
     except Exception as e:
         return gray, gray, str(e)
@@ -949,15 +967,15 @@ def _avg_time(rt_fn, repeats: int = N_TRIALS, warmup: bool = True):
 
 # Methods and backend keys
 BENCH_METHODS: List[Tuple[str, str]] = [
-    ("SplineOps Standard cubic",       "spl_standard"),
-    ("SplineOps Antialiasing cubic",   "spl_aa"),
-    ("OpenCV INTER_CUBIC",             "opencv"),
-    ("SciPy cubic",                    "scipy"),
-    ("Pillow BICUBIC",                 "pillow"),
-    ("scikit-image cubic",             "skimage"),
-    ("scikit-image cubic (AA)",        "skimage_aa"),
-    ("PyTorch bicubic (CPU)",          "torch"),
-    ("PyTorch bicubic (AA, CPU)",      "torch_aa"),
+    ("SplineOps Standard cubic", "spl_standard"),
+    ("SplineOps Antialiasing cubic", "spl_aa"),
+    ("OpenCV INTER_CUBIC", "opencv"),
+    ("SciPy cubic", "scipy"),
+    ("Pillow BICUBIC", "pillow"),
+    ("scikit-image cubic", "skimage"),
+    ("scikit-image cubic (AA)", "skimage_aa"),
+    ("PyTorch bicubic (CPU)", "torch"),
+    ("PyTorch bicubic (AA, CPU)", "torch_aa"),
 ]
 
 # Subsets for ROI main vs AA
@@ -982,6 +1000,7 @@ AA_METHOD_LABELS = [
 # %%
 # Benchmarking Helpers
 # --------------------
+
 
 def benchmark_image(
     img_name: str,
@@ -1132,7 +1151,9 @@ def benchmark_image(
             center_r_res = int(round(center_r * z))
             center_c_res = int(round(center_c * z))
             row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res))
-            col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res))
+            col_left_res = int(
+                np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res)
+            )
             first_roi = first[
                 row_top_res : row_top_res + roi_h_res,
                 col_left_res : col_left_res + roi_w_res,
@@ -1169,16 +1190,17 @@ def benchmark_image(
         rows=rows,
     )
 
+
 def show_intro_from_bench(bench: Dict[str, object]) -> None:
     """2×2 introductory figure for SplineOps AA (grayscale)."""
     aa_first = bench["aa_first"]
     if aa_first is None:
         return
     _show_initial_original_vs_aa(
-        gray=bench["gray"],              # type: ignore[arg-type]
-        roi_rect=bench["roi_rect"],      # type: ignore[arg-type]
-        aa_first=aa_first,               # type: ignore[arg-type]
-        z=bench["z"],                    # type: ignore[arg-type]
+        gray=bench["gray"],  # type: ignore[arg-type]
+        roi_rect=bench["roi_rect"],  # type: ignore[arg-type]
+        aa_first=aa_first,  # type: ignore[arg-type]
+        z=bench["z"],  # type: ignore[arg-type]
         degree_label=bench["degree_label"],  # type: ignore[arg-type]
     )
 
@@ -1238,6 +1260,7 @@ def show_roi_montage_main_from_bench(bench: Dict[str, object]) -> None:
     fig.tight_layout()
     plt.show()
 
+
 def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
     """
     Grayscale ROI montage (AA subset):
@@ -1294,6 +1317,7 @@ def show_roi_montage_aa_from_bench(bench: Dict[str, object]) -> None:
 
     fig.tight_layout()
     plt.show()
+
 
 def show_error_montage_main_from_bench(bench: Dict[str, object]) -> None:
     """
@@ -1355,16 +1379,26 @@ def show_error_montage_main_from_bench(bench: Dict[str, object]) -> None:
     ax_leg.imshow(legend_img, cmap="gray", vmin=0.0, vmax=1.0, aspect="auto")
     ax_leg.set_title("Diff legend", fontsize=ROI_TILE_TITLE_FONTSIZE, pad=4)
 
-    ax_leg.text(1.05, 0.05, "-1", transform=ax_leg.transAxes,
-                fontsize=8, va="bottom", ha="left")
-    ax_leg.text(1.05, 0.50, "0 (no diff)", transform=ax_leg.transAxes,
-                fontsize=8, va="center", ha="left")
-    ax_leg.text(1.05, 0.95, "+1", transform=ax_leg.transAxes,
-                fontsize=8, va="top", ha="left")
+    ax_leg.text(
+        1.05, 0.05, "-1", transform=ax_leg.transAxes, fontsize=8, va="bottom", ha="left"
+    )
+    ax_leg.text(
+        1.05,
+        0.50,
+        "0 (no diff)",
+        transform=ax_leg.transAxes,
+        fontsize=8,
+        va="center",
+        ha="left",
+    )
+    ax_leg.text(
+        1.05, 0.95, "+1", transform=ax_leg.transAxes, fontsize=8, va="top", ha="left"
+    )
 
     fig.suptitle("Normalized signed difference in ROI", fontsize=ROI_SUPTITLE_FONTSIZE)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
+
 
 def show_error_montage_aa_from_bench(bench: Dict[str, object]) -> None:
     """
@@ -1426,16 +1460,26 @@ def show_error_montage_aa_from_bench(bench: Dict[str, object]) -> None:
     ax_leg.imshow(legend_img, cmap="gray", vmin=0.0, vmax=1.0, aspect="auto")
     ax_leg.set_title("Diff legend", fontsize=ROI_TILE_TITLE_FONTSIZE, pad=4)
 
-    ax_leg.text(1.05, 0.05, "-1", transform=ax_leg.transAxes,
-                fontsize=8, va="bottom", ha="left")
-    ax_leg.text(1.05, 0.50, "0 (no diff)", transform=ax_leg.transAxes,
-                fontsize=8, va="center", ha="left")
-    ax_leg.text(1.05, 0.95, "+1", transform=ax_leg.transAxes,
-                fontsize=8, va="top", ha="left")
+    ax_leg.text(
+        1.05, 0.05, "-1", transform=ax_leg.transAxes, fontsize=8, va="bottom", ha="left"
+    )
+    ax_leg.text(
+        1.05,
+        0.50,
+        "0 (no diff)",
+        transform=ax_leg.transAxes,
+        fontsize=8,
+        va="center",
+        ha="left",
+    )
+    ax_leg.text(
+        1.05, 0.95, "+1", transform=ax_leg.transAxes, fontsize=8, va="top", ha="left"
+    )
 
     fig.suptitle("Normalized signed difference in ROI", fontsize=ROI_SUPTITLE_FONTSIZE)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
+
 
 def show_timing_plot_from_bench(bench: Dict[str, object]) -> None:
     """Horizontal bar chart of round-trip timing per method."""
@@ -1454,12 +1498,12 @@ def show_timing_plot_from_bench(bench: Dict[str, object]) -> None:
 
     names = [r["name"] for r in valid]
     times = np.array([r["time"] for r in valid], dtype=np.float64)
-    sds   = np.array([r["sd"]   for r in valid], dtype=np.float64)
+    sds = np.array([r["sd"] for r in valid], dtype=np.float64)
 
     order = np.argsort(times)
     names = [names[i] for i in order]
     times = times[order]
-    sds   = sds[order]
+    sds = sds[order]
 
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
     y = np.arange(len(names))
@@ -1495,6 +1539,7 @@ def show_timing_plot_from_bench(bench: Dict[str, object]) -> None:
     fig.tight_layout()
     plt.show()
 
+
 def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
     """Combined SNR/SSIM bar chart per method."""
     if not (_HAS_SKIMAGE and _ssim is not None):
@@ -1510,19 +1555,20 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
     degree_label = str(bench["degree_label"])
 
     valid = [
-        r for r in rows
+        r
+        for r in rows
         if np.isfinite(r.get("snr", np.nan)) and np.isfinite(r.get("ssim", np.nan))
     ]
     if not valid:
         return
 
     names = [r["name"] for r in valid]
-    snrs  = np.array([r["snr"]  for r in valid], dtype=np.float64)
+    snrs = np.array([r["snr"] for r in valid], dtype=np.float64)
     ssims = np.array([r["ssim"] for r in valid], dtype=np.float64)
 
     order = np.argsort(-snrs)
     names = [names[i] for i in order]
-    snrs  = snrs[order]
+    snrs = snrs[order]
     ssims = ssims[order]
 
     x = np.arange(len(names))
@@ -1530,7 +1576,7 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
 
     fig, ax1 = plt.subplots(figsize=PLOT_FIGSIZE)
 
-    snr_color  = "tab:blue"
+    snr_color = "tab:blue"
     ssim_color = "tab:green"
 
     snr_bars = ax1.bar(
@@ -1574,7 +1620,7 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
     )
 
     handles = [snr_bars[0], ssim_bars[0]]
-    labels  = ["SNR (dB)", "SSIM"]
+    labels = ["SNR (dB)", "SSIM"]
     fig.legend(
         handles,
         labels,
@@ -1614,9 +1660,11 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
     fig.tight_layout()
     plt.show()
 
+
 # %%
 # Color ROI Montage Helpers
 # -------------------------
+
 
 def _first_pass_color_for_backend(
     backend: str,
@@ -1672,6 +1720,7 @@ def _first_pass_color_for_backend(
 
         elif backend == "pillow":
             from PIL import Image as _Image
+
             arr_uint8 = (np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)
             im = _Image.fromarray(arr_uint8, mode="RGB")
             first_im = im.resize((W1, H1), resample=_Image.Resampling.BICUBIC)
@@ -1759,7 +1808,7 @@ def show_roi_montage_color_main_from_bench(
     roi_rect = bench["roi_rect"]
     z = float(bench["z"])
     row0, col0, roi_h, roi_w = roi_rect
-    roi_orig = orig_rgb[row0:row0 + roi_h, col0:col0 + roi_w, :]
+    roi_orig = orig_rgb[row0 : row0 + roi_h, col0 : col0 + roi_w, :]
     orig_tile = _nearest_big_color(roi_orig, ROI_MAG_TARGET)
 
     tiles: List[Tuple[str, np.ndarray]] = [("Original (color)", orig_tile)]
@@ -1768,12 +1817,12 @@ def show_roi_montage_color_main_from_bench(
     center_c = col0 + roi_w / 2.0
 
     subset = [
-        ("SplineOps Standard cubic",     "spl_standard"),
+        ("SplineOps Standard cubic", "spl_standard"),
         ("SplineOps Antialiasing cubic", "spl_aa"),
-        ("OpenCV INTER_CUBIC",           "opencv"),
-        ("SciPy cubic",                  "scipy"),
-        ("scikit-image cubic",           "skimage"),
-        ("PyTorch bicubic (CPU)",        "torch"),
+        ("OpenCV INTER_CUBIC", "opencv"),
+        ("SciPy cubic", "scipy"),
+        ("scikit-image cubic", "skimage"),
+        ("PyTorch bicubic (CPU)", "torch"),
     ]
 
     for label, backend in subset:
@@ -1791,11 +1840,13 @@ def show_roi_montage_color_main_from_bench(
             center_r_res = int(round(center_r * z))
             center_c_res = int(round(center_c * z))
             row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res))
-            col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res))
+            col_left_res = int(
+                np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res)
+            )
             roi_first = first_color[
                 row_top_res : row_top_res + roi_h_res,
                 col_left_res : col_left_res + roi_w_res,
-                :
+                :,
             ]
 
         tile = _nearest_big_color(roi_first, ROI_MAG_TARGET)
@@ -1840,7 +1891,7 @@ def show_roi_montage_color_aa_from_bench(
     roi_rect = bench["roi_rect"]
     z = float(bench["z"])
     row0, col0, roi_h, roi_w = roi_rect
-    roi_orig = orig_rgb[row0:row0 + roi_h, col0:col0 + roi_w, :]
+    roi_orig = orig_rgb[row0 : row0 + roi_h, col0 : col0 + roi_w, :]
     orig_tile = _nearest_big_color(roi_orig, ROI_MAG_TARGET)
 
     tiles: List[Tuple[str, np.ndarray]] = [("Original (color)", orig_tile)]
@@ -1849,11 +1900,11 @@ def show_roi_montage_color_aa_from_bench(
     center_c = col0 + roi_w / 2.0
 
     subset = [
-        ("SplineOps Standard cubic",     "spl_standard"),
+        ("SplineOps Standard cubic", "spl_standard"),
         ("SplineOps Antialiasing cubic", "spl_aa"),
-        ("Pillow BICUBIC",               "pillow"),
-        ("scikit-image cubic (AA)",      "skimage_aa"),
-        ("PyTorch bicubic (AA, CPU)",    "torch_aa"),
+        ("Pillow BICUBIC", "pillow"),
+        ("scikit-image cubic (AA)", "skimage_aa"),
+        ("PyTorch bicubic (AA, CPU)", "torch_aa"),
     ]
 
     for label, backend in subset:
@@ -1871,11 +1922,13 @@ def show_roi_montage_color_aa_from_bench(
             center_r_res = int(round(center_r * z))
             center_c_res = int(round(center_c * z))
             row_top_res = int(np.clip(center_r_res - roi_h_res // 2, 0, H1 - roi_h_res))
-            col_left_res = int(np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res))
+            col_left_res = int(
+                np.clip(center_c_res - roi_w_res // 2, 0, W1 - roi_w_res)
+            )
             roi_first = first_color[
                 row_top_res : row_top_res + roi_h_res,
                 col_left_res : col_left_res + roi_w_res,
-                :
+                :,
             ]
 
         tile = _nearest_big_color(roi_first, ROI_MAG_TARGET)
@@ -1914,6 +1967,7 @@ def show_roi_montage_color_aa_from_bench(
     fig.tight_layout()
     plt.show()
 
+
 # %%
 # Load All Images
 # ---------------
@@ -1927,10 +1981,15 @@ for name, url in KODAK_IMAGES:
 
     rgb = _load_kodak_rgb(url)
     orig_images_rgb[name] = rgb
-    print(f"Loaded {name} from {url}  |  gray shape={gray.shape}, rgb shape={rgb.shape}")
+    print(
+        f"Loaded {name} from {url}  |  gray shape={gray.shape}, rgb shape={rgb.shape}"
+    )
 
-print("\nTimings averaged over "
-      f"{N_TRIALS} runs per method (1 warm-up run not counted).\n")
+print(
+    "\nTimings averaged over "
+    f"{N_TRIALS} runs per method (1 warm-up run not counted).\n"
+)
+
 
 # Small helper for color intro using SplineOps antialiasing
 def _color_intro_for_image(
