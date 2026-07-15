@@ -5,6 +5,7 @@ import numpy.typing as npt
 
 from .spline_basis import SplineBasis
 
+
 class BSpline3Basis(SplineBasis):
     def __init__(self) -> None:
 

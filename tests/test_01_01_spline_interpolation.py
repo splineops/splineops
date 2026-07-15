@@ -3,17 +3,274 @@
 import pytest
 import numpy as np
 import numpy.typing as npt
+from scipy.ndimage import map_coordinates
 
 from splineops.spline_interpolation.tensor_spline import TensorSpline
 from splineops.spline_interpolation.bases.utils import asbasis, basis_map
 from splineops.spline_interpolation.modes.utils import mode_map
 
 
+def test_tensorspline_stable_public_import() -> None:
+    from splineops import TensorSpline as PublicTensorSpline
+    from splineops.spline_interpolation import TensorSpline as ModuleTensorSpline
+
+    assert PublicTensorSpline is TensorSpline
+    assert ModuleTensorSpline is TensorSpline
+
+
+def test_tensorspline_rejects_nonuniform_construction_grid() -> None:
+    data = np.arange(4.0)
+    coordinates = np.array([0.0, 1.0, 2.1, 3.0])
+
+    with pytest.raises(ValueError, match="uniform construction grid"):
+        TensorSpline(data, coordinates, bases="linear", modes="mirror")
+
+
+def test_tensorspline_rejects_nonfloating_construction_grid() -> None:
+    with pytest.raises(TypeError, match="floating dtype"):
+        TensorSpline(
+            np.arange(4.0),
+            np.arange(4),
+            bases="linear",
+            modes="mirror",
+        )
+
+
+def test_tensorspline_point_queries_accept_stacked_coordinates() -> None:
+    data = np.arange(12.0).reshape(4, 3)
+    coordinates = (np.arange(4.0), np.arange(3.0))
+    spline = TensorSpline(data, coordinates, bases="linear", modes="mirror")
+    points = np.array([[2.0, 0.5], [1.0, 0.5]])
+
+    stacked = spline(points, grid=False)
+    separate = spline(tuple(points), grid=False)
+
+    np.testing.assert_equal(stacked, separate)
+
+
+def test_tensorspline_grid_queries_need_matching_batch_shapes() -> None:
+    data = np.arange(12.0).reshape(4, 3)
+    coordinates = (np.arange(4.0), np.arange(3.0))
+    spline = TensorSpline(data, coordinates, bases="linear", modes="mirror")
+
+    with pytest.raises(ValueError, match="leading batch dimensions"):
+        spline((np.zeros((2, 4)), np.zeros((3, 3))), grid=True)
+
+
+@pytest.mark.parametrize("basis", ["bspline3", "bspline5", "bspline9", "omoms5"])
+@pytest.mark.parametrize("length", [1, 2, 3])
+def test_periodic_short_signal_reproduces_samples(basis: str, length: int) -> None:
+    coordinates = np.arange(length, dtype=np.float64)
+    data = np.arange(1, length + 1, dtype=np.float64)
+    spline = TensorSpline(data, coordinates, bases=basis, modes="periodic")
+
+    np.testing.assert_allclose(spline(coordinates), data, rtol=0.0, atol=1e-12)
+
+
+@pytest.mark.parametrize("basis", basis_map.keys())
+def test_mirror_singleton_is_constant(basis: str) -> None:
+    data = np.array([2.0])
+    coordinates = np.array([0.0])
+    spline = TensorSpline(data, coordinates, bases=basis, modes="mirror")
+
+    np.testing.assert_allclose(
+        spline(np.array([-100.0, 0.0, 100.0])),
+        2.0,
+        rtol=0.0,
+        atol=2e-12,
+    )
+
+
+@pytest.mark.parametrize("grid", [False, True])
+def test_tiled_evaluation_is_tile_size_invariant(grid: bool) -> None:
+    rng = np.random.default_rng(7)
+    data = rng.normal(size=(7, 6))
+    construction = (np.arange(7.0), np.arange(6.0))
+    spline = TensorSpline(data, construction, bases="bspline3", modes="mirror")
+    if grid:
+        query = (np.linspace(-1.0, 7.0, 13), np.linspace(-2.0, 6.0, 11))
+    else:
+        query = (rng.uniform(-1.0, 7.0, 143), rng.uniform(-2.0, 6.0, 143))
+
+    spline._EVALUATION_TILE_SIZE = 10_000
+    untiled = spline(query, grid=grid)
+    spline._EVALUATION_TILE_SIZE = 7
+    tiled = spline(query, grid=grid)
+
+    np.testing.assert_equal(tiled, untiled)
+
+
+def test_batched_grid_matches_independent_grids_when_tiled() -> None:
+    data = np.arange(30.0).reshape(6, 5)
+    spline = TensorSpline(
+        data,
+        (np.arange(6.0), np.arange(5.0)),
+        bases="linear",
+        modes="mirror",
+    )
+    x = np.stack([np.linspace(0.0, 5.0, 9), np.linspace(0.25, 4.75, 9)])
+    y = np.stack([np.linspace(0.0, 4.0, 7), np.linspace(0.5, 3.5, 7)])
+    spline._EVALUATION_TILE_SIZE = 5
+
+    batched = spline((x, y), grid=True)
+
+    assert batched.shape == (2, 9, 7)
+    np.testing.assert_equal(batched[0], spline((x[0], y[0]), grid=True))
+    np.testing.assert_equal(batched[1], spline((x[1], y[1]), grid=True))
+
+
+@pytest.mark.parametrize("ndim", [1, 2, 3, 4])
+@pytest.mark.parametrize("degree", range(6))
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_mirror_bspline_matches_scipy_at_equivalent_points(
+    ndim: int, degree: int, dtype: npt.DTypeLike
+) -> None:
+    """Compare only the contract shared with scipy.ndimage.map_coordinates."""
+    rng = np.random.default_rng(20260715 + 10 * ndim + degree)
+    shape = (13, 12, 11, 10)[:ndim]
+    data = rng.standard_normal(shape).astype(dtype)
+    construction = tuple(np.arange(length, dtype=dtype) for length in shape)
+    query = tuple(
+        rng.uniform(1.0, length - 2.0, size=37).astype(dtype) for length in shape
+    )
+    spline = TensorSpline(
+        data,
+        construction,
+        bases=f"bspline{degree}",
+        modes="mirror",
+    )
+
+    actual = spline(query, grid=False)
+    expected = map_coordinates(
+        data,
+        np.stack(query),
+        order=degree,
+        mode="mirror",
+        prefilter=True,
+    )
+
+    tolerance = 8e-5 if np.dtype(dtype) == np.float32 else 2e-12
+    np.testing.assert_allclose(actual, expected, rtol=tolerance, atol=tolerance)
+
+
+@pytest.mark.parametrize("dtype", [np.complex64, np.complex128])
+def test_complex_3d_mirror_bspline_matches_scipy(dtype: npt.DTypeLike) -> None:
+    rng = np.random.default_rng(20260715)
+    shape = (9, 8, 7)
+    data = (rng.standard_normal(shape) + 1j * rng.standard_normal(shape)).astype(dtype)
+    real_dtype = data.real.dtype
+    construction = tuple(np.arange(length, dtype=real_dtype) for length in shape)
+    query = tuple(
+        rng.uniform(1.0, length - 2.0, size=31).astype(real_dtype) for length in shape
+    )
+    spline = TensorSpline(data, construction, bases="bspline3", modes="mirror")
+
+    actual = spline(query, grid=False)
+    expected = map_coordinates(
+        data,
+        np.stack(query),
+        order=3,
+        mode="mirror",
+        prefilter=True,
+    )
+
+    tolerance = 2e-4 if np.dtype(dtype) == np.complex64 else 2e-12
+    np.testing.assert_allclose(actual, expected, rtol=tolerance, atol=tolerance)
+
+
+def test_linear_4d_spline_reproduces_an_affine_field() -> None:
+    shape = (5, 6, 4, 7)
+    construction = tuple(np.arange(length, dtype=np.float64) for length in shape)
+    mesh = np.meshgrid(*construction, indexing="ij")
+    data = 1.5 + 2.0 * mesh[0] - 0.5 * mesh[1] + 3.0 * mesh[2] - mesh[3]
+    spline = TensorSpline(data, construction, bases="linear", modes="mirror")
+    rng = np.random.default_rng(20260715)
+    query = tuple(rng.uniform(0.0, length - 1.0, size=101) for length in shape)
+
+    actual = spline(query, grid=False)
+    expected = 1.5 + 2.0 * query[0] - 0.5 * query[1] + 3.0 * query[2] - query[3]
+
+    np.testing.assert_allclose(actual, expected, rtol=2e-14, atol=2e-14)
+
+
+def test_high_dimensional_singleton_axes_reproduce_samples() -> None:
+    data = np.arange(6, dtype=np.float64).reshape(1, 2, 1, 3)
+    construction = tuple(np.arange(length, dtype=np.float64) for length in data.shape)
+    spline = TensorSpline(data, construction, bases="bspline3", modes="mirror")
+
+    result = spline(construction, grid=True)
+
+    np.testing.assert_allclose(result, data, rtol=0.0, atol=2e-12)
+
+
+@pytest.mark.parametrize("grid", [False, True])
+def test_query_plan_matches_ordinary_evaluation(grid: bool) -> None:
+    rng = np.random.default_rng(20260715)
+    data = rng.standard_normal((9, 8))
+    construction = (np.arange(9.0), np.arange(8.0))
+    spline = TensorSpline(data, construction, bases="bspline3", modes="mirror")
+    if grid:
+        query = (np.linspace(-1.0, 9.0, 17), np.linspace(-2.0, 8.0, 13))
+    else:
+        query = (rng.uniform(-1.0, 9.0, 221), rng.uniform(-2.0, 8.0, 221))
+
+    plan = spline.query_plan(query, grid=grid)
+
+    assert plan.output_shape == spline(query, grid=grid).shape
+    assert plan.retained_bytes > 0
+    np.testing.assert_allclose(plan(), spline(query, grid=grid), rtol=2e-15, atol=2e-15)
+    np.testing.assert_equal(plan.apply(), plan())
+
+
+def test_query_plan_is_independent_of_coordinate_mutation() -> None:
+    data = np.arange(30.0).reshape(6, 5)
+    spline = TensorSpline(
+        data,
+        (np.arange(6.0), np.arange(5.0)),
+        bases="linear",
+        modes="mirror",
+    )
+    query = [np.linspace(0.0, 5.0, 11), np.linspace(0.0, 4.0, 11)]
+    expected = spline(tuple(query), grid=False)
+    plan = spline.query_plan(tuple(query), grid=False)
+
+    query[0][:] = -1000.0
+    query[1][:] = 1000.0
+
+    np.testing.assert_equal(plan(), expected)
+
+
+def test_query_plan_enforces_retained_memory_limit() -> None:
+    spline = TensorSpline(
+        np.ones((8, 8)),
+        (np.arange(8.0), np.arange(8.0)),
+        bases="bspline3",
+        modes="mirror",
+    )
+    query = (np.linspace(0.0, 7.0, 100), np.linspace(0.0, 7.0, 100))
+
+    with pytest.raises(MemoryError, match="max_retained_bytes"):
+        spline.query_plan(query, grid=False, max_retained_bytes=64)
+
+
+def test_query_plan_rejects_batched_grids_explicitly() -> None:
+    spline = TensorSpline(
+        np.ones((4, 4)),
+        (np.arange(4.0), np.arange(4.0)),
+        bases="linear",
+        modes="mirror",
+    )
+    query = (np.ones((2, 4)), np.ones((2, 4)))
+
+    with pytest.raises(ValueError, match="unbatched grid"):
+        spline.query_plan(query, grid=True)
+
+
 # --------------------------------------------------------------------------- #
 # 1) Dirac-impulse sanity check on a cardinal grid
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("basis", basis_map.keys())
-@pytest.mark.parametrize("mode", mode_map.keys())           # "periodic" is in map
+@pytest.mark.parametrize("mode", mode_map.keys())  # "periodic" is in map
 @pytest.mark.parametrize("dtype", ["float64", "float32"])
 def test_interpolate_cardinal_spline(
     basis: str, mode: str, dtype: npt.DTypeLike

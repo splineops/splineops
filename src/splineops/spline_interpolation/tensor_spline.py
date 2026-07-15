@@ -2,18 +2,20 @@
 
 import numpy as np
 import numpy.typing as npt
+import math
 from typing import Sequence, Union, Tuple, cast
 
 from .bases.spline_basis import SplineBasis
 from .bases.utils import asbasis
 from .modes.extension_mode import ExtensionMode
 from .modes.utils import asmode
-from .utils import is_ndarray
+from .utils import is_cupy_type, is_ndarray
 
 TSplineBasis = Union[SplineBasis, str]
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
 TExtensionMode = Union[ExtensionMode, str]
 TExtensionModes = Union[TExtensionMode, Sequence[TExtensionMode]]
+
 
 class TensorSpline:
     """
@@ -59,7 +61,7 @@ class TensorSpline:
     Here's an example to illustrate 1-dimensional interpolation using the TensorSpline class.
 
     >>> import numpy as np
-    >>> from splineops.interpolate.tensor_spline import TensorSpline
+    >>> from splineops import TensorSpline
     >>> data = np.array([1.0, 2.0, 3.0, 4.0])
     >>> coordinates = np.linspace(0, data.size - 1, data.size)
     >>> bases = "linear"  # Linear interpolation
@@ -103,6 +105,11 @@ class TensorSpline:
 
     """
 
+    # Bounds support-index, weight, and gathered-coefficient temporaries. The
+    # final output is still allocated normally; callers do not need to tune
+    # this implementation detail.
+    _EVALUATION_TILE_SIZE = 65_536
+
     def __init__(
         self,
         data: npt.NDArray,
@@ -134,30 +141,51 @@ class TensorSpline:
         """
         # Data
         if not is_ndarray(data):
-            raise TypeError("Must be an array.")
+            raise TypeError("'data' must be a NumPy or CuPy array.")
+        if data.ndim == 0:
+            raise ValueError("'data' must have at least one dimension.")
+        if any(length == 0 for length in data.shape):
+            raise ValueError("'data' dimensions must be non-empty.")
         ndim = data.ndim
         self._ndim = ndim
 
-        # TODO(dperdios): make `coordinates` optional?
-        # TODO(dperdios): `coordinates` need to define a uniform grid.
-        #  Note: this is not straightforward to control (numerical errors)
-        # Coordinates
-        #   1-D special case (either `array` or `(array,)`)
-        if is_ndarray(coordinates) and ndim == 1 and len(coordinates) == len(data):
-            # Note: we explicitly cast the type to NDArray
-            coordinates = cast(npt.NDArray, coordinates)
-            # Convert `array` to `(array,)`
-            coordinates = (coordinates,)
+        coordinates = self._normalize_coordinate_sequence(
+            coordinates, argument="coordinates", allow_stacked_points=False
+        )
+        if any(c.ndim != 1 for c in coordinates):
+            raise ValueError("Construction coordinates must be one-dimensional.")
+        if any(c.size == 0 for c in coordinates):
+            raise ValueError("Construction coordinates must be non-empty.")
+        if any(is_cupy_type(c) != is_cupy_type(data) for c in coordinates):
+            raise TypeError("'data' and construction coordinates must use one backend.")
+        if not all(np.isrealobj(c) for c in coordinates):
+            raise ValueError("Construction coordinates must be real numbers.")
+        if not all(np.issubdtype(c.dtype, np.floating) for c in coordinates):
+            raise TypeError("Construction coordinates must have a floating dtype.")
+        if not all(bool(np.all(np.isfinite(c))) for c in coordinates):
+            raise ValueError("Construction coordinates must be finite.")
         if not all(bool(np.all(np.diff(c) > 0)) for c in coordinates):
-            raise ValueError("Coordinates must be strictly ascending.")
-        valid_data_shape = tuple([c.size for c in coordinates])
+            raise ValueError("Construction coordinates must be strictly ascending.")
+        for axis, c in enumerate(coordinates):
+            if c.size <= 2:
+                continue
+            diffs = np.diff(c)
+            real_dtype = c.real.dtype
+            eps = np.finfo(real_dtype).eps
+            step = diffs[0]
+            atol = 32 * eps * max(1.0, float(abs(step)))
+            if not bool(np.allclose(diffs, step, rtol=32 * eps, atol=atol)):
+                raise ValueError(
+                    "TensorSpline requires a uniform construction grid; "
+                    f"coordinates on axis {axis} are nonuniform."
+                )
+
+        valid_data_shape = tuple(c.size for c in coordinates)
         if data.shape != valid_data_shape:
             raise ValueError(
-                f"Incompatible data shape. " f"Expected shape: {valid_data_shape}"
+                f"Incompatible data shape {data.shape}; expected {valid_data_shape}."
             )
-        if not all(np.isrealobj(c) for c in coordinates):
-            raise ValueError("Must be sequence of real numbers.")
-        # TODO(dperdios): useful to keep initial coordinates as property?
+        self._coordinates = tuple(c.copy() for c in coordinates)
 
         # Pre-computation based on coordinates
         # TODO(dperdios): convert to Python float?
@@ -230,6 +258,11 @@ class TensorSpline:
         return np.copy(self._coefficients)
 
     @property
+    def coordinates(self) -> Tuple[npt.NDArray, ...]:
+        """Copies of the uniform construction coordinates for every axis."""
+        return tuple(c.copy() for c in self._coordinates)
+
+    @property
     def bases(self) -> Tuple[SplineBasis, ...]:
         return self._bases
 
@@ -240,6 +273,43 @@ class TensorSpline:
     @property
     def ndim(self):
         return self._ndim
+
+    def _normalize_coordinate_sequence(
+        self,
+        coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
+        *,
+        argument: str,
+        allow_stacked_points: bool,
+    ) -> Tuple[npt.NDArray, ...]:
+        """Normalize supported coordinate containers without implicit casting."""
+        ndim = self._ndim
+        if is_ndarray(coordinates):
+            array = cast(npt.NDArray, coordinates)
+            if ndim == 1:
+                return (array,)
+            if allow_stacked_points and array.ndim >= 1 and array.shape[0] == ndim:
+                return tuple(array[axis] for axis in range(ndim))
+            raise ValueError(
+                f"'{argument}' must be a {ndim}-item sequence of arrays"
+                + (
+                    " or an array whose first dimension is ndim."
+                    if allow_stacked_points
+                    else "."
+                )
+            )
+        try:
+            result = tuple(coordinates)
+        except TypeError as exc:
+            raise TypeError(
+                f"'{argument}' must be an array or sequence of arrays."
+            ) from exc
+        if len(result) != ndim:
+            raise ValueError(f"'{argument}' must contain exactly {ndim} arrays.")
+        if not all(is_ndarray(c) for c in result):
+            raise TypeError(
+                f"Every entry in '{argument}' must be a NumPy or CuPy array."
+            )
+        return cast(Tuple[npt.NDArray, ...], result)
 
     # Methods
     def __call__(
@@ -282,144 +352,242 @@ class TensorSpline:
         >>> print(data_eval_pts)
         [2. 7.]
         """
-        # Check coordinates
-        ndim = self._ndim
+        coordinates = self._prepare_evaluation_coordinates(coordinates, grid=grid)
+
         if grid:
-            # Special 1-D case: "default" grid=True with a 1-D `coords` NDArray
-            if is_ndarray(coordinates):
-                # Note: we explicitly cast the type to NDArray
-                coordinates = cast(npt.NDArray, coordinates)
-                if ndim == 1 and coordinates.ndim == 1:
-                    coordinates = (coordinates,)
-            # N-D cases
-            if len(coordinates) != ndim:
-                # TODO(dperdios): Sequence of (..., n) arrays (batch dimensions
-                #   must be the same!)
-                raise ValueError(f"Must be a {ndim}-length sequence of 1-D arrays.")
-            if not all([bool(np.all(np.diff(c, axis=-1) > 0)) for c in coordinates]):
-                # TODO(dperdios): do they really need to be ascending?
-                raise ValueError("Coordinates must be strictly ascending.")
-        else:
-            # If not `grid`, a sequence of arrays is expected with a length
-            #  equal to the number of dimensions. Each array in the sequence
-            #  must be of the same shape.
-            coords_shapes = [c.shape for c in coordinates]
-            if len(coordinates) != ndim or len(set(coords_shapes)) != 1:
+            return self._evaluate_grid(coordinates)
+        return self._evaluate_points(coordinates)
+
+    def _prepare_evaluation_coordinates(
+        self,
+        coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
+        *,
+        grid: bool,
+    ) -> Tuple[npt.NDArray, ...]:
+        """Validate and normalize coordinates for evaluation or query plans."""
+        # Grid queries may have shared leading batch
+        # dimensions; their last dimension contains the coordinates for one
+        # spline axis. Point queries use same-shape arrays, one per spline axis.
+        if grid:
+            coordinates = self._normalize_coordinate_sequence(
+                coordinates, argument="coordinates", allow_stacked_points=False
+            )
+            if any(c.ndim < 1 for c in coordinates):
                 raise ValueError(
-                    f"Incompatible sequence of coordinates. "
-                    f"Must be a {ndim}-length sequence of same-shape N-D arrays. "
-                    f"Current sequence of array shapes: {coords_shapes}."
+                    "Grid coordinate arrays must have at least one dimension."
                 )
+            batch_shapes = {c.shape[:-1] for c in coordinates}
+            if len(batch_shapes) != 1:
+                raise ValueError(
+                    "Grid coordinate arrays must have identical leading batch dimensions."
+                )
+        else:
+            coordinates = self._normalize_coordinate_sequence(
+                coordinates, argument="coordinates", allow_stacked_points=True
+            )
+            coords_shapes = [c.shape for c in coordinates]
+            if len(set(coords_shapes)) != 1:
+                raise ValueError(
+                    "Point coordinate arrays must have the same shape; "
+                    f"received {coords_shapes}."
+                )
+        if any(
+            is_cupy_type(c) != is_cupy_type(self._coefficients) for c in coordinates
+        ):
+            raise TypeError(
+                "Evaluation coordinates and spline coefficients must use one backend."
+            )
         if not all(np.isrealobj(c) for c in coordinates):
-            raise ValueError("Must be a sequence of real numbers.")
+            raise ValueError("Evaluation coordinates must be real numbers.")
+        if not all(bool(np.all(np.isfinite(c))) for c in coordinates):
+            raise ValueError("Evaluation coordinates must be finite.")
+        return coordinates
 
-        # Get properties
-        real_dtype = self._real_dtype
-        bounds_seq = self._bounds
-        length_seq = self._lengths
-        step_seq = self._steps
-        basis_seq = self._bases
-        mode_seq = self._modes
-        coefficients = self._coefficients
+    def query_plan(
+        self,
+        coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
+        grid: bool = True,
+        *,
+        max_retained_bytes: int = 256 * 2**20,
+    ):
+        """Precompute support geometry for repeated fixed-coordinate queries.
+
+        Query plans are experimental and intentionally bound to this spline.
+        They trade explicit, capped retained memory for faster repeated
+        evaluation.  Ordinary calls remain the right choice for coordinates
+        that are evaluated only once.
+        """
+        from .query_plan import TensorSplineQueryPlan
+
+        return TensorSplineQueryPlan(
+            self,
+            coordinates,
+            grid=grid,
+            max_retained_bytes=max_retained_bytes,
+        )
+
+    def _evaluate_points(self, coordinates: Tuple[npt.NDArray, ...]) -> npt.NDArray:
+        """Evaluate same-shape point coordinates in bounded-memory tiles."""
+        xp = self._array_module()
+        query_shape = coordinates[0].shape
+        count = math.prod(query_shape)
+        output = xp.empty(count, dtype=self._coefficients.dtype)
+        flat_coordinates = tuple(c.reshape(-1) for c in coordinates)
+        tile_size = self._EVALUATION_TILE_SIZE
+        for start in range(0, count, tile_size):
+            stop = min(count, start + tile_size)
+            chunk = tuple(c[start:stop] for c in flat_coordinates)
+            output[start:stop] = self._evaluate_point_chunk(chunk)
+        return output.reshape(query_shape)
+
+    def _evaluate_grid(self, coordinates: Tuple[npt.NDArray, ...]) -> npt.NDArray:
+        """Evaluate tensor grids without materializing full coordinate meshes."""
+        xp = self._array_module()
+        batch_shape = coordinates[0].shape[:-1]
+        grid_shape = tuple(c.shape[-1] for c in coordinates)
+        count = math.prod(grid_shape)
+        tile_size = self._EVALUATION_TILE_SIZE
+        if not batch_shape and count <= tile_size:
+            return self._evaluate_small_grid(coordinates)
+
+        output = xp.empty(batch_shape + grid_shape, dtype=self._coefficients.dtype)
+        batch_indexes = np.ndindex(batch_shape) if batch_shape else ((),)
+
+        for batch_index in batch_indexes:
+            vectors = tuple(c[batch_index] if batch_shape else c for c in coordinates)
+            batch_output = xp.empty(count, dtype=self._coefficients.dtype)
+            for start in range(0, count, tile_size):
+                stop = min(count, start + tile_size)
+                flat_indexes = xp.arange(start, stop)
+                indexes = xp.unravel_index(flat_indexes, grid_shape)
+                points = tuple(
+                    vector[indexes[axis]] for axis, vector in enumerate(vectors)
+                )
+                batch_output[start:stop] = self._evaluate_point_chunk(points)
+            output[batch_index] = batch_output.reshape(grid_shape)
+        return output
+
+    def _evaluate_small_grid(self, coordinates: Tuple[npt.NDArray, ...]) -> npt.NDArray:
+        """Use direct separable broadcasting when its temporary is bounded."""
+        xp = self._array_module()
         ndim = self._ndim
+        indexes_bc = []
+        weights_bc = []
+        for axis, (coords, basis, mode, data_lim, dx, data_len) in enumerate(
+            zip(
+                coordinates,
+                self._bases,
+                self._modes,
+                self._bounds,
+                self._steps,
+                self._lengths,
+            )
+        ):
+            rat_indexes = (coords - data_lim[0]) / dx
+            indexes = basis.compute_support_indexes(x=rat_indexes)
+            shifted = xp.subtract(
+                rat_indexes[np.newaxis], indexes, dtype=self._real_dtype
+            )
+            indexes, weights = mode.extend_signal(
+                indexes=indexes,
+                weights=basis(x=shifted),
+                length=data_len,
+            )
+            shape = [1] * (2 * ndim)
+            shape[axis] = indexes.shape[0]
+            shape[ndim + axis] = coords.size
+            indexes_bc.append(indexes.reshape(shape))
+            weights_bc.append(weights.reshape(shape))
 
-        # Rename
-        coords_seq = coordinates
+        weights_product = weights_bc[0]
+        for weights in weights_bc[1:]:
+            weights_product = weights_product * weights
+        return xp.sum(
+            self._coefficients[tuple(indexes_bc)] * weights_product,
+            axis=tuple(range(ndim)),
+        )
 
-        # For-loop over dimensions
+    def _array_module(self):
+        if is_cupy_type(self._coefficients):
+            import cupy as cp
+
+            return cp
+        return np
+
+    def _evaluate_point_chunk(
+        self, coordinates: Tuple[npt.NDArray, ...]
+    ) -> npt.NDArray:
+        """Evaluate one same-shape coordinate chunk with vectorized supports."""
         indexes_seq = []
         weights_seq = []
-        for coords, basis, mode, data_lim, dx, data_len in zip(
-            coords_seq, basis_seq, mode_seq, bounds_seq, step_seq, length_seq
-        ):
-
-            # Data limits
-            x_min, x_max = data_lim
-
-            # Indexes
-            #   Compute rational indexes
-            # TODO(dperdios): no difference in using `* fs` or `/ dx`
-            # fs = 1 / dx
-            # rat_indexes = (coords - x_min) * fs
-            rat_indexes = (coords - x_min) / dx
-            #   Compute corresponding integer indexes (including support)
-            indexes = basis.compute_support_indexes(x=rat_indexes)
-            # TODO(dperdios): specify dtype in compute_support_indexes? cast dtype here?
-            #  int32 faster than int64? probably not
-
-            # Evaluate basis function (interpolation weights)
-            # indexes_shift = np.subtract(indexes, rat_indexes, dtype=real_dtype)
-            # shifted_idx = np.subtract(indexes, rat_indexes, dtype=real_dtype)
-            shifted_idx = np.subtract(
-                rat_indexes[np.newaxis], indexes, dtype=real_dtype
-            )
-            # TODO(dperdios): casting rules, do we really want it?
-            weights = basis(x=shifted_idx)
-
-            # Signal extension
-            indexes_ext, weights_ext = mode.extend_signal(
-                indexes=indexes, weights=weights, length=data_len
-            )
-
-            # TODO(dperdios): Add extrapolate handling?
-            # weights[idx_extra] = cval ?? or within extend_signal?
-
-            # Store
+        for axis, coords in enumerate(coordinates):
+            indexes_ext, weights_ext = self._compute_support(axis, coords)
             indexes_seq.append(indexes_ext)
             weights_seq.append(weights_ext)
 
-        # Broadcast arrays for tensor product
-        if grid:
-            # del_axis_base = np.arange(ndim + 1, step=ndim)
-            # del_axes = [del_axis_base + ii for ii in range(ndim)]
-            # exp_axis_base = np.arange(2 * ndim)
-            # exp_axes = [tuple(np.delete(exp_axis_base, a)) for a in del_axes]
-            # Batch-compatible axis expansions
-            exp_axis_ind_base = np.arange(ndim)  # from start
-            exp_axis_coeffs_base = exp_axis_ind_base - ndim  # from end TODO: reverse?
-            exp_axes = []
-            for ii in range(ndim):
-                a = np.concatenate(
-                    [
-                        np.delete(exp_axis_ind_base, ii),
-                        np.delete(exp_axis_coeffs_base, ii),
-                    ]
-                )
-                exp_axes.append(tuple(a))
-        else:
-            exp_axis_base = np.arange(ndim)
-            exp_axes = [tuple(np.delete(exp_axis_base, a)) for a in range(ndim)]
+        return self._evaluate_precomputed_point_chunk(indexes_seq, weights_seq)
+
+    def _compute_support(self, axis: int, coordinates: npt.NDArray):
+        """Compute extended coefficient indexes and weights for one axis."""
+        xp = self._array_module()
+        basis = self._bases[axis]
+        mode = self._modes[axis]
+        x_min, _ = self._bounds[axis]
+        rat_indexes = (coordinates - x_min) / self._steps[axis]
+        indexes = basis.compute_support_indexes(x=rat_indexes)
+        shifted = xp.subtract(rat_indexes[np.newaxis], indexes, dtype=self._real_dtype)
+        return mode.extend_signal(
+            indexes=indexes,
+            weights=basis(x=shifted),
+            length=self._lengths[axis],
+        )
+
+    def _evaluate_precomputed_point_chunk(self, indexes_seq, weights_seq):
+        """Gather and combine one chunk of precomputed tensor supports."""
+        xp = self._array_module()
+        ndim = self._ndim
 
         indexes_bc = []
         weights_bc = []
-        for indexes, weights, a in zip(indexes_seq, weights_seq, exp_axes):
-            indexes_bc.append(np.expand_dims(indexes, axis=a))
-            weights_bc.append(np.expand_dims(weights, axis=a))
-        # Note: for interop (CuPy), cannot use prod with a sequence of arrays.
-        #  Need explicit stacking before reduction. It is NumPy compatible.
-        weights_tp = np.prod(np.stack(np.broadcast_arrays(*weights_bc), axis=0), axis=0)
+        query_shape = indexes_seq[0].shape[1:]
+        for axis, (indexes, weights) in enumerate(zip(indexes_seq, weights_seq)):
+            broadcast_shape = [1] * ndim + list(query_shape)
+            broadcast_shape[axis] = indexes.shape[0]
+            indexes_bc.append(indexes.reshape(broadcast_shape))
+            weights_bc.append(weights.reshape(broadcast_shape))
 
-        # Interpolation (convolution via reduction)
-        # TODO(dperdios): might want to change the default reduction axis
-        axes_sum = tuple(range(ndim))  # first axes are the indexes
-        data = np.sum(coefficients[tuple(indexes_bc)] * weights_tp, axis=axes_sum)
-
-        return data
+        weights_product = weights_bc[0]
+        for weights in weights_bc[1:]:
+            weights_product = weights_product * weights
+        axes_sum = tuple(range(ndim))
+        return xp.sum(
+            self._coefficients[tuple(indexes_bc)] * weights_product,
+            axis=axes_sum,
+        )
 
     def _compute_coefficients(self, data: npt.NDArray) -> npt.NDArray:
-        # Prepare data and axes
-        # TODO(dperdios): there is probably too many copies along this process
-        coefficients = np.copy(data)
-        axes = tuple(range(coefficients.ndim))
-        axes_roll = tuple(np.roll(axes, shift=-1))
+        """Prefilter every logical axis without relying on reshape views.
 
-        # TODO(dperdios): could do one less roll by starting with the initiat shape
-        for basis, mode in zip(self._bases, self._modes):
-
-            # Roll data w.r.t. dimension
-            coefficients = np.transpose(coefficients, axes=axes_roll)
-
-            # Compute coefficients w.r.t. extension `mode` and `basis`
-            coefficients = mode.compute_coefficients(data=coefficients, basis=basis)
+        The coefficient filters operate on the last axis.  Repeated cyclic
+        transposes happened to remain reshape-compatible in one and two
+        dimensions, but intermediate 3-D and higher layouts could make the
+        batched reshape allocate a detached copy.  Moving each logical axis to
+        the end and accepting the mode's explicit output array keeps all
+        filtered coefficients connected to the returned tensor.
+        """
+        xp = self._array_module_for(data)
+        coefficients = xp.array(data, copy=True, order="C")
+        for axis, (basis, mode) in enumerate(zip(self._bases, self._modes)):
+            axis_last = xp.ascontiguousarray(xp.moveaxis(coefficients, axis, -1))
+            axis_last = mode.compute_coefficients(data=axis_last, basis=basis)
+            coefficients = xp.moveaxis(axis_last, -1, axis)
 
         return coefficients
+
+    @staticmethod
+    def _array_module_for(array):
+        if is_cupy_type(array):
+            import cupy as cp
+
+            return cp
+        return np

@@ -4,6 +4,7 @@ import numpy as np
 
 # TODO(dperdios): use scipy-stubs (https://github.com/microsoft/python-type-stubs)
 import scipy  # type: ignore
+from functools import lru_cache
 from numpy import typing as npt
 from typing import Optional, Tuple
 
@@ -309,13 +310,22 @@ def _init_anticausal_coeff(data: np.ndarray, pole: float, boundary: str):
     else:
         raise NotImplementedError("Unknown boundary condition")
 
-def is_cupy_type(x: npt.NDArray) -> bool:
-    # Note: it avoids explicit reference to CuPy
-    return "cupy" in str(type(x))
+
+@lru_cache(maxsize=1)
+def _cupy_array_type():
+    """Return CuPy's array type once, or an empty sentinel when unavailable."""
+    try:
+        import cupy as cp
+    except ImportError:
+        return ()
+    return cp.ndarray
 
 
-def is_ndarray(x) -> bool:
-    # TODO(dperdios): this might not account for all cases
-    #  currently works well with NumPy and CuPy (main targets)
-    #  Note: might best handled via the `array_api` module
-    return "ndarray" in str(type(x))
+def is_cupy_type(x: object) -> bool:
+    """Return whether *x* is a CuPy array without requiring CuPy at runtime."""
+    return isinstance(x, _cupy_array_type())
+
+
+def is_ndarray(x: object) -> bool:
+    """Return whether *x* is an explicitly supported dense array type."""
+    return isinstance(x, np.ndarray) or is_cupy_type(x)

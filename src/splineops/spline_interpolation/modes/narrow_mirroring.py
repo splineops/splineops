@@ -8,6 +8,7 @@ from ..bases.spline_basis import SplineBasis
 from .extension_mode import ExtensionMode
 from ..utils import _data_to_coeffs
 
+
 class NarrowMirroring(ExtensionMode):
 
     # Methods
@@ -36,6 +37,13 @@ class NarrowMirroring(ExtensionMode):
 
         # Local copy
         coeffs = np.copy(data)
+
+        # A whole-sample mirror extension of a singleton is constant. Cardinal
+        # spline bases form a partition of unity, so its sole interpolation
+        # coefficient is the sample itself. The recursive prefilter requires at
+        # least two samples and must not be entered for this exact case.
+        if coeffs.shape[-1] == 1:
+            return coeffs
 
         # Check whether `basis` has no `poles` (i.e., no computation needed)
         if basis.poles is None:

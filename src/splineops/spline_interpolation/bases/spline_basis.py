@@ -7,6 +7,7 @@ from collections import abc
 import numpy.typing as npt
 import numpy as np
 
+
 class SplineBasis(metaclass=ABCMeta):
     def __init__(
         self, support: int, degree: int, poles: Optional[Sequence[float]] = None

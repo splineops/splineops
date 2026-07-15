@@ -6,6 +6,7 @@ import numpy.typing as npt
 
 from ..bases.spline_basis import SplineBasis
 
+
 class ExtensionMode(metaclass=ABCMeta):
     # Abstract methods
     @staticmethod

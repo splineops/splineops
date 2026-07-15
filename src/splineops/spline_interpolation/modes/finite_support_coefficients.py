@@ -9,6 +9,7 @@ from .extension_mode import ExtensionMode
 from ..utils import _compute_ck_zero_matrix_banded_v1
 from ..utils import is_cupy_type
 
+
 class FiniteSupportCoefficients(ExtensionMode):
 
     # Methods

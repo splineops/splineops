@@ -12,6 +12,7 @@ mode_map: Mapping[str, Type[ExtensionMode]] = {
     "periodic": PeriodicPadding,
 }
 
+
 def create_mode(name: str) -> ExtensionMode:
     # Check if valid mode name
     valid_names = mode_map.keys()
