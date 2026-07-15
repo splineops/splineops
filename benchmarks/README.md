@@ -9,6 +9,14 @@ The thresholds are deliberately broad regression alarms, not advertised
 performance guarantees. A failed threshold requires inspecting the complete
 JSON artifacts and semantics before accepting or rejecting a change.
 
+`benchmark_batch_scaling.py` sweeps explicit batch count and spatial size for
+affine transforms, Laplacian-only differentials, and Haar round trips. It
+reports required output bytes separately from traced peak memory and normalizes
+peak growth against the one-plane case. The development workflow runs smoke
+evidence for relevant publication-branch changes and can run the standard
+profile manually on Linux, macOS, and Windows. It publishes one artifact per
+runner; platform results must be reviewed rather than averaged into one claim.
+
 Run the checker after generating the named artifacts:
 
 ```shell

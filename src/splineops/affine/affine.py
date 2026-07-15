@@ -1,5 +1,6 @@
 # splineops/src/splineops/affine/affine.py
 
+import json
 import numbers
 import operator
 from typing import Optional, Sequence, Tuple
@@ -13,6 +14,7 @@ from splineops.spline_interpolation.query_plan import TensorSplineGeometryPlan
 
 _AFFINE_TILE_SIZE = 65_536
 _DEFAULT_PLAN_BYTES = 256 * 1024**2
+_AFFINE_FIELD_TOKEN = object()
 
 
 def _normalize_spatial_axes(
@@ -50,18 +52,42 @@ class AffineCoefficientField:
     reused across compatible affine geometries.
     """
 
-    __slots__ = ("_values", "_spatial_axes", "_signature", "_configuration")
+    __slots__ = (
+        "_values",
+        "_spatial_axes",
+        "_signature",
+        "_configuration",
+        "_serialization_metadata",
+    )
     _values: np.ndarray
     _spatial_axes: tuple[int, ...]
     _signature: object
     _configuration: dict[str, object]
+    _serialization_metadata: dict[str, object]
 
-    def __init__(self, values, spatial_axes, signature, configuration):
+    def __init__(
+        self,
+        values,
+        spatial_axes,
+        signature,
+        configuration,
+        serialization_metadata,
+        *,
+        _token=None,
+    ):
+        if _token is not _AFFINE_FIELD_TOKEN:
+            raise TypeError(
+                "Construct coefficient fields with "
+                "AffinePlan.prepare_coefficients() or load_coefficients()."
+            )
         object.__setattr__(self, "_values", values)
         self._values.flags.writeable = False
         object.__setattr__(self, "_spatial_axes", tuple(spatial_axes))
         object.__setattr__(self, "_signature", signature)
         object.__setattr__(self, "_configuration", dict(configuration))
+        object.__setattr__(
+            self, "_serialization_metadata", dict(serialization_metadata)
+        )
 
     def __setattr__(self, name, value):
         raise AttributeError("AffineCoefficientField is immutable.")
@@ -110,6 +136,20 @@ class AffineCoefficientField:
         """Return whether ``plan`` can apply this coefficient field."""
 
         return self.incompatibility_reason(plan) is None
+
+    def save(self, path) -> None:
+        """Save values and their compatibility contract to a safe NPZ file.
+
+        The file contains JSON metadata and a numeric array only; loading never
+        enables NumPy object pickles.  Restore it through
+        :meth:`AffinePlan.load_coefficients`, which checks the stored contract
+        against the receiving plan.
+        """
+
+        metadata = json.dumps(
+            self._serialization_metadata, sort_keys=True, separators=(",", ":")
+        )
+        np.savez_compressed(path, values=self._values, metadata=np.asarray(metadata))
 
 
 class AffinePlan:
@@ -313,6 +353,37 @@ class AffinePlan:
             backend="numpy",
         )
 
+    def _coefficient_serialization_metadata(self, spatial_axes):
+        mode_types = [
+            f"{type(mode).__module__}.{type(mode).__qualname__}"
+            for mode in self._template.modes
+        ]
+        return {
+            "schema": "splineops.affine-coefficients",
+            "schema_version": 1,
+            "input_shape": list(self.input_shape),
+            "spatial_axes": list(spatial_axes),
+            "degree": self.degree,
+            "mode_types": mode_types,
+            "dtype": self.dtype.str,
+        }
+
+    def _coefficient_field(self, values, axes):
+        return AffineCoefficientField(
+            values,
+            axes,
+            self._template._geometry_signature(),
+            {
+                "input_shape": self.input_shape,
+                "spatial_axes": axes,
+                "degree": self.degree,
+                "mode": self.mode,
+                "dtype": self.dtype.str,
+            },
+            self._coefficient_serialization_metadata(axes),
+            _token=_AFFINE_FIELD_TOKEN,
+        )
+
     def _apply_canonical_coefficients(self, coefficients: np.ndarray) -> np.ndarray:
         spatial_ndim = len(self.input_shape)
         batch_shape = coefficients.shape[:-spatial_ndim]
@@ -425,18 +496,42 @@ class AffinePlan:
         values = np.ascontiguousarray(
             np.transpose(canonical, tuple(np.argsort(permutation)))
         )
-        return AffineCoefficientField(
-            values,
-            axes,
-            self._template._geometry_signature(),
-            {
-                "input_shape": self.input_shape,
-                "spatial_axes": axes,
-                "degree": self.degree,
-                "mode": self.mode,
-                "dtype": self.dtype.str,
-            },
-        )
+        return self._coefficient_field(values, axes)
+
+    def load_coefficients(self, path) -> AffineCoefficientField:
+        """Load and validate a field saved by ``AffineCoefficientField.save``."""
+
+        try:
+            with np.load(path, allow_pickle=False) as archive:
+                if set(archive.files) != {"values", "metadata"}:
+                    raise ValueError(
+                        "Coefficient archive must contain only 'values' and 'metadata'."
+                    )
+                values = np.array(archive["values"], copy=True, order="C")
+                metadata_value = archive["metadata"]
+                if metadata_value.shape != ():
+                    raise ValueError(
+                        "Coefficient archive metadata must be scalar JSON."
+                    )
+                metadata = json.loads(str(metadata_value.item()))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError("Invalid affine coefficient archive.") from exc
+        if not isinstance(metadata, dict):
+            raise ValueError("Coefficient archive metadata must be a JSON object.")
+        try:
+            axes = tuple(operator.index(axis) for axis in metadata["spatial_axes"])
+        except (KeyError, TypeError) as exc:
+            raise ValueError(
+                "Coefficient archive is missing valid spatial-axis metadata."
+            ) from exc
+        expected = self._coefficient_serialization_metadata(axes)
+        if metadata != expected:
+            raise ValueError(
+                "Coefficient archive is incompatible with this plan's input "
+                "shape, degree, boundary mode, precision, or schema."
+            )
+        self._normalize_input(values, axes, coefficients=True)
+        return self._coefficient_field(values, axes)
 
     def _apply(
         self,

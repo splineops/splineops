@@ -151,8 +151,27 @@ spacing:
    hxx, hxy, hxz, hyy, hyz, hzz = result.hessian
    laplacian = result.laplacian
 
-One cached workspace is used within each scalar slice, so shared coefficient
-and derivative intermediates are not recomputed for the requested outputs.
+Output families can be selected independently.  ``laplacian=None`` preserves
+the original behavior and follows ``hessian``; request it explicitly to avoid
+building gradients, packed mixed Hessians, or their output arrays:
+
+.. code-block:: python
+
+   laplacian = plan.apply(
+       volume,
+       gradient=False,
+       hessian=False,
+       laplacian=True,
+   ).laplacian
+
+For repeated allocation-sensitive calls, pass a
+:class:`splineops.differentials.DifferentialResult` containing exact-shape and
+exact-dtype destination arrays through ``out=``.  Fields corresponding to
+unrequested families must be ``None``; the returned object is the supplied
+buffer container.
+
+One batched per-call workspace is used, so shared coefficient and derivative
+intermediates are not recomputed for the requested outputs.
 ``DifferentialPlan`` also accepts explicit ``spatial_axes`` for batch and
 channel arrays; components retain the full input shape and follow the selected
 axis order.  The legacy ``Differentials`` object continues to model one scalar

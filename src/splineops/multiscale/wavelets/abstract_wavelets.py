@@ -77,7 +77,7 @@ class AbstractWavelets:
         )
         return np.array(inp, dtype=dtype, copy=True, order="C")
 
-    def _prepare_spatial_input(self, inp, spatial_axes):
+    def _spatial_input_contract(self, inp, spatial_axes):
         if not isinstance(inp, np.ndarray):
             raise TypeError("Wavelet input must be a NumPy array.")
         if spatial_axes is None:
@@ -117,10 +117,7 @@ class AbstractWavelets:
         )
         nonspatial_axes = tuple(axis for axis in range(inp.ndim) if axis not in axes)
         permutation = nonspatial_axes + axes
-        canonical = np.array(
-            np.transpose(inp, permutation), dtype=dtype, copy=True, order="C"
-        )
-        return canonical, spatial_shape, permutation
+        return axes, spatial_shape, dtype, nonspatial_axes, permutation
 
     @staticmethod
     def _restore_spatial_output(canonical, permutation):
@@ -140,6 +137,57 @@ class AbstractWavelets:
         chunk_size = max(1, _BATCH_WORKING_SET_BYTES // plane_bytes)
         for start in range(0, flattened.shape[0], chunk_size):
             yield flattened[start : start + chunk_size]
+
+    @staticmethod
+    def _prefer_plane_dispatch(spatial_shape, dtype, nonspatial_axes):
+        """Avoid whole-array transposes when each plane already fills the cache."""
+
+        plane_bytes = int(np.prod(spatial_shape, dtype=np.int64)) * dtype.itemsize
+        return bool(nonspatial_axes) and _BATCH_WORKING_SET_BYTES // plane_bytes <= 1
+
+    def _analysis_chunk(self, chunk, spatial_shape):
+        ny, nx = spatial_shape
+        for _ in range(self.scales):
+            sub = chunk[..., :ny, :nx]
+            chunk[..., :ny, :nx] = self.analysis1(sub)
+            nx = max(1, nx // 2)
+            ny = max(1, ny // 2)
+
+    def _synthesis_chunk(self, chunk, spatial_shape):
+        ny_full, nx_full = spatial_shape
+        factor = 2 ** (self.scales - 1)
+        nx = max(1, nx_full // factor)
+        ny = max(1, ny_full // factor)
+        for _ in range(self.scales):
+            sub = chunk[..., :ny, :nx]
+            chunk[..., :ny, :nx] = self.synthesis1(sub)
+            nx = min(nx_full, nx * 2)
+            ny = min(ny_full, ny * 2)
+
+    def _dispatch_planes(
+        self, inp, axes, spatial_shape, dtype, nonspatial_axes, transform
+    ):
+        """Transform large independent planes without full-array transposes."""
+
+        result = np.empty(inp.shape, dtype=dtype)
+        natural_spatial_axes = tuple(axis for axis in range(inp.ndim) if axis in axes)
+        to_selected = tuple(natural_spatial_axes.index(axis) for axis in axes)
+        from_selected = tuple(np.argsort(to_selected))
+        batch_shape = tuple(inp.shape[axis] for axis in nonspatial_axes)
+        for batch_index in np.ndindex(batch_shape):
+            selector = [slice(None)] * inp.ndim
+            for axis, index in zip(nonspatial_axes, batch_index):
+                selector[axis] = index
+            selector = tuple(selector)
+            plane = inp[selector]
+            if to_selected != (0, 1):
+                plane = np.transpose(plane, to_selected)
+            transformed = np.array(plane, dtype=dtype, copy=True, order="C")
+            transform(transformed, spatial_shape)
+            if to_selected != (0, 1):
+                transformed = np.transpose(transformed, from_selected)
+            result[selector] = transformed
+        return result
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
         """
@@ -191,14 +239,23 @@ class AbstractWavelets:
         np.ndarray
             Full wavelet decomposition (in-place layout).
         """
-        out, spatial_shape, permutation = self._prepare_spatial_input(inp, spatial_axes)
+        axes, spatial_shape, dtype, nonspatial_axes, permutation = (
+            self._spatial_input_contract(inp, spatial_axes)
+        )
+        if self._prefer_plane_dispatch(spatial_shape, dtype, nonspatial_axes):
+            return self._dispatch_planes(
+                inp,
+                axes,
+                spatial_shape,
+                dtype,
+                nonspatial_axes,
+                self._analysis_chunk,
+            )
+        out = np.array(
+            np.transpose(inp, permutation), dtype=dtype, copy=True, order="C"
+        )
         for chunk in self._spatial_chunks(out, spatial_shape):
-            ny, nx = spatial_shape
-            for _ in range(self.scales):
-                sub = chunk[..., :ny, :nx]
-                chunk[..., :ny, :nx] = self.analysis1(sub)
-                nx = max(1, nx // 2)
-                ny = max(1, ny // 2)
+            self._analysis_chunk(chunk, spatial_shape)
         return self._restore_spatial_output(out, permutation)
 
     def synthesis(self, inp: np.ndarray, *, spatial_axes=None) -> np.ndarray:
@@ -219,18 +276,23 @@ class AbstractWavelets:
         np.ndarray
             Reconstructed array (same shape as input).
         """
-        out, spatial_shape, permutation = self._prepare_spatial_input(inp, spatial_axes)
-        ny_full, nx_full = spatial_shape
-        factor = 2 ** (self.scales - 1)
-        nx_coarse = max(1, nx_full // factor)
-        ny_coarse = max(1, ny_full // factor)
+        axes, spatial_shape, dtype, nonspatial_axes, permutation = (
+            self._spatial_input_contract(inp, spatial_axes)
+        )
+        if self._prefer_plane_dispatch(spatial_shape, dtype, nonspatial_axes):
+            return self._dispatch_planes(
+                inp,
+                axes,
+                spatial_shape,
+                dtype,
+                nonspatial_axes,
+                self._synthesis_chunk,
+            )
+        out = np.array(
+            np.transpose(inp, permutation), dtype=dtype, copy=True, order="C"
+        )
         for chunk in self._spatial_chunks(out, spatial_shape):
-            nx, ny = nx_coarse, ny_coarse
-            for _ in range(self.scales):
-                sub = chunk[..., :ny, :nx]
-                chunk[..., :ny, :nx] = self.synthesis1(sub)
-                nx = min(nx_full, nx * 2)
-                ny = min(ny_full, ny * 2)
+            self._synthesis_chunk(chunk, spatial_shape)
         return self._restore_spatial_output(out, permutation)
 
     def get_name(self) -> str:

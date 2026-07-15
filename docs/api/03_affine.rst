@@ -14,8 +14,10 @@ behind a caller-controlled memory cap.  ``AffinePlan.prepare_coefficients``
 returns an immutable, compatibility-checked ``AffineCoefficientField`` for
 deliberate sharing when one sampled field is transformed through several
 geometries.  The raw-array ``prefilter`` path remains available for explicit
-output-buffer workflows.  Equivalent SciPy comparisons establish numerical
-parity, not a universal performance win.
+output-buffer workflows.  ``AffineCoefficientField.save`` and
+``AffinePlan.load_coefficients`` provide a JSON-plus-numeric NPZ round trip
+with compatibility validation and no NumPy object-pickle loading.  Equivalent
+SciPy comparisons establish numerical parity, not a universal performance win.
 
 .. automodule:: splineops.affine.affine
    :members:

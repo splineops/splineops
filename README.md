@@ -104,6 +104,9 @@ as equivalent algorithms.
 Reusable affine coefficients can carry an immutable compatibility tag, and
 explicit-axis affine and differential plans execute batch/channel planes
 together without changing `TensorSpline`'s independent public model.
+Coefficient tags have a validated JSON-plus-numeric persistence path;
+`DifferentialPlan` can select only the requested output families and reuse
+exact structured output buffers.
 
 See the
 [reusable workflow recipes](https://splineops.github.io/consolidation-recipes.html)

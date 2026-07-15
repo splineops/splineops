@@ -80,7 +80,9 @@ Wavelet Modules
 The :mod:`splineops.multiscale.wavelets` subpackage provides Haar and
 spline-based wavelet transforms using whole-axis separable passes.  Their
 multi-scale methods also accept two explicit ``spatial_axes`` for batched
-arrays.  Classes typically define:
+arrays.  Small planes use cache-sized vectorized groups; large planes avoid
+whole-array transpose copies through direct independent dispatch.  Classes
+typically define:
 
 - **analysis** (multi-scale forward transform)
 - **synthesis** (multi-scale inverse transform)

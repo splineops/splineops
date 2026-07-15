@@ -86,9 +86,11 @@ Implementation Details
 - Reduce and expand perform the core downsampling and upsampling with spline
   filters.  Whole-array axis operations replace row-by-row and column-by-column
   Python dispatch.
-- Haar split/merge operations are vectorized over complete scale regions.
-  Spline wavelets vectorize over samples and image axes while retaining short,
-  explicit loops over filter taps.
+- Haar split/merge operations write into preallocated scale regions.  Small
+  independent planes are transformed in vectorized cache-sized groups; large
+  planes are dispatched directly so a batch does not pay for full-array
+  transpose copies.  Spline wavelets retain short, explicit loops over filter
+  taps.
 - Various spline degrees (e.g., degree 3) control how data are dispatched
   between the approximation channel and sub-bands.
 
@@ -117,7 +119,8 @@ it cannot silently become a stronger claim.
 These APIs never infer batch or channel dimensions.  ``reduce_2d``,
 ``expand_2d``, and multi-scale wavelet ``analysis``/``synthesis`` accept
 explicit ``spatial_axes`` and transform every remaining slice independently.
-The divisibility and reconstruction contracts apply only to selected axes.
+Execution adapts to the selected plane working set, while the divisibility and
+reconstruction contracts apply only to selected axes.
 See :doc:`../performance` for the reproducible row/column-oracle comparison and
 :doc:`../consolidation-recipes` for a batched example.
 

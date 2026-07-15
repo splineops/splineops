@@ -166,7 +166,21 @@ it through an incompatible plan fails explicitly.  Matrix and output shape are
 not part of the coefficient contract, which is exactly what permits reuse
 across affine geometries.  ``prefilter`` continues to return a raw array and
 supports ``out=`` for lower-level workflows, but raw arrays cannot carry a
-provenance check.  See
+provenance check.  Tagged fields can be persisted without object pickles and
+validated on load:
+
+.. code-block:: python
+
+   field.save("frame-coefficients.npz")
+   restored = another_compatible_plan.load_coefficients(
+       "frame-coefficients.npz"
+   )
+
+The archive stores numeric values and JSON metadata.  Loading checks its
+schema, input shape, spatial axes, degree, canonical boundary implementation,
+and precision against the receiving plan.  Immutable fields and plans may be
+reused concurrently; each application allocates or writes only its own output.
+See
 :doc:`../consolidation-recipes` for a complete example.  Set
 ``cache_geometry=False`` for bounded-memory streaming with no retained query
 geometry.  Plan construction raises ``MemoryError`` rather than exceeding

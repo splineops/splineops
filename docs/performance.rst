@@ -13,7 +13,7 @@ TensorSpline baseline
 ``scripts/benchmark_tensorspline.py`` separates coefficient construction from
 evaluation and records both runtime and ``tracemalloc`` peak allocations.  On
 2026-07-15, the standard float64 profile produced the following medians on
-Linux 6.17, Python 3.12.3, and NumPy 2.4.6:
+Linux 6.17, Python 3.12.3, and NumPy 2.5.1:
 
 .. list-table:: Standard TensorSpline profile
    :header-rows: 1
@@ -24,24 +24,24 @@ Linux 6.17, Python 3.12.3, and NumPy 2.4.6:
      - Evaluation
      - Evaluation peak
    * - 1-D cubic grid
-     - 129.2 ms
-     - 36.4 ms
+     - 132.7 ms
+     - 35.7 ms
      - 8.50 MiB
    * - 2-D cubic grid
-     - 35.9 ms
-     - 14.5 ms
+     - 38.4 ms
+     - 15.9 ms
      - 2.54 MiB
    * - 2-D cubic, 200,000 points
-     - 36.6 ms
-     - 258.5 ms
-     - 26.03 MiB
+     - 39.6 ms
+     - 276.9 ms
+     - 22.03 MiB
    * - 3-D linear grid
-     - 6.0 ms
-     - 37.5 ms
+     - 5.8 ms
+     - 37.9 ms
      - 6.01 MiB
    * - 3-D cubic grid
-     - 21.3 ms
-     - 10.1 ms
+     - 22.0 ms
+     - 11.1 ms
      - 1.73 MiB
 
 These are a development-machine baseline, not portable promises.  The useful
@@ -62,14 +62,14 @@ the standard cubic 2-D sweep measured:
      - Traced peak
      - Temporary overhead
    * - 10,000
-     - 4.20 MiB
-     - 4.13 MiB
+     - 3.21 MiB
+     - 3.13 MiB
    * - 100,000
-     - 27.77 MiB
-     - 27.01 MiB
+     - 21.27 MiB
+     - 20.50 MiB
    * - 1,000,000
-     - 34.64 MiB
-     - 27.01 MiB
+     - 28.14 MiB
+     - 20.51 MiB
 
 The flat overhead between 100,000 and 1,000,000 points is evidence that the
 working set is governed by the tile size rather than the full query.  The
@@ -82,8 +82,8 @@ Repeated coordinates
 speed.  It stores coordinate geometry independently of sample values and can
 therefore serve compatible splines representing changing frames.  For 200,000
 random cubic 2-D points and seven changing-spline evaluations, the ordinary
-path took 249.0 ms per call and the planned path 62.1 ms: a 4.01x speedup.  Plan
-construction broke even after an estimated 1.15 calls and retained 24.41 MiB.
+path took 187.1 ms per call and the planned path 30.0 ms: a 6.23x speedup.  Plan
+construction broke even after an estimated 1.62 calls and retained 24.41 MiB.
 This is a strong workload-specific capability, not a reason to plan one-shot
 queries.
 
@@ -116,31 +116,32 @@ maximum differences near ``1e-13``, but SciPy was materially faster:
      - SciPy
      - SciPy vs. one-shot
    * - 2-D linear
-     - 193.6 ms
-     - 51.5 ms
-     - 19.0 ms
-     - 10.17x
+     - 167.0 ms
+     - 20.0 ms
+     - 17.3 ms
+     - 9.65x
    * - 2-D cubic
-     - 644.0 ms
-     - 215.4 ms
-     - 33.9 ms
-     - 19.02x
+     - 525.4 ms
+     - 191.5 ms
+     - 26.9 ms
+     - 19.54x
    * - 3-D linear
-     - 123.7 ms
-     - 38.1 ms
-     - 23.4 ms
-     - 5.28x
+     - 127.7 ms
+     - 26.0 ms
+     - 13.9 ms
+     - 9.19x
    * - 3-D cubic
-     - 538.3 ms
-     - 295.1 ms
-     - 53.9 ms
-     - 9.99x
+     - 486.4 ms
+     - 124.2 ms
+     - 54.3 ms
+     - 8.96x
 
 Affine's current achievements are exact spline semantics and bounded
-coordinate memory.  A cached plan removes repeated support construction and is
-materially faster than the SplineOps one-shot path, but it still does not beat
-SciPy's specialized kernels on these cases.  Maximum absolute differences were
-between ``7e-14`` and ``6e-13``.
+coordinate memory.  Direct NumPy support contraction materially improves the
+cached plan, especially in 3-D, but it still does not beat SciPy's specialized
+kernels on these cases.  Maximum absolute differences were between ``7e-14``
+and ``6e-13``.  CuPy deliberately retains the previously tested contraction
+until dedicated GPU evidence is available.
 
 Reproduce the profile with:
 
@@ -155,12 +156,13 @@ Differentials vectorization
 The spline differential implementation performs coefficient conversion and
 derivative stencils across complete array axes.  Against the retained scalar
 row/column oracle, the standard 512x640 float64 gradient-magnitude benchmark
-measured 220.9 ms cold versus 12.483 s, a 56.50x speedup.  Reusing the
-``Differentials`` object's cached workspace reduced a repeated map to 5.9 ms.
+measured 210.0 ms cold versus 12.582 s, a 59.92x speedup.  Reusing the
+``Differentials`` object's cached workspace reduced a repeated map to 4.0 ms.
 A ``DifferentialPlan`` request for gradient, packed Hessian, and Laplacian
-together took 358.0 ms; that row performs substantially more work and is
-reported to make multi-output cost visible, not as a direct speedup ratio.
-Maximum absolute difference from the scalar oracle was ``1.556e-7``.
+together took 348.1 ms with a 22.62 MiB traced peak.  Gradient-only execution
+took 211.9 ms; Laplacian-only execution took 214.3 ms and used 66.8% of the
+full request's traced peak because it omitted gradient and mixed-Hessian
+outputs.  Maximum absolute difference from the scalar oracle was ``1.556e-7``.
 
 .. code-block:: shell
 
@@ -177,7 +179,7 @@ while allowing observations and regularization strength to change.
 
 ``scripts/benchmark_workflows.py`` measures complete operations, including
 prefiltering and axis orchestration.  After the batch-execution pass, the
-standard three-repeat medians on the same development machine were:
+standard five-repeat medians on the same development machine were:
 
 .. list-table:: Consolidated workflow profile
    :header-rows: 1
@@ -188,39 +190,39 @@ standard three-repeat medians on the same development machine were:
      - Explicit reference
      - Speedup
    * - One coefficient field, two affine geometries
-     - 106.9 ms
-     - 123.3 ms
-     - 1.15x
+     - 52.7 ms
+     - 73.4 ms
+     - 1.39x
    * - Affine with explicit batch/channel axes
-     - 246.3 ms
-     - 254.2 ms
-     - 1.03x
+     - 71.9 ms
+     - 151.2 ms
+     - 2.10x
    * - Smoothing with explicit batch/channel axes
-     - 22.8 ms
      - 22.2 ms
-     - 0.97x
+     - 17.0 ms
+     - 0.77x
    * - Multi-output differentials with explicit axes
-     - 126.3 ms
-     - 158.6 ms
-     - 1.26x
+     - 112.0 ms
+     - 158.5 ms
+     - 1.42x
    * - Warm-start denoising lambda path
-     - 1.133 s
-     - 1.139 s
+     - 1.134 s
+     - 1.148 s
      - 1.01x
    * - Haar explicit-axis analysis/synthesis
-     - 35.3 ms
-     - 31.8 ms
-     - 0.90x
+     - 30.6 ms
+     - 30.6 ms
+     - 1.00x
 
 All compared outputs agreed exactly except the independently converged ADMM
 paths, whose maximum difference was ``5.6e-9``.  The mixed result is useful:
-coefficient sharing remains a modest affine gain, batched multi-output
-differentials remove enough setup to gain 1.26x, and affine batching is a small
-1.03x gain.  Smoothing is essentially neutral.  The cache-bounded Haar batch
-path is 10% slower for these four large planes, although it is faster for the
-smoke profile's small planes; it therefore has a regression floor rather than
-a speedup claim.  Nearby denoising lambda paths can need fewer iterations, but
-the actual diagnostics—not the API name—decide whether that helps.
+coefficient sharing gains 1.39x, direct batched affine contraction gains 2.10x,
+and batched multi-output differentials gain 1.42x.  Adaptive Haar execution
+removes the former large-plane regression and is neutral here.  Batched
+smoothing is 23% slower for these four large planes, so its axis API remains a
+convenience rather than a speed claim.  Nearby denoising lambda paths can need
+fewer iterations, but the actual diagnostics—not the API name—decide whether
+that helps.
 
 .. code-block:: shell
 
@@ -230,13 +232,33 @@ the actual diagnostics—not the API name—decide whether that helps.
      --policy benchmarks/consolidation-thresholds.json \
      --artifacts-dir .
 
+Explicit batch memory scaling
+-----------------------------
+
+``scripts/benchmark_batch_scaling.py`` sweeps batch counts 1, 2, 4, and 8 at
+64x80, 128x160, and 256x320.  On the same standard profile, every batched path
+agreed exactly with explicit plane dispatch.  The largest normalized traced
+peak was 1.08: peak memory therefore remained linear or sublinear relative to
+the one-plane baseline within measurement noise.  At 256x320 and batch eight,
+traced peaks were 22.63 MiB for affine, 30.09 MiB for Laplacian-only
+differentials, and 12.00 MiB for the adaptive Haar round trip.
+
+These are Python allocation traces, not whole-process RSS measurements.  The
+affine rows report cached geometry separately, and the required output buffer
+is separated from temporary overhead in the JSON/CSV artifacts.
+
+.. code-block:: shell
+
+   python scripts/benchmark_batch_scaling.py --profile standard \
+     --output-json batch-scaling.json --output-csv batch-scaling.csv
+
 Multiscale vectorization
 ------------------------
 
 ``scripts/benchmark_multiscale.py`` compares current whole-axis execution with
 the retained row/column oracle on standard float64 images.  Pyramid reduction
-measured 533.2 ms versus 3.558 s (6.67x), and Haar analysis/synthesis measured
-29.1 ms versus 72.7 ms (2.49x).  These ratios measure Python dispatch and array
+measured 479.3 ms versus 3.668 s (7.65x), and one-scale Haar analysis measured
+29.6 ms versus 68.8 ms (2.33x).  These ratios measure Python dispatch and array
 execution on one development machine; reconstruction tolerances and supported
 shape contracts are unchanged.
 

@@ -82,6 +82,16 @@ def main() -> int:
     multi_output, multi_output_seconds, multi_output_peak = _measure(
         lambda: plan(image), args.repeats, args.warmups
     )
+    gradient_only, gradient_only_seconds, gradient_only_peak = _measure(
+        lambda: plan(image, hessian=False, laplacian=False),
+        args.repeats,
+        args.warmups,
+    )
+    laplacian_only, laplacian_only_seconds, laplacian_only_peak = _measure(
+        lambda: plan(image, gradient=False, hessian=False, laplacian=True),
+        args.repeats,
+        args.warmups,
+    )
     scalar, scalar_seconds, scalar_peak = _measure(
         lambda: _scalar_gradient_magnitude(operator), args.repeats, args.warmups
     )
@@ -92,6 +102,12 @@ def main() -> int:
     np.testing.assert_equal(cached, vectorized)
     assert multi_output.gradient is not None
     assert multi_output.hessian is not None
+    assert gradient_only.gradient is not None
+    assert gradient_only.hessian is None
+    assert gradient_only.laplacian is None
+    assert laplacian_only.gradient is None
+    assert laplacian_only.hessian is None
+    np.testing.assert_equal(laplacian_only.laplacian, multi_output.laplacian)
 
     rows = [
         {
@@ -108,6 +124,16 @@ def main() -> int:
             "path": "multi_output_plan",
             "median_seconds": multi_output_seconds,
             "tracemalloc_peak_bytes": multi_output_peak,
+        },
+        {
+            "path": "gradient_only_plan",
+            "median_seconds": gradient_only_seconds,
+            "tracemalloc_peak_bytes": gradient_only_peak,
+        },
+        {
+            "path": "laplacian_only_plan",
+            "median_seconds": laplacian_only_seconds,
+            "tracemalloc_peak_bytes": laplacian_only_peak,
         },
         {
             "path": "scalar_reference",
@@ -134,6 +160,9 @@ def main() -> int:
         "vectorized_speedup": scalar_seconds / vectorized_seconds,
         "cached_speedup": vectorized_seconds / cached_seconds,
         "multi_output_seconds": multi_output_seconds,
+        "gradient_only_seconds": gradient_only_seconds,
+        "laplacian_only_seconds": laplacian_only_seconds,
+        "laplacian_peak_fraction_of_full": (laplacian_only_peak / multi_output_peak),
         "max_abs_difference": float(np.max(np.abs(vectorized - scalar))),
         "results": rows,
     }
@@ -142,6 +171,7 @@ def main() -> int:
         f"scalar={scalar_seconds:.6f}s "
         f"speedup={payload['vectorized_speedup']:.2f}x "
         f"cached={cached_seconds:.6f}s "
+        f"laplacian-only={laplacian_only_seconds:.6f}s "
         f"max-error={payload['max_abs_difference']:.3e}"
     )
     if args.output_json:

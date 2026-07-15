@@ -4,7 +4,7 @@ Development roadmap
 Execution status (2026-07-15)
 -----------------------------
 
-Four repository-wide implementation passes are complete.  The first established
+Five repository-wide implementation passes are complete.  The first established
 positioning, provenance, numerical contracts, bounded ``TensorSpline``
 evaluation, conservative internal sharing, reproducible benchmarks, and the
 packaging and quality workflows.  The second added reusable geometry plans,
@@ -27,26 +27,36 @@ and enforce machine-relative regression floors.  The macOS FFT test uses a
 tight numerical tolerance, and CI annotations preserve the actual pytest
 failure section when a matrix job fails.
 
+The fifth pass profiles and directly contracts NumPy point supports, adapts
+wavelet batching to plane working-set size, adds selective and buffered
+differential outputs, and hardens affine coefficient persistence and concurrent
+reuse.  A batch-size/spatial-size memory sweep now accompanies the complete
+workflow benchmark, and the development benchmark runs smoke evidence for
+relevant publication-branch changes or a manually selected profile as a
+Linux/macOS/Windows matrix.  These additions strengthen evidence without
+merging the independent public modules.
+
 The detailed work packages below remain the long-term graduation criteria,
 not a claim that every experimental module is now stable.  In particular,
 implementation completeness and API stability are different promises.
 
-Two evidence gates intentionally remain open: GPU-backed CuPy CI and completed
-multi-machine performance runs.  A Linux/macOS/Windows manual resize benchmark
-matrix now generates the latter evidence, but the policy will remain narrowly
-scoped until artifacts from those runners have been reviewed.  The maintainer
+Two evidence gates intentionally remain open: GPU-backed CuPy CI and reviewed
+multi-machine performance runs.  Linux/macOS/Windows manual resize and
+development benchmark matrices now generate the latter evidence, but the
+policy will remain narrowly scoped until artifacts from those runners have
+been collected and reviewed.  The maintainer
 cleared the current distribution's provenance on
 2026-07-15.  Higher-order research modules remain experimental where a
 published numerical reference or exact reconstruction property is incomplete;
 the order-5 spline wavelet is one explicit example.  These limits are recorded in
 :doc:`project-status` and :doc:`provenance`.
 
-The batching pass is validated but intentionally unreleased.  The next
+The stabilization pass is validated but intentionally unreleased.  The next
 decision point is evidence review rather than another broad implementation
-wave: collect the manual platform artifacts, observe the new coefficient and
-explicit-axis APIs in real workloads, and promote modules only when their
-individual graduation gates are met.  A release is explicitly not required at
-this stage.
+wave: collect the manual platform artifacts, observe coefficient persistence,
+output selection, and explicit-axis APIs in at least two real workloads, and
+promote modules only when their individual graduation gates are met.  A release
+is explicitly not required at this stage.
 
 Purpose
 -------

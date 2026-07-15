@@ -61,6 +61,18 @@
       "artifact": "workflows.json",
       "json_path": "results.*.max_abs_difference",
       "maximum": 2e-4
+    },
+    {
+      "name": "Explicit batch traced-memory scaling",
+      "artifact": "batch-scaling.json",
+      "json_path": "summary.max_normalized_peak_growth",
+      "maximum": 1.5
+    },
+    {
+      "name": "Explicit batch numerical equivalence",
+      "artifact": "batch-scaling.json",
+      "json_path": "summary.max_abs_difference",
+      "maximum": 1e-12
     }
   ]
 }

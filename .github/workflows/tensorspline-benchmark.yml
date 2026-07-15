@@ -1,6 +1,17 @@
 name: Development benchmarks
 
 on:
+  push:
+    branches: [feature/publication]
+    paths:
+      - ".github/workflows/tensorspline-benchmark.yml"
+      - "benchmarks/consolidation-thresholds.json"
+      - "scripts/benchmark_batch_scaling.py"
+      - "scripts/benchmark_workflows.py"
+      - "src/splineops/affine/**"
+      - "src/splineops/differentials/**"
+      - "src/splineops/multiscale/wavelets/**"
+      - "src/splineops/spline_interpolation/**"
   workflow_dispatch:
     inputs:
       profile:
@@ -12,8 +23,14 @@ on:
 
 jobs:
   benchmark:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
     env:
+      BENCHMARK_PROFILE: ${{ inputs.profile || 'smoke' }}
       OMP_NUM_THREADS: 1
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
@@ -33,7 +50,7 @@ jobs:
       - name: Benchmark construction, evaluation, and peak memory
         run: >-
           python scripts/benchmark_tensorspline.py
-          --profile "${{ inputs.profile }}"
+          --profile "${{ env.BENCHMARK_PROFILE }}"
           --output-json tensorspline.json
           --output-csv tensorspline.csv
 
@@ -52,30 +69,37 @@ jobs:
       - name: Benchmark equivalent affine rotation
         run: >-
           python scripts/benchmark_affine.py
-          --profile "${{ inputs.profile }}"
+          --profile "${{ env.BENCHMARK_PROFILE }}"
           --output-json affine.json
           --output-csv affine.csv
 
       - name: Benchmark vectorized differentials
         run: >-
           python scripts/benchmark_differentials.py
-          --profile "${{ inputs.profile }}"
+          --profile "${{ env.BENCHMARK_PROFILE }}"
           --output-json differentials.json
           --output-csv differentials.csv
 
       - name: Benchmark vectorized multiscale transforms
         run: >-
           python scripts/benchmark_multiscale.py
-          --profile "${{ inputs.profile }}"
+          --profile "${{ env.BENCHMARK_PROFILE }}"
           --output-json multiscale.json
           --output-csv multiscale.csv
 
       - name: Benchmark complete reusable workflows
         run: >-
           python scripts/benchmark_workflows.py
-          --profile "${{ inputs.profile }}"
+          --profile "${{ env.BENCHMARK_PROFILE }}"
           --output-json workflows.json
           --output-csv workflows.csv
+
+      - name: Benchmark explicit batch memory scaling
+        run: >-
+          python scripts/benchmark_batch_scaling.py
+          --profile "${{ env.BENCHMARK_PROFILE }}"
+          --output-json batch-scaling.json
+          --output-csv batch-scaling.csv
 
       - name: Check machine-relative regression thresholds
         run: >-
@@ -85,7 +109,7 @@ jobs:
 
       - uses: actions/upload-artifact@v6
         with:
-          name: development-benchmarks-${{ inputs.profile }}-${{ github.sha }}
+          name: development-benchmarks-${{ runner.os }}-${{ env.BENCHMARK_PROFILE }}-${{ github.sha }}
           path: |
             tensorspline.json
             tensorspline.csv
@@ -101,4 +125,6 @@ jobs:
             multiscale.csv
             workflows.json
             workflows.csv
+            batch-scaling.json
+            batch-scaling.csv
           if-no-files-found: error

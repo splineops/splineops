@@ -28,6 +28,8 @@ Compatibility matrix
      - Partly shared
      - Affine evaluates through ``TensorSpline``.  Resize projection has a
        different scale-dependent cross-Gram contract and remains specialized.
+       NumPy point supports contract directly with their weights; CuPy retains
+       its existing broadcast-and-reduce path until GPU evidence exists.
    * - Boundary mapping
      - Interpolation, resize, pyramids
      - Not unified
@@ -71,7 +73,8 @@ array rank:
      - Unselected axes are preserved exactly.
    * - Affine
      - Exactly two or three ``spatial_axes``
-     - Every remaining slice is transformed independently.
+     - Remaining slices are mathematically independent and share one batched
+       prefilter/support contraction with memory-bounded query tiles.
    * - ``TensorSpline``
      - Every construction-data axis is a spline dimension
      - Query coordinates may be batched; sample-value channel axes are not
@@ -86,8 +89,9 @@ array rank:
        object remains scalar.
    * - Multiscale
      - Two explicit ``spatial_axes`` for 2-D pyramids and wavelets
-     - Remaining slices are transformed in cache-sized vectorized groups; axes
-       are never inferred from rank.
+     - Small planes use cache-sized vectorized groups; cache-filling planes are
+       dispatched directly to avoid full-array transpose copies.  Axes are
+       never inferred from rank.
 
 Rules for shared internals
 --------------------------

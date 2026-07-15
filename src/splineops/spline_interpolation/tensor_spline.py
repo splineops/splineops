@@ -745,13 +745,29 @@ class TensorSpline:
             indexes_bc.append(indexes.reshape(broadcast_shape))
             weights_bc.append(weights.reshape(broadcast_shape))
 
+        axes_sum = tuple(range(batch_ndim, batch_ndim + ndim))
+        coefficient_index = (slice(None),) * batch_ndim + tuple(indexes_bc)
+        gathered = coefficients[coefficient_index]
+        if xp is np:
+            labels = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            required_labels = batch_ndim + ndim + 1
+            if required_labels <= len(labels):
+                batch_labels = labels[:batch_ndim]
+                support_labels = labels[batch_ndim : batch_ndim + ndim]
+                query_label = labels[batch_ndim + ndim]
+                value_labels = batch_labels + support_labels + query_label
+                weight_labels = ",".join(
+                    label + query_label for label in support_labels
+                )
+                equation = (
+                    f"{value_labels},{weight_labels}->{batch_labels}{query_label}"
+                )
+                return np.einsum(equation, gathered, *weights_seq, optimize=False)
         weights_product = weights_bc[0]
         for weights in weights_bc[1:]:
             weights_product = weights_product * weights
-        axes_sum = tuple(range(batch_ndim, batch_ndim + ndim))
-        coefficient_index = (slice(None),) * batch_ndim + tuple(indexes_bc)
         return xp.sum(
-            coefficients[coefficient_index] * weights_product,
+            gathered * weights_product,
             axis=axes_sum,
         )
 

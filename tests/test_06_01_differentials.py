@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from splineops.differentials import DifferentialPlan, Differentials
+from splineops.differentials import DifferentialPlan, DifferentialResult, Differentials
 from splineops.differentials.differentials import differentials
 
 
@@ -242,6 +242,83 @@ def test_differential_plan_supports_explicit_batch_and_channel_axes():
         plan(image)
     with pytest.raises(ValueError, match="distinct"):
         plan(image, spatial_axes=(1, 1))
+
+
+def test_differential_plan_can_compute_laplacian_without_packed_hessian():
+    rng = np.random.default_rng(20260718)
+    image = rng.standard_normal((18, 21))
+    plan = DifferentialPlan(image.shape, spacing=(0.7, 1.2))
+
+    full = plan(image)
+    selected = plan(image, gradient=False, hessian=False, laplacian=True)
+
+    assert selected.gradient is None
+    assert selected.hessian is None
+    np.testing.assert_equal(selected.laplacian, full.laplacian)
+    omitted = plan(image, gradient=False, hessian=False)
+    assert omitted == DifferentialResult(None, None, None)
+
+
+def test_differential_plan_supports_exact_structured_output_buffers():
+    rng = np.random.default_rng(20260718)
+    image = rng.standard_normal((2, 12, 14, 3)).astype(np.float32)
+    plan = DifferentialPlan((12, 14), spacing=(0.7, 1.2))
+    expected = plan(
+        image,
+        gradient=True,
+        hessian=False,
+        laplacian=True,
+        spatial_axes=(1, 2),
+    )
+    out = DifferentialResult(
+        tuple(np.empty_like(component) for component in expected.gradient),
+        None,
+        np.empty_like(expected.laplacian),
+    )
+
+    returned = plan(
+        image,
+        gradient=True,
+        hessian=False,
+        laplacian=True,
+        spatial_axes=(1, 2),
+        out=out,
+    )
+
+    assert returned is out
+    for actual, reference in zip(returned.gradient, expected.gradient):
+        np.testing.assert_equal(actual, reference)
+    np.testing.assert_equal(returned.laplacian, expected.laplacian)
+
+    with pytest.raises(ValueError, match="out.hessian"):
+        plan(
+            image,
+            hessian=False,
+            laplacian=False,
+            spatial_axes=(1, 2),
+            out=DifferentialResult(
+                tuple(np.empty_like(component) for component in expected.gradient),
+                (np.empty_like(image),),
+                None,
+            ),
+        )
+    with pytest.raises(TypeError, match="dtype"):
+        plan(
+            image,
+            gradient=False,
+            hessian=False,
+            laplacian=True,
+            spatial_axes=(1, 2),
+            out=DifferentialResult(None, None, np.empty(image.shape, dtype=np.float64)),
+        )
+
+
+@pytest.mark.parametrize("argument", ["gradient", "hessian", "laplacian"])
+def test_differential_plan_rejects_nonboolean_output_selection(argument):
+    plan = DifferentialPlan((8, 9))
+    options = {argument: "yes"}
+    with pytest.raises(TypeError, match=argument):
+        plan(np.ones((8, 9)), **options)
 
 
 ##############################################################################

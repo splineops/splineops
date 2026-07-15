@@ -27,6 +27,9 @@ field once and share it deliberately:
 The tagged field rejects a plan with a different construction shape, spline
 degree, boundary mode, or precision.  ``prefilter`` remains the raw-array,
 ``out=``-capable alternative when the caller manages that provenance.
+Use ``coefficients.save("field.npz")`` and
+``compatible_plan.load_coefficients("field.npz")`` when the field crosses a
+process boundary; loading validates JSON metadata before rebuilding the tag.
 
 The plans must have the same input shape, degree, mode, and dtype.  Ordinary
 ``plan(frame)`` remains the correct end-to-end call for one geometry.  The
@@ -49,11 +52,18 @@ Spatial axes are selected explicitly and every remaining slice is independent:
 
    derivatives = DifferentialPlan(batch.shape[-2:], spacing=(0.7, 0.7))
    maps = derivatives(batch, spatial_axes=(-2, -1))
+   laplacian = derivatives(
+       batch,
+       gradient=False,
+       hessian=False,
+       laplacian=True,
+       spatial_axes=(-2, -1),
+   ).laplacian
 
 ``maps.gradient`` follows the order supplied in ``spatial_axes`` and packed
-Hessian entries follow ``(00, 01, 11)`` in 2-D.  Smoothing executes a batched
-real FFT; differentials use an isolated cached workspace for each scalar
-batch/channel slice.
+Hessian entries follow ``(00, 01, 11)`` in 2-D.  A Laplacian-only request skips
+gradient and mixed-Hessian construction.  Smoothing executes a batched real
+FFT; differentials use one batched per-call workspace.
 
 Multiscale batches
 ------------------

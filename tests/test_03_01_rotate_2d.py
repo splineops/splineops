@@ -1,10 +1,13 @@
 # splineops/tests/test_03_01_rotate_2d.py
 
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 import pytest
 import splineops.affine.affine as affine_module
 from scipy.ndimage import affine_transform
 from splineops.affine.affine import (
+    AffineCoefficientField,
     AffinePlan,
     affine_transform as spline_affine,
     rotate,
@@ -296,6 +299,45 @@ def test_affine_coefficient_field_checks_provenance_and_reuses_across_geometries
         incompatible.apply_coefficients(field)
     with pytest.raises(ValueError, match="differs from the tagged"):
         first.apply_coefficients(field, spatial_axes=(0, 1))
+
+
+def test_affine_coefficient_field_safe_roundtrip_and_concurrent_reuse(tmp_path):
+    rng = np.random.default_rng(20260718)
+    data = rng.standard_normal((2, 17, 19, 2))
+    source = AffinePlan((17, 19), np.eye(2), degree=3, mode="mirror")
+    target = AffinePlan(
+        (17, 19),
+        np.array([[1.0, 0.04], [-0.02, 1.0]]),
+        degree=3,
+        mode="mirror",
+    )
+    field = source.prepare_coefficients(data, spatial_axes=(1, 2))
+    archive = tmp_path / "coefficients.npz"
+
+    field.save(archive)
+    restored = target.load_coefficients(archive)
+    expected = target.apply_coefficients(field)
+
+    assert restored.configuration == field.configuration
+    assert restored.spatial_axes == field.spatial_axes
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        results = list(
+            executor.map(lambda _: target.apply_coefficients(restored), range(8))
+        )
+    for result in results:
+        np.testing.assert_equal(result, expected)
+
+    incompatible = AffinePlan((17, 19), np.eye(2), degree=1, mode="mirror")
+    with pytest.raises(ValueError, match="incompatible"):
+        incompatible.load_coefficients(archive)
+    with pytest.raises(TypeError, match="Construct coefficient fields"):
+        AffineCoefficientField(
+            np.ones((17, 19)),
+            (0, 1),
+            object(),
+            {},
+            {},
+        )
 
 
 def test_affine_plan_enforces_geometry_memory_limit():

@@ -22,6 +22,9 @@ All notable changes to SplineOps are documented here.
   buffers.  Separable tensor grids use axis-wise contraction to reduce runtime
   and peak memory.  Geometry templates can now refit new data or accept
   explicitly precomputed coefficients without hidden mutation.
+  NumPy point-support evaluation now contracts gathered coefficients and
+  per-axis weights directly, avoiding a broadcast weight product; the existing
+  CuPy path is unchanged pending dedicated GPU evidence.
 - Replaced affine full-volume coordinate meshgrids with tiled pull-back
   evaluation, made integer promotion and degree validation explicit, and added
   matched SciPy comparisons across degrees 0--5.  Added a general pull-back
@@ -32,7 +35,9 @@ All notable changes to SplineOps are documented here.
   Added immutable `AffineCoefficientField` tags that reject reuse across an
   incompatible input grid, degree, boundary mode, or precision while allowing
   different matrices and output shapes. Batched coefficient filtering and
-  support evaluation now avoid per-slice plan dispatch.
+  support evaluation now avoid per-slice plan dispatch. Tagged fields support
+  a validated JSON-plus-numeric NPZ round trip and concurrent read-only reuse;
+  direct untagged construction is rejected.
 - Made differential operations return raw results without replacing the source
   image, removed implicit normalization and console output, and vectorized
   row/column spline prefiltering. Added physical spacing, standard increasing-
@@ -41,7 +46,9 @@ All notable changes to SplineOps are documented here.
   requested gradient, packed Hessian, and Laplacian outputs through one cached
   workspace and now accepts explicit batch/channel spatial axes.
   Explicit-axis plans now execute all slices through one batched workspace
-  instead of constructing one workspace per slice.
+  instead of constructing one workspace per slice. Gradient, Hessian, and
+  Laplacian families can be selected independently; Laplacian-only requests
+  skip mixed Hessians, and exact structured output buffers are supported.
 - Corrected adaptive-regression amplitude sparsification, eliminated caller
   mutation, added opt-in convergence diagnostics, removed a duplicate smoothing
   implementation, and tightened research-module parameter validation.  Added a
@@ -57,7 +64,9 @@ All notable changes to SplineOps are documented here.
   dispatching one Python call per row or column, with explicit spatial axes for
   batch and channel arrays. Explicit-axis wavelets now process independent
   planes in cache-bounded vectorized groups, and Haar split/merge writes into
-  preallocated destinations to reduce temporary arrays.
+  preallocated destinations to reduce temporary arrays. Large cache-filling
+  planes now avoid whole-array transpose copies, removing the measured
+  large-plane batch regression while preserving small-plane vectorization.
 
 ### Project maturity
 
@@ -82,6 +91,11 @@ All notable changes to SplineOps are documented here.
   measurements and regression floors. CI failure annotations now select the
   pytest failure section, and cross-platform FFT equivalence uses a tight
   floating tolerance rather than requiring bitwise identity.
+- Added explicit batch-count and spatial-size runtime/memory sweeps with
+  machine-readable growth and equivalence summaries. The development benchmark
+  now runs publication-branch smoke evidence, or a manually selected profile,
+  on Linux, macOS, and Windows and publishes per-runner artifacts. These remain
+  evidence and soak gates, not release promises.
 
 ## 2.0.0 - 2026-07-14
 

@@ -57,17 +57,19 @@ Current capability matrix
        batch/channel axes, output buffers, bounded one-shot execution, cached
        fixed-geometry plans, vectorized batch coefficient evaluation, immutable
        compatibility-tagged coefficients reusable across affine geometries,
-       and equivalent SciPy parity for degrees 0--5; SplineOps also accepts its
+       safe validated coefficient persistence, concurrent field reuse, and
+       equivalent SciPy parity for degrees 0--5; SplineOps also accepts its
        higher-order degrees 6 and 7.
      - Improve performance only with profile-backed changes.  SciPy remains
-       5.28x--19.02x faster than the SplineOps one-shot path in the current
+       8.96x--19.54x faster than the SplineOps one-shot path in the current
        standard matched benchmark, despite useful gains from cached geometry.
    * - Differentials
      - Experimental
      - Raw repeatable outputs, preserved source arrays, vectorized coefficient
        filtering, physical spacing, 2-D/3-D gradient and packed Hessian
        components, explicit batch/channel axes through one batched multi-output
-       workspace, legacy-reference coverage, and polynomial and trigonometric
+       workspace, independent output-family selection, exact structured output
+       buffers, legacy-reference coverage, and polynomial and trigonometric
        invariants.
      - Define additional boundary/dtype contracts before describing the module
        as a general N-D differential engine; angular maps intentionally remain
@@ -92,9 +94,9 @@ Current capability matrix
        and ADMM-parameter guidance.
    * - Multiscale
      - Experimental
-     - Explicit odd/singleton pyramid behavior, vectorized whole-axis pyramid
-       and cache-bounded batched wavelet passes with explicit batch/channel
-       axes, perfect
+     - Explicit odd/singleton pyramid behavior, vectorized whole-axis pyramid,
+       adaptive small-plane vectorization and large-plane wavelet dispatch with
+       explicit batch/channel axes, perfect
        reconstruction for supported even rectangular Haar and cubic
        spline-wavelet shapes, and a reconstruction-error audit for spline
        orders 1, 3, and 5.
@@ -167,14 +169,29 @@ regression rather than a win.  The smoke Haar workload measured 1.73x.  This
 pass also repairs the macOS FFT test's overly strict bitwise comparison and
 improves CI failure annotations.  It remains intentionally unreleased.
 
-Graduation decisions after consolidation
------------------------------------------
+After the fifth hardening and profiling pass, the full suite completed ``1189
+passed`` in 140.51 seconds.  Black, scoped MyPy, a warning-fatal Sphinx build,
+the stored smoke benchmark policy, source and native-wheel builds, and a clean
+wheel import smoke test also passed.  The standard batch-memory sweep agreed
+with scalar dispatch for every measured affine, Laplacian-only, and Haar row;
+its worst normalized traced-memory growth was 1.08.  Direct NumPy support
+contraction improved the measured affine workloads, while adaptive wavelet
+dispatch restored the representative four-plane Haar round trip to
+approximately neutral performance.  The Linux/macOS/Windows branch workflow
+will provide the independent platform evidence; this local result remains
+pre-release validation and no distribution was published.
+
+Stability-soak and graduation review
+------------------------------------
 
 The added capabilities do not automatically promote a module.  ``TensorSpline``
 remains stabilizing until dedicated CuPy CI and broader independent references
 cover the advertised backend and non-B-spline surface.  Affine and
 differentials are the closest experimental modules to a future stability
-review, but they need cross-platform evidence and an API-soak period first.
+review, but this review deliberately does not promote them.  Their new
+coefficient-persistence, output-selection, and output-buffer contracts need a
+real API-soak period, and the Linux/macOS/Windows development benchmark
+artifacts still need to be collected and reviewed.
 Smoothing, adaptive regression, and multiscale remain experimental while their
 published-reference, parameter-guidance, and reconstruction gates are open.
 
@@ -182,6 +199,20 @@ This deliberately separates implementation quality from compatibility
 promises.  Users can rely on the documented functionality today without the
 project pretending that one Linux validation run establishes a stable public
 contract on every platform.
+
+Promotion from experimental requires all of the following evidence:
+
+* successful test and development-benchmark artifacts on Linux, macOS, and
+  Windows, with numerical equivalence checked before timing ratios;
+* at least two representative downstream workloads exercising the new APIs
+  without contract changes or unresolved correctness reports;
+* reviewed batch-memory scaling and concurrency behavior at the documented
+  sizes; and
+* migration guidance for any naming or buffer-contract change discovered
+  during the soak.
+
+Until those gates close, changes may still refine these experimental APIs and
+no release is implied by implementation completeness.
 
 Reproducing validation
 ----------------------
@@ -202,6 +233,8 @@ Reproducing validation
      --output-json /tmp/splineops-bench/multiscale.json
    python scripts/benchmark_workflows.py --profile standard \
      --output-json /tmp/splineops-bench/workflows.json
+   python scripts/benchmark_batch_scaling.py --profile standard \
+     --output-json /tmp/splineops-bench/batch-scaling.json
    python scripts/check_benchmark_thresholds.py \
      --policy benchmarks/consolidation-thresholds.json \
      --artifacts-dir /tmp/splineops-bench

@@ -27,8 +27,11 @@ in 2-D and ``(00, 01, 02, 11, 12, 22)`` in 3-D.
 For changing arrays with fixed shape and spacing,
 :class:`~splineops.differentials.differentials.DifferentialPlan` computes
 gradient, Hessian, and Laplacian outputs through one per-call cached workspace.
-It accepts explicit ``spatial_axes`` for batch and channel arrays; the legacy
-``Differentials`` object intentionally remains scalar.
+It accepts explicit ``spatial_axes`` for batch and channel arrays, independent
+``gradient``/``hessian``/``laplacian`` selection, and exact structured
+``DifferentialResult`` output buffers.  Laplacian-only execution computes only
+diagonal second derivatives.  The legacy ``Differentials`` object
+intentionally remains scalar.
 
 .. automodule:: splineops.differentials.differentials
    :members:

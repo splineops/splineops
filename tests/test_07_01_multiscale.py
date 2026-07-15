@@ -294,6 +294,27 @@ def test_wavelets_support_explicit_batch_and_channel_axes(wavelet_class):
         wavelet.analysis(data, spatial_axes=(1, 1))
 
 
+def test_wavelet_batch_strategy_adapts_to_plane_working_set():
+    wavelet = HaarWavelets(scales=2)
+
+    assert not wavelet._prefer_plane_dispatch((64, 80), np.dtype(np.float64), (0, 3))
+    assert wavelet._prefer_plane_dispatch((256, 320), np.dtype(np.float64), (0, 3))
+
+
+def test_wavelet_large_plane_dispatch_preserves_noncanonical_axis_order():
+    rng = np.random.default_rng(20260718)
+    data = rng.standard_normal((320, 2, 256))
+    wavelet = HaarWavelets(scales=2)
+
+    coefficients = wavelet.analysis(data, spatial_axes=(2, 0))
+    reconstructed = wavelet.synthesis(coefficients, spatial_axes=(2, 0))
+
+    for batch in range(data.shape[1]):
+        expected = wavelet.analysis(data[:, batch, :].T)
+        np.testing.assert_equal(coefficients[:, batch, :].T, expected)
+    np.testing.assert_allclose(reconstructed, data, rtol=0.0, atol=2e-12)
+
+
 @pytest.mark.parametrize(
     "wavelet_class,ground_truth",
     [

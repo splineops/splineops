@@ -353,8 +353,11 @@ def test_differentials_benchmark_smoke(tmp_path):
         "vectorized_cold",
         "cached_instance",
         "multi_output_plan",
+        "gradient_only_plan",
+        "laplacian_only_plan",
         "scalar_reference",
     }
+    assert payload["laplacian_peak_fraction_of_full"] < 1.0
     assert output_csv.exists()
 
 
@@ -437,6 +440,46 @@ def test_consolidated_workflow_benchmark_smoke(tmp_path):
     }
     assert all(row["speedup"] > 0 for row in payload["results"])
     assert all(row["max_abs_difference"] < 2e-4 for row in payload["results"])
+    assert output_csv.exists()
+
+
+def test_batch_scaling_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "batch-scaling.json"
+    output_csv = tmp_path / "batch-scaling.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_batch_scaling.py"),
+            "--profile",
+            "smoke",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert {row["operation"] for row in payload["results"]} == {
+        "affine",
+        "laplacian_only",
+        "haar_roundtrip",
+    }
+    assert {row["batch_count"] for row in payload["results"]} == {1, 2, 4}
+    assert payload["summary"]["max_normalized_peak_growth"] < 1.5
+    assert payload["summary"]["max_abs_difference"] < 1e-12
     assert output_csv.exists()
 
 
