@@ -177,9 +177,12 @@ with scalar dispatch for every measured affine, Laplacian-only, and Haar row;
 its worst normalized traced-memory growth was 1.08.  Direct NumPy support
 contraction improved the measured affine workloads, while adaptive wavelet
 dispatch restored the representative four-plane Haar round trip to
-approximately neutral performance.  The Linux/macOS/Windows branch workflow
-will provide the independent platform evidence; this local result remains
-pre-release validation and no distribution was published.
+approximately neutral performance.  The subsequent `cross-platform smoke run
+29424000663 <https://github.com/splineops/splineops/actions/runs/29424000663>`_
+passed on Linux, macOS, and Windows and uploaded one complete benchmark artifact
+per runner.  The nine-job Python/OS library matrix and quality workflow also
+passed for commit ``32b9d8c``.  This remains pre-release validation and no
+distribution was published.
 
 Stability-soak and graduation review
 ------------------------------------
@@ -190,8 +193,9 @@ cover the advertised backend and non-B-spline surface.  Affine and
 differentials are the closest experimental modules to a future stability
 review, but this review deliberately does not promote them.  Their new
 coefficient-persistence, output-selection, and output-buffer contracts need a
-real API-soak period, and the Linux/macOS/Windows development benchmark
-artifacts still need to be collected and reviewed.
+real API-soak period.  Linux/macOS/Windows smoke artifacts have now been
+collected and reviewed successfully; a manually requested standard profile is
+still required before making broader portable performance claims.
 Smoothing, adaptive regression, and multiscale remain experimental while their
 published-reference, parameter-guidance, and reconstruction gates are open.
 

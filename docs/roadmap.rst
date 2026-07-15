@@ -41,10 +41,12 @@ not a claim that every experimental module is now stable.  In particular,
 implementation completeness and API stability are different promises.
 
 Two evidence gates intentionally remain open: GPU-backed CuPy CI and reviewed
-multi-machine performance runs.  Linux/macOS/Windows manual resize and
-development benchmark matrices now generate the latter evidence, but the
-policy will remain narrowly scoped until artifacts from those runners have
-been collected and reviewed.  The maintainer
+standard-profile multi-machine performance runs.  The Linux/macOS/Windows
+development smoke matrix passed for commit ``32b9d8c`` and produced one
+artifact per runner; this closes the initial platform-smoke gate without
+turning short CI measurements into portable performance promises.  The manual
+resize and development matrices provide the deeper evidence when requested.
+The maintainer
 cleared the current distribution's provenance on
 2026-07-15.  Higher-order research modules remain experimental where a
 published numerical reference or exact reconstruction property is incomplete;
@@ -53,10 +55,10 @@ the order-5 spline wavelet is one explicit example.  These limits are recorded i
 
 The stabilization pass is validated but intentionally unreleased.  The next
 decision point is evidence review rather than another broad implementation
-wave: collect the manual platform artifacts, observe coefficient persistence,
-output selection, and explicit-axis APIs in at least two real workloads, and
-promote modules only when their individual graduation gates are met.  A release
-is explicitly not required at this stage.
+wave: run the standard platform profile when the project is ready for that
+cost, observe coefficient persistence, output selection, and explicit-axis APIs
+in at least two real workloads, and promote modules only when their individual
+graduation gates are met.  A release is explicitly not required at this stage.
 
 Purpose
 -------
