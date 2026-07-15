@@ -67,14 +67,14 @@ class HaarWavelets(AbstractWavelets):
             Transformed array (same shape).
         """
         out = self._prepare_single_scale_input(inp)
-        ny, nx = out.shape
+        ny, nx = out.shape[-2:]
         if ny < 2 or nx < 2 or ny % 2 or nx % 2:
             raise ValueError(
                 "Haar2D needs even ny>=2 and nx>=2, " f"got shape=({ny},{nx})."
             )
 
-        out = self._split_axis(out, axis=1)
-        return self._split_axis(out, axis=0)
+        out = self._split_axis(out, axis=-1)
+        return self._split_axis(out, axis=-2)
 
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
         """
@@ -91,14 +91,14 @@ class HaarWavelets(AbstractWavelets):
             Reconstructed array.
         """
         out = self._prepare_single_scale_input(inp)
-        ny, nx = out.shape
+        ny, nx = out.shape[-2:]
         if ny < 2 or nx < 2 or ny % 2 or nx % 2:
             raise ValueError(
                 "Haar2D needs even ny>=2 and nx>=2, " f"got shape=({ny},{nx})."
             )
 
-        out = self._merge_axis(out, axis=0)
-        return self._merge_axis(out, axis=1)
+        out = self._merge_axis(out, axis=-2)
+        return self._merge_axis(out, axis=-1)
 
     def _split_axis(self, array, axis):
         moved = np.moveaxis(array, axis, -1)
@@ -129,9 +129,12 @@ class HaarWavelets(AbstractWavelets):
         half = n // 2
         even = v[..., 0::2]
         odd = v[..., 1::2]
-        return np.concatenate(
-            ((even + odd) / self.q, (even - odd) / self.q), axis=-1
-        ).astype(v.dtype, copy=False)
+        out = np.empty_like(v)
+        np.add(even, odd, out=out[..., :half])
+        out[..., :half] /= self.q
+        np.subtract(even, odd, out=out[..., half:])
+        out[..., half:] /= self.q
+        return out
 
     def _merge(self, v: np.ndarray) -> np.ndarray:
         """
@@ -154,6 +157,8 @@ class HaarWavelets(AbstractWavelets):
         out = np.empty_like(v)
         approximation = v[..., :half]
         detail = v[..., half:]
-        out[..., 0::2] = (approximation + detail) / self.q
-        out[..., 1::2] = (approximation - detail) / self.q
+        np.add(approximation, detail, out=out[..., 0::2])
+        out[..., 0::2] /= self.q
+        np.subtract(approximation, detail, out=out[..., 1::2])
+        out[..., 1::2] /= self.q
         return out

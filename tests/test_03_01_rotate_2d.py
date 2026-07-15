@@ -251,6 +251,53 @@ def test_affine_plan_prefilters_once_and_applies_precomputed_coefficients():
         plan.apply_coefficients(coefficients.astype(np.float32), spatial_axes=(1, 2))
 
 
+def test_affine_coefficient_field_checks_provenance_and_reuses_across_geometries():
+    rng = np.random.default_rng(20260717)
+    data = rng.standard_normal((2, 11, 13, 3))
+    first = AffinePlan((11, 13), np.eye(2), degree=3, mode="mirror")
+    second = AffinePlan(
+        (11, 13),
+        np.array([[1.0, 0.05], [-0.03, 1.0]]),
+        output_shape=(9, 15),
+        degree=3,
+        mode="mirror",
+    )
+
+    field = first.prepare_coefficients(data, spatial_axes=(1, 2))
+
+    assert field.is_compatible(first)
+    assert field.is_compatible(second)
+    assert field.shape == data.shape
+    assert field.dtype == data.dtype
+    assert field.nbytes == data.nbytes
+    assert field.spatial_axes == (1, 2)
+    assert field.configuration == {
+        "input_shape": (11, 13),
+        "spatial_axes": (1, 2),
+        "degree": 3,
+        "mode": "mirror",
+        "dtype": "<f8",
+    }
+    np.testing.assert_allclose(
+        second.apply_coefficients(field),
+        second(data, spatial_axes=(1, 2)),
+        rtol=0.0,
+        atol=0.0,
+    )
+    copied_values = field.values
+    copied_values.fill(0.0)
+    assert np.any(field.values)
+    with pytest.raises(AttributeError, match="immutable"):
+        field._spatial_axes = (0, 1)
+
+    incompatible = AffinePlan((11, 13), np.eye(2), degree=1, mode="mirror")
+    assert not field.is_compatible(incompatible)
+    with pytest.raises(ValueError, match="Incompatible coefficient field"):
+        incompatible.apply_coefficients(field)
+    with pytest.raises(ValueError, match="differs from the tagged"):
+        first.apply_coefficients(field, spatial_axes=(0, 1))
+
+
 def test_affine_plan_enforces_geometry_memory_limit():
     with pytest.raises(MemoryError, match="max_retained_bytes"):
         AffinePlan((20, 20), np.eye(2), max_retained_bytes=1)

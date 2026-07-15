@@ -134,9 +134,12 @@ def _derivative_stencil(coefficients, axis, order, spacing):
 class _DifferentialWorkspace:
     """Lazy per-array cache shared by all derivative outputs."""
 
-    def __init__(self, image, spacing):
+    def __init__(self, image, spacing, spatial_axes=None):
         self.image = image
         self.spacing = spacing
+        self.spatial_axes = (
+            tuple(range(image.ndim)) if spatial_axes is None else tuple(spatial_axes)
+        )
         self._coefficients = {}
         self._gradients = {}
         self._diagonal_hessians = {}
@@ -144,20 +147,23 @@ class _DifferentialWorkspace:
 
     def coefficients(self, axis):
         if axis not in self._coefficients:
-            self._coefficients[axis] = _axis_coefficients(self.image, axis)
+            actual_axis = self.spatial_axes[axis]
+            self._coefficients[axis] = _axis_coefficients(self.image, actual_axis)
         return self._coefficients[axis]
 
     def gradient(self, axis):
         if axis not in self._gradients:
+            actual_axis = self.spatial_axes[axis]
             self._gradients[axis] = _derivative_stencil(
-                self.coefficients(axis), axis, 1, self.spacing[axis]
+                self.coefficients(axis), actual_axis, 1, self.spacing[axis]
             )
         return self._gradients[axis]
 
     def diagonal_hessian(self, axis):
         if axis not in self._diagonal_hessians:
+            actual_axis = self.spatial_axes[axis]
             self._diagonal_hessians[axis] = _derivative_stencil(
-                self.coefficients(axis), axis, 2, self.spacing[axis]
+                self.coefficients(axis), actual_axis, 2, self.spacing[axis]
             )
         return self._diagonal_hessians[axis]
 
@@ -165,14 +171,15 @@ class _DifferentialWorkspace:
         axes = tuple(sorted((first_axis, second_axis)))
         if axes not in self._mixed_hessians:
             first_derivative = self.gradient(axes[1])
-            coefficients = _axis_coefficients(first_derivative, axes[0])
+            actual_axis = self.spatial_axes[axes[0]]
+            coefficients = _axis_coefficients(first_derivative, actual_axis)
             self._mixed_hessians[axes] = _derivative_stencil(
-                coefficients, axes[0], 1, self.spacing[axes[0]]
+                coefficients, actual_axis, 1, self.spacing[axes[0]]
             )
         return self._mixed_hessians[axes]
 
     def gradient_components(self):
-        return tuple(self.gradient(axis) for axis in range(self.image.ndim))
+        return tuple(self.gradient(axis) for axis in range(len(self.spatial_axes)))
 
     def hessian_components(self):
         return tuple(
@@ -181,8 +188,8 @@ class _DifferentialWorkspace:
                 if first == second
                 else self.mixed_hessian(first, second)
             )
-            for first in range(self.image.ndim)
-            for second in range(first, self.image.ndim)
+            for first in range(len(self.spatial_axes))
+            for second in range(first, len(self.spatial_axes))
         )
 
 
@@ -218,14 +225,16 @@ class DifferentialPlan:
 
         return {"shape": self.shape, "spacing": self.spacing}
 
-    def _apply_spatial(self, image, *, gradient, hessian):
+    def _apply_spatial(self, image, *, gradient, hessian, spatial_axes=None):
         work_dtype = (
             image.dtype
             if np.issubdtype(image.dtype, np.floating)
             else np.dtype(np.float64)
         )
         workspace = _DifferentialWorkspace(
-            image.astype(work_dtype, copy=True), self.spacing
+            image.astype(work_dtype, copy=True),
+            self.spacing,
+            spatial_axes=spatial_axes,
         )
         gradient_result = workspace.gradient_components() if gradient else None
         hessian_result = workspace.hessian_components() if hessian else None
@@ -258,43 +267,31 @@ class DifferentialPlan:
         nonspatial_axes = tuple(axis for axis in range(image.ndim) if axis not in axes)
         permutation = nonspatial_axes + axes
         canonical = np.transpose(image, permutation)
-        batch_shape = canonical.shape[: len(nonspatial_axes)]
-        flattened = canonical.reshape((-1,) + self.shape)
-        results = [
-            self._apply_spatial(item, gradient=gradient, hessian=hessian)
-            for item in flattened
-        ]
+        canonical_spatial_axes = tuple(
+            range(canonical.ndim - len(self.shape), canonical.ndim)
+        )
+        result = self._apply_spatial(
+            canonical,
+            gradient=gradient,
+            hessian=hessian,
+            spatial_axes=canonical_spatial_axes,
+        )
+        inverse_permutation = tuple(np.argsort(permutation))
 
         def restore(components):
             if components is None:
                 return None
-            restored = []
-            for index in range(len(components[0])):
-                canonical_component = np.stack(
-                    [result[index] for result in components], axis=0
-                ).reshape(batch_shape + self.shape)
-                restored.append(
-                    np.ascontiguousarray(
-                        np.transpose(
-                            canonical_component, tuple(np.argsort(permutation))
-                        )
-                    )
-                )
-            return tuple(restored)
+            return tuple(
+                np.ascontiguousarray(np.transpose(component, inverse_permutation))
+                for component in components
+            )
 
-        gradients = restore(
-            None if results[0].gradient is None else [item.gradient for item in results]
-        )
-        hessians = restore(
-            None if results[0].hessian is None else [item.hessian for item in results]
-        )
+        gradients = restore(result.gradient)
+        hessians = restore(result.hessian)
         laplacian = None
-        if results[0].laplacian is not None:
-            canonical_laplacian = np.stack(
-                [item.laplacian for item in results], axis=0
-            ).reshape(batch_shape + self.shape)
+        if result.laplacian is not None:
             laplacian = np.ascontiguousarray(
-                np.transpose(canonical_laplacian, tuple(np.argsort(permutation)))
+                np.transpose(result.laplacian, inverse_permutation)
             )
         return DifferentialResult(gradients, hessians, laplacian)
 

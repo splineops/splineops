@@ -39,6 +39,24 @@
       "minimum": 0.5
     },
     {
+      "name": "Batched affine orchestration speedup",
+      "artifact": "workflows.json",
+      "json_path": "speedups_by_workflow.affine_explicit_axes",
+      "minimum": 1.0
+    },
+    {
+      "name": "Batched differential orchestration speedup",
+      "artifact": "workflows.json",
+      "json_path": "speedups_by_workflow.differentials_explicit_axes",
+      "minimum": 1.05
+    },
+    {
+      "name": "Batched wavelet roundtrip regression floor",
+      "artifact": "workflows.json",
+      "json_path": "speedups_by_workflow.wavelet_roundtrip_explicit_axes",
+      "minimum": 0.75
+    },
+    {
       "name": "Consolidated workflow equivalence",
       "artifact": "workflows.json",
       "json_path": "results.*.max_abs_difference",

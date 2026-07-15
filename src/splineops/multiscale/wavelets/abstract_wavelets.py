@@ -9,6 +9,8 @@ Defines a base class for wavelet analysis & synthesis on 2D (or 3D) signals.
 import numpy as np
 import operator
 
+_BATCH_WORKING_SET_BYTES = 1024**2
+
 
 class AbstractWavelets:
     """
@@ -52,18 +54,20 @@ class AbstractWavelets:
     def _validate_multiscale_input(self, inp):
         out = self._prepare_single_scale_input(inp)
         divisor = 2**self.scales
-        if any(length % divisor for length in out.shape):
+        if any(length % divisor for length in out.shape[-2:]):
             raise ValueError(
                 "Both wavelet dimensions must be divisible by "
-                f"2**scales ({divisor}); received shape {out.shape}."
+                f"2**scales ({divisor}); received shape {out.shape[-2:]}."
             )
         return out
 
     def _prepare_single_scale_input(self, inp):
         if not isinstance(inp, np.ndarray):
             raise TypeError("Wavelet input must be a NumPy array.")
-        if inp.ndim != 2 or any(length == 0 for length in inp.shape):
-            raise ValueError("Wavelet input must be a non-empty 2D array.")
+        if inp.ndim < 2 or any(length == 0 for length in inp.shape):
+            raise ValueError(
+                "Wavelet input must have two non-empty trailing wavelet dimensions."
+            )
         if not np.issubdtype(inp.dtype, np.number) or np.iscomplexobj(inp):
             raise TypeError("Wavelet input must have a real numeric dtype.")
         if not np.all(np.isfinite(inp)):
@@ -116,16 +120,26 @@ class AbstractWavelets:
         canonical = np.array(
             np.transpose(inp, permutation), dtype=dtype, copy=True, order="C"
         )
-        batch_shape = canonical.shape[: len(nonspatial_axes)]
-        flattened = canonical.reshape((-1,) + spatial_shape)
-        return flattened, batch_shape, spatial_shape, permutation
+        return canonical, spatial_shape, permutation
 
     @staticmethod
-    def _restore_spatial_output(flattened, batch_shape, spatial_shape, permutation):
-        canonical = flattened.reshape(batch_shape + spatial_shape)
+    def _restore_spatial_output(canonical, permutation):
         return np.ascontiguousarray(
             np.transpose(canonical, tuple(np.argsort(permutation)))
         )
+
+    @staticmethod
+    def _spatial_chunks(canonical, spatial_shape):
+        """Yield cache-sized groups of independent spatial planes."""
+
+        if canonical.ndim == 2:
+            yield canonical
+            return
+        flattened = canonical.reshape((-1,) + spatial_shape)
+        plane_bytes = int(np.prod(spatial_shape, dtype=np.int64)) * canonical.itemsize
+        chunk_size = max(1, _BATCH_WORKING_SET_BYTES // plane_bytes)
+        for start in range(0, flattened.shape[0], chunk_size):
+            yield flattened[start : start + chunk_size]
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
         """
@@ -177,19 +191,15 @@ class AbstractWavelets:
         np.ndarray
             Full wavelet decomposition (in-place layout).
         """
-        flattened, batch_shape, spatial_shape, permutation = (
-            self._prepare_spatial_input(inp, spatial_axes)
-        )
-        for out in flattened:
+        out, spatial_shape, permutation = self._prepare_spatial_input(inp, spatial_axes)
+        for chunk in self._spatial_chunks(out, spatial_shape):
             ny, nx = spatial_shape
             for _ in range(self.scales):
-                sub = out[:ny, :nx]
-                out[:ny, :nx] = self.analysis1(sub)
+                sub = chunk[..., :ny, :nx]
+                chunk[..., :ny, :nx] = self.analysis1(sub)
                 nx = max(1, nx // 2)
                 ny = max(1, ny // 2)
-        return self._restore_spatial_output(
-            flattened, batch_shape, spatial_shape, permutation
-        )
+        return self._restore_spatial_output(out, permutation)
 
     def synthesis(self, inp: np.ndarray, *, spatial_axes=None) -> np.ndarray:
         """
@@ -209,23 +219,19 @@ class AbstractWavelets:
         np.ndarray
             Reconstructed array (same shape as input).
         """
-        flattened, batch_shape, spatial_shape, permutation = (
-            self._prepare_spatial_input(inp, spatial_axes)
-        )
+        out, spatial_shape, permutation = self._prepare_spatial_input(inp, spatial_axes)
         ny_full, nx_full = spatial_shape
         factor = 2 ** (self.scales - 1)
         nx_coarse = max(1, nx_full // factor)
         ny_coarse = max(1, ny_full // factor)
-        for out in flattened:
+        for chunk in self._spatial_chunks(out, spatial_shape):
             nx, ny = nx_coarse, ny_coarse
             for _ in range(self.scales):
-                sub = out[:ny, :nx]
-                out[:ny, :nx] = self.synthesis1(sub)
+                sub = chunk[..., :ny, :nx]
+                chunk[..., :ny, :nx] = self.synthesis1(sub)
                 nx = min(nx_full, nx * 2)
                 ny = min(ny_full, ny * 2)
-        return self._restore_spatial_output(
-            flattened, batch_shape, spatial_shape, permutation
-        )
+        return self._restore_spatial_output(out, permutation)
 
     def get_name(self) -> str:
         """

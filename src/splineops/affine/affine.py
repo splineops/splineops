@@ -5,6 +5,9 @@ import operator
 from typing import Optional, Sequence, Tuple
 import numpy as np
 import numpy.typing as npt
+from splineops.spline_interpolation._prefilter import (
+    prefilter_interpolation_coefficients,
+)
 from splineops.spline_interpolation.tensor_spline import TensorSpline
 from splineops.spline_interpolation.query_plan import TensorSplineGeometryPlan
 
@@ -35,6 +38,78 @@ def _normalize_spatial_axes(
     ):
         raise ValueError("'spatial_axes' must contain distinct valid axes.")
     return axes
+
+
+class AffineCoefficientField:
+    """Immutable tagged cardinal coefficients prepared by an affine plan.
+
+    Construct fields with :meth:`AffinePlan.prepare_coefficients`.  The tag
+    prevents accidentally applying coefficients with a different input grid,
+    spline degree, boundary mode, or precision.  Transform matrix and output
+    shape are intentionally not part of the tag, so one prepared field can be
+    reused across compatible affine geometries.
+    """
+
+    __slots__ = ("_values", "_spatial_axes", "_signature", "_configuration")
+    _values: np.ndarray
+    _spatial_axes: tuple[int, ...]
+    _signature: object
+    _configuration: dict[str, object]
+
+    def __init__(self, values, spatial_axes, signature, configuration):
+        object.__setattr__(self, "_values", values)
+        self._values.flags.writeable = False
+        object.__setattr__(self, "_spatial_axes", tuple(spatial_axes))
+        object.__setattr__(self, "_signature", signature)
+        object.__setattr__(self, "_configuration", dict(configuration))
+
+    def __setattr__(self, name, value):
+        raise AttributeError("AffineCoefficientField is immutable.")
+
+    @property
+    def values(self) -> np.ndarray:
+        """A copy of the coefficient values."""
+
+        return self._values.copy()
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._values.shape
+
+    @property
+    def dtype(self) -> np.dtype:
+        return self._values.dtype
+
+    @property
+    def nbytes(self) -> int:
+        return self._values.nbytes
+
+    @property
+    def spatial_axes(self) -> tuple[int, ...]:
+        return self._spatial_axes
+
+    @property
+    def configuration(self) -> dict[str, object]:
+        """Copy of the coefficient-space contract."""
+
+        return dict(self._configuration)
+
+    def incompatibility_reason(self, plan) -> str | None:
+        """Explain why ``plan`` cannot consume the field, or return ``None``."""
+
+        if not isinstance(plan, AffinePlan):
+            return "The supplied object is not an AffinePlan."
+        if plan._template._geometry_signature() != self._signature:
+            return (
+                "Input shape, spline degree, boundary mode, or execution "
+                "precision differs from the coefficient field."
+            )
+        return None
+
+    def is_compatible(self, plan) -> bool:
+        """Return whether ``plan`` can apply this coefficient field."""
+
+        return self.incompatibility_reason(plan) is None
 
 
 class AffinePlan:
@@ -226,27 +301,53 @@ class AffinePlan:
         )
         return self.matrix @ coordinates + self.offset[:, np.newaxis]
 
-    def _apply_spatial(self, data: np.ndarray, *, coefficients: bool) -> np.ndarray:
-        spline = (
-            self._template.with_coefficients(data, copy=False)
-            if coefficients
-            else self._template.with_data(data)
+    def _prefilter_canonical(self, data: np.ndarray) -> np.ndarray:
+        spatial_ndim = len(self.input_shape)
+        axes = tuple(range(data.ndim - spatial_ndim, data.ndim))
+        return prefilter_interpolation_coefficients(
+            data,
+            bases=self._template.bases,
+            modes=self._template.modes,
+            axes=axes,
+            dtype=self.dtype,
+            backend="numpy",
         )
-        result = np.empty(
-            int(np.prod(self.output_shape, dtype=np.int64)), dtype=self.dtype
-        )
+
+    def _apply_canonical_coefficients(self, coefficients: np.ndarray) -> np.ndarray:
+        spatial_ndim = len(self.input_shape)
+        batch_shape = coefficients.shape[:-spatial_ndim]
+        batch_count = int(np.prod(batch_shape, dtype=np.int64)) if batch_shape else 1
+        output_size = int(np.prod(self.output_shape, dtype=np.int64))
+        result = np.empty(batch_shape + (output_size,), dtype=self.dtype)
         if self.geometry_cached:
             start = 0
             for geometry_plan in self._geometry_plans:
                 stop = start + int(np.prod(geometry_plan.output_shape, dtype=np.int64))
-                geometry_plan.apply(spline, out=result[start:stop])
+                result[..., start:stop] = geometry_plan._apply_coefficient_array(
+                    self._template, coefficients
+                )
                 start = stop
         else:
-            for start in range(0, result.size, _AFFINE_TILE_SIZE):
-                stop = min(start + _AFFINE_TILE_SIZE, result.size)
+            tile_size = max(1, _AFFINE_TILE_SIZE // batch_count)
+            for start in range(0, output_size, tile_size):
+                stop = min(start + tile_size, output_size)
                 transformed = self._transformed_coordinates(start, stop)
-                spline(tuple(transformed), grid=False, out=result[start:stop])
-        return result.reshape(self.output_shape)
+                indexes = []
+                weights = []
+                for axis, coordinate in enumerate(transformed):
+                    axis_indexes, axis_weights = self._template._compute_support(
+                        axis, coordinate
+                    )
+                    indexes.append(axis_indexes)
+                    weights.append(axis_weights)
+                result[..., start:stop] = (
+                    self._template._evaluate_precomputed_point_chunk(
+                        tuple(indexes),
+                        tuple(weights),
+                        coefficients=coefficients,
+                    )
+                )
+        return result.reshape(batch_shape + self.output_shape)
 
     def _normalize_input(self, data, spatial_axes, *, coefficients):
         if not isinstance(data, np.ndarray):
@@ -268,8 +369,7 @@ class AffinePlan:
         if not coefficients:
             canonical = canonical.astype(self.dtype, copy=False)
         batch_shape = canonical.shape[: len(nonspatial_axes)]
-        flattened = canonical.reshape((-1,) + self.input_shape)
-        return axes, permutation, batch_shape, flattened
+        return axes, permutation, batch_shape, canonical
 
     @staticmethod
     def _copy_output(result, out):
@@ -297,17 +397,46 @@ class AffinePlan:
     ) -> np.ndarray:
         """Return cardinal coefficients for reuse across affine geometries."""
 
-        _, permutation, batch_shape, flattened = self._normalize_input(
+        _, permutation, _, canonical = self._normalize_input(
             data, spatial_axes, coefficients=False
         )
-        prepared = np.empty_like(flattened, dtype=self.dtype)
-        for index, spatial_data in enumerate(flattened):
-            self._template.coefficients_from_data(spatial_data, out=prepared[index])
-        canonical = prepared.reshape(batch_shape + self.input_shape)
+        canonical = self._prefilter_canonical(canonical)
         result = np.ascontiguousarray(
             np.transpose(canonical, tuple(np.argsort(permutation)))
         )
         return self._copy_output(result, out)
+
+    def prepare_coefficients(
+        self,
+        data: npt.NDArray,
+        *,
+        spatial_axes: Sequence[int] | None = None,
+    ) -> AffineCoefficientField:
+        """Return immutable coefficients with a checked compatibility tag.
+
+        Prefer this method when coefficients will be reused.  ``prefilter``
+        remains available for raw-array and explicit-output workflows.
+        """
+
+        axes, permutation, _, canonical = self._normalize_input(
+            data, spatial_axes, coefficients=False
+        )
+        canonical = self._prefilter_canonical(canonical)
+        values = np.ascontiguousarray(
+            np.transpose(canonical, tuple(np.argsort(permutation)))
+        )
+        return AffineCoefficientField(
+            values,
+            axes,
+            self._template._geometry_signature(),
+            {
+                "input_shape": self.input_shape,
+                "spatial_axes": axes,
+                "degree": self.degree,
+                "mode": self.mode,
+                "dtype": self.dtype.str,
+            },
+        )
 
     def _apply(
         self,
@@ -317,17 +446,12 @@ class AffinePlan:
         out: npt.NDArray | None = None,
         coefficients: bool,
     ) -> np.ndarray:
-        _, permutation, batch_shape, flattened = self._normalize_input(
+        _, permutation, _, canonical = self._normalize_input(
             data, spatial_axes, coefficients=coefficients
         )
-        transformed = np.empty(
-            (flattened.shape[0],) + self.output_shape, dtype=self.dtype
-        )
-        for index, spatial_data in enumerate(flattened):
-            transformed[index] = self._apply_spatial(
-                spatial_data, coefficients=coefficients
-            )
-        canonical_result = transformed.reshape(batch_shape + self.output_shape)
+        if not coefficients:
+            canonical = self._prefilter_canonical(canonical)
+        canonical_result = self._apply_canonical_coefficients(canonical)
         result = np.ascontiguousarray(
             np.transpose(canonical_result, tuple(np.argsort(permutation)))
         )
@@ -346,15 +470,42 @@ class AffinePlan:
 
     def apply_coefficients(
         self,
-        coefficients: npt.NDArray,
+        coefficients: npt.NDArray | AffineCoefficientField,
         *,
         spatial_axes: Sequence[int] | None = None,
         out: npt.NDArray | None = None,
     ) -> np.ndarray:
-        """Apply the transform without prefiltering cardinal coefficients again."""
+        """Apply the transform without prefiltering cardinal coefficients again.
+
+        Tagged fields from :meth:`prepare_coefficients` are checked against
+        this plan.  Raw arrays from :meth:`prefilter` remain supported for
+        backward compatibility; their provenance is necessarily the caller's
+        responsibility.
+        """
+
+        if isinstance(coefficients, AffineCoefficientField):
+            reason = coefficients.incompatibility_reason(self)
+            if reason is not None:
+                raise ValueError(f"Incompatible coefficient field: {reason}")
+            if spatial_axes is None:
+                spatial_axes = coefficients.spatial_axes
+            else:
+                axes = _normalize_spatial_axes(
+                    coefficients._values, len(self.input_shape), spatial_axes
+                )
+                if axes != coefficients.spatial_axes:
+                    raise ValueError(
+                        "'spatial_axes' differs from the tagged coefficient field."
+                    )
+            coefficient_array = coefficients._values
+        else:
+            coefficient_array = coefficients
 
         return self._apply(
-            coefficients, spatial_axes=spatial_axes, out=out, coefficients=True
+            coefficient_array,
+            spatial_axes=spatial_axes,
+            out=out,
+            coefficients=True,
         )
 
     __call__ = apply

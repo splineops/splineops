@@ -101,6 +101,10 @@ substantial repeated setup or Python dispatch. The benchmark tools report both
 runtime and numerical differences so contextual comparisons are not presented
 as equivalent algorithms.
 
+Reusable affine coefficients can carry an immutable compatibility tag, and
+explicit-axis affine and differential plans execute batch/channel planes
+together without changing `TensorSpline`'s independent public model.
+
 See the
 [reusable workflow recipes](https://splineops.github.io/consolidation-recipes.html)
 for coefficient sharing across affine geometries, explicit batch/channel axes,

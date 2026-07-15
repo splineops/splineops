@@ -20,9 +20,13 @@ field once and share it deliberately:
    first = AffinePlan(frame.shape, first_matrix, first_offset, mode="mirror")
    second = AffinePlan(frame.shape, second_matrix, second_offset, mode="mirror")
 
-   coefficients = first.prefilter(frame)
+   coefficients = first.prepare_coefficients(frame)
    first_result = first.apply_coefficients(coefficients)
    second_result = second.apply_coefficients(coefficients)
+
+The tagged field rejects a plan with a different construction shape, spline
+degree, boundary mode, or precision.  ``prefilter`` remains the raw-array,
+``out=``-capable alternative when the caller manages that provenance.
 
 The plans must have the same input shape, degree, mode, and dtype.  Ordinary
 ``plan(frame)`` remains the correct end-to-end call for one geometry.  The

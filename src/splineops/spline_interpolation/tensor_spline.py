@@ -718,10 +718,23 @@ class TensorSpline:
             length=self._lengths[axis],
         )
 
-    def _evaluate_precomputed_point_chunk(self, indexes_seq, weights_seq):
-        """Gather and combine one chunk of precomputed tensor supports."""
+    def _evaluate_precomputed_point_chunk(
+        self, indexes_seq, weights_seq, *, coefficients=None
+    ):
+        """Gather and combine one chunk of precomputed tensor supports.
+
+        ``coefficients`` may contain leading independent dimensions.  This
+        private path lets higher-level plans vectorize batches without changing
+        the public ``TensorSpline`` rule that every construction-data axis is a
+        spline dimension.
+        """
         xp = self._array_module()
         ndim = self._ndim
+        if coefficients is None:
+            coefficients = self._coefficients
+        batch_ndim = coefficients.ndim - ndim
+        if batch_ndim < 0 or tuple(coefficients.shape[-ndim:]) != self._lengths:
+            raise ValueError("Coefficient array has incompatible trailing dimensions.")
 
         indexes_bc = []
         weights_bc = []
@@ -735,9 +748,10 @@ class TensorSpline:
         weights_product = weights_bc[0]
         for weights in weights_bc[1:]:
             weights_product = weights_product * weights
-        axes_sum = tuple(range(ndim))
+        axes_sum = tuple(range(batch_ndim, batch_ndim + ndim))
+        coefficient_index = (slice(None),) * batch_ndim + tuple(indexes_bc)
         return xp.sum(
-            self._coefficients[tuple(indexes_bc)] * weights_product,
+            coefficients[coefficient_index] * weights_product,
             axis=axes_sum,
         )
 

@@ -150,8 +150,23 @@ Use the function for one transform and a plan when geometry is reused:
 
 The ordinary plan call retains support indexes and weights but still performs
 the spline coefficient prefilter required by each new frame.  If one frame is
-sent through several compatible affine geometries, call ``prefilter`` once and
-pass its result to each plan's ``apply_coefficients`` method.  See
+sent through several compatible affine geometries, call
+``prepare_coefficients`` once and pass its result to each plan's
+``apply_coefficients`` method:
+
+.. code-block:: python
+
+   field = plan.prepare_coefficients(frame)
+   first = plan.apply_coefficients(field)
+   second = another_compatible_plan.apply_coefficients(field)
+
+An :class:`splineops.affine.AffineCoefficientField` is immutable and records
+the input shape, spatial axes, degree, boundary mode, and precision.  Applying
+it through an incompatible plan fails explicitly.  Matrix and output shape are
+not part of the coefficient contract, which is exactly what permits reuse
+across affine geometries.  ``prefilter`` continues to return a raw array and
+supports ``out=`` for lower-level workflows, but raw arrays cannot carry a
+provenance check.  See
 :doc:`../consolidation-recipes` for a complete example.  Set
 ``cache_geometry=False`` for bounded-memory streaming with no retained query
 geometry.  Plan construction raises ``MemoryError`` rather than exceeding
@@ -166,7 +181,9 @@ Batch and channel axes
 ----------------------
 
 For an array with non-spatial dimensions, select exactly two or three
-``spatial_axes``.  Every remaining slice is transformed independently:
+``spatial_axes``.  Every remaining slice is transformed independently in the
+mathematical sense, while coefficient filtering and support evaluation operate
+on the batch together with memory-bounded query tiles:
 
 .. code-block:: python
 

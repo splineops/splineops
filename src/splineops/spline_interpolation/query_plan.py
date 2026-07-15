@@ -177,6 +177,43 @@ class TensorSplineGeometryPlan:
             )
         return output.reshape(self._query_shape)
 
+    def _apply_coefficient_array(self, spline, coefficients):
+        """Evaluate leading batches of compatible coefficients.
+
+        This private bridge is used by higher-level plans such as
+        ``AffinePlan``.  It deliberately does not expand ``TensorSpline``'s
+        public construction-data contract with inferred channel dimensions.
+        """
+
+        if self._grid:
+            raise ValueError("Batched coefficient evaluation requires point geometry.")
+        if not isinstance(coefficients, np.ndarray):
+            raise TypeError("'coefficients' must be a NumPy array.")
+        spatial_ndim = spline.ndim
+        if coefficients.ndim < spatial_ndim or tuple(
+            coefficients.shape[-spatial_ndim:]
+        ) != tuple(spline._lengths):
+            raise ValueError("Coefficient array has incompatible trailing dimensions.")
+        if coefficients.dtype != spline._dtype:
+            raise TypeError(
+                f"Coefficient array must have dtype {spline._dtype}; "
+                f"received {coefficients.dtype}."
+            )
+
+        batch_shape = coefficients.shape[:-spatial_ndim]
+        batch_count = int(np.prod(batch_shape, dtype=np.int64)) if batch_shape else 1
+        count = int(np.prod(self._query_shape, dtype=np.int64))
+        output = np.empty(batch_shape + (count,), dtype=coefficients.dtype)
+        tile_size = max(1, spline._EVALUATION_TILE_SIZE // batch_count)
+        for start in range(0, count, tile_size):
+            stop = min(count, start + tile_size)
+            indexes = tuple(index[:, start:stop] for index in self._indexes)
+            weights = tuple(weight[:, start:stop] for weight in self._weights)
+            output[..., start:stop] = spline._evaluate_precomputed_point_chunk(
+                indexes, weights, coefficients=coefficients
+            )
+        return output.reshape(batch_shape + self._query_shape)
+
 
 # Backward-compatible name for the first experimental release.  The object is
 # now geometry-reusable; only the historical spelling remains an alias.

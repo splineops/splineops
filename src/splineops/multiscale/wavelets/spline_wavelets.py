@@ -59,15 +59,15 @@ class SplineWavelets(AbstractWavelets):
             Transformed 2D array (same shape).
         """
         out = self._prepare_single_scale_input(inp)
-        ny, nx = out.shape
+        ny, nx = out.shape[-2:]
         if ny < 2 or nx < 2 or ny % 2 or nx % 2:
             raise ValueError(
                 "Spline wavelets require even dimensions of at least two; "
-                f"received {out.shape}."
+                f"received {out.shape[-2:]}."
             )
 
-        out = self._apply_axis(out, axis=1, split=True)
-        return self._apply_axis(out, axis=0, split=True)
+        out = self._apply_axis(out, axis=-1, split=True)
+        return self._apply_axis(out, axis=-2, split=True)
 
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
         """
@@ -86,15 +86,15 @@ class SplineWavelets(AbstractWavelets):
             Reconstructed array (same shape).
         """
         out = self._prepare_single_scale_input(inp)
-        ny, nx = out.shape
+        ny, nx = out.shape[-2:]
         if ny < 2 or nx < 2 or ny % 2 or nx % 2:
             raise ValueError(
                 "Spline wavelets require even dimensions of at least two; "
-                f"received {out.shape}."
+                f"received {out.shape[-2:]}."
             )
 
-        out = self._apply_axis(out, axis=0, split=False)
-        return self._apply_axis(out, axis=1, split=False)
+        out = self._apply_axis(out, axis=-2, split=False)
+        return self._apply_axis(out, axis=-1, split=False)
 
     def _apply_axis(self, array, axis, *, split):
         moved = np.moveaxis(array, axis, -1)

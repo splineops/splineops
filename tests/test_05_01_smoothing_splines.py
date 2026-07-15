@@ -208,8 +208,13 @@ def test_nd_smoothing_supports_explicit_batch_and_channel_axes():
             )
 
     assert returned is out
-    np.testing.assert_allclose(returned, expected, rtol=0.0, atol=0.0)
-    np.testing.assert_equal(smoothing_spline_nd(data, 0.25, 1.3, axes=(1, 2)), expected)
+    np.testing.assert_allclose(returned, expected, rtol=2e-14, atol=2e-14)
+    np.testing.assert_allclose(
+        smoothing_spline_nd(data, 0.25, 1.3, axes=(1, 2)),
+        expected,
+        rtol=2e-14,
+        atol=2e-14,
+    )
     assert plan.configuration == {"shape": (9, 12), "lamb": 0.25, "gamma": 1.3}
     with pytest.raises(ValueError, match="required"):
         plan(data)

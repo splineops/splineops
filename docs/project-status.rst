@@ -55,9 +55,10 @@ Current capability matrix
      - Experimental
      - General 2-D/3-D matrix transforms, analytical rotation tests, explicit
        batch/channel axes, output buffers, bounded one-shot execution, cached
-       fixed-geometry plans, reusable precomputed coefficients across affine
-       geometries, and equivalent SciPy parity for degrees 0--5; SplineOps also
-       accepts its higher-order degrees 6 and 7.
+       fixed-geometry plans, vectorized batch coefficient evaluation, immutable
+       compatibility-tagged coefficients reusable across affine geometries,
+       and equivalent SciPy parity for degrees 0--5; SplineOps also accepts its
+       higher-order degrees 6 and 7.
      - Improve performance only with profile-backed changes.  SciPy remains
        5.28x--19.02x faster than the SplineOps one-shot path in the current
        standard matched benchmark, despite useful gains from cached geometry.
@@ -65,8 +66,8 @@ Current capability matrix
      - Experimental
      - Raw repeatable outputs, preserved source arrays, vectorized coefficient
        filtering, physical spacing, 2-D/3-D gradient and packed Hessian
-       components, explicit batch/channel axes through cached multi-output
-       plans, legacy-reference coverage, and polynomial and trigonometric
+       components, explicit batch/channel axes through one batched multi-output
+       workspace, legacy-reference coverage, and polynomial and trigonometric
        invariants.
      - Define additional boundary/dtype contracts before describing the module
        as a general N-D differential engine; angular maps intentionally remain
@@ -92,7 +93,8 @@ Current capability matrix
    * - Multiscale
      - Experimental
      - Explicit odd/singleton pyramid behavior, vectorized whole-axis pyramid
-       and wavelet passes with explicit batch/channel axes, perfect
+       and cache-bounded batched wavelet passes with explicit batch/channel
+       axes, perfect
        reconstruction for supported even rectangular Haar and cubic
        spline-wavelet shapes, and a reconstruction-error audit for spline
        orders 1, 3, and 5.
@@ -155,6 +157,15 @@ gain, and approximately neutral smoothing, denoising-path, and explicit-axis
 wavelet timings.  Exact operations agreed exactly; the independently
 converged denoising paths differed by at most ``5.6e-9``.  No distribution was
 released from this validation pass.
+
+After the fourth batch-execution pass, the full suite completed ``1180
+passed`` in 140.13 seconds.  Black, scoped MyPy, a warning-fatal Sphinx build,
+and source/wheel builds also passed.  The standard explicit-axis workflow rows
+measured 1.03x affine and 1.26x differential speedups with exact output parity;
+the four-plane Haar round trip measured 0.90x and is documented as a bounded
+regression rather than a win.  The smoke Haar workload measured 1.73x.  This
+pass also repairs the macOS FFT test's overly strict bitwise comparison and
+improves CI failure annotations.  It remains intentionally unreleased.
 
 Graduation decisions after consolidation
 -----------------------------------------

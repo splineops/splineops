@@ -15,6 +15,7 @@ import numpy as np
 from splineops import __version__
 from splineops.adaptive_regression_splines import DenoisingPlan
 from splineops.affine import AffinePlan
+from splineops.differentials import DifferentialPlan
 from splineops.multiscale.wavelets.haar import HaarWavelets
 from splineops.smoothing_splines import SmoothingSplinePlan
 
@@ -80,7 +81,7 @@ def main() -> int:
         return first_plan(image), second_plan(image)
 
     def prepared_affine():
-        coefficients = first_plan.prefilter(image)
+        coefficients = first_plan.prepare_coefficients(image)
         return (
             first_plan.apply_coefficients(coefficients),
             second_plan.apply_coefficients(coefficients),
@@ -100,6 +101,32 @@ def main() -> int:
     )
 
     batch = rng.standard_normal(batch_shape)
+
+    def batched_affine():
+        return first_plan(batch, spatial_axes=(1, 2))
+
+    def looped_affine():
+        result = np.empty(batch_shape)
+        for batch_index in range(batch_shape[0]):
+            for channel in range(batch_shape[-1]):
+                result[batch_index, :, :, channel] = first_plan(
+                    batch[batch_index, :, :, channel]
+                )
+        return result
+
+    reference, reference_seconds = _measure(looped_affine, args.repeats, args.warmups)
+    optimized, optimized_seconds = _measure(batched_affine, args.repeats, args.warmups)
+    rows.append(
+        {
+            "workflow": "affine_explicit_axes",
+            "optimized_seconds": optimized_seconds,
+            "reference_seconds": reference_seconds,
+            "speedup": reference_seconds / optimized_seconds,
+            "max_abs_difference": _max_difference(optimized, reference),
+            "retained_bytes": first_plan.retained_bytes,
+        }
+    )
+
     smoothing_plan = SmoothingSplinePlan(spatial_shape, lamb=0.2, gamma=1.3)
 
     def batched_smoothing():
@@ -128,6 +155,40 @@ def main() -> int:
             "speedup": reference_seconds / optimized_seconds,
             "max_abs_difference": _max_difference(optimized, reference),
             "retained_bytes": smoothing_plan.retained_bytes,
+        }
+    )
+
+    differential_plan = DifferentialPlan(spatial_shape, spacing=(0.7, 1.3))
+
+    def batched_differentials():
+        result = differential_plan(batch, spatial_axes=(1, 2))
+        return result.gradient + result.hessian + (result.laplacian,)
+
+    def looped_differentials():
+        components = [np.empty(batch_shape) for _ in range(6)]
+        for batch_index in range(batch_shape[0]):
+            for channel in range(batch_shape[-1]):
+                result = differential_plan(batch[batch_index, :, :, channel])
+                for index, component in enumerate(
+                    result.gradient + result.hessian + (result.laplacian,)
+                ):
+                    components[index][batch_index, :, :, channel] = component
+        return tuple(components)
+
+    reference, reference_seconds = _measure(
+        looped_differentials, args.repeats, args.warmups
+    )
+    optimized, optimized_seconds = _measure(
+        batched_differentials, args.repeats, args.warmups
+    )
+    rows.append(
+        {
+            "workflow": "differentials_explicit_axes",
+            "optimized_seconds": optimized_seconds,
+            "reference_seconds": reference_seconds,
+            "speedup": reference_seconds / optimized_seconds,
+            "max_abs_difference": _max_difference(optimized, reference),
+            "retained_bytes": differential_plan.retained_bytes,
         }
     )
 
@@ -160,14 +221,17 @@ def main() -> int:
     wavelet = HaarWavelets(scales=2)
 
     def batched_wavelet():
-        return wavelet.analysis(batch, spatial_axes=(1, 2))
+        return wavelet.synthesis(
+            wavelet.analysis(batch, spatial_axes=(1, 2)), spatial_axes=(1, 2)
+        )
 
     def looped_wavelet():
         result = np.empty(batch_shape)
         for batch_index in range(batch_shape[0]):
             for channel in range(batch_shape[-1]):
-                result[batch_index, :, :, channel] = wavelet.analysis(
-                    batch[batch_index, :, :, channel]
+                spatial = batch[batch_index, :, :, channel]
+                result[batch_index, :, :, channel] = wavelet.synthesis(
+                    wavelet.analysis(spatial)
                 )
         return result
 
@@ -175,7 +239,7 @@ def main() -> int:
     optimized, optimized_seconds = _measure(batched_wavelet, args.repeats, args.warmups)
     rows.append(
         {
-            "workflow": "wavelet_explicit_axes",
+            "workflow": "wavelet_roundtrip_explicit_axes",
             "optimized_seconds": optimized_seconds,
             "reference_seconds": reference_seconds,
             "speedup": reference_seconds / optimized_seconds,
@@ -202,6 +266,7 @@ def main() -> int:
         },
         "profile": args.profile,
         "results": rows,
+        "speedups_by_workflow": {row["workflow"]: row["speedup"] for row in rows},
     }
     if args.output_json:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)

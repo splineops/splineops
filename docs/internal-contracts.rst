@@ -81,12 +81,13 @@ array rank:
      - Unselected batch/channel slices share one batched real-FFT execution.
    * - Differentials
      - Two or three explicit ``spatial_axes`` through ``DifferentialPlan``
-     - Every remaining slice uses an independent cached workspace; the legacy
-       ``Differentials`` object remains scalar.
+     - Remaining slices are mathematically independent but execute through one
+       batched coefficient/derivative workspace; the legacy ``Differentials``
+       object remains scalar.
    * - Multiscale
      - Two explicit ``spatial_axes`` for 2-D pyramids and wavelets
-     - Every remaining slice is transformed independently; axes are never
-       inferred from rank.
+     - Remaining slices are transformed in cache-sized vectorized groups; axes
+       are never inferred from rank.
 
 Rules for shared internals
 --------------------------

@@ -63,7 +63,17 @@ jobs:
           from pathlib import Path
 
           lines = Path("tox-test.log").read_text(errors="replace").splitlines()
-          message = "\n".join(lines[-120:])
+          failure_markers = [
+              index for index, line in enumerate(lines) if " FAILURES " in line
+          ]
+          selected = (
+              lines[max(0, failure_markers[-1] - 2) :]
+              if failure_markers
+              else lines[-60:]
+          )
+          message = "\n".join(selected)
+          if len(message) > 12_000:
+              message = message[:9_000] + "\n... annotation shortened ...\n" + message[-3_000:]
           message = (
               message.replace("%", "%25")
               .replace("\r", "%0D")

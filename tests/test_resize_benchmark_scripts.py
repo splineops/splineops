@@ -426,9 +426,14 @@ def test_consolidated_workflow_benchmark_smoke(tmp_path):
     assert payload["schema_version"] == 1
     assert {row["workflow"] for row in payload["results"]} == {
         "affine_two_geometries_one_prefilter",
+        "affine_explicit_axes",
         "smoothing_explicit_axes",
+        "differentials_explicit_axes",
         "denoising_lambda_path",
-        "wavelet_explicit_axes",
+        "wavelet_roundtrip_explicit_axes",
+    }
+    assert set(payload["speedups_by_workflow"]) == {
+        row["workflow"] for row in payload["results"]
     }
     assert all(row["speedup"] > 0 for row in payload["results"])
     assert all(row["max_abs_difference"] < 2e-4 for row in payload["results"])

@@ -176,8 +176,8 @@ the sparse factorization determined by fixed sample locations and ADMM penalty
 while allowing observations and regularization strength to change.
 
 ``scripts/benchmark_workflows.py`` measures complete operations, including
-prefiltering and axis orchestration.  The standard three-repeat medians on the
-same development machine were:
+prefiltering and axis orchestration.  After the batch-execution pass, the
+standard three-repeat medians on the same development machine were:
 
 .. list-table:: Consolidated workflow profile
    :header-rows: 1
@@ -188,28 +188,39 @@ same development machine were:
      - Explicit reference
      - Speedup
    * - One coefficient field, two affine geometries
-     - 104.6 ms
+     - 106.9 ms
      - 123.3 ms
-     - 1.18x
-   * - Smoothing with explicit batch/channel axes
-     - 22.1 ms
-     - 22.8 ms
+     - 1.15x
+   * - Affine with explicit batch/channel axes
+     - 246.3 ms
+     - 254.2 ms
      - 1.03x
+   * - Smoothing with explicit batch/channel axes
+     - 22.8 ms
+     - 22.2 ms
+     - 0.97x
+   * - Multi-output differentials with explicit axes
+     - 126.3 ms
+     - 158.6 ms
+     - 1.26x
    * - Warm-start denoising lambda path
-     - 1.120 s
-     - 1.132 s
+     - 1.133 s
+     - 1.139 s
      - 1.01x
-   * - Wavelet explicit-axis orchestration
-     - 16.0 ms
-     - 15.8 ms
-     - 0.99x
+   * - Haar explicit-axis analysis/synthesis
+     - 35.3 ms
+     - 31.8 ms
+     - 0.90x
 
 All compared outputs agreed exactly except the independently converged ADMM
 paths, whose maximum difference was ``5.6e-9``.  The mixed result is useful:
-coefficient sharing earns a modest end-to-end affine gain, while denoising warm
-starts and wavelet axis convenience are not presented as speed advantages on
-this workload.  Nearby lambda paths can need fewer iterations, but the actual
-diagnostics—not the API name—decide whether that helps.
+coefficient sharing remains a modest affine gain, batched multi-output
+differentials remove enough setup to gain 1.26x, and affine batching is a small
+1.03x gain.  Smoothing is essentially neutral.  The cache-bounded Haar batch
+path is 10% slower for these four large planes, although it is faster for the
+smoke profile's small planes; it therefore has a regression floor rather than
+a speedup claim.  Nearby denoising lambda paths can need fewer iterations, but
+the actual diagnostics—not the API name—decide whether that helps.
 
 .. code-block:: shell
 

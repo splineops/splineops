@@ -29,6 +29,10 @@ All notable changes to SplineOps are documented here.
   explicit spatial axes for independent batch and channel transforms.  Affine
   plans can prefilter once and share one coefficient field across compatible
   transform geometries, with retained-memory and configuration introspection.
+  Added immutable `AffineCoefficientField` tags that reject reuse across an
+  incompatible input grid, degree, boundary mode, or precision while allowing
+  different matrices and output shapes. Batched coefficient filtering and
+  support evaluation now avoid per-slice plan dispatch.
 - Made differential operations return raw results without replacing the source
   image, removed implicit normalization and console output, and vectorized
   row/column spline prefiltering. Added physical spacing, standard increasing-
@@ -36,6 +40,8 @@ All notable changes to SplineOps are documented here.
   analytical polynomial and trigonometric tests.  `DifferentialPlan` computes
   requested gradient, packed Hessian, and Laplacian outputs through one cached
   workspace and now accepts explicit batch/channel spatial axes.
+  Explicit-axis plans now execute all slices through one batched workspace
+  instead of constructing one workspace per slice.
 - Corrected adaptive-regression amplitude sparsification, eliminated caller
   mutation, added opt-in convergence diagnostics, removed a duplicate smoothing
   implementation, and tightened research-module parameter validation.  Added a
@@ -49,7 +55,9 @@ All notable changes to SplineOps are documented here.
   as approximate because the inherited taps have limited precision.  Pyramid,
   Haar, and spline-wavelet axis passes now operate on whole arrays instead of
   dispatching one Python call per row or column, with explicit spatial axes for
-  batch and channel arrays.
+  batch and channel arrays. Explicit-axis wavelets now process independent
+  planes in cache-bounded vectorized groups, and Haar split/merge writes into
+  preallocated destinations to reduce temporary arrays.
 
 ### Project maturity
 
@@ -70,6 +78,10 @@ All notable changes to SplineOps are documented here.
 - Added complete-workflow benchmarks, stored machine-relative regression
   thresholds, plan lifecycle recipes, and a manual Linux/macOS/Windows resize
   benchmark matrix.  These are pre-release evidence gates, not a release.
+- Added targeted explicit-axis affine, differential, and wavelet workflow
+  measurements and regression floors. CI failure annotations now select the
+  pytest failure section, and cross-platform FFT equivalence uses a tight
+  floating tolerance rather than requiring bitwise identity.
 
 ## 2.0.0 - 2026-07-14
 

@@ -4,7 +4,7 @@ Development roadmap
 Execution status (2026-07-15)
 -----------------------------
 
-Three repository-wide implementation passes are complete.  The first established
+Four repository-wide implementation passes are complete.  The first established
 positioning, provenance, numerical contracts, bounded ``TensorSpline``
 evaluation, conservative internal sharing, reproducible benchmarks, and the
 packaging and quality workflows.  The second added reusable geometry plans,
@@ -18,6 +18,14 @@ references, end-to-end workflow benchmarks, stored regression thresholds, and
 a manual cross-platform resize benchmark matrix.  These capabilities remain in
 their independent public modules; this work did not fold ``TensorSpline`` or
 the research tools into resize.
+
+The fourth pass removed higher-level per-slice dispatch from affine and
+differential plans, added cache-bounded batch groups for wavelet transforms,
+and introduced immutable compatibility tags for reusable affine coefficients.
+Complete-workflow benchmarks now measure those explicit-axis paths directly
+and enforce machine-relative regression floors.  The macOS FFT test uses a
+tight numerical tolerance, and CI annotations preserve the actual pytest
+failure section when a matrix job fails.
 
 The detailed work packages below remain the long-term graduation criteria,
 not a claim that every experimental module is now stable.  In particular,
@@ -33,11 +41,12 @@ published numerical reference or exact reconstruction property is incomplete;
 the order-5 spline wavelet is one explicit example.  These limits are recorded in
 :doc:`project-status` and :doc:`provenance`.
 
-The consolidation pass is validated but intentionally unreleased.  The next
+The batching pass is validated but intentionally unreleased.  The next
 decision point is evidence review rather than another broad implementation
-wave: collect the manual platform artifacts, observe the new APIs in real
-workloads, and promote modules only when their individual graduation gates are
-met.
+wave: collect the manual platform artifacts, observe the new coefficient and
+explicit-axis APIs in real workloads, and promote modules only when their
+individual graduation gates are met.  A release is explicitly not required at
+this stage.
 
 Purpose
 -------

@@ -9,6 +9,6 @@ Main entry point:
     - :func:`splineops.affine.rotate`
 """
 
-from .affine import AffinePlan, affine_transform, rotate
+from .affine import AffineCoefficientField, AffinePlan, affine_transform, rotate
 
-__all__ = ["AffinePlan", "affine_transform", "rotate"]
+__all__ = ["AffineCoefficientField", "AffinePlan", "affine_transform", "rotate"]
