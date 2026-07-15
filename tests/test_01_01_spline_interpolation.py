@@ -666,3 +666,77 @@ def test_periodic_padding_analytic(basis: str, dtype: str) -> None:
         atol = 3e-4
 
     np.testing.assert_allclose(y_pred, y_true, atol=atol, rtol=0)
+
+
+def _keys_cubic_reference(x):
+    """Keys' cubic-convolution kernel with the published a=-1/2 choice."""
+
+    absolute = np.abs(np.asarray(x, dtype=np.float64))
+    result = np.zeros_like(absolute)
+    inner = absolute < 1.0
+    outer = (absolute >= 1.0) & (absolute < 2.0)
+    result[inner] = 1.5 * absolute[inner] ** 3 - 2.5 * absolute[inner] ** 2 + 1.0
+    result[outer] = (
+        -0.5 * absolute[outer] ** 3
+        + 2.5 * absolute[outer] ** 2
+        - 4.0 * absolute[outer]
+        + 2.0
+    )
+    return result
+
+
+def _omoms3_reference(x):
+    """Piecewise cubic O-MOMS generator from Blu et al. (2001)."""
+
+    absolute = np.abs(np.asarray(x, dtype=np.float64))
+    result = np.zeros_like(absolute)
+    inner = absolute < 1.0
+    outer = (absolute >= 1.0) & (absolute < 2.0)
+    result[inner] = (
+        0.5 * absolute[inner] ** 3
+        - absolute[inner] ** 2
+        + absolute[inner] / 14.0
+        + 13.0 / 21.0
+    )
+    result[outer] = (
+        -absolute[outer] ** 3 / 6.0
+        + absolute[outer] ** 2
+        - 85.0 * absolute[outer] / 42.0
+        + 29.0 / 21.0
+    )
+    return result
+
+
+def test_keys_tensorspline_matches_published_cubic_convolution_formula():
+    coordinates = np.arange(17, dtype=np.float64)
+    data = np.random.default_rng(20260719).standard_normal(coordinates.size)
+    query = np.linspace(3.125, 12.875, 79)
+    expected = (
+        _keys_cubic_reference(query[:, np.newaxis] - coordinates[np.newaxis, :]) @ data
+    )
+
+    spline = TensorSpline(data, (coordinates,), bases="keys", modes="zero")
+
+    np.testing.assert_allclose(
+        spline((query,), grid=False), expected, rtol=2e-15, atol=2e-15
+    )
+
+
+def test_omoms3_tensorspline_matches_independent_dense_cardinal_system():
+    coordinates = np.arange(31, dtype=np.float64)
+    data = np.random.default_rng(20260719).standard_normal(coordinates.size)
+    interpolation_matrix = _omoms3_reference(
+        coordinates[:, np.newaxis] - coordinates[np.newaxis, :]
+    )
+    coefficients = np.linalg.solve(interpolation_matrix, data)
+    query = np.linspace(6.125, 23.875, 83)
+    expected = (
+        _omoms3_reference(query[:, np.newaxis] - coordinates[np.newaxis, :])
+        @ coefficients
+    )
+
+    spline = TensorSpline(data, (coordinates,), bases="omoms3", modes="zero")
+
+    np.testing.assert_allclose(
+        spline((query,), grid=False), expected, rtol=3e-14, atol=3e-14
+    )

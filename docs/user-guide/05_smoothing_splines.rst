@@ -207,8 +207,10 @@ routines remain experimental because the three formulations intentionally
 implement different operators.  Current independent checks cover identity at
 zero regularization, the analytical response of periodic N-D cosine modes, a
 dense linear-system reference for the recursive boundary equations, and
-constant preservation.  These checks support the stated contracts but do not
-make the three methods interchangeable.
+constant preservation.  A fixed multitone fixture now evaluates the published
+fractional transfer function through an explicit dense DFT, independently of
+the implementation's SciPy FFT.  These checks support the stated contracts but
+do not make the three methods interchangeable.
 
 .. note::
 

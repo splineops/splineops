@@ -30,7 +30,9 @@ gradient, Hessian, and Laplacian outputs through one per-call cached workspace.
 It accepts explicit ``spatial_axes`` for batch and channel arrays, independent
 ``gradient``/``hessian``/``laplacian`` selection, and exact structured
 ``DifferentialResult`` output buffers.  Laplacian-only execution computes only
-diagonal second derivatives.  The legacy ``Differentials`` object
+diagonal second derivatives.  Output buffers are prevalidated for shape, dtype,
+writability, and non-overlap before numerical work begins.  The legacy
+``Differentials`` object
 intentionally remains scalar.
 
 .. automodule:: splineops.differentials.differentials

@@ -313,6 +313,87 @@ def test_differential_plan_supports_exact_structured_output_buffers():
         )
 
 
+def test_differential_output_buffers_are_prevalidated_before_any_write():
+    image = np.arange(80, dtype=np.float64).reshape(8, 10)
+    plan = DifferentialPlan(image.shape)
+    untouched = np.full(image.shape, -123.0)
+    readonly = np.empty_like(image)
+    readonly.flags.writeable = False
+
+    with pytest.raises(ValueError, match="writeable"):
+        plan(
+            image,
+            hessian=False,
+            laplacian=False,
+            out=DifferentialResult((untouched, readonly), None, None),
+        )
+
+    np.testing.assert_equal(untouched, -123.0)
+
+
+def test_differential_output_buffers_reject_source_and_component_aliasing():
+    image = np.arange(80, dtype=np.float64).reshape(8, 10)
+    plan = DifferentialPlan(image.shape)
+    first = np.empty_like(image)
+
+    with pytest.raises(ValueError, match="input image"):
+        plan(
+            image,
+            hessian=False,
+            laplacian=False,
+            out=DifferentialResult((image, np.empty_like(image)), None, None),
+        )
+    with pytest.raises(ValueError, match="must not overlap"):
+        plan(
+            image,
+            hessian=False,
+            laplacian=False,
+            out=DifferentialResult((first, first), None, None),
+        )
+
+
+def test_differential_output_buffers_accept_writeable_strided_destinations():
+    image = np.arange(80, dtype=np.float32).reshape(8, 10)
+    plan = DifferentialPlan(image.shape)
+    expected = plan(image, hessian=False, laplacian=False)
+    backing = np.empty((2, 8, 20), dtype=np.float32)
+    outputs = (backing[0, :, ::2], backing[1, :, ::2])
+
+    returned = plan(
+        image,
+        hessian=False,
+        laplacian=False,
+        out=DifferentialResult(outputs, None, None),
+    )
+
+    assert returned.gradient is outputs
+    for actual, reference in zip(returned.gradient, expected.gradient):
+        np.testing.assert_equal(actual, reference)
+
+
+@pytest.mark.parametrize(
+    "dtype,expected_dtype", [(np.uint16, np.float64), (np.float32, np.float32)]
+)
+def test_differential_plan_has_an_explicit_work_dtype(dtype, expected_dtype):
+    image = np.arange(63, dtype=dtype).reshape(7, 9)
+    result = DifferentialPlan(image.shape)(
+        image, gradient=True, hessian=False, laplacian=False
+    )
+
+    assert all(component.dtype == expected_dtype for component in result.gradient)
+
+
+def test_differential_mirror_boundary_has_zero_normal_gradient():
+    yy, xx = np.indices((9, 11), dtype=np.float64)
+    image = 3.0 * yy - 2.0 * xx
+    dy, dx = DifferentialPlan(image.shape)(
+        image, hessian=False, laplacian=False
+    ).gradient
+
+    np.testing.assert_allclose(dy[[0, -1], :], 0.0, rtol=0.0, atol=2e-14)
+    np.testing.assert_allclose(dx[:, [0, -1]], 0.0, rtol=0.0, atol=2e-14)
+
+
 @pytest.mark.parametrize("argument", ["gradient", "hessian", "laplacian"])
 def test_differential_plan_rejects_nonboolean_output_selection(argument):
     plan = DifferentialPlan((8, 9))

@@ -483,6 +483,84 @@ def test_batch_scaling_benchmark_smoke(tmp_path):
     assert output_csv.exists()
 
 
+def test_downstream_workflow_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "downstream-workflows.json"
+    output_csv = tmp_path / "downstream-workflows.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_downstream_workflows.py"),
+            "--profile",
+            "smoke",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert {row["workflow"] for row in payload["results"]} == {
+        "persisted_registration_fanout",
+        "buffered_volume_features",
+    }
+    assert payload["summary"]["max_abs_difference"] < 1e-12
+    assert output_csv.exists()
+
+
+def test_affine_phase_profile_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "affine-phases.json"
+    output_csv = tmp_path / "affine-phases.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "profile_affine_phases.py"),
+            "--profile",
+            "smoke",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert {row["case"] for row in payload["results"]} == {
+        "2d_cubic",
+        "3d_cubic",
+    }
+    assert all(
+        row["dominant_phase"] in {"prefilter", "evaluation"}
+        for row in payload["results"]
+    )
+    assert all(row["max_abs_difference"] == 0.0 for row in payload["results"])
+    assert output_csv.exists()
+
+
 def test_benchmark_threshold_checker(tmp_path):
     repo_root = Path(__file__).resolve().parents[1]
     artifact = {

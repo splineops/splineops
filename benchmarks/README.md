@@ -17,6 +17,14 @@ evidence for relevant publication-branch changes and can run the standard
 profile manually on Linux, macOS, and Windows. It publishes one artifact per
 runner; platform results must be reviewed rather than averaged into one claim.
 
+`benchmark_downstream_workflows.py` measures persisted registration fan-out and
+an affine-to-differential 3-D feature pipeline. `profile_affine_phases.py`
+instruments prefilter and evaluation time inside complete affine plan calls.
+These artifacts are part of the stored numerical-equivalence policy. A commit
+whose message contains `[standard-bench]` intentionally selects the standard
+profile for the three-platform publication-branch workflow; other matching
+pushes use smoke, and `workflow_dispatch` retains an explicit profile choice.
+
 Run the checker after generating the named artifacts:
 
 ```shell

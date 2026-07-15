@@ -3,7 +3,11 @@
 import json
 import numbers
 import operator
+import os
+from pathlib import Path
+import tempfile
 from typing import Optional, Sequence, Tuple
+import zipfile
 import numpy as np
 import numpy.typing as npt
 from splineops.spline_interpolation._prefilter import (
@@ -138,18 +142,49 @@ class AffineCoefficientField:
         return self.incompatibility_reason(plan) is None
 
     def save(self, path) -> None:
-        """Save values and their compatibility contract to a safe NPZ file.
+        """Atomically save values and their compatibility contract to NPZ.
 
         The file contains JSON metadata and a numeric array only; loading never
         enables NumPy object pickles.  Restore it through
         :meth:`AffinePlan.load_coefficients`, which checks the stored contract
-        against the receiving plan.
+        against the receiving plan.  A temporary file in the destination
+        directory is flushed and atomically replaces the target, so a failed
+        write cannot leave a partially updated archive.
         """
 
+        try:
+            target = Path(os.fspath(path))
+        except TypeError as exc:
+            raise TypeError("'path' must be a filesystem path.") from exc
+        if not target.name.endswith(".npz"):
+            target = Path(f"{target}.npz")
         metadata = json.dumps(
             self._serialization_metadata, sort_keys=True, separators=(",", ":")
         )
-        np.savez_compressed(path, values=self._values, metadata=np.asarray(metadata))
+        storage_dtype = self._values.dtype.newbyteorder("<")
+        storage_values = self._values.astype(storage_dtype, copy=False)
+        temporary_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                prefix=f".{target.name}.",
+                suffix=".tmp.npz",
+                dir=target.parent,
+                delete=False,
+            ) as temporary:
+                temporary_path = Path(temporary.name)
+            np.savez_compressed(
+                temporary_path,
+                values=storage_values,
+                metadata=np.asarray(metadata),
+            )
+            with temporary_path.open("rb") as handle:
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, target)
+            temporary_path = None
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
 
 
 class AffinePlan:
@@ -353,20 +388,29 @@ class AffinePlan:
             backend="numpy",
         )
 
-    def _coefficient_serialization_metadata(self, spatial_axes):
+    def _coefficient_serialization_metadata(self, spatial_axes, *, schema_version=2):
         mode_types = [
             f"{type(mode).__module__}.{type(mode).__qualname__}"
             for mode in self._template.modes
         ]
-        return {
+        metadata = {
             "schema": "splineops.affine-coefficients",
-            "schema_version": 1,
+            "schema_version": schema_version,
             "input_shape": list(self.input_shape),
             "spatial_axes": list(spatial_axes),
             "degree": self.degree,
             "mode_types": mode_types,
-            "dtype": self.dtype.str,
         }
+        if schema_version == 1:
+            metadata["dtype"] = self.dtype.str
+        elif schema_version == 2:
+            metadata["dtype"] = self.dtype.name
+            metadata["storage_byte_order"] = "little"
+        else:
+            raise ValueError(
+                f"Unsupported affine coefficient schema version {schema_version}."
+            )
+        return metadata
 
     def _coefficient_field(self, values, axes):
         return AffineCoefficientField(
@@ -502,20 +546,29 @@ class AffinePlan:
         """Load and validate a field saved by ``AffineCoefficientField.save``."""
 
         try:
-            with np.load(path, allow_pickle=False) as archive:
+            source = open(os.fspath(path), "rb")
+        except (OSError, TypeError) as exc:
+            raise ValueError("Invalid affine coefficient archive.") from exc
+        with source:
+            try:
+                archive = np.load(source, allow_pickle=False)
+            except (OSError, ValueError, zipfile.BadZipFile) as exc:
+                raise ValueError("Invalid affine coefficient archive.") from exc
+            with archive:
                 if set(archive.files) != {"values", "metadata"}:
                     raise ValueError(
                         "Coefficient archive must contain only 'values' and 'metadata'."
                     )
-                values = np.array(archive["values"], copy=True, order="C")
-                metadata_value = archive["metadata"]
-                if metadata_value.shape != ():
-                    raise ValueError(
-                        "Coefficient archive metadata must be scalar JSON."
-                    )
-                metadata = json.loads(str(metadata_value.item()))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise ValueError("Invalid affine coefficient archive.") from exc
+                try:
+                    values = np.array(archive["values"], copy=True, order="C")
+                    metadata_value = archive["metadata"]
+                    if metadata_value.shape != ():
+                        raise ValueError(
+                            "Coefficient archive metadata must be scalar JSON."
+                        )
+                    metadata = json.loads(str(metadata_value.item()))
+                except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                    raise ValueError("Invalid affine coefficient archive.") from exc
         if not isinstance(metadata, dict):
             raise ValueError("Coefficient archive metadata must be a JSON object.")
         try:
@@ -524,12 +577,22 @@ class AffinePlan:
             raise ValueError(
                 "Coefficient archive is missing valid spatial-axis metadata."
             ) from exc
-        expected = self._coefficient_serialization_metadata(axes)
+        schema_version = metadata.get("schema_version")
+        if schema_version not in (1, 2):
+            raise ValueError("Coefficient archive uses an unsupported schema version.")
+        expected = self._coefficient_serialization_metadata(
+            axes, schema_version=schema_version
+        )
         if metadata != expected:
             raise ValueError(
                 "Coefficient archive is incompatible with this plan's input "
                 "shape, degree, boundary mode, precision, or schema."
             )
+        if values.dtype.name != self.dtype.name:
+            raise ValueError(
+                "Coefficient archive values have an incompatible numerical dtype."
+            )
+        values = values.astype(self.dtype, copy=False)
         self._normalize_input(values, axes, coefficients=True)
         return self._coefficient_field(values, axes)
 

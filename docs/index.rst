@@ -164,6 +164,7 @@ Contents
 
    installation/index
    project-status
+   stability-soak
    consolidation-recipes
    user-guide/index
    auto_examples/index

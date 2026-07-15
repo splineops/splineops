@@ -42,6 +42,18 @@ class SplineWavelets(AbstractWavelets):
         """Return a short docstring describing the spline wavelet order."""
         return f"Spline Wavelets (order={self.order})."
 
+    @property
+    def exact_reconstruction(self):
+        """Whether the bundled tap precision supports a perfect-reconstruction claim."""
+
+        return not self.filter.approximate
+
+    @property
+    def reconstruction_contract(self):
+        """Published reconstruction classification for the selected filter."""
+
+        return "perfect" if self.exact_reconstruction else "bounded-approximation"
+
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
         """
         Single-scale 2D spline wavelet analysis pass:
@@ -239,7 +251,7 @@ class Spline3Wavelets(SplineWavelets):
 
 
 class Spline5Wavelets(SplineWavelets):
-    """Spline Wavelets of order=5."""
+    """Approximate order-5 spline wavelets using limited-precision source taps."""
 
     def __init__(self, scales=3):
         super().__init__(scales=scales, order=5)
@@ -248,4 +260,4 @@ class Spline5Wavelets(SplineWavelets):
         return "Spline5"
 
     def get_documentation(self):
-        return "Spline Wavelets (order=5)"
+        return "Spline Wavelets (order=5, bounded approximate reconstruction)"

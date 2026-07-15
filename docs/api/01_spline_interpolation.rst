@@ -18,7 +18,8 @@ Construction templates can refit compatible sample arrays with ``with_data``
 or consume explicit cardinal coefficients with ``with_coefficients``.  Query
 plans retain only fixed-coordinate geometry and can therefore evaluate either
 kind of compatible spline without merging ``TensorSpline`` into another
-module.
+module.  Keys cubic convolution and cubic O-MOMS also have independent
+published-formula references in the stability-soak suite.
 
 .. automodule:: splineops.spline_interpolation.tensor_spline
    :members:

@@ -48,7 +48,8 @@ Current capability matrix
        queries, separable grid contraction, reusable geometry plans across
        compatible sample arrays, explicit refitting/precomputed-coefficient
        paths, SciPy parity for B-spline degrees 0--5 through four dimensions,
-       and partial CuPy interoperability.
+       published-formula Keys and cubic O-MOMS references, and partial CuPy
+       interoperability.
      - Complete dedicated CuPy CI before making a stable backend-wide promise;
        continue independent references for non-B-spline bases and modes.
    * - Affine
@@ -57,7 +58,8 @@ Current capability matrix
        batch/channel axes, output buffers, bounded one-shot execution, cached
        fixed-geometry plans, vectorized batch coefficient evaluation, immutable
        compatibility-tagged coefficients reusable across affine geometries,
-       safe validated coefficient persistence, concurrent field reuse, and
+       atomic endian-portable coefficient persistence with schema-1 reading,
+       thread/process field reuse, and
        equivalent SciPy parity for degrees 0--5; SplineOps also accepts its
        higher-order degrees 6 and 7.
      - Improve performance only with profile-backed changes.  SciPy remains
@@ -69,8 +71,9 @@ Current capability matrix
        filtering, physical spacing, 2-D/3-D gradient and packed Hessian
        components, explicit batch/channel axes through one batched multi-output
        workspace, independent output-family selection, exact structured output
-       buffers, legacy-reference coverage, and polynomial and trigonometric
-       invariants.
+       buffers prevalidated for writability and non-overlap, explicit mirror
+       boundary/dtype checks, legacy-reference coverage, and polynomial and
+       trigonometric invariants.
      - Define additional boundary/dtype contracts before describing the module
        as a general N-D differential engine; angular maps intentionally remain
        2-D and the legacy object remains scalar.
@@ -79,7 +82,8 @@ Current capability matrix
      - Fractional FFT and recursive examples, reusable real-FFT half-spectrum
        plans with explicit batch/channel axes, real/finite parameter domains,
        constant preservation, periodic cosine-response checks, and an
-       independent dense-system reference for the recursive formulation.
+       independent dense-system reference for the recursive formulation plus a
+       dense-DFT fixture for the published fractional response.
      - Add broader published numerical fixtures while preserving the clear
        distinction between exact fractional, radial approximate, and recursive
        formulations.
@@ -98,8 +102,8 @@ Current capability matrix
        adaptive small-plane vectorization and large-plane wavelet dispatch with
        explicit batch/channel axes, perfect
        reconstruction for supported even rectangular Haar and cubic
-       spline-wavelet shapes, and a reconstruction-error audit for spline
-       orders 1, 3, and 5.
+       spline-wavelet shapes, and an inspectable bounded-approximation contract
+       for the source-verified order-5 tap table.
      - Obtain higher-precision order-5 taps or continue labeling it approximate;
        expand supported shape and scale classes only with reversible evidence.
 
@@ -184,6 +188,17 @@ per runner.  The nine-job Python/OS library matrix and quality workflow also
 passed for commit ``32b9d8c``.  This remains pre-release validation and no
 distribution was published.
 
+After the sixth stability-soak pass, the full suite completed ``1207 passed``
+in 141.17 seconds.  Black, scoped MyPy, the stored smoke benchmark policy, a
+warning-fatal Sphinx build, source and native-wheel builds, and a clean wheel
+smoke covering resize, coefficient persistence, and buffered differentials all
+passed.  The isolated Linux standard profile found exact agreement for both
+downstream workloads: persisted registration fan-out measured 1.75x and
+buffered volume features 1.49x against their explicit references.  Affine phase
+instrumentation identifies coefficient evaluation as the dominant in-call
+phase, but matched SciPy affine execution remains faster.  This remains an
+unreleased development pass.
+
 Stability-soak and graduation review
 ------------------------------------
 
@@ -193,9 +208,10 @@ cover the advertised backend and non-B-spline surface.  Affine and
 differentials are the closest experimental modules to a future stability
 review, but this review deliberately does not promote them.  Their new
 coefficient-persistence, output-selection, and output-buffer contracts need a
-real API-soak period.  Linux/macOS/Windows smoke artifacts have now been
-collected and reviewed successfully; a manually requested standard profile is
-still required before making broader portable performance claims.
+real API-soak period.  Two representative persisted-registration and buffered
+volume-feature workloads now exercise those APIs locally.  Linux/macOS/Windows
+smoke artifacts have been collected and reviewed successfully; a standard
+profile is still required before making broader portable performance claims.
 Smoothing, adaptive regression, and multiscale remain experimental while their
 published-reference, parameter-guidance, and reconstruction gates are open.
 
@@ -231,6 +247,8 @@ Reproducing validation
      --output-json /tmp/splineops-bench/tensorspline-query-plan.json
    python scripts/benchmark_affine.py --profile standard \
      --output-json /tmp/splineops-bench/affine.json
+   python scripts/profile_affine_phases.py --profile standard \
+     --output-json /tmp/splineops-bench/affine-phases.json
    python scripts/benchmark_differentials.py --profile standard \
      --output-json /tmp/splineops-bench/differentials.json
    python scripts/benchmark_multiscale.py --profile standard \
@@ -239,6 +257,8 @@ Reproducing validation
      --output-json /tmp/splineops-bench/workflows.json
    python scripts/benchmark_batch_scaling.py --profile standard \
      --output-json /tmp/splineops-bench/batch-scaling.json
+   python scripts/benchmark_downstream_workflows.py --profile standard \
+     --output-json /tmp/splineops-bench/downstream-workflows.json
    python scripts/check_benchmark_thresholds.py \
      --policy benchmarks/consolidation-thresholds.json \
      --artifacts-dir /tmp/splineops-bench

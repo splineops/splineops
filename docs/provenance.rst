@@ -80,11 +80,14 @@ Current inventory
        identified for attribution.
    * - ``multiscale.wavelets``
      - Haar and spline wavelet implementations corresponding to archived Java
-       sources.
+       sources.  The limited-precision order-5 table matches
+       `DeconvolutionLab2's SplineFilter at revision e9af0ab
+       <https://github.com/Biomedical-Imaging-Group/DeconvolutionLab2/blob/e9af0aba493ba137d70877154648e5583e376a81/src/main/java/wavelets/spline/SplineFilter.java#L141-L185>`_.
      - Python implementation added and revised in this repository in 2025.
      - Maintainer-cleared for distribution.  Mixed notices in archived source
        remain documented and are not represented as the license of the current
-       Python implementation.
+       Python implementation.  Order 5 is explicitly classified as bounded
+       approximate rather than perfect reconstruction.
 
 Historical archive
 ------------------

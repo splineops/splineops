@@ -107,6 +107,9 @@ together without changing `TensorSpline`'s independent public model.
 Coefficient tags have a validated JSON-plus-numeric persistence path;
 `DifferentialPlan` can select only the requested output families and reuse
 exact structured output buffers.
+The stability-soak examples combine those contracts in persisted registration
+fan-out and buffered 3-D feature pipelines while keeping every module public and
+independent.
 
 See the
 [reusable workflow recipes](https://splineops.github.io/consolidation-recipes.html)

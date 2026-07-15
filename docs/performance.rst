@@ -116,25 +116,25 @@ maximum differences near ``1e-13``, but SciPy was materially faster:
      - SciPy
      - SciPy vs. one-shot
    * - 2-D linear
-     - 167.0 ms
-     - 20.0 ms
-     - 17.3 ms
-     - 9.65x
+     - 170.0 ms
+     - 18.0 ms
+     - 8.5 ms
+     - 20.02x
    * - 2-D cubic
-     - 525.4 ms
-     - 191.5 ms
-     - 26.9 ms
-     - 19.54x
+     - 569.4 ms
+     - 192.4 ms
+     - 21.3 ms
+     - 26.69x
    * - 3-D linear
-     - 127.7 ms
-     - 26.0 ms
-     - 13.9 ms
-     - 9.19x
+     - 123.8 ms
+     - 21.1 ms
+     - 12.2 ms
+     - 10.17x
    * - 3-D cubic
-     - 486.4 ms
-     - 124.2 ms
+     - 456.7 ms
+     - 98.3 ms
      - 54.3 ms
-     - 8.96x
+     - 8.41x
 
 Affine's current achievements are exact spline semantics and bounded
 coordinate memory.  Direct NumPy support contraction materially improves the
@@ -149,6 +149,24 @@ Reproduce the profile with:
 
    python scripts/benchmark_affine.py --profile standard \
      --output-json affine.json --output-csv affine.csv
+
+Affine phase profile
+--------------------
+
+``scripts/profile_affine_phases.py`` instruments prefilter and coefficient
+evaluation inside complete cached-plan calls and reports construction
+separately.  On the current standard run, evaluation accounted for 63%--91% of
+the measured in-call phase time across 2-D/3-D linear/cubic rows.  Cached-plan
+construction ranged from 57 ms to 326 ms and is therefore justified only by
+reuse.  The profile motivated sequential support-axis contraction for NumPy
+3-D, where the gathered cubic support block is largest.  NumPy 1-D/2-D and
+CuPy retain the prior direct contraction because the evidence did not justify
+broadening the change.
+
+.. code-block:: shell
+
+   python scripts/profile_affine_phases.py --profile standard \
+     --output-json affine-phases.json --output-csv affine-phases.csv
 
 Differentials vectorization
 ---------------------------
@@ -190,36 +208,36 @@ standard five-repeat medians on the same development machine were:
      - Explicit reference
      - Speedup
    * - One coefficient field, two affine geometries
-     - 52.7 ms
-     - 73.4 ms
-     - 1.39x
+     - 44.7 ms
+     - 70.0 ms
+     - 1.57x
    * - Affine with explicit batch/channel axes
-     - 71.9 ms
+     - 78.2 ms
      - 151.2 ms
-     - 2.10x
+     - 1.93x
    * - Smoothing with explicit batch/channel axes
-     - 22.2 ms
-     - 17.0 ms
-     - 0.77x
+     - 22.3 ms
+     - 21.0 ms
+     - 0.94x
    * - Multi-output differentials with explicit axes
-     - 112.0 ms
-     - 158.5 ms
-     - 1.42x
+     - 111.1 ms
+     - 159.2 ms
+     - 1.43x
    * - Warm-start denoising lambda path
-     - 1.134 s
      - 1.148 s
+     - 1.155 s
      - 1.01x
    * - Haar explicit-axis analysis/synthesis
-     - 30.6 ms
-     - 30.6 ms
+     - 30.9 ms
+     - 31.0 ms
      - 1.00x
 
 All compared outputs agreed exactly except the independently converged ADMM
 paths, whose maximum difference was ``5.6e-9``.  The mixed result is useful:
-coefficient sharing gains 1.39x, direct batched affine contraction gains 2.10x,
-and batched multi-output differentials gain 1.42x.  Adaptive Haar execution
+coefficient sharing gains 1.57x, direct batched affine contraction gains 1.93x,
+and batched multi-output differentials gain 1.43x.  Adaptive Haar execution
 removes the former large-plane regression and is neutral here.  Batched
-smoothing is 23% slower for these four large planes, so its axis API remains a
+smoothing is 6% slower for these four large planes, so its axis API remains a
 convenience rather than a speed claim.  Nearby denoising lambda paths can need
 fewer iterations, but the actual diagnostics—not the API name—decide whether
 that helps.
@@ -251,6 +269,28 @@ is separated from temporary overhead in the JSON/CSV artifacts.
 
    python scripts/benchmark_batch_scaling.py --profile standard \
      --output-json batch-scaling.json --output-csv batch-scaling.csv
+
+Downstream stability-soak workflows
+-----------------------------------
+
+``scripts/benchmark_downstream_workflows.py`` measures complete pipelines, not
+isolated kernels.  Persisted registration includes atomic archive I/O,
+compatibility validation, and three concurrent affine geometries.  Buffered
+volume features apply a 3-D affine transform and write gradient and Laplacian
+outputs into caller-owned arrays.  Both standard rows agreed exactly with
+their explicit scalar references.  On this development machine registration
+fan-out measured 288.2 ms versus 505.6 ms (1.75x), while buffered volume
+features measured 156.1 ms versus 232.8 ms (1.49x).
+
+The ratios are workload evidence, not isolated-kernel claims: registration's
+timed path deliberately includes filesystem persistence and thread-pool
+execution.  See :doc:`stability-soak` for the contracts being exercised.
+
+.. code-block:: shell
+
+   python scripts/benchmark_downstream_workflows.py --profile standard \
+     --output-json downstream-workflows.json \
+     --output-csv downstream-workflows.csv
 
 Multiscale vectorization
 ------------------------

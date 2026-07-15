@@ -4,7 +4,7 @@ Development roadmap
 Execution status (2026-07-15)
 -----------------------------
 
-Five repository-wide implementation passes are complete.  The first established
+Six repository-wide implementation passes are complete.  The first established
 positioning, provenance, numerical contracts, bounded ``TensorSpline``
 evaluation, conservative internal sharing, reproducible benchmarks, and the
 packaging and quality workflows.  The second added reusable geometry plans,
@@ -36,6 +36,16 @@ relevant publication-branch changes or a manually selected profile as a
 Linux/macOS/Windows matrix.  These additions strengthen evidence without
 merging the independent public modules.
 
+The sixth pass adds two realistic stability-soak pipelines, prevalidates every
+differential destination before numerical work, and makes affine coefficient
+persistence atomic, endian-portable, schema-compatible, and process-tested.
+Independent published-formula references now cover Keys, cubic O-MOMS, and the
+fractional smoothing transfer function.  The inherited order-5 wavelet table
+was verified against its DeconvolutionLab2 source and remains explicitly
+approximate rather than receiving invented taps.  Instrumented affine phases
+justify a narrower 3-D NumPy contraction change, while the public modules stay
+separate.
+
 The detailed work packages below remain the long-term graduation criteria,
 not a claim that every experimental module is now stable.  In particular,
 implementation completeness and API stability are different promises.
@@ -53,12 +63,12 @@ published numerical reference or exact reconstruction property is incomplete;
 the order-5 spline wavelet is one explicit example.  These limits are recorded in
 :doc:`project-status` and :doc:`provenance`.
 
-The stabilization pass is validated but intentionally unreleased.  The next
-decision point is evidence review rather than another broad implementation
-wave: run the standard platform profile when the project is ready for that
-cost, observe coefficient persistence, output selection, and explicit-axis APIs
-in at least two real workloads, and promote modules only when their individual
-graduation gates are met.  A release is explicitly not required at this stage.
+The stabilization pass is intentionally unreleased.  The next decision point
+is evidence review rather than another broad implementation wave: review the
+standard platform profile and let the two checked-in workloads exercise
+coefficient persistence, output selection, and explicit-axis APIs through an
+API-soak period.  Promote modules only when their individual graduation gates
+are met.  A release is explicitly not required at this stage.
 
 Purpose
 -------

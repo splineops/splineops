@@ -413,6 +413,14 @@ requires the caller not to mutate them during evaluation.
 useful when one coefficient field is evaluated by several geometry plans.  It
 does not imply that different sample values share one coefficient field.
 
+Independent formula checks cover more than the B-spline/SciPy surface.  The
+Keys path is evaluated against Keys' published cubic-convolution kernel [7]_,
+and the cubic O-MOMS path is evaluated against the published piecewise
+generator [8]_ with coefficients obtained from an independently solved dense
+cardinal system.
+These references exercise both coefficient construction and arbitrary-point
+evaluation; see :doc:`../stability-soak`.
+
 Using :func:`~splineops.resize.resize` for the same operation:
 
 .. code-block:: python
@@ -469,3 +477,12 @@ References
 
 .. [6] M. Unser, `Sampling—50 Years After Shannon <https://doi.org/10.1109/5.843002>`_, 
    Proceedings of the IEEE, vol. 88, no. 4, pp. 569-587, April 2000.
+
+.. [7] R. G. Keys, `Cubic Convolution Interpolation for Digital Image
+   Processing <https://doi.org/10.1109/TASSP.1981.1163711>`_, IEEE
+   Transactions on Acoustics, Speech, and Signal Processing, vol. 29, no. 6,
+   pp. 1153-1160, December 1981.
+
+.. [8] T. Blu, P. Thévenaz, M. Unser, `MOMS: Maximal-Order Interpolation of
+   Minimal Support <https://doi.org/10.1109/83.931101>`_, IEEE Transactions on
+   Image Processing, vol. 10, no. 7, pp. 1069-1080, July 2001.

@@ -74,7 +74,8 @@ array rank:
    * - Affine
      - Exactly two or three ``spatial_axes``
      - Remaining slices are mathematically independent and share one batched
-       prefilter/support contraction with memory-bounded query tiles.
+       prefilter/support contraction with memory-bounded query tiles.  Tagged
+       persistence is atomic numeric-plus-JSON data, not object serialization.
    * - ``TensorSpline``
      - Every construction-data axis is a spline dimension
      - Query coordinates may be batched; sample-value channel axes are not
@@ -86,7 +87,8 @@ array rank:
      - Two or three explicit ``spatial_axes`` through ``DifferentialPlan``
      - Remaining slices are mathematically independent but execute through one
        batched coefficient/derivative workspace; the legacy ``Differentials``
-       object remains scalar.
+       object remains scalar.  Structured outputs may not alias the source or
+       one another.
    * - Multiscale
      - Two explicit ``spatial_axes`` for 2-D pyramids and wavelets
      - Small planes use cache-sized vectorized groups; cache-filling planes are

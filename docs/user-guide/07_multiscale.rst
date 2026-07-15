@@ -114,7 +114,10 @@ filter coefficients contain only roughly five to six significant digits and
 produce errors up to about ``2e-3`` in the current randomized rectangular
 audit.  Order 5 is therefore an approximate research implementation, not a
 perfect-reconstruction transform.  The test suite records that limitation so
-it cannot silently become a stronger claim.
+it cannot silently become a stronger claim.  The upstream DeconvolutionLab2
+source contains the same table; because no authoritative higher-precision taps
+were found, SplineOps retains those values and exposes
+``exact_reconstruction=False`` with a ``"bounded-approximation"`` contract.
 
 These APIs never infer batch or channel dimensions.  ``reduce_2d``,
 ``expand_2d``, and multi-scale wavelet ``analysis``/``synthesis`` accept

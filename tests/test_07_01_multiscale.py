@@ -398,6 +398,15 @@ def test_all_spline_wavelet_orders_have_a_bounded_reconstruction_error(
     assert np.max(np.abs(reconstructed - image)) < max_error
 
 
+def test_spline_wavelets_expose_the_order5_approximation_contract():
+    assert Spline1Wavelets(scales=1).exact_reconstruction
+    assert Spline3Wavelets(scales=1).reconstruction_contract == "perfect"
+    order5 = Spline5Wavelets(scales=1)
+    assert not order5.exact_reconstruction
+    assert order5.reconstruction_contract == "bounded-approximation"
+    assert "DeconvolutionLab2" in order5.filter.source
+
+
 @pytest.mark.parametrize("operation", [reduce_1d, expand_1d])
 def test_pyramid_promotes_integer_samples(operation):
     result = operation(np.arange(8), np.array([1.0, 0.25]), centered=False)

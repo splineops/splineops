@@ -253,19 +253,78 @@ class DifferentialPlan:
         return DifferentialResult(gradient_result, hessian_result, laplacian_result)
 
     @staticmethod
-    def _copy_component(source, target, name):
+    def _validate_component(target, shape, dtype, name):
         if not isinstance(target, np.ndarray):
             raise TypeError(f"'{name}' entries must be NumPy arrays.")
-        if target.shape != source.shape:
+        if target.shape != shape:
             raise ValueError(
-                f"'{name}' entries must have shape {source.shape}; "
+                f"'{name}' entries must have shape {shape}; "
                 f"received {target.shape}."
             )
-        if target.dtype != source.dtype:
+        if target.dtype != dtype:
             raise TypeError(
-                f"'{name}' entries must have dtype {source.dtype}; "
+                f"'{name}' entries must have dtype {dtype}; "
                 f"received {target.dtype}."
             )
+        if not target.flags.writeable:
+            raise ValueError(f"'{name}' entries must be writeable.")
+
+    def _validate_output(self, out, image, *, gradient, hessian, laplacian):
+        if out is None:
+            return
+        if not isinstance(out, DifferentialResult):
+            raise TypeError("'out' must be a DifferentialResult.")
+        work_dtype = (
+            image.dtype
+            if np.issubdtype(image.dtype, np.floating)
+            else np.dtype(np.float64)
+        )
+        requested = (
+            ("gradient", gradient, len(self.shape)),
+            ("hessian", hessian, len(self.shape) * (len(self.shape) + 1) // 2),
+        )
+        buffers = []
+        for name, enabled, count in requested:
+            target = getattr(out, name)
+            if not enabled:
+                if target is not None:
+                    raise ValueError(
+                        f"'out.{name}' must be None when {name} is not requested."
+                    )
+                continue
+            if not isinstance(target, tuple) or len(target) != count:
+                raise ValueError(f"'out.{name}' must contain exactly {count} arrays.")
+            for component in target:
+                self._validate_component(
+                    component, image.shape, work_dtype, f"out.{name}"
+                )
+                buffers.append((f"out.{name}", component))
+        if laplacian:
+            self._validate_component(
+                out.laplacian, image.shape, work_dtype, "out.laplacian"
+            )
+            buffers.append(("out.laplacian", out.laplacian))
+        elif out.laplacian is not None:
+            raise ValueError(
+                "'out.laplacian' must be None when laplacian is not requested."
+            )
+
+        for name, buffer in buffers:
+            if np.shares_memory(buffer, image):
+                raise ValueError(
+                    f"'{name}' must not overlap the input image; derivative "
+                    "operations preserve their source array."
+                )
+        for index, (first_name, first) in enumerate(buffers):
+            for second_name, second in buffers[index + 1 :]:
+                if np.shares_memory(first, second):
+                    raise ValueError(
+                        f"'{first_name}' and '{second_name}' output arrays must "
+                        "not overlap."
+                    )
+
+    @staticmethod
+    def _copy_component(source, target):
         np.copyto(target, source, casting="no")
 
     def apply(
@@ -296,8 +355,6 @@ class DifferentialPlan:
             laplacian = bool(hessian)
         elif not isinstance(laplacian, (bool, np.bool_)):
             raise TypeError("'laplacian' must be a boolean or None.")
-        if out is not None and not isinstance(out, DifferentialResult):
-            raise TypeError("'out' must be a DifferentialResult.")
         image = np.asarray(image)
         if image.size == 0:
             raise ValueError("'image' must be non-empty.")
@@ -306,6 +363,13 @@ class DifferentialPlan:
         if not np.all(np.isfinite(image)):
             raise ValueError("'image' must contain only finite values.")
         axes = _normalize_spatial_axes(image, self.shape, spatial_axes)
+        self._validate_output(
+            out,
+            image,
+            gradient=bool(gradient),
+            hessian=bool(hessian),
+            laplacian=bool(laplacian),
+        )
         nonspatial_axes = tuple(axis for axis in range(image.ndim) if axis not in axes)
         permutation = nonspatial_axes + axes
         canonical = np.transpose(image, permutation)
@@ -333,15 +397,9 @@ class DifferentialPlan:
                     np.ascontiguousarray(np.transpose(component, inverse_permutation))
                     for component in components
                 )
-            if not isinstance(target, tuple) or len(target) != len(components):
-                raise ValueError(
-                    f"'out.{name}' must contain exactly {len(components)} arrays."
-                )
             for component, target_component in zip(components, target):
                 self._copy_component(
-                    np.transpose(component, inverse_permutation),
-                    target_component,
-                    f"out.{name}",
+                    np.transpose(component, inverse_permutation), target_component
                 )
             return target
 
@@ -357,14 +415,8 @@ class DifferentialPlan:
             if out is None:
                 laplacian_result = np.ascontiguousarray(canonical_laplacian)
             else:
-                self._copy_component(
-                    canonical_laplacian, out.laplacian, "out.laplacian"
-                )
+                self._copy_component(canonical_laplacian, out.laplacian)
                 laplacian_result = out.laplacian
-        elif out is not None and out.laplacian is not None:
-            raise ValueError(
-                "'out.laplacian' must be None when laplacian is not requested."
-            )
         if out is not None:
             return out
         return DifferentialResult(gradients, hessians, laplacian_result)

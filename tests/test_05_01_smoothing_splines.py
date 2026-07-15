@@ -135,6 +135,26 @@ def test_nd_periodic_cosine_has_the_analytical_frequency_response():
     np.testing.assert_allclose(result, expected_gain * signal, rtol=2e-14, atol=2e-14)
 
 
+def test_nd_smoother_matches_published_fractional_transfer_function_fixture():
+    # Unser & Blu's periodic fractional-spline estimator has transfer function
+    # 1 / (1 + lambda * |omega| ** (2 * gamma)).  Evaluate that formulation
+    # through an explicit dense DFT, independently of scipy.fft and the plan.
+    signal = np.array([0.5, -1.0, 2.0, 0.25, -0.75, 1.5, 0.0, 0.8, -0.2])
+    lamb = 0.4
+    gamma = 1.25
+    size = signal.size
+    samples = np.arange(size)
+    modes = np.arange(size)
+    forward = np.exp(-2j * np.pi * modes[:, None] * samples[None, :] / size)
+    angular = 2.0 * np.pi * np.fft.fftfreq(size)
+    response = 1.0 / (1.0 + lamb * (angular**2) ** gamma)
+    expected = np.real(forward.conj().T @ (response * (forward @ signal)) / size)
+
+    result = SmoothingSplinePlan((size,), lamb=lamb, gamma=gamma)(signal)
+
+    np.testing.assert_allclose(result, expected, rtol=2e-15, atol=2e-15)
+
+
 def test_recursive_smoother_matches_independent_dense_boundary_system():
     signal = np.random.default_rng(20260715).standard_normal(31)
     lamb = 0.7

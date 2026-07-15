@@ -29,7 +29,9 @@ degree, boundary mode, or precision.  ``prefilter`` remains the raw-array,
 ``out=``-capable alternative when the caller manages that provenance.
 Use ``coefficients.save("field.npz")`` and
 ``compatible_plan.load_coefficients("field.npz")`` when the field crosses a
-process boundary; loading validates JSON metadata before rebuilding the tag.
+process boundary.  Saving uses atomic replacement; loading validates JSON
+metadata and portable numeric values before rebuilding the tag.  Schema-1
+archives remain readable.
 
 The plans must have the same input shape, degree, mode, and dtype.  Ordinary
 ``plan(frame)`` remains the correct end-to-end call for one geometry.  The
@@ -64,6 +66,10 @@ Spatial axes are selected explicitly and every remaining slice is independent:
 Hessian entries follow ``(00, 01, 11)`` in 2-D.  A Laplacian-only request skips
 gradient and mixed-Hessian construction.  Smoothing executes a batched real
 FFT; differentials use one batched per-call workspace.
+Structured differential destinations are validated together before execution;
+they may be writable strided arrays but must not overlap the source or another
+component.  The complete affine-to-feature pipeline is recorded in
+:doc:`stability-soak`.
 
 Multiscale batches
 ------------------

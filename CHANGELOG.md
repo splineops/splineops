@@ -36,8 +36,10 @@ All notable changes to SplineOps are documented here.
   incompatible input grid, degree, boundary mode, or precision while allowing
   different matrices and output shapes. Batched coefficient filtering and
   support evaluation now avoid per-slice plan dispatch. Tagged fields support
-  a validated JSON-plus-numeric NPZ round trip and concurrent read-only reuse;
-  direct untagged construction is rejected.
+  an atomic validated JSON-plus-numeric NPZ round trip and concurrent read-only
+  reuse by threads or independently loading processes. Schema-2 values use a
+  portable byte order, schema-1 archives remain readable, and direct untagged
+  construction is rejected.
 - Made differential operations return raw results without replacing the source
   image, removed implicit normalization and console output, and vectorized
   row/column spline prefiltering. Added physical spacing, standard increasing-
@@ -49,6 +51,8 @@ All notable changes to SplineOps are documented here.
   instead of constructing one workspace per slice. Gradient, Hessian, and
   Laplacian families can be selected independently; Laplacian-only requests
   skip mixed Hessians, and exact structured output buffers are supported.
+  Buffers are now prevalidated for shape, dtype, writability, and non-overlap
+  before computation so invalid requests cannot partially write outputs.
 - Corrected adaptive-regression amplitude sparsification, eliminated caller
   mutation, added opt-in convergence diagnostics, removed a duplicate smoothing
   implementation, and tightened research-module parameter validation.  Added a
@@ -67,6 +71,8 @@ All notable changes to SplineOps are documented here.
   preallocated destinations to reduce temporary arrays. Large cache-filling
   planes now avoid whole-array transpose copies, removing the measured
   large-plane batch regression while preserving small-plane vectorization.
+  The inherited order-5 tap provenance was rechecked against DeconvolutionLab2;
+  it now exposes an explicit bounded-approximation reconstruction contract.
 
 ### Project maturity
 
@@ -96,6 +102,11 @@ All notable changes to SplineOps are documented here.
   now runs publication-branch smoke evidence, or a manually selected profile,
   on Linux, macOS, and Windows and publishes per-runner artifacts. These remain
   evidence and soak gates, not release promises.
+- Added persisted registration and buffered 3-D feature soak workloads,
+  independent Keys/O-MOMS/fractional-smoothing references, and an instrumented
+  affine phase profile. A `[standard-bench]` commit deliberately requests the
+  standard Linux/macOS/Windows evidence matrix; ordinary relevant pushes remain
+  smoke runs.
 
 ## 2.0.0 - 2026-07-14
 

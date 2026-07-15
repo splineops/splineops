@@ -82,7 +82,8 @@ spline-based wavelet transforms using whole-axis separable passes.  Their
 multi-scale methods also accept two explicit ``spatial_axes`` for batched
 arrays.  Small planes use cache-sized vectorized groups; large planes avoid
 whole-array transpose copies through direct independent dispatch.  Classes
-typically define:
+also expose their reconstruction classification; the limited-precision order-5
+table is explicitly a bounded approximation.  Classes typically define:
 
 - **analysis** (multi-scale forward transform)
 - **synthesis** (multi-scale inverse transform)

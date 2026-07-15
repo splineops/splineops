@@ -176,12 +176,17 @@ validated on load:
        "frame-coefficients.npz"
    )
 
-The archive stores numeric values and JSON metadata.  Loading checks its
-schema, input shape, spatial axes, degree, canonical boundary implementation,
-and precision against the receiving plan.  Immutable fields and plans may be
-reused concurrently; each application allocates or writes only its own output.
+The schema-2 archive stores portable little-endian numeric values and JSON
+metadata.  Saving flushes a same-directory temporary file and then atomically
+replaces the destination, so an interrupted write cannot partially update an
+existing field.  Loading checks its schema, input shape, spatial axes, degree,
+canonical boundary implementation, and precision against the receiving plan;
+schema-1 archives remain readable.  Immutable fields and plans may be reused
+concurrently by threads or loaded independently by spawned processes; each
+application allocates or writes only its own output.
 See
-:doc:`../consolidation-recipes` for a complete example.  Set
+:doc:`../consolidation-recipes` and :doc:`../stability-soak` for complete
+examples.  Set
 ``cache_geometry=False`` for bounded-memory streaming with no retained query
 geometry.  Plan construction raises ``MemoryError`` rather than exceeding
 ``max_retained_bytes`` for geometry storage.

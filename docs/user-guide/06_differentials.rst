@@ -168,7 +168,11 @@ For repeated allocation-sensitive calls, pass a
 :class:`splineops.differentials.DifferentialResult` containing exact-shape and
 exact-dtype destination arrays through ``out=``.  Fields corresponding to
 unrequested families must be ``None``; the returned object is the supplied
-buffer container.
+buffer container.  All destinations are checked before computation begins.
+Writable strided arrays are accepted, while read-only arrays, overlap with the
+source, and overlap between output components are rejected.  This prevents
+partial writes and preserves the promise that differentiation does not mutate
+its input.
 
 One batched per-call workspace is used, so shared coefficient and derivative
 intermediates are not recomputed for the requested outputs.
@@ -176,6 +180,7 @@ intermediates are not recomputed for the requested outputs.
 channel arrays; components retain the full input shape and follow the selected
 axis order.  The legacy ``Differentials`` object continues to model one scalar
 image or volume, keeping its historical component helpers uncomplicated.
+See :doc:`../stability-soak` for a batched 3-D affine-to-feature pipeline.
 
 The following figure, taken from
 :ref:`sphx_glr_auto_examples_06_differentials_01_differentials_module.py`,

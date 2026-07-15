@@ -73,6 +73,18 @@
       "artifact": "batch-scaling.json",
       "json_path": "summary.max_abs_difference",
       "maximum": 1e-12
+    },
+    {
+      "name": "Downstream workflow numerical equivalence",
+      "artifact": "downstream-workflows.json",
+      "json_path": "summary.max_abs_difference",
+      "maximum": 1e-12
+    },
+    {
+      "name": "Affine phase-path numerical equivalence",
+      "artifact": "affine-phases.json",
+      "json_path": "results.*.max_abs_difference",
+      "maximum": 1e-12
     }
   ]
 }

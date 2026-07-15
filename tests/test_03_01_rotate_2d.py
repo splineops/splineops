@@ -1,6 +1,8 @@
 # splineops/tests/test_03_01_rotate_2d.py
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+import json
+import multiprocessing
 
 import numpy as np
 import pytest
@@ -12,6 +14,15 @@ from splineops.affine.affine import (
     affine_transform as spline_affine,
     rotate,
 )
+
+
+def _load_affine_field_in_subprocess(arguments):
+    path, shape, matrix, offset, expected_shape = arguments
+    plan = AffinePlan(shape, matrix, offset, degree=3, mode="mirror")
+    field = plan.load_coefficients(path)
+    result = plan.apply_coefficients(field)
+    assert result.shape == expected_shape
+    return result
 
 
 def generate_rotated_data_and_mask(data_shape, custom_center, margin, angle, k):
@@ -338,6 +349,106 @@ def test_affine_coefficient_field_safe_roundtrip_and_concurrent_reuse(tmp_path):
             {},
             {},
         )
+
+
+def test_affine_coefficient_save_is_atomic_and_cleans_failed_temporary_file(
+    tmp_path, monkeypatch
+):
+    plan = AffinePlan((9, 11), np.eye(2), degree=3, mode="mirror")
+    first = plan.prepare_coefficients(np.arange(99.0).reshape(9, 11))
+    second = plan.prepare_coefficients(np.arange(99.0).reshape(9, 11) + 1000.0)
+    target = tmp_path / "coefficients.npz"
+    first.save(target)
+    original_bytes = target.read_bytes()
+    original_savez = affine_module.np.savez_compressed
+
+    def fail_after_writing(path, **arrays):
+        original_savez(path, **arrays)
+        raise RuntimeError("simulated interrupted write")
+
+    monkeypatch.setattr(affine_module.np, "savez_compressed", fail_after_writing)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        second.save(target)
+
+    assert target.read_bytes() == original_bytes
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_affine_coefficient_archive_rejects_corruption_and_unsafe_payloads(tmp_path):
+    plan = AffinePlan((9, 11), np.eye(2), degree=3, mode="mirror")
+    field = plan.prepare_coefficients(np.arange(99.0).reshape(9, 11))
+    valid = tmp_path / "valid.npz"
+    field.save(valid)
+
+    truncated = tmp_path / "truncated.npz"
+    payload = valid.read_bytes()
+    truncated.write_bytes(payload[: len(payload) // 2])
+    with pytest.raises(ValueError, match="Invalid affine coefficient archive"):
+        plan.load_coefficients(truncated)
+
+    extra = tmp_path / "extra.npz"
+    np.savez(extra, values=np.ones((9, 11)), metadata=np.asarray("{}"), extra=[1])
+    with pytest.raises(ValueError, match="must contain only"):
+        plan.load_coefficients(extra)
+
+    unsafe = tmp_path / "unsafe.npz"
+    np.savez(unsafe, values=np.asarray([[object()]], dtype=object), metadata="{}")
+    with pytest.raises(ValueError, match="Object arrays"):
+        plan.load_coefficients(unsafe)
+
+    invalid_json = tmp_path / "invalid-json.npz"
+    np.savez(invalid_json, values=np.ones((9, 11)), metadata="{not-json")
+    with pytest.raises(ValueError, match="Invalid affine coefficient archive"):
+        plan.load_coefficients(invalid_json)
+
+
+def test_affine_coefficient_archive_is_endian_portable_and_reads_schema_one(tmp_path):
+    plan = AffinePlan((9, 11), np.eye(2), degree=3, mode="mirror")
+    field = plan.prepare_coefficients(np.arange(99.0).reshape(9, 11))
+
+    portable = tmp_path / "portable.npz"
+    metadata = plan._coefficient_serialization_metadata((0, 1))
+    np.savez(
+        portable,
+        values=field.values.astype(">f8"),
+        metadata=np.asarray(json.dumps(metadata)),
+    )
+    restored = plan.load_coefficients(portable)
+    assert restored.dtype == np.dtype(np.float64)
+    np.testing.assert_equal(restored.values, field.values)
+
+    legacy = tmp_path / "legacy-v1.npz"
+    legacy_metadata = plan._coefficient_serialization_metadata((0, 1), schema_version=1)
+    np.savez(
+        legacy,
+        values=field.values,
+        metadata=np.asarray(json.dumps(legacy_metadata)),
+    )
+    np.testing.assert_equal(plan.load_coefficients(legacy).values, field.values)
+
+
+def test_affine_coefficient_archive_can_be_loaded_concurrently_by_processes(tmp_path):
+    shape = (13, 15)
+    radians = np.radians(-7.0)
+    matrix = np.array(
+        [[np.cos(radians), -np.sin(radians)], [np.sin(radians), np.cos(radians)]]
+    )
+    center = (np.asarray(shape) - 1.0) / 2.0
+    offset = center - matrix @ center
+    plan = AffinePlan(shape, matrix, offset, degree=3, mode="mirror")
+    field = plan.prepare_coefficients(np.arange(np.prod(shape)).reshape(shape))
+    archive = tmp_path / "process-field.npz"
+    field.save(archive)
+    expected = plan.apply_coefficients(field)
+    arguments = (str(archive), shape, matrix, offset, expected.shape)
+
+    with ProcessPoolExecutor(
+        max_workers=2, mp_context=multiprocessing.get_context("spawn")
+    ) as executor:
+        results = list(executor.map(_load_affine_field_in_subprocess, [arguments] * 4))
+
+    for result in results:
+        np.testing.assert_equal(result, expected)
 
 
 def test_affine_plan_enforces_geometry_memory_limit():

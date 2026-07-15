@@ -7,7 +7,9 @@ on:
       - ".github/workflows/tensorspline-benchmark.yml"
       - "benchmarks/consolidation-thresholds.json"
       - "scripts/benchmark_batch_scaling.py"
+      - "scripts/benchmark_downstream_workflows.py"
       - "scripts/benchmark_workflows.py"
+      - "scripts/profile_affine_phases.py"
       - "src/splineops/affine/**"
       - "src/splineops/differentials/**"
       - "src/splineops/multiscale/wavelets/**"
@@ -30,7 +32,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     env:
-      BENCHMARK_PROFILE: ${{ inputs.profile || 'smoke' }}
+      BENCHMARK_PROFILE: ${{ inputs.profile || (contains(github.event.head_commit.message, '[standard-bench]') && 'standard') || 'smoke' }}
       OMP_NUM_THREADS: 1
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
@@ -73,6 +75,13 @@ jobs:
           --output-json affine.json
           --output-csv affine.csv
 
+      - name: Profile complete affine execution phases
+        run: >-
+          python scripts/profile_affine_phases.py
+          --profile "${{ env.BENCHMARK_PROFILE }}"
+          --output-json affine-phases.json
+          --output-csv affine-phases.csv
+
       - name: Benchmark vectorized differentials
         run: >-
           python scripts/benchmark_differentials.py
@@ -101,6 +110,13 @@ jobs:
           --output-json batch-scaling.json
           --output-csv batch-scaling.csv
 
+      - name: Benchmark realistic downstream workflows
+        run: >-
+          python scripts/benchmark_downstream_workflows.py
+          --profile "${{ env.BENCHMARK_PROFILE }}"
+          --output-json downstream-workflows.json
+          --output-csv downstream-workflows.csv
+
       - name: Check machine-relative regression thresholds
         run: >-
           python scripts/check_benchmark_thresholds.py
@@ -119,6 +135,8 @@ jobs:
             tensorspline-query-plan.csv
             affine.json
             affine.csv
+            affine-phases.json
+            affine-phases.csv
             differentials.json
             differentials.csv
             multiscale.json
@@ -127,4 +145,6 @@ jobs:
             workflows.csv
             batch-scaling.json
             batch-scaling.csv
+            downstream-workflows.json
+            downstream-workflows.csv
           if-no-files-found: error

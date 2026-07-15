@@ -753,16 +753,36 @@ class TensorSpline:
             required_labels = batch_ndim + ndim + 1
             if required_labels <= len(labels):
                 batch_labels = labels[:batch_ndim]
-                support_labels = labels[batch_ndim : batch_ndim + ndim]
+                support_labels = list(labels[batch_ndim : batch_ndim + ndim])
                 query_label = labels[batch_ndim + ndim]
-                value_labels = batch_labels + support_labels + query_label
-                weight_labels = ",".join(
-                    label + query_label for label in support_labels
-                )
-                equation = (
-                    f"{value_labels},{weight_labels}->{batch_labels}{query_label}"
-                )
-                return np.einsum(equation, gathered, *weights_seq, optimize=False)
+                if ndim < 3:
+                    value_labels = batch_labels + "".join(support_labels) + query_label
+                    weight_labels = ",".join(
+                        label + query_label for label in support_labels
+                    )
+                    equation = (
+                        f"{value_labels},{weight_labels}->"
+                        f"{batch_labels}{query_label}"
+                    )
+                    return np.einsum(equation, gathered, *weights_seq, optimize=False)
+                contracted = gathered
+                remaining = support_labels.copy()
+                # Contract one support axis at a time.  This preserves the
+                # direct-weight path while making each intermediate smaller;
+                # it is particularly beneficial for cubic 3-D support blocks.
+                for label, axis_weights in reversed(
+                    tuple(zip(support_labels, weights_seq))
+                ):
+                    value_labels = batch_labels + "".join(remaining) + query_label
+                    remaining.remove(label)
+                    output_labels = batch_labels + "".join(remaining) + query_label
+                    contracted = np.einsum(
+                        f"{value_labels},{label}{query_label}->{output_labels}",
+                        contracted,
+                        axis_weights,
+                        optimize=False,
+                    )
+                return contracted
         weights_product = weights_bc[0]
         for weights in weights_bc[1:]:
             weights_product = weights_product * weights

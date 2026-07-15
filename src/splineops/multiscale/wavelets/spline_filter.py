@@ -1,10 +1,11 @@
 # splineops/src/splineops/multiscale/wavelets/splinefilter.py
 
-"""
-spline_filter.py
-----------------
-Holds numeric arrays for various spline filters used in wavelets transformations,
-mirroring your Java SplineFilter code for orders 1, 3, 5.
+"""Numeric spline-wavelet filters translated from DeconvolutionLab2.
+
+The upstream order-5 table is published in its source with only roughly five
+to six significant digits and a short tail.  It is retained for reproducibility
+but is explicitly marked approximate; SplineOps does not invent replacement
+taps that cannot be traced to an authoritative source.
 """
 
 import numpy as np
@@ -19,6 +20,12 @@ class SplineFilter:
 
     def __init__(self, order: int):
         self.order = order
+        self.source = (
+            "Biomedical-Imaging-Group/DeconvolutionLab2@"
+            "e9af0aba493ba137d70877154648e5583e376a81:"
+            "src/main/java/wavelets/spline/SplineFilter.java"
+        )
+        self.approximate = order == 5
         self.h = None
         self.g = None
         self._init_filters()  # fill self.h with correct numeric array
@@ -185,7 +192,8 @@ class SplineFilter:
             self.h = np.array(hvals, dtype=float)
 
         elif self.order == 5:
-            # The array from your snippet:
+            # DeconvolutionLab2 stores this table at limited precision.  Keep
+            # it byte-for-number compatible and expose the approximation flag.
             hvals = [
                 0.74729,
                 0.4425,
