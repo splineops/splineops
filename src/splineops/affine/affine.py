@@ -166,20 +166,20 @@ class AffineCoefficientField:
         temporary_path = None
         try:
             with tempfile.NamedTemporaryFile(
-                mode="wb",
+                mode="w+b",
                 prefix=f".{target.name}.",
                 suffix=".tmp.npz",
                 dir=target.parent,
                 delete=False,
             ) as temporary:
                 temporary_path = Path(temporary.name)
-            np.savez_compressed(
-                temporary_path,
-                values=storage_values,
-                metadata=np.asarray(metadata),
-            )
-            with temporary_path.open("rb") as handle:
-                os.fsync(handle.fileno())
+                np.savez_compressed(
+                    temporary,
+                    values=storage_values,
+                    metadata=np.asarray(metadata),
+                )
+                temporary.flush()
+                os.fsync(temporary.fileno())
             os.replace(temporary_path, target)
             temporary_path = None
         finally:

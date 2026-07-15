@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 
 
@@ -74,6 +75,13 @@ def main() -> int:
     if failures:
         for failure in failures:
             print(f"FAIL: {failure}")
+            if os.environ.get("GITHUB_ACTIONS") == "true":
+                message = (
+                    failure.replace("%", "%25")
+                    .replace("\r", "%0D")
+                    .replace("\n", "%0A")
+                )
+                print(f"::error title=Benchmark threshold::{message}")
         return 1
     print("All benchmark thresholds passed.")
     return 0

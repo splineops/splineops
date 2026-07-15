@@ -124,6 +124,7 @@ jobs:
           --artifacts-dir .
 
       - uses: actions/upload-artifact@v6
+        if: ${{ always() }}
         with:
           name: development-benchmarks-${{ runner.os }}-${{ env.BENCHMARK_PROFILE }}-${{ github.sha }}
           path: |

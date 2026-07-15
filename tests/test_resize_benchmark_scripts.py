@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -559,6 +560,52 @@ def test_affine_phase_profile_smoke(tmp_path):
     )
     assert all(row["max_abs_difference"] == 0.0 for row in payload["results"])
     assert output_csv.exists()
+
+
+def test_benchmark_threshold_failure_emits_github_annotation(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    policy = tmp_path / "policy.json"
+    artifact = tmp_path / "result.json"
+    policy.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "checks": [
+                    {
+                        "name": "deliberate floor",
+                        "artifact": artifact.name,
+                        "json_path": "value",
+                        "minimum": 2.0,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    artifact.write_text(json.dumps({"value": 1.0}), encoding="utf-8")
+    environment = os.environ.copy()
+    environment["GITHUB_ACTIONS"] = "true"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "check_benchmark_thresholds.py"),
+            "--policy",
+            str(policy),
+            "--artifacts-dir",
+            str(tmp_path),
+        ],
+        cwd=repo_root,
+        check=False,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert completed.returncode == 1
+    assert "FAIL: deliberate floor[0]: 1 is below 2" in completed.stdout
+    assert "::error title=Benchmark threshold::deliberate floor" in completed.stdout
 
 
 def test_benchmark_threshold_checker(tmp_path):
