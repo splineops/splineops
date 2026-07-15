@@ -86,6 +86,37 @@ class TensorSplineGeometryPlan:
         """Shape returned by :meth:`apply`."""
         return self._query_shape
 
+    @property
+    def grid(self) -> bool:
+        """Whether the retained coordinates describe a tensor grid."""
+
+        return self._grid
+
+    @property
+    def attached(self) -> bool:
+        """Whether a construction spline remains available as the default."""
+
+        return self._default_spline is not None
+
+    def incompatibility_reason(self, spline: TensorSpline) -> str | None:
+        """Explain why ``spline`` cannot use this geometry, or return ``None``."""
+
+        from .tensor_spline import TensorSpline
+
+        if not isinstance(spline, TensorSpline):
+            return "The supplied object is not a TensorSpline."
+        if spline._geometry_signature() != self._geometry_signature:
+            return (
+                "Construction coordinates, bases, modes, backend, shape, or "
+                "real precision differ from this geometry plan."
+            )
+        return None
+
+    def is_compatible(self, spline: TensorSpline) -> bool:
+        """Return whether ``spline`` can be evaluated by this geometry plan."""
+
+        return self.incompatibility_reason(spline) is None
+
     def __call__(self, spline: TensorSpline | None = None, *, out=None):
         return self.apply(spline, out=out)
 
@@ -119,11 +150,11 @@ class TensorSplineGeometryPlan:
             raise TypeError(
                 "A detached geometry plan requires an explicit compatible spline."
             )
-        if spline._geometry_signature() != self._geometry_signature:
+        incompatibility = self.incompatibility_reason(spline)
+        if incompatibility is not None:
             raise ValueError(
                 "The supplied TensorSpline is incompatible with this geometry "
-                "plan; construction coordinates, bases, modes, backend and "
-                "real precision must match."
+                f"plan: {incompatibility}"
             )
         if self._grid:
             result = spline._evaluate_separable_grid_from_support(

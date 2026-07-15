@@ -226,6 +226,31 @@ def test_affine_plan_supports_output_buffer():
     np.testing.assert_equal(out, expected)
 
 
+def test_affine_plan_prefilters_once_and_applies_precomputed_coefficients():
+    rng = np.random.default_rng(20260716)
+    data = rng.standard_normal((2, 11, 13, 3))
+    angle = np.radians(-11.0)
+    matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+    center = (np.asarray((11, 13)) - 1.0) / 2.0
+    plan = AffinePlan(
+        (11, 13), matrix, center - matrix @ center, degree=3, mode="mirror"
+    )
+
+    coefficient_out = np.empty_like(data)
+    coefficients = plan.prefilter(data, spatial_axes=(1, 2), out=coefficient_out)
+    actual = plan.apply_coefficients(coefficients, spatial_axes=(1, 2))
+    expected = plan(data, spatial_axes=(1, 2))
+
+    assert coefficients is coefficient_out
+    np.testing.assert_allclose(actual, expected, rtol=0.0, atol=0.0)
+    assert plan.configuration["geometry_cached"] is True
+    assert plan.retained_bytes == (
+        plan.geometry_retained_bytes + plan.template_retained_bytes
+    )
+    with pytest.raises(TypeError, match="dtype"):
+        plan.apply_coefficients(coefficients.astype(np.float32), spatial_axes=(1, 2))
+
+
 def test_affine_plan_enforces_geometry_memory_limit():
     with pytest.raises(MemoryError, match="max_retained_bytes"):
         AffinePlan((20, 20), np.eye(2), max_retained_bytes=1)

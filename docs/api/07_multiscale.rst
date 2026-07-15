@@ -12,9 +12,10 @@ Pyramid Module
 
 The :mod:`splineops.multiscale.pyramid` module implements 1-D and 2-D
 REDUCE/EXPAND operations with mirror boundary handling.  Two-dimensional axis
-passes operate on the full array rather than dispatching a Python call for each
-row or column.  These operations form the foundation for many wavelet
-constructions.
+passes operate on whole selected axes rather than dispatching a Python call for
+each row or column.  Explicit ``spatial_axes`` preserve and independently
+process any remaining batch or channel dimensions.  These operations form the
+foundation for many wavelet constructions.
 
 Reduction uses ``floor(n / 2)`` for odd lengths, so pyramid reduce/expand is
 not a reversible shape operation in that case.  Wavelet analysis is stricter:
@@ -26,8 +27,9 @@ order 5 is approximate because its inherited taps have limited precision; see
 the multiscale user guide for the measured bounds.
 
 Inputs must be finite, real, and non-empty.  Floating inputs preserve their
-precision; integer inputs promote to float64.  The current public transforms
-operate on scalar signals or images and do not infer batch or channel axes.
+precision; integer inputs promote to float64.  Scalar images need no axis
+argument.  Higher-rank arrays require two explicit spatial axes; dimensions are
+never inferred as batch or channel merely from rank.
 
 Key functionalities:
 
@@ -38,7 +40,7 @@ Key functionalities:
   Down/upsample a 1D signal using the specified filters and mirror reflection.
 
 - **reduce_2d**, **expand_2d**  
-  Down/upsample a 2D image row-by-row and column-by-column.
+  Down/upsample two selected image axes with vectorized separable passes.
 
 Example (pyramid usage)
 -----------------------
@@ -75,7 +77,10 @@ API Reference: Pyramid
 Wavelet Modules
 ---------------
 
-The :mod:`splineops.multiscale.wavelets` subpackage provides various wavelet transforms (Haar, spline-based) using row-column (or column-row) passes. Classes typically define:
+The :mod:`splineops.multiscale.wavelets` subpackage provides Haar and
+spline-based wavelet transforms using whole-axis separable passes.  Their
+multi-scale methods also accept two explicit ``spatial_axes`` for batched
+arrays.  Classes typically define:
 
 - **analysis** (multi-scale forward transform)
 - **synthesis** (multi-scale inverse transform)

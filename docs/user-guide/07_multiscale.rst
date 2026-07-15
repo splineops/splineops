@@ -114,11 +114,12 @@ audit.  Order 5 is therefore an approximate research implementation, not a
 perfect-reconstruction transform.  The test suite records that limitation so
 it cannot silently become a stronger claim.
 
-These APIs model one scalar signal or image.  They do not infer batch or
-channel dimensions; applications should transform those slices independently.
-The vectorized implementation improves the standard 2-D workloads without
-changing this public shape contract.  See :doc:`../performance` for the
-reproducible row/column-oracle comparison.
+These APIs never infer batch or channel dimensions.  ``reduce_2d``,
+``expand_2d``, and multi-scale wavelet ``analysis``/``synthesis`` accept
+explicit ``spatial_axes`` and transform every remaining slice independently.
+The divisibility and reconstruction contracts apply only to selected axes.
+See :doc:`../performance` for the reproducible row/column-oracle comparison and
+:doc:`../consolidation-recipes` for a batched example.
 
 Multiscale Examples
 -------------------

@@ -37,6 +37,8 @@ Usage Example
     arr_expanded = expand_2d(arr_reduced, h, is_centered)
 """
 
+import operator
+
 import numpy as np
 
 # -------------------------------------------------------------------------
@@ -320,6 +322,34 @@ def _validate_nd_input(array, filter_, ndim):
     return validated.reshape(array.shape), filter_
 
 
+def _validate_spatial_input(array, filter_, spatial_axes):
+    if not isinstance(array, np.ndarray):
+        raise TypeError("Input must be a NumPy array.")
+    if spatial_axes is None:
+        if array.ndim != 2:
+            raise ValueError(
+                "'spatial_axes' is required when input contains batch or channel axes."
+            )
+        axes = (0, 1)
+    else:
+        try:
+            axes = tuple(operator.index(axis) for axis in spatial_axes)
+        except TypeError as exc:
+            raise TypeError(
+                "'spatial_axes' must be a sequence of integer axes."
+            ) from exc
+        if len(axes) != 2:
+            raise ValueError("'spatial_axes' must contain exactly two axes.")
+        axes = tuple(axis + array.ndim if axis < 0 else axis for axis in axes)
+        if any(axis < 0 or axis >= array.ndim for axis in axes) or axes[0] == axes[1]:
+            raise ValueError("'spatial_axes' must contain two distinct valid axes.")
+    if any(array.shape[axis] == 0 for axis in range(array.ndim)):
+        raise ValueError("Input dimensions must be non-empty.")
+    flattened = array.reshape(-1)
+    validated, filter_ = _validate_1d_inputs(flattened, filter_)
+    return validated.reshape(array.shape), filter_, axes
+
+
 def _apply_last_axis(array, filter_, centered, *, expand):
     if array.shape[-1] == 1:
         return array.copy()
@@ -346,60 +376,80 @@ def _apply_axis(array, filter_, centered, axis, *, expand):
 # -------------------------------------------------------------------------
 
 
-def reduce_2d(image: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
+def reduce_2d(
+    image: np.ndarray,
+    g: np.ndarray,
+    centered: bool,
+    *,
+    spatial_axes=None,
+) -> np.ndarray:
     """
-    Reduce a 2D image by factor of 2 in each dimension.
+    Reduce two selected image axes by a factor of two.
 
     Parameters
     ----------
     image : np.ndarray
-        Input 2D array (ny, nx).
+        Input scalar image or array containing batch/channel dimensions.
     g : np.ndarray
         1D reduce filter.
     centered : bool
         True if using centered reduce logic.
+    spatial_axes : sequence of int, optional
+        Exactly two dimensions to reduce.  Required for higher-rank arrays;
+        every other dimension is preserved.
 
     Returns
     -------
     np.ndarray
-        Reduced image of shape (ny//2, nx//2) if ny,nx >= 2, else smaller.
+        Array with selected lengths reduced to ``floor(length / 2)`` when the
+        length is at least two.  Singleton selected dimensions stay singleton.
     """
-    image, g = _validate_nd_input(image, g, 2)
+    image, g, axes = _validate_spatial_input(image, g, spatial_axes)
     centered = _validate_centered(centered)
     return _apply_axis(
-        _apply_axis(image, g, centered, 1, expand=False),
+        _apply_axis(image, g, centered, axes[1], expand=False),
         g,
         centered,
-        0,
+        axes[0],
         expand=False,
     )
 
 
-def expand_2d(image: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
+def expand_2d(
+    image: np.ndarray,
+    h: np.ndarray,
+    centered: bool,
+    *,
+    spatial_axes=None,
+) -> np.ndarray:
     """
-    Expand a 2D image by factor of 2 in each dimension.
+    Expand two selected image axes by a factor of two.
 
     Parameters
     ----------
     image : np.ndarray
-        Input 2D array (coarse scale).
+        Input scalar image or array containing batch/channel dimensions.
     h : np.ndarray
         1D expand filter.
     centered : bool
         True if using centered expand logic.
+    spatial_axes : sequence of int, optional
+        Exactly two dimensions to expand.  Required for higher-rank arrays;
+        every other dimension is preserved.
 
     Returns
     -------
     np.ndarray
-        Expanded image, roughly 2*ny by 2*nx.
+        Array with selected lengths doubled when they exceed one.  Singleton
+        selected dimensions stay singleton.
     """
-    image, h = _validate_nd_input(image, h, 2)
+    image, h, axes = _validate_spatial_input(image, h, spatial_axes)
     centered = _validate_centered(centered)
     return _apply_axis(
-        _apply_axis(image, h, centered, 1, expand=True),
+        _apply_axis(image, h, centered, axes[1], expand=True),
         h,
         centered,
-        0,
+        axes[0],
         expand=True,
     )
 

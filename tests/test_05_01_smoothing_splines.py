@@ -191,3 +191,27 @@ def test_nd_smoothing_plan_rejects_incompatible_shape():
 
     with pytest.raises(ValueError, match="shape"):
         plan(np.ones((8, 6)))
+
+
+def test_nd_smoothing_supports_explicit_batch_and_channel_axes():
+    rng = np.random.default_rng(20260716)
+    data = rng.standard_normal((2, 9, 12, 3))
+    plan = SmoothingSplinePlan((9, 12), lamb=0.25, gamma=1.3)
+    out = np.empty(data.shape, dtype=np.float64)
+
+    returned = plan(data, axes=(1, 2), out=out)
+    expected = np.empty_like(returned)
+    for batch in range(data.shape[0]):
+        for channel in range(data.shape[-1]):
+            expected[batch, :, :, channel] = smoothing_spline_nd(
+                data[batch, :, :, channel], lamb=0.25, gamma=1.3
+            )
+
+    assert returned is out
+    np.testing.assert_allclose(returned, expected, rtol=0.0, atol=0.0)
+    np.testing.assert_equal(smoothing_spline_nd(data, 0.25, 1.3, axes=(1, 2)), expected)
+    assert plan.configuration == {"shape": (9, 12), "lamb": 0.25, "gamma": 1.3}
+    with pytest.raises(ValueError, match="required"):
+        plan(data)
+    with pytest.raises(ValueError, match="distinct"):
+        plan(data, axes=(1, 1))

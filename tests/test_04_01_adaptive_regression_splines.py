@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+import scipy.optimize as optimize
 from splineops.adaptive_regression_splines import (
     DenoisingDiagnostics,
     DenoisingPlan,
@@ -169,6 +170,70 @@ def test_denoising_plan_keeps_an_immutable_copy_of_sample_locations():
 
     np.testing.assert_equal(plan.x, np.linspace(0.0, 1.0, 8))
     assert not plan.x.flags.writeable
+
+
+def test_denoising_path_matches_independent_solves_without_hidden_state():
+    x = np.arange(32, dtype=np.float64)
+    y = np.sin(0.3 * x) + 0.05 * np.cos(1.2 * x)
+    lambdas = (0.0, 0.02, 0.05, 0.1)
+    plan = DenoisingPlan(x, rho=0.5)
+
+    path, diagnostics = plan.solve_path(
+        y, lambdas, relative_tol=1e-8, return_diagnostics=True
+    )
+    repeated = plan.solve_path(y, lambdas, relative_tol=1e-8)
+    independent = np.stack([plan.solve(y, lamb, relative_tol=1e-8) for lamb in lambdas])
+
+    np.testing.assert_allclose(path, independent, rtol=2e-8, atol=2e-8)
+    np.testing.assert_equal(repeated, path)
+    assert len(diagnostics) == len(lambdas)
+    assert plan.retained_array_bytes > plan.x.nbytes
+    assert plan.configuration == {"sample_count": x.size, "rho": 0.5}
+    with pytest.raises(ValueError, match="non-empty"):
+        plan.solve_path(y, ())
+    with pytest.raises(ValueError, match="non-negative"):
+        plan.solve_path(y, (0.1, -0.1))
+    with pytest.raises(TypeError, match="sequence"):
+        plan.solve_path(y, 0.1)
+
+
+def test_denoising_matches_independent_constrained_optimizer():
+    x = np.array([0.0, 0.2, 0.55, 0.9, 1.4, 2.0, 2.8, 3.7])
+    y = np.array([0.1, 0.8, 0.4, 1.2, 1.0, 1.8, 1.6, 2.4])
+    lamb = 0.08
+    plan = DenoisingPlan(x, rho=1.0)
+    regularizer = plan._regularizer.toarray()
+    regularized_size = regularizer.shape[0]
+
+    def objective(variable):
+        signal = variable[: x.size]
+        slack = variable[x.size :]
+        return 0.5 * np.sum((signal - y) ** 2) + lamb * np.sum(slack)
+
+    constraint_matrix = np.block(
+        [
+            [regularizer, -np.eye(regularized_size)],
+            [-regularizer, -np.eye(regularized_size)],
+        ]
+    )
+    constraint = optimize.LinearConstraint(constraint_matrix, -np.inf, 0.0)
+    initial = np.concatenate((y, np.abs(regularizer @ y) + 1e-4))
+    bounds = optimize.Bounds(
+        np.concatenate((np.full(x.size, -np.inf), np.zeros(regularized_size))),
+        np.full(x.size + regularized_size, np.inf),
+    )
+    reference = optimize.minimize(
+        objective,
+        initial,
+        method="SLSQP",
+        constraints=(constraint,),
+        bounds=bounds,
+        options={"ftol": 1e-12, "maxiter": 2000},
+    )
+
+    assert reference.success, reference.message
+    actual = plan.solve(y, lamb, relative_tol=1e-10)
+    np.testing.assert_allclose(actual, reference.x[: x.size], rtol=2e-6, atol=2e-6)
 
 
 def test_linear_spline_prefix_evaluator_matches_direct_hinge_sum():

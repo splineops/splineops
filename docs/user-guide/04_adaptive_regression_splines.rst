@@ -130,6 +130,23 @@ work disappear.  ``x`` must stay strictly increasing and ``rho`` is fixed by
 the plan; construct another plan when either changes.  Zero regularization and
 the linear-regression limit still use their direct branches.
 
+For an ordered sweep on one signal, ``solve_path`` uses controlled warm starts:
+
+.. code-block:: python
+
+   solutions, diagnostics = plan.solve_path(
+       y,
+       lambda_values,
+       return_diagnostics=True,
+   )
+
+Iteration state is local to that call.  Repeated calls therefore remain
+deterministic and the plan stays safe from hidden cross-call state.  Nearby
+penalties often require fewer iterations, but this is not a guaranteed speedup;
+the diagnostics expose the actual result.  ``retained_array_bytes`` is a lower
+bound covering known NumPy/SciPy sparse arrays, excluding opaque solver-factor
+storage.
+
 Convergence diagnostics
 -----------------------
 

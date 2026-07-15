@@ -82,8 +82,8 @@ Repeated coordinates
 speed.  It stores coordinate geometry independently of sample values and can
 therefore serve compatible splines representing changing frames.  For 200,000
 random cubic 2-D points and seven changing-spline evaluations, the ordinary
-path took 255.7 ms per call and the planned path 68.5 ms: a 3.73x speedup.  Plan
-construction broke even after an estimated 1.30 calls and retained 24.41 MiB.
+path took 249.0 ms per call and the planned path 62.1 ms: a 4.01x speedup.  Plan
+construction broke even after an estimated 1.15 calls and retained 24.41 MiB.
 This is a strong workload-specific capability, not a reason to plan one-shot
 queries.
 
@@ -116,25 +116,25 @@ maximum differences near ``1e-13``, but SciPy was materially faster:
      - SciPy
      - SciPy vs. one-shot
    * - 2-D linear
-     - 183.0 ms
-     - 54.3 ms
-     - 22.2 ms
-     - 8.23x
+     - 193.6 ms
+     - 51.5 ms
+     - 19.0 ms
+     - 10.17x
    * - 2-D cubic
-     - 435.8 ms
-     - 206.6 ms
-     - 34.7 ms
-     - 12.56x
+     - 644.0 ms
+     - 215.4 ms
+     - 33.9 ms
+     - 19.02x
    * - 3-D linear
-     - 130.0 ms
-     - 39.6 ms
-     - 24.1 ms
-     - 5.41x
+     - 123.7 ms
+     - 38.1 ms
+     - 23.4 ms
+     - 5.28x
    * - 3-D cubic
-     - 542.4 ms
-     - 322.6 ms
-     - 59.8 ms
-     - 9.07x
+     - 538.3 ms
+     - 295.1 ms
+     - 53.9 ms
+     - 9.99x
 
 Affine's current achievements are exact spline semantics and bounded
 coordinate memory.  A cached plan removes repeated support construction and is
@@ -155,10 +155,10 @@ Differentials vectorization
 The spline differential implementation performs coefficient conversion and
 derivative stencils across complete array axes.  Against the retained scalar
 row/column oracle, the standard 512x640 float64 gradient-magnitude benchmark
-measured 231.3 ms cold versus 12.663 s, a 54.75x speedup.  Reusing the
-``Differentials`` object's cached workspace reduced a repeated map to 9.4 ms.
+measured 220.9 ms cold versus 12.483 s, a 56.50x speedup.  Reusing the
+``Differentials`` object's cached workspace reduced a repeated map to 5.9 ms.
 A ``DifferentialPlan`` request for gradient, packed Hessian, and Laplacian
-together took 340.3 ms; that row performs substantially more work and is
+together took 358.0 ms; that row performs substantially more work and is
 reported to make multi-output cost visible, not as a direct speedup ratio.
 Maximum absolute difference from the scalar oracle was ``1.556e-7``.
 
@@ -173,17 +173,59 @@ Reusable research-module plans
 ``SmoothingSplinePlan`` retains a real-FFT half-spectrum response for changing
 arrays with fixed shape, regularization, and order.  ``DenoisingPlan`` retains
 the sparse factorization determined by fixed sample locations and ADMM penalty
-while allowing observations and regularization strength to change.  These
-plans remove repeated setup; no portable speedup is claimed here until their
-standard workload sweeps are published by the benchmark suite.
+while allowing observations and regularization strength to change.
+
+``scripts/benchmark_workflows.py`` measures complete operations, including
+prefiltering and axis orchestration.  The standard three-repeat medians on the
+same development machine were:
+
+.. list-table:: Consolidated workflow profile
+   :header-rows: 1
+   :widths: 42 18 18 18
+
+   * - Workflow
+     - Consolidated path
+     - Explicit reference
+     - Speedup
+   * - One coefficient field, two affine geometries
+     - 104.6 ms
+     - 123.3 ms
+     - 1.18x
+   * - Smoothing with explicit batch/channel axes
+     - 22.1 ms
+     - 22.8 ms
+     - 1.03x
+   * - Warm-start denoising lambda path
+     - 1.120 s
+     - 1.132 s
+     - 1.01x
+   * - Wavelet explicit-axis orchestration
+     - 16.0 ms
+     - 15.8 ms
+     - 0.99x
+
+All compared outputs agreed exactly except the independently converged ADMM
+paths, whose maximum difference was ``5.6e-9``.  The mixed result is useful:
+coefficient sharing earns a modest end-to-end affine gain, while denoising warm
+starts and wavelet axis convenience are not presented as speed advantages on
+this workload.  Nearby lambda paths can need fewer iterations, but the actual
+diagnostics—not the API name—decide whether that helps.
+
+.. code-block:: shell
+
+   python scripts/benchmark_workflows.py --profile standard \
+     --output-json workflows.json --output-csv workflows.csv
+   python scripts/check_benchmark_thresholds.py \
+     --policy benchmarks/consolidation-thresholds.json \
+     --artifacts-dir .
 
 Multiscale vectorization
 ------------------------
 
 ``scripts/benchmark_multiscale.py`` compares current whole-axis execution with
 the retained row/column oracle on standard float64 images.  Pyramid reduction
-measured 467.7 ms versus 3.474 s (7.43x), and Haar analysis/synthesis measured
-32.8 ms versus 69.9 ms (2.13x).  These ratios measure Python dispatch and array
+measured 533.2 ms versus 3.558 s (6.67x), and Haar analysis/synthesis measured
+29.1 ms versus 72.7 ms (2.49x).  These ratios measure Python dispatch and array
 execution on one development machine; reconstruction tolerances and supported
 shape contracts are unchanged.
 

@@ -164,6 +164,7 @@ Contents
 
    installation/index
    project-status
+   consolidation-recipes
    user-guide/index
    auto_examples/index
    api/index

@@ -83,7 +83,8 @@ geometry behind an explicit memory cap and apply it to compatible
 `TensorSpline` instances with changing sample values. Resize and `TensorSpline`
 share only carefully validated internals where their mathematical contracts
 match; they retain distinct APIs, coordinate contracts, and optimized execution
-paths.
+paths. Construction templates can also refit new data or consume explicitly
+precomputed coefficients without mutating the original spline.
 
 ## Performance position
 
@@ -99,6 +100,11 @@ multi-output differentials, and whole-axis multiscale operations now avoid
 substantial repeated setup or Python dispatch. The benchmark tools report both
 runtime and numerical differences so contextual comparisons are not presented
 as equivalent algorithms.
+
+See the
+[reusable workflow recipes](https://splineops.github.io/consolidation-recipes.html)
+for coefficient sharing across affine geometries, explicit batch/channel axes,
+controlled denoising paths, and plan memory inspection.
 
 ## Backend support
 

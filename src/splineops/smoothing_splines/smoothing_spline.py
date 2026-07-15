@@ -1,11 +1,44 @@
 # splineops/src/splineops/smoothing_splines/smoothing_spline.py
 
 import operator
-from typing import Tuple
+from typing import Sequence, Tuple
 import numpy as np
 import numpy.typing as npt
 from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
 from scipy.fft import irfftn, rfftn
+
+
+def _normalize_spatial_axes(data, spatial_shape, axes):
+    spatial_ndim = len(spatial_shape)
+    if axes is None:
+        if data.ndim != spatial_ndim:
+            raise ValueError(
+                "'axes' is required when data contains batch or channel axes."
+            )
+        normalized = tuple(range(data.ndim))
+    else:
+        try:
+            normalized = tuple(operator.index(axis) for axis in axes)
+        except TypeError as exc:
+            raise TypeError("'axes' must be a sequence of integer axes.") from exc
+        if len(normalized) != spatial_ndim:
+            raise ValueError(
+                f"'axes' must contain exactly {spatial_ndim} spatial axes."
+            )
+        normalized = tuple(
+            axis + data.ndim if axis < 0 else axis for axis in normalized
+        )
+        if any(axis < 0 or axis >= data.ndim for axis in normalized) or len(
+            set(normalized)
+        ) != len(normalized):
+            raise ValueError("'axes' must contain distinct valid axes.")
+    selected_shape = tuple(data.shape[axis] for axis in normalized)
+    if selected_shape != spatial_shape:
+        raise ValueError(
+            f"The dimensions selected by 'axes' must have shape {spatial_shape}; "
+            f"received {selected_shape}."
+        )
+    return normalized
 
 
 def periodize(x: npt.NDArray, m: int) -> npt.NDArray:
@@ -265,32 +298,57 @@ class SmoothingSplinePlan:
 
         return self.frequency_response.nbytes
 
+    @property
+    def configuration(self) -> dict[str, object]:
+        """Copy of the fixed spatial and frequency-response contract."""
+
+        return {"shape": self.shape, "lamb": self.lamb, "gamma": self.gamma}
+
     def apply(
-        self, data: npt.NDArray, *, out: npt.NDArray | None = None
+        self,
+        data: npt.NDArray,
+        *,
+        axes: Sequence[int] | None = None,
+        out: npt.NDArray | None = None,
     ) -> npt.NDArray:
-        """Smooth ``data`` and optionally copy the result into ``out``."""
+        """Smooth selected axes and optionally copy the result into ``out``.
+
+        Every unselected dimension is an independent batch or channel
+        dimension.  When ``data`` contains only the plan's spatial dimensions,
+        ``axes`` may be omitted.
+        """
 
         data = np.asarray(data)
-        if data.shape != self.shape:
-            raise ValueError(
-                f"'data' must have shape {self.shape}; received {data.shape}."
-            )
+        if data.size == 0:
+            raise ValueError("'data' must be non-empty.")
         if not np.issubdtype(data.dtype, np.number):
             raise TypeError("'data' must have a numeric dtype.")
         if np.iscomplexobj(data):
             raise TypeError("'data' must be real-valued.")
         if not np.all(np.isfinite(data)):
             raise ValueError("'data' must contain only finite values.")
-
-        spectrum = rfftn(data)
-        result = irfftn(self.frequency_response * spectrum, s=self.shape)
+        spatial_axes = _normalize_spatial_axes(data, self.shape, axes)
+        nonspatial_axes = tuple(
+            axis for axis in range(data.ndim) if axis not in spatial_axes
+        )
+        permutation = nonspatial_axes + spatial_axes
+        canonical = np.transpose(data, permutation)
+        fft_axes = tuple(range(canonical.ndim - len(self.shape), canonical.ndim))
+        response = self.frequency_response.reshape(
+            (1,) * len(nonspatial_axes) + self.frequency_response.shape
+        )
+        spectrum = rfftn(canonical, axes=fft_axes)
+        canonical_result = irfftn(response * spectrum, s=self.shape, axes=fft_axes)
+        result = np.ascontiguousarray(
+            np.transpose(canonical_result, tuple(np.argsort(permutation)))
+        )
         if out is None:
             return result
         if not isinstance(out, np.ndarray):
             raise TypeError("'out' must be a NumPy array.")
-        if out.shape != self.shape:
+        if out.shape != data.shape:
             raise ValueError(
-                f"'out' must have shape {self.shape}; received {out.shape}."
+                f"'out' must have shape {data.shape}; received {out.shape}."
             )
         if out.dtype != result.dtype:
             raise TypeError(
@@ -302,7 +360,14 @@ class SmoothingSplinePlan:
     __call__ = apply
 
 
-def smoothing_spline_nd(data: npt.NDArray, lamb: float, gamma: float) -> npt.NDArray:
+def smoothing_spline_nd(
+    data: npt.NDArray,
+    lamb: float,
+    gamma: float,
+    *,
+    axes: Sequence[int] | None = None,
+    out: npt.NDArray | None = None,
+) -> npt.NDArray:
     """
     Apply multi-dimensional fractional smoothing spline to the input data.
 
@@ -314,6 +379,11 @@ def smoothing_spline_nd(data: npt.NDArray, lamb: float, gamma: float) -> npt.NDA
         Regularization parameter.
     gamma : float
         Order of the spline operator (gamma = H + 0.5).
+    axes : sequence of int, optional
+        Spatial dimensions to smooth.  Required when batch or channel
+        dimensions are present; every unselected slice is independent.
+    out : ndarray, optional
+        Exact-shape and exact-result-dtype destination.
 
     Returns
     -------
@@ -344,4 +414,23 @@ def smoothing_spline_nd(data: npt.NDArray, lamb: float, gamma: float) -> npt.NDA
         raise ValueError("'lamb' must be finite and non-negative.")
     if not np.isfinite(gamma) or gamma <= 0:
         raise ValueError("'gamma' must be finite and positive.")
-    return SmoothingSplinePlan(data.shape, lamb=lamb, gamma=gamma).apply(data)
+    if axes is None:
+        spatial_shape = data.shape
+    else:
+        try:
+            normalized_axes = tuple(operator.index(axis) for axis in axes)
+        except TypeError as exc:
+            raise TypeError("'axes' must be a sequence of integer axes.") from exc
+        normalized_axes = tuple(
+            axis + data.ndim if axis < 0 else axis for axis in normalized_axes
+        )
+        if (
+            not normalized_axes
+            or any(axis < 0 or axis >= data.ndim for axis in normalized_axes)
+            or len(set(normalized_axes)) != len(normalized_axes)
+        ):
+            raise ValueError("'axes' must contain distinct valid axes.")
+        spatial_shape = tuple(data.shape[axis] for axis in normalized_axes)
+    return SmoothingSplinePlan(spatial_shape, lamb=lamb, gamma=gamma).apply(
+        data, axes=axes, out=out
+    )

@@ -138,10 +138,17 @@ response once and stores only the non-redundant real-FFT half spectrum:
    plan.apply(image, out=output)
    next_output = plan(next_image)
 
-``retained_bytes`` reports the response storage.  The plan accepts finite real
-arrays of exactly its construction shape.  All array axes participate in the
-frequency response, so batch or channel dimensions should be processed
-independently when smoothing across them is not intended.
+``retained_bytes`` reports the response storage and ``configuration`` describes
+its fixed shape and parameters.  The plan accepts finite real arrays whose
+selected ``axes`` match the construction shape.  Without ``axes``, every input
+dimension remains spatial for backward compatibility.  With explicit axes,
+remaining batch/channel slices are transformed independently by one batched
+real FFT:
+
+.. code-block:: python
+
+   plan = SmoothingSplinePlan(batch.shape[-2:], lamb=0.02, gamma=1.5)
+   smooth = plan(batch, axes=(-2, -1))
 
 Fast Recursive Linear Smoother
 ------------------------------

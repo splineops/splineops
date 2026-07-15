@@ -151,10 +151,12 @@ spacing:
    hxx, hxy, hxz, hyy, hyz, hzz = result.hessian
    laplacian = result.laplacian
 
-One cached workspace is used within each call, so shared coefficient and
-derivative intermediates are not recomputed for the requested outputs.  The
-module currently models one scalar image or volume; batch and channel axes
-must be processed independently.
+One cached workspace is used within each scalar slice, so shared coefficient
+and derivative intermediates are not recomputed for the requested outputs.
+``DifferentialPlan`` also accepts explicit ``spatial_axes`` for batch and
+channel arrays; components retain the full input shape and follow the selected
+axis order.  The legacy ``Differentials`` object continues to model one scalar
+image or volume, keeping its historical component helpers uncomplicated.
 
 The following figure, taken from
 :ref:`sphx_glr_auto_examples_06_differentials_01_differentials_module.py`,

@@ -251,6 +251,49 @@ def test_pyramid_2d():
     )
 
 
+def test_pyramid_supports_explicit_batch_and_channel_axes():
+    rng = np.random.default_rng(20260716)
+    data = rng.standard_normal((2, 12, 16, 3)).astype(np.float32)
+    g, h, centered = get_pyramid_filter("Spline", 3)
+
+    reduced = reduce_2d(data, g, centered, spatial_axes=(1, 2))
+    expanded = expand_2d(reduced, h, centered, spatial_axes=(1, 2))
+
+    assert reduced.shape == (2, 6, 8, 3)
+    assert expanded.shape == data.shape
+    for batch in range(data.shape[0]):
+        for channel in range(data.shape[-1]):
+            expected_reduced = reduce_2d(data[batch, :, :, channel], g, centered)
+            expected_expanded = expand_2d(expected_reduced, h, centered)
+            np.testing.assert_equal(reduced[batch, :, :, channel], expected_reduced)
+            np.testing.assert_equal(expanded[batch, :, :, channel], expected_expanded)
+    with pytest.raises(ValueError, match="required"):
+        reduce_2d(data, g, centered)
+    with pytest.raises(ValueError, match="distinct"):
+        reduce_2d(data, g, centered, spatial_axes=(1, 1))
+
+
+@pytest.mark.parametrize("wavelet_class", [HaarWavelets, Spline3Wavelets])
+def test_wavelets_support_explicit_batch_and_channel_axes(wavelet_class):
+    rng = np.random.default_rng(20260716)
+    data = rng.standard_normal((2, 16, 24, 3))
+    wavelet = wavelet_class(scales=2)
+
+    coefficients = wavelet.analysis(data, spatial_axes=(1, 2))
+    reconstructed = wavelet.synthesis(coefficients, spatial_axes=(1, 2))
+
+    for batch in range(data.shape[0]):
+        for channel in range(data.shape[-1]):
+            expected = wavelet.analysis(data[batch, :, :, channel])
+            np.testing.assert_equal(coefficients[batch, :, :, channel], expected)
+    tolerance = 2e-12 if wavelet_class is HaarWavelets else 2e-10
+    np.testing.assert_allclose(reconstructed, data, rtol=0.0, atol=tolerance)
+    with pytest.raises(ValueError, match="required"):
+        wavelet.analysis(data)
+    with pytest.raises(ValueError, match="distinct"):
+        wavelet.analysis(data, spatial_axes=(1, 1))
+
+
 @pytest.mark.parametrize(
     "wavelet_class,ground_truth",
     [

@@ -20,30 +20,36 @@ All notable changes to SplineOps are documented here.
   Query plans now represent geometry independently of one data array, can be
   reused across compatible `TensorSpline` instances, and support exact output
   buffers.  Separable tensor grids use axis-wise contraction to reduce runtime
-  and peak memory.
+  and peak memory.  Geometry templates can now refit new data or accept
+  explicitly precomputed coefficients without hidden mutation.
 - Replaced affine full-volume coordinate meshgrids with tiled pull-back
   evaluation, made integer promotion and degree validation explicit, and added
   matched SciPy comparisons across degrees 0--5.  Added a general pull-back
   `affine_transform`, reusable memory-capped `AffinePlan`, output buffers, and
-  explicit spatial axes for independent batch and channel transforms.
+  explicit spatial axes for independent batch and channel transforms.  Affine
+  plans can prefilter once and share one coefficient field across compatible
+  transform geometries, with retained-memory and configuration introspection.
 - Made differential operations return raw results without replacing the source
   image, removed implicit normalization and console output, and vectorized
   row/column spline prefiltering. Added physical spacing, standard increasing-
   coordinate directions, direct gradient/Hessian components, 3-D support, and
   analytical polynomial and trigonometric tests.  `DifferentialPlan` computes
   requested gradient, packed Hessian, and Laplacian outputs through one cached
-  workspace.
+  workspace and now accepts explicit batch/channel spatial axes.
 - Corrected adaptive-regression amplitude sparsification, eliminated caller
   mutation, added opt-in convergence diagnostics, removed a duplicate smoothing
   implementation, and tightened research-module parameter validation.  Added a
   fixed-geometry `DenoisingPlan`, prefix-sum linear-spline evaluation, and a
-  real-FFT `SmoothingSplinePlan` with a reusable half-spectrum response.
+  real-FFT `SmoothingSplinePlan` with a reusable half-spectrum response.  Added
+  stateless warm-start lambda paths, an independent constrained-optimizer
+  check, and explicit smoothing axes for batched arrays.
 - Defined reversible wavelet shape requirements, singleton/odd pyramid
   behavior, and rectangular reconstruction audits. Haar and cubic spline
   transforms meet tight reconstruction bounds; order 5 is explicitly documented
   as approximate because the inherited taps have limited precision.  Pyramid,
   Haar, and spline-wavelet axis passes now operate on whole arrays instead of
-  dispatching one Python call per row or column.
+  dispatching one Python call per row or column, with explicit spatial axes for
+  batch and channel arrays.
 
 ### Project maturity
 
@@ -61,6 +67,9 @@ All notable changes to SplineOps are documented here.
 - Re-profiled the native resize scheduler after the v2 numerical rewrite.  A
   measured small-3-D automatic participation cap avoids excessive default
   worker fan-out while preserving explicit `LSRESIZE_NUM_THREADS` overrides.
+- Added complete-workflow benchmarks, stored machine-relative regression
+  thresholds, plan lifecycle recipes, and a manual Linux/macOS/Windows resize
+  benchmark matrix.  These are pre-release evidence gates, not a release.
 
 ## 2.0.0 - 2026-07-14
 

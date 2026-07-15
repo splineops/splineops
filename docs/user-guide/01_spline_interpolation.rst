@@ -393,6 +393,26 @@ an explicit cap (256 MiB by default).  Unbatched tensor grids and
 arbitrary-shaped point queries are supported.  See :doc:`../performance` for a
 measured changing-frame break-even example.
 
+Reusing construction geometry and coefficients
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A spline can act as an immutable geometry template for changing sample arrays:
+
+.. code-block:: python
+
+   next_spline = ts.with_data(other_data)
+   geometry.apply(next_spline, out=output)
+
+``with_data`` performs the required interpolation prefilter but reuses the
+validated coordinates, bases, modes, and dtype contract.  When coefficients
+are already available, ``with_coefficients`` skips that prefilter.  The safe
+default copies caller coefficients; ``copy=False`` borrows them and therefore
+requires the caller not to mutate them during evaluation.
+
+``coefficients_from_data`` exposes the prefilter stage explicitly.  This is
+useful when one coefficient field is evaluated by several geometry plans.  It
+does not imply that different sample values share one coefficient field.
+
 Using :func:`~splineops.resize.resize` for the same operation:
 
 .. code-block:: python

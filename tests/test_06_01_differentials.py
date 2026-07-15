@@ -211,6 +211,39 @@ def test_differentials_3d_component_api_matches_plan():
         np.testing.assert_equal(actual, expected)
 
 
+def test_differential_plan_supports_explicit_batch_and_channel_axes():
+    rng = np.random.default_rng(20260716)
+    image = rng.standard_normal((2, 12, 14, 3))
+    plan = DifferentialPlan((12, 14), spacing=(0.7, 1.2))
+
+    result = plan(image, spatial_axes=(1, 2))
+
+    for batch in range(image.shape[0]):
+        for channel in range(image.shape[-1]):
+            expected = plan(image[batch, :, :, channel])
+            for actual_component, expected_component in zip(
+                result.gradient, expected.gradient
+            ):
+                np.testing.assert_equal(
+                    actual_component[batch, :, :, channel], expected_component
+                )
+            for actual_component, expected_component in zip(
+                result.hessian, expected.hessian
+            ):
+                np.testing.assert_equal(
+                    actual_component[batch, :, :, channel], expected_component
+                )
+            np.testing.assert_equal(
+                result.laplacian[batch, :, :, channel], expected.laplacian
+            )
+    assert plan.retained_bytes == 0
+    assert plan.configuration == {"shape": (12, 14), "spacing": (0.7, 1.2)}
+    with pytest.raises(ValueError, match="required"):
+        plan(image)
+    with pytest.raises(ValueError, match="distinct"):
+        plan(image, spatial_axes=(1, 1))
+
+
 ##############################################################################
 # 1) Subclass to skip final normalization
 ##############################################################################

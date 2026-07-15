@@ -148,11 +148,19 @@ Use the function for one transform and a plan when geometry is reused:
    output = np.empty(image.shape, dtype=np.float64)
    plan.apply(next_image, out=output)
 
-The plan retains support indexes and weights, not interpolation coefficients,
-so each new frame still performs its spline coefficient prefilter.  Set
+The ordinary plan call retains support indexes and weights but still performs
+the spline coefficient prefilter required by each new frame.  If one frame is
+sent through several compatible affine geometries, call ``prefilter`` once and
+pass its result to each plan's ``apply_coefficients`` method.  See
+:doc:`../consolidation-recipes` for a complete example.  Set
 ``cache_geometry=False`` for bounded-memory streaming with no retained query
 geometry.  Plan construction raises ``MemoryError`` rather than exceeding
-``max_retained_bytes``.
+``max_retained_bytes`` for geometry storage.
+
+``retained_bytes`` includes both cached geometry and the reusable spline
+template; ``geometry_retained_bytes`` and ``template_retained_bytes`` report
+the components.  ``configuration`` returns a copy of the fixed numerical
+contract.
 
 Batch and channel axes
 ----------------------

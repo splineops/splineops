@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "description": "Machine-relative development benchmark thresholds; not release promises.",
+  "checks": [
+    {
+      "name": "TensorSpline repeated-coordinate speedup",
+      "artifact": "tensorspline-query-plan.json",
+      "json_path": "speedup",
+      "minimum": 1.1
+    },
+    {
+      "name": "Affine numerical equivalence",
+      "artifact": "affine.json",
+      "json_path": "results.*.max_abs_difference",
+      "maximum": 1e-10
+    },
+    {
+      "name": "Differentials vectorization floor",
+      "artifact": "differentials.json",
+      "json_path": "vectorized_speedup",
+      "minimum": 5.0
+    },
+    {
+      "name": "Differentials scalar-oracle error",
+      "artifact": "differentials.json",
+      "json_path": "max_abs_difference",
+      "maximum": 2e-6
+    },
+    {
+      "name": "Multiscale whole-axis speedup floor",
+      "artifact": "multiscale.json",
+      "json_path": "results.*.speedup",
+      "minimum": 1.05
+    },
+    {
+      "name": "Consolidated workflow regression floor",
+      "artifact": "workflows.json",
+      "json_path": "results.*.speedup",
+      "minimum": 0.5
+    },
+    {
+      "name": "Consolidated workflow equivalence",
+      "artifact": "workflows.json",
+      "json_path": "results.*.max_abs_difference",
+      "maximum": 2e-4
+    }
+  ]
+}

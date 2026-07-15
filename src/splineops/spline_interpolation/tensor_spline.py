@@ -1,5 +1,7 @@
 # splineops/src/splineops/spline_interpolation/tensors_pline.py
 
+from __future__ import annotations
+
 import numpy as np
 import numpy.typing as npt
 import math
@@ -275,6 +277,103 @@ class TensorSpline:
     def ndim(self):
         return self._ndim
 
+    def coefficients_from_data(
+        self,
+        data: npt.NDArray,
+        *,
+        out: npt.NDArray | None = None,
+    ) -> npt.NDArray:
+        """Prefilter new samples on this spline's construction geometry.
+
+        This is the explicit boundary between samples and cardinal spline
+        coefficients.  It is useful when one coefficient field will be
+        evaluated by several geometry plans.  Changing samples still require
+        prefiltering; this method avoids repeating construction-grid and basis
+        validation, not the mathematically required filter itself.
+
+        Parameters
+        ----------
+        data : ndarray
+            Floating or complex-floating samples with the template shape,
+            dtype, and array backend.
+        out : ndarray, optional
+            Exact-shape, exact-dtype destination for the coefficients.
+        """
+
+        self._validate_compatible_field(data, argument="data")
+        coefficients = self._compute_coefficients(data)
+        return self._copy_compatible_field(coefficients, out, argument="out")
+
+    def with_data(self, data: npt.NDArray) -> TensorSpline:
+        """Return a compatible spline fitted to new samples.
+
+        The construction coordinates, bases, and modes are shared as immutable
+        geometry.  The returned spline owns newly computed coefficients and
+        the template remains unchanged.
+        """
+
+        coefficients = self.coefficients_from_data(data)
+        return self._clone_with_coefficients(coefficients, copy=False)
+
+    def with_coefficients(
+        self,
+        coefficients: npt.NDArray,
+        *,
+        copy: bool = True,
+    ) -> TensorSpline:
+        """Return a compatible spline from precomputed cardinal coefficients.
+
+        ``copy=True`` is the safe default.  With ``copy=False`` the caller must
+        not mutate the coefficient array while the returned spline or any
+        geometry plan is evaluating it.  This method intentionally performs no
+        interpolation prefilter.
+        """
+
+        if not isinstance(copy, (bool, np.bool_)):
+            raise TypeError("'copy' must be a boolean.")
+        self._validate_compatible_field(coefficients, argument="coefficients")
+        return self._clone_with_coefficients(coefficients, copy=bool(copy))
+
+    def _validate_compatible_field(self, field, *, argument):
+        if not is_ndarray(field):
+            raise TypeError(f"'{argument}' must be a NumPy or CuPy array.")
+        if is_cupy_type(field) != is_cupy_type(self._coefficients):
+            raise TypeError(
+                f"'{argument}' and the spline template must use one backend."
+            )
+        if field.shape != self._lengths:
+            raise ValueError(
+                f"'{argument}' has shape {field.shape}; expected {self._lengths}."
+            )
+        if field.dtype != self._dtype:
+            raise TypeError(
+                f"'{argument}' has dtype {field.dtype}; expected {self._dtype}."
+            )
+
+    def _copy_compatible_field(self, field, out, *, argument):
+        if out is None:
+            return field
+        self._validate_compatible_field(out, argument=argument)
+        out[...] = field
+        return out
+
+    def _clone_with_coefficients(self, coefficients, *, copy):
+        xp = self._array_module()
+        clone = self.__class__.__new__(self.__class__)
+        clone._ndim = self._ndim
+        clone._coordinates = self._coordinates
+        clone._bounds = self._bounds
+        clone._lengths = self._lengths
+        clone._steps = self._steps
+        clone._dtype = self._dtype
+        clone._real_dtype = self._real_dtype
+        clone._bases = self._bases
+        clone._modes = self._modes
+        clone._coefficients = (
+            xp.array(coefficients, copy=True, order="C") if copy else coefficients
+        )
+        return clone
+
     def _normalize_coordinate_sequence(
         self,
         coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
@@ -441,7 +540,8 @@ class TensorSpline:
     ):
         """Precompute support geometry for repeated fixed-coordinate queries.
 
-        Query plans are experimental and intentionally bound to this spline.
+        Query plans are experimental geometry objects compatible with any
+        spline created through :meth:`with_data` or :meth:`with_coefficients`.
         They trade explicit, capped retained memory for faster repeated
         evaluation.  Ordinary calls remain the right choice for coordinates
         that are evaluated only once.

@@ -4,27 +4,40 @@ Development roadmap
 Execution status (2026-07-15)
 -----------------------------
 
-Two repository-wide implementation passes are complete.  The first established
+Three repository-wide implementation passes are complete.  The first established
 positioning, provenance, numerical contracts, bounded ``TensorSpline``
 evaluation, conservative internal sharing, reproducible benchmarks, and the
 packaging and quality workflows.  The second added reusable geometry plans,
 separable tensor-grid contraction, a general affine API with batch/channel
 axes, 3-D and multi-output differentials, cached smoothing and denoising plans,
 vectorized multiscale axis passes, and a measured native resize scheduler
-policy.  These capabilities remain in their independent public modules; this
-work did not fold ``TensorSpline`` or the research tools into resize.
+policy.  The third added explicit coefficient reuse across compatible geometry,
+batch/channel axes for smoothing, planned differentials, pyramids, and
+wavelets, controlled denoising paths, plan inspection, constrained numerical
+references, end-to-end workflow benchmarks, stored regression thresholds, and
+a manual cross-platform resize benchmark matrix.  These capabilities remain in
+their independent public modules; this work did not fold ``TensorSpline`` or
+the research tools into resize.
 
 The detailed work packages below remain the long-term graduation criteria,
 not a claim that every experimental module is now stable.  In particular,
 implementation completeness and API stability are different promises.
 
-Two infrastructure gates intentionally remain open because they cannot be
-completed by a code-only pass: GPU-backed CuPy CI and multi-machine performance
-validation.  The maintainer cleared the current distribution's provenance on
+Two evidence gates intentionally remain open: GPU-backed CuPy CI and completed
+multi-machine performance runs.  A Linux/macOS/Windows manual resize benchmark
+matrix now generates the latter evidence, but the policy will remain narrowly
+scoped until artifacts from those runners have been reviewed.  The maintainer
+cleared the current distribution's provenance on
 2026-07-15.  Higher-order research modules remain experimental where a
 published numerical reference or exact reconstruction property is incomplete;
 the order-5 spline wavelet is one explicit example.  These limits are recorded in
 :doc:`project-status` and :doc:`provenance`.
+
+The consolidation pass is validated but intentionally unreleased.  The next
+decision point is evidence review rather than another broad implementation
+wave: collect the manual platform artifacts, observe the new APIs in real
+workloads, and promote modules only when their individual graduation gates are
+met.
 
 Purpose
 -------

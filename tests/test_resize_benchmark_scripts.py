@@ -393,3 +393,92 @@ def test_multiscale_benchmark_smoke(tmp_path):
     }
     assert all(row["speedup"] > 0 for row in payload["results"])
     assert output_csv.exists()
+
+
+def test_consolidated_workflow_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "workflows.json"
+    output_csv = tmp_path / "workflows.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_workflows.py"),
+            "--profile",
+            "smoke",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert {row["workflow"] for row in payload["results"]} == {
+        "affine_two_geometries_one_prefilter",
+        "smoothing_explicit_axes",
+        "denoising_lambda_path",
+        "wavelet_explicit_axes",
+    }
+    assert all(row["speedup"] > 0 for row in payload["results"])
+    assert all(row["max_abs_difference"] < 2e-4 for row in payload["results"])
+    assert output_csv.exists()
+
+
+def test_benchmark_threshold_checker(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    artifact = {
+        "results": [
+            {"speedup": 1.2, "max_abs_difference": 1e-12},
+            {"speedup": 0.9, "max_abs_difference": 2e-12},
+        ]
+    }
+    policy = {
+        "schema_version": 1,
+        "checks": [
+            {
+                "name": "relative runtime",
+                "artifact": "artifact.json",
+                "json_path": "results.*.speedup",
+                "minimum": 0.5,
+            },
+            {
+                "name": "equivalence",
+                "artifact": "artifact.json",
+                "json_path": "results.*.max_abs_difference",
+                "maximum": 1e-10,
+            },
+        ],
+    }
+    (tmp_path / "artifact.json").write_text(json.dumps(artifact), encoding="utf-8")
+    policy_path = tmp_path / "policy.json"
+    policy_path.write_text(json.dumps(policy), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "check_benchmark_thresholds.py"),
+            "--policy",
+            str(policy_path),
+            "--artifacts-dir",
+            str(tmp_path),
+        ],
+        cwd=repo_root,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "passed" in result.stdout

@@ -47,6 +47,39 @@ def _validate_shape(shape):
     return shape
 
 
+def _normalize_spatial_axes(image, spatial_shape, spatial_axes):
+    spatial_ndim = len(spatial_shape)
+    if spatial_axes is None:
+        if image.ndim != spatial_ndim:
+            raise ValueError(
+                "'spatial_axes' is required when image contains batch or channel axes."
+            )
+        axes = tuple(range(image.ndim))
+    else:
+        try:
+            axes = tuple(operator.index(axis) for axis in spatial_axes)
+        except TypeError as exc:
+            raise TypeError(
+                "'spatial_axes' must be a sequence of integer axes."
+            ) from exc
+        if len(axes) != spatial_ndim:
+            raise ValueError(
+                f"'spatial_axes' must contain exactly {spatial_ndim} axes."
+            )
+        axes = tuple(axis + image.ndim if axis < 0 else axis for axis in axes)
+        if any(axis < 0 or axis >= image.ndim for axis in axes) or len(
+            set(axes)
+        ) != len(axes):
+            raise ValueError("'spatial_axes' must contain distinct valid axes.")
+    selected_shape = tuple(image.shape[axis] for axis in axes)
+    if selected_shape != spatial_shape:
+        raise ValueError(
+            "The dimensions selected by 'spatial_axes' must have shape "
+            f"{spatial_shape}; received {selected_shape}."
+        )
+    return axes
+
+
 def _axis_coefficients(image, axis):
     return prefilter_interpolation_coefficients(
         image,
@@ -173,20 +206,19 @@ class DifferentialPlan:
         self.shape = _validate_shape(shape)
         self.spacing = _validate_spacing(spacing, len(self.shape))
 
-    def apply(self, image, *, gradient=True, hessian=True):
-        """Compute requested derivative families through one cached workspace."""
+    @property
+    def retained_bytes(self):
+        """Persistent numerical-array storage retained by the plan."""
 
-        if not isinstance(gradient, (bool, np.bool_)) or not isinstance(
-            hessian, (bool, np.bool_)
-        ):
-            raise TypeError("'gradient' and 'hessian' must be booleans.")
-        image = np.asarray(image)
-        if image.shape != self.shape:
-            raise ValueError(f"'image' must have shape {self.shape}.")
-        if not np.issubdtype(image.dtype, np.number) or np.iscomplexobj(image):
-            raise TypeError("'image' must have a real numeric dtype.")
-        if not np.all(np.isfinite(image)):
-            raise ValueError("'image' must contain only finite values.")
+        return 0
+
+    @property
+    def configuration(self):
+        """Copy of the fixed spatial derivative contract."""
+
+        return {"shape": self.shape, "spacing": self.spacing}
+
+    def _apply_spatial(self, image, *, gradient, hessian):
         work_dtype = (
             image.dtype
             if np.issubdtype(image.dtype, np.floating)
@@ -202,6 +234,69 @@ class DifferentialPlan:
             diagonal_indices = (0, 2) if len(self.shape) == 2 else (0, 3, 5)
             laplacian = sum(hessian_result[index] for index in diagonal_indices)
         return DifferentialResult(gradient_result, hessian_result, laplacian)
+
+    def apply(self, image, *, gradient=True, hessian=True, spatial_axes=None):
+        """Compute requested derivative families through one cached workspace.
+
+        ``spatial_axes`` selects the two or three dimensions represented by
+        the plan.  Every unselected batch or channel slice is evaluated
+        independently and each returned component has the full input shape.
+        """
+
+        if not isinstance(gradient, (bool, np.bool_)) or not isinstance(
+            hessian, (bool, np.bool_)
+        ):
+            raise TypeError("'gradient' and 'hessian' must be booleans.")
+        image = np.asarray(image)
+        if image.size == 0:
+            raise ValueError("'image' must be non-empty.")
+        if not np.issubdtype(image.dtype, np.number) or np.iscomplexobj(image):
+            raise TypeError("'image' must have a real numeric dtype.")
+        if not np.all(np.isfinite(image)):
+            raise ValueError("'image' must contain only finite values.")
+        axes = _normalize_spatial_axes(image, self.shape, spatial_axes)
+        nonspatial_axes = tuple(axis for axis in range(image.ndim) if axis not in axes)
+        permutation = nonspatial_axes + axes
+        canonical = np.transpose(image, permutation)
+        batch_shape = canonical.shape[: len(nonspatial_axes)]
+        flattened = canonical.reshape((-1,) + self.shape)
+        results = [
+            self._apply_spatial(item, gradient=gradient, hessian=hessian)
+            for item in flattened
+        ]
+
+        def restore(components):
+            if components is None:
+                return None
+            restored = []
+            for index in range(len(components[0])):
+                canonical_component = np.stack(
+                    [result[index] for result in components], axis=0
+                ).reshape(batch_shape + self.shape)
+                restored.append(
+                    np.ascontiguousarray(
+                        np.transpose(
+                            canonical_component, tuple(np.argsort(permutation))
+                        )
+                    )
+                )
+            return tuple(restored)
+
+        gradients = restore(
+            None if results[0].gradient is None else [item.gradient for item in results]
+        )
+        hessians = restore(
+            None if results[0].hessian is None else [item.hessian for item in results]
+        )
+        laplacian = None
+        if results[0].laplacian is not None:
+            canonical_laplacian = np.stack(
+                [item.laplacian for item in results], axis=0
+            ).reshape(batch_shape + self.shape)
+            laplacian = np.ascontiguousarray(
+                np.transpose(canonical_laplacian, tuple(np.argsort(permutation)))
+            )
+        return DifferentialResult(gradients, hessians, laplacian)
 
     __call__ = apply
 

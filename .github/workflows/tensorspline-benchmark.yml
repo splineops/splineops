@@ -63,6 +63,26 @@ jobs:
           --output-json differentials.json
           --output-csv differentials.csv
 
+      - name: Benchmark vectorized multiscale transforms
+        run: >-
+          python scripts/benchmark_multiscale.py
+          --profile "${{ inputs.profile }}"
+          --output-json multiscale.json
+          --output-csv multiscale.csv
+
+      - name: Benchmark complete reusable workflows
+        run: >-
+          python scripts/benchmark_workflows.py
+          --profile "${{ inputs.profile }}"
+          --output-json workflows.json
+          --output-csv workflows.csv
+
+      - name: Check machine-relative regression thresholds
+        run: >-
+          python scripts/check_benchmark_thresholds.py
+          --policy benchmarks/consolidation-thresholds.json
+          --artifacts-dir .
+
       - uses: actions/upload-artifact@v6
         with:
           name: development-benchmarks-${{ inputs.profile }}-${{ github.sha }}
@@ -77,4 +97,8 @@ jobs:
             affine.csv
             differentials.json
             differentials.csv
+            multiscale.json
+            multiscale.csv
+            workflows.json
+            workflows.csv
           if-no-files-found: error

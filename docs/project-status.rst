@@ -46,34 +46,37 @@ Current capability matrix
      - Multiple bases and per-axis modes, N-D and batched evaluation, real and
        complex data, tested singleton/short-periodic behavior, bounded-memory
        queries, separable grid contraction, reusable geometry plans across
-       compatible sample arrays, SciPy parity for B-spline degrees 0--5 through
-       four dimensions, and partial CuPy interoperability.
+       compatible sample arrays, explicit refitting/precomputed-coefficient
+       paths, SciPy parity for B-spline degrees 0--5 through four dimensions,
+       and partial CuPy interoperability.
      - Complete dedicated CuPy CI before making a stable backend-wide promise;
        continue independent references for non-B-spline bases and modes.
    * - Affine
      - Experimental
      - General 2-D/3-D matrix transforms, analytical rotation tests, explicit
        batch/channel axes, output buffers, bounded one-shot execution, cached
-       fixed-geometry plans, and equivalent SciPy parity for degrees 0--5;
-       SplineOps also accepts its higher-order degrees 6 and 7.
+       fixed-geometry plans, reusable precomputed coefficients across affine
+       geometries, and equivalent SciPy parity for degrees 0--5; SplineOps also
+       accepts its higher-order degrees 6 and 7.
      - Improve performance only with profile-backed changes.  SciPy remains
-       5.41x--12.56x faster than the SplineOps one-shot path in the standard
-       matched benchmark, despite useful gains from cached geometry.
+       5.28x--19.02x faster than the SplineOps one-shot path in the current
+       standard matched benchmark, despite useful gains from cached geometry.
    * - Differentials
      - Experimental
      - Raw repeatable outputs, preserved source arrays, vectorized coefficient
        filtering, physical spacing, 2-D/3-D gradient and packed Hessian
-       components, cached multi-output plans, legacy-reference coverage, and
-       polynomial and trigonometric invariants.
-     - Define additional boundary/dtype contracts and batch/channel policy
-       before describing the module as a general N-D differential engine;
-       angular maps intentionally remain 2-D.
+       components, explicit batch/channel axes through cached multi-output
+       plans, legacy-reference coverage, and polynomial and trigonometric
+       invariants.
+     - Define additional boundary/dtype contracts before describing the module
+       as a general N-D differential engine; angular maps intentionally remain
+       2-D and the legacy object remains scalar.
    * - Smoothing splines
      - Experimental
      - Fractional FFT and recursive examples, reusable real-FFT half-spectrum
-       plans, explicit real/finite parameter domains, constant preservation,
-       periodic cosine-response checks, and an independent dense-system
-       reference for the recursive formulation.
+       plans with explicit batch/channel axes, real/finite parameter domains,
+       constant preservation, periodic cosine-response checks, and an
+       independent dense-system reference for the recursive formulation.
      - Add broader published numerical fixtures while preserving the clear
        distinction between exact fractional, radial approximate, and recursive
        formulations.
@@ -81,16 +84,18 @@ Current capability matrix
      - Experimental
      - Deterministic denoising and piecewise-linear reconstruction tests,
        reusable fixed-sample sparse factorizations, prefix-sum spline
-       evaluation, non-mutating amplitude sparsification, sorted-input
-       validation, and opt-in ADMM convergence diagnostics.
+       evaluation, stateless warm-start lambda paths, non-mutating amplitude
+       sparsification, sorted-input validation, opt-in ADMM convergence
+       diagnostics, and a constrained-optimizer reference.
      - Add larger optimization-reference comparisons and systematic penalty
-       parameter guidance.
+       and ADMM-parameter guidance.
    * - Multiscale
      - Experimental
      - Explicit odd/singleton pyramid behavior, vectorized whole-axis pyramid
-       and wavelet passes, perfect reconstruction for supported even
-       rectangular Haar and cubic spline-wavelet shapes, and a reconstruction-
-       error audit for spline orders 1, 3, and 5.
+       and wavelet passes with explicit batch/channel axes, perfect
+       reconstruction for supported even rectangular Haar and cubic
+       spline-wavelet shapes, and a reconstruction-error audit for spline
+       orders 1, 3, and 5.
      - Obtain higher-precision order-5 taps or continue labeling it approximate;
        expand supported shape and scale classes only with reversible evidence.
 
@@ -141,6 +146,32 @@ and affine transforms match SciPy numerically while remaining slower.  Cached
 affine geometry and vectorized multiscale passes are useful workload-specific
 gains.  These are development-machine measurements, not release promises.
 
+After the consolidation pass, the recreated Python 3.12 environment completed
+``1179 passed`` in 145.02 seconds.  The focused 453-test contract set, Black,
+scoped MyPy, strict Sphinx, source and wheel builds, and the stored benchmark
+regression policy also passed.  The standard workflow profile found a 4.01x
+repeated-coordinate ``TensorSpline`` gain, a 1.18x affine coefficient-sharing
+gain, and approximately neutral smoothing, denoising-path, and explicit-axis
+wavelet timings.  Exact operations agreed exactly; the independently
+converged denoising paths differed by at most ``5.6e-9``.  No distribution was
+released from this validation pass.
+
+Graduation decisions after consolidation
+-----------------------------------------
+
+The added capabilities do not automatically promote a module.  ``TensorSpline``
+remains stabilizing until dedicated CuPy CI and broader independent references
+cover the advertised backend and non-B-spline surface.  Affine and
+differentials are the closest experimental modules to a future stability
+review, but they need cross-platform evidence and an API-soak period first.
+Smoothing, adaptive regression, and multiscale remain experimental while their
+published-reference, parameter-guidance, and reconstruction gates are open.
+
+This deliberately separates implementation quality from compatibility
+promises.  Users can rely on the documented functionality today without the
+project pretending that one Linux validation run establishes a stable public
+contract on every platform.
+
 Reproducing validation
 ----------------------
 
@@ -150,6 +181,19 @@ Reproducing validation
    python -m sphinx -b html docs /tmp/splineops-docs -W --keep-going \
      -D sphinx_gallery_conf.plot_gallery=0
    python -m build
+   python scripts/benchmark_tensorspline_query_plan.py \
+     --output-json /tmp/splineops-bench/tensorspline-query-plan.json
+   python scripts/benchmark_affine.py --profile standard \
+     --output-json /tmp/splineops-bench/affine.json
+   python scripts/benchmark_differentials.py --profile standard \
+     --output-json /tmp/splineops-bench/differentials.json
+   python scripts/benchmark_multiscale.py --profile standard \
+     --output-json /tmp/splineops-bench/multiscale.json
+   python scripts/benchmark_workflows.py --profile standard \
+     --output-json /tmp/splineops-bench/workflows.json
+   python scripts/check_benchmark_thresholds.py \
+     --policy benchmarks/consolidation-thresholds.json \
+     --artifacts-dir /tmp/splineops-bench
    python scripts/benchmark_resize_pr.py --profile smoke \
      --output-dir /tmp/splineops-smoke
 

@@ -14,6 +14,12 @@ and then evaluate the model at arbitrary coordinates.
 "arbitrary coordinates" describes evaluation locations, not nonuniform input
 sampling.
 
+Construction templates can refit compatible sample arrays with ``with_data``
+or consume explicit cardinal coefficients with ``with_coefficients``.  Query
+plans retain only fixed-coordinate geometry and can therefore evaluate either
+kind of compatible spline without merging ``TensorSpline`` into another
+module.
+
 .. automodule:: splineops.spline_interpolation.tensor_spline
    :members:
    :show-inheritance:

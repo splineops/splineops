@@ -77,14 +77,16 @@ array rank:
      - Query coordinates may be batched; sample-value channel axes are not
        inferred.
    * - Smoothing
-     - Every input axis participates in the periodic N-D frequency response
-     - Smooth channels independently when channel mixing is not intended.
+     - Explicit ``axes``; every axis when omitted
+     - Unselected batch/channel slices share one batched real-FFT execution.
    * - Differentials
-     - One scalar 2-D image or 3-D volume
-     - Batch and channel arrays must currently be looped externally.
+     - Two or three explicit ``spatial_axes`` through ``DifferentialPlan``
+     - Every remaining slice uses an independent cached workspace; the legacy
+       ``Differentials`` object remains scalar.
    * - Multiscale
-     - One scalar 1-D signal or 2-D image, depending on the operation
-     - Batch and channel arrays must currently be looped externally.
+     - Two explicit ``spatial_axes`` for 2-D pyramids and wavelets
+     - Every remaining slice is transformed independently; axes are never
+       inferred from rank.
 
 Rules for shared internals
 --------------------------

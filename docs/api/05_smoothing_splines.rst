@@ -5,7 +5,10 @@
 Smoothing Splines
 =================
 
-Functions to smooth data.
+Fractional and recursive smoothing-spline tools.  ``SmoothingSplinePlan``
+retains a real-FFT half-spectrum response for repeated arrays of one spatial
+shape.  Explicit ``axes`` allow the remaining dimensions to serve as batch or
+channel axes in one batched FFT execution.
 
 .. automodule:: splineops.smoothing_splines.smoothing_spline
    :members:

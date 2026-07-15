@@ -305,6 +305,72 @@ def test_geometry_plan_reuses_coordinates_across_compatible_splines() -> None:
     )
 
 
+def test_template_refits_data_and_accepts_precomputed_coefficients() -> None:
+    rng = np.random.default_rng(20260716)
+    construction = (np.arange(8.0), np.arange(7.0))
+    original = rng.standard_normal((8, 7))
+    replacement = rng.standard_normal((8, 7))
+    template = TensorSpline(original, construction, bases="bspline3", modes="mirror")
+    expected = TensorSpline(replacement, construction, bases="bspline3", modes="mirror")
+    query = (rng.uniform(-1.0, 8.0, 101), rng.uniform(-1.0, 7.0, 101))
+
+    coefficients = template.coefficients_from_data(replacement)
+    coefficient_out = np.empty_like(replacement)
+    assert (
+        template.coefficients_from_data(replacement, out=coefficient_out)
+        is coefficient_out
+    )
+    refitted = template.with_data(replacement)
+    prepared = template.with_coefficients(coefficients)
+
+    np.testing.assert_equal(coefficients, expected.coefficients)
+    np.testing.assert_equal(coefficient_out, coefficients)
+    np.testing.assert_allclose(
+        refitted(query, grid=False), expected(query, grid=False), rtol=0.0, atol=0.0
+    )
+    np.testing.assert_allclose(
+        prepared(query, grid=False), expected(query, grid=False), rtol=0.0, atol=0.0
+    )
+    # The template remains bound to its original samples.
+    np.testing.assert_allclose(
+        template(query, grid=False),
+        TensorSpline(original, construction, "bspline3", "mirror")(query, grid=False),
+        rtol=0.0,
+        atol=0.0,
+    )
+    with pytest.raises(ValueError, match="shape"):
+        template.with_data(replacement[:, :-1])
+    with pytest.raises(TypeError, match="dtype"):
+        template.with_coefficients(coefficients.astype(np.float32))
+
+
+def test_precomputed_coefficients_copy_by_default_and_plan_introspection() -> None:
+    data = np.arange(30.0).reshape(6, 5)
+    spline = TensorSpline(
+        data,
+        (np.arange(6.0), np.arange(5.0)),
+        bases="linear",
+        modes="mirror",
+    )
+    coefficients = spline.coefficients
+    prepared = spline.with_coefficients(coefficients)
+    plan = spline.query_plan((np.arange(6.0), np.arange(5.0)), grid=True)
+
+    coefficients[:] = -1.0
+
+    np.testing.assert_equal(prepared.coefficients, data)
+    assert plan.grid
+    assert plan.attached
+    assert plan.is_compatible(prepared)
+    assert plan.incompatibility_reason(prepared) is None
+    assert not plan.is_compatible(object())
+    assert plan.incompatibility_reason(object()) == (
+        "The supplied object is not a TensorSpline."
+    )
+    plan.detach()
+    assert not plan.attached
+
+
 def test_geometry_plan_rejects_incompatible_spline() -> None:
     first = TensorSpline(
         np.ones((5, 4)),

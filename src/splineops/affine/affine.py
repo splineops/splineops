@@ -141,18 +141,18 @@ class AffinePlan:
         self._basis = f"bspline{degree}"
         self._geometry_plans: tuple[TensorSplineGeometryPlan, ...] = ()
         self._retained_bytes = 0
+        coordinates = tuple(
+            np.arange(length, dtype=dtype) for length in self.input_shape
+        )
+        self._template = TensorSpline(
+            data=np.zeros(self.input_shape, dtype=dtype),
+            coordinates=coordinates,
+            bases=self._basis,
+            modes=mode,
+        )
 
         if cache_geometry:
-            coordinates = tuple(
-                np.arange(length, dtype=dtype) for length in self.input_shape
-            )
-            template = TensorSpline(
-                data=np.zeros(self.input_shape, dtype=dtype),
-                coordinates=coordinates,
-                bases=self._basis,
-                modes=mode,
-            )
-            support_entries = sum(basis.support for basis in template.bases)
+            support_entries = sum(basis.support for basis in self._template.bases)
             estimated_bytes = (
                 int(np.prod(self.output_shape, dtype=np.int64))
                 * support_entries
@@ -171,7 +171,7 @@ class AffinePlan:
                 stop = min(start + _AFFINE_TILE_SIZE, output_size)
                 transformed = self._transformed_coordinates(start, stop)
                 remaining = max_retained_bytes - self._retained_bytes
-                geometry_plan: TensorSplineGeometryPlan = template.query_plan(
+                geometry_plan: TensorSplineGeometryPlan = self._template.query_plan(
                     tuple(transformed),
                     grid=False,
                     max_retained_bytes=remaining,
@@ -188,9 +188,36 @@ class AffinePlan:
 
     @property
     def retained_bytes(self) -> int:
+        """Bytes retained by geometry and the reusable spline template."""
+
+        return self.geometry_retained_bytes + self.template_retained_bytes
+
+    @property
+    def geometry_retained_bytes(self) -> int:
         """Bytes retained by cached spline supports and weights."""
 
         return self._retained_bytes
+
+    @property
+    def template_retained_bytes(self) -> int:
+        """Bytes retained by template coefficients and construction coordinates."""
+
+        return self._template._coefficients.nbytes + sum(
+            coordinate.nbytes for coordinate in self._template._coordinates
+        )
+
+    @property
+    def configuration(self) -> dict[str, object]:
+        """Copy of the fixed numerical contract represented by this plan."""
+
+        return {
+            "input_shape": self.input_shape,
+            "output_shape": self.output_shape,
+            "degree": self.degree,
+            "mode": self.mode,
+            "dtype": self.dtype.str,
+            "geometry_cached": self.geometry_cached,
+        }
 
     def _transformed_coordinates(self, start: int, stop: int) -> np.ndarray:
         flat_indices = np.arange(start, stop)
@@ -199,15 +226,11 @@ class AffinePlan:
         )
         return self.matrix @ coordinates + self.offset[:, np.newaxis]
 
-    def _apply_spatial(self, data: np.ndarray) -> np.ndarray:
-        coordinates = tuple(
-            np.arange(length, dtype=self.dtype) for length in self.input_shape
-        )
-        spline = TensorSpline(
-            data=data,
-            coordinates=coordinates,
-            bases=self._basis,
-            modes=self.mode,
+    def _apply_spatial(self, data: np.ndarray, *, coefficients: bool) -> np.ndarray:
+        spline = (
+            self._template.with_coefficients(data, copy=False)
+            if coefficients
+            else self._template.with_data(data)
         )
         result = np.empty(
             int(np.prod(self.output_shape, dtype=np.int64)), dtype=self.dtype
@@ -225,19 +248,15 @@ class AffinePlan:
                 spline(tuple(transformed), grid=False, out=result[start:stop])
         return result.reshape(self.output_shape)
 
-    def apply(
-        self,
-        data: npt.NDArray,
-        *,
-        spatial_axes: Sequence[int] | None = None,
-        out: npt.NDArray | None = None,
-    ) -> np.ndarray:
-        """Apply the fixed transform to one array or independent batches/channels."""
-
+    def _normalize_input(self, data, spatial_axes, *, coefficients):
         if not isinstance(data, np.ndarray):
             raise TypeError("'data' must be a NumPy array.")
         if not np.issubdtype(data.dtype, np.number) or np.iscomplexobj(data):
             raise TypeError("'data' must have a real numeric dtype.")
+        if coefficients and data.dtype != self.dtype:
+            raise TypeError(
+                f"Coefficient arrays must have dtype {self.dtype}; received {data.dtype}."
+            )
         axes = _normalize_spatial_axes(data, len(self.input_shape), spatial_axes)
         if tuple(data.shape[axis] for axis in axes) != self.input_shape:
             raise ValueError(
@@ -245,19 +264,15 @@ class AffinePlan:
             )
         nonspatial_axes = tuple(axis for axis in range(data.ndim) if axis not in axes)
         permutation = nonspatial_axes + axes
-        canonical = np.transpose(data, permutation).astype(self.dtype, copy=False)
+        canonical = np.transpose(data, permutation)
+        if not coefficients:
+            canonical = canonical.astype(self.dtype, copy=False)
         batch_shape = canonical.shape[: len(nonspatial_axes)]
         flattened = canonical.reshape((-1,) + self.input_shape)
-        transformed = np.empty(
-            (flattened.shape[0],) + self.output_shape, dtype=self.dtype
-        )
-        for index, spatial_data in enumerate(flattened):
-            transformed[index] = self._apply_spatial(spatial_data)
-        canonical_result = transformed.reshape(batch_shape + self.output_shape)
-        result = np.ascontiguousarray(
-            np.transpose(canonical_result, tuple(np.argsort(permutation)))
-        )
+        return axes, permutation, batch_shape, flattened
 
+    @staticmethod
+    def _copy_output(result, out):
         if out is None:
             return result
         if not isinstance(out, np.ndarray):
@@ -272,6 +287,75 @@ class AffinePlan:
             )
         np.copyto(out, result, casting="no")
         return out
+
+    def prefilter(
+        self,
+        data: npt.NDArray,
+        *,
+        spatial_axes: Sequence[int] | None = None,
+        out: npt.NDArray | None = None,
+    ) -> np.ndarray:
+        """Return cardinal coefficients for reuse across affine geometries."""
+
+        _, permutation, batch_shape, flattened = self._normalize_input(
+            data, spatial_axes, coefficients=False
+        )
+        prepared = np.empty_like(flattened, dtype=self.dtype)
+        for index, spatial_data in enumerate(flattened):
+            self._template.coefficients_from_data(spatial_data, out=prepared[index])
+        canonical = prepared.reshape(batch_shape + self.input_shape)
+        result = np.ascontiguousarray(
+            np.transpose(canonical, tuple(np.argsort(permutation)))
+        )
+        return self._copy_output(result, out)
+
+    def _apply(
+        self,
+        data: npt.NDArray,
+        *,
+        spatial_axes: Sequence[int] | None = None,
+        out: npt.NDArray | None = None,
+        coefficients: bool,
+    ) -> np.ndarray:
+        _, permutation, batch_shape, flattened = self._normalize_input(
+            data, spatial_axes, coefficients=coefficients
+        )
+        transformed = np.empty(
+            (flattened.shape[0],) + self.output_shape, dtype=self.dtype
+        )
+        for index, spatial_data in enumerate(flattened):
+            transformed[index] = self._apply_spatial(
+                spatial_data, coefficients=coefficients
+            )
+        canonical_result = transformed.reshape(batch_shape + self.output_shape)
+        result = np.ascontiguousarray(
+            np.transpose(canonical_result, tuple(np.argsort(permutation)))
+        )
+        return self._copy_output(result, out)
+
+    def apply(
+        self,
+        data: npt.NDArray,
+        *,
+        spatial_axes: Sequence[int] | None = None,
+        out: npt.NDArray | None = None,
+    ) -> np.ndarray:
+        """Apply the fixed transform to samples or independent batches/channels."""
+
+        return self._apply(data, spatial_axes=spatial_axes, out=out, coefficients=False)
+
+    def apply_coefficients(
+        self,
+        coefficients: npt.NDArray,
+        *,
+        spatial_axes: Sequence[int] | None = None,
+        out: npt.NDArray | None = None,
+    ) -> np.ndarray:
+        """Apply the transform without prefiltering cardinal coefficients again."""
+
+        return self._apply(
+            coefficients, spatial_axes=spatial_axes, out=out, coefficients=True
+        )
 
     __call__ = apply
 
