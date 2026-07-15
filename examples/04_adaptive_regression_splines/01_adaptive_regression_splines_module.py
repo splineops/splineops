@@ -2,7 +2,7 @@
 # splineops/examples/04_adaptive_regression_splines/01_regress_module.py
 # sphinx_gallery_end_ignore
 
-"""
+r"""
 Adaptive Regression Splines Module
 ==================================
 

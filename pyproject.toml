@@ -69,7 +69,7 @@ dev_cupy = [
     "splineops[dev]",
     "cupy >=12.2",
 ]
-docs = [
+docs-core = [
     "splineops[visualization]",
     "sphinx >=7.3",
     "sphinx-gallery >=0.17",
@@ -80,14 +80,17 @@ docs = [
     "pydata-sphinx-theme >=0.15",
     "myst-parser >=3.0",
 
+    # Needed by docs/conf.py even when gallery execution is disabled.
+    "imageio-ffmpeg >=0.5",
+]
+docs = [
+    "splineops[docs-core]",
+
     # Runtime deps needed for the benchmarking example(s)
     "Pillow >=10.0",
     "scikit-image >=0.25",
     "opencv-python-headless >=4.8",
     "torch >=2.0",
-
-    # ffmpeg binary (pip)
-    "imageio-ffmpeg >=0.5",
 ]
 
 # scikit-build-core configuration
