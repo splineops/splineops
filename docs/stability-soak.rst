@@ -95,6 +95,13 @@ the standard development profile on Linux, macOS, and Windows.  Other relevant
 publication-branch pushes retain the smoke profile.  Both modes verify numerical
 equivalence before publishing per-runner artifacts.
 
+The first standard matrix usefully rejected two overly strong performance
+floors: explicit-axis affine measured 0.70x--0.87x across the runners, and the
+Windows differential row measured 1.01x.  Numerical equivalence still passed.
+These APIs are consequently documented as orchestration and allocation
+contracts with platform-dependent timing, not universal speedups.  The policy
+retains its 0.5x complete-workflow regression floor and strict numerical gates.
+
 This pass is eligible for a graduation review only after the standard artifacts
 and the two workloads have been reviewed.  Promotion is still not automatic:
 Affine and Differentials remain experimental until their soak period reveals no

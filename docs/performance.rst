@@ -242,6 +242,13 @@ convenience rather than a speed claim.  Nearby denoising lambda paths can need
 fewer iterations, but the actual diagnostics—not the API name—decide whether
 that helps.
 
+The subsequent standard CI matrix confirmed why these are local measurements.
+The explicit-axis affine ratio was 0.70x on Linux, 0.87x on macOS, and 0.76x on
+Windows; the Windows differential ratio was 1.01x.  Every corresponding output
+still passed its numerical gate.  The stored policy therefore treats these
+batch APIs as allocation/orchestration contracts, keeps a broad 0.5x
+complete-workflow regression floor, and does not require a portable speed win.
+
 .. code-block:: shell
 
    python scripts/benchmark_workflows.py --profile standard \

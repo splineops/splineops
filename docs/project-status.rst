@@ -188,8 +188,8 @@ per runner.  The nine-job Python/OS library matrix and quality workflow also
 passed for commit ``32b9d8c``.  This remains pre-release validation and no
 distribution was published.
 
-After the sixth stability-soak pass, the full suite completed ``1207 passed``
-in 141.17 seconds.  Black, scoped MyPy, the stored smoke benchmark policy, a
+After the sixth stability-soak pass, the full suite completed ``1208 passed``
+in 137.33 seconds.  Black, scoped MyPy, the stored smoke benchmark policy, a
 warning-fatal Sphinx build, source and native-wheel builds, and a clean wheel
 smoke covering resize, coefficient persistence, and buffered differentials all
 passed.  The isolated Linux standard profile found exact agreement for both
@@ -211,7 +211,9 @@ coefficient-persistence, output-selection, and output-buffer contracts need a
 real API-soak period.  Two representative persisted-registration and buffered
 volume-feature workloads now exercise those APIs locally.  Linux/macOS/Windows
 smoke artifacts have been collected and reviewed successfully; a standard
-profile is still required before making broader portable performance claims.
+profile has now also been reviewed.  It confirms numerical portability while
+rejecting a portable speedup claim for explicit-axis affine and differential
+orchestration.
 Smoothing, adaptive regression, and multiscale remain experimental while their
 published-reference, parameter-guidance, and reconstruction gates are open.
 

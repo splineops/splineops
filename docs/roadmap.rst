@@ -50,12 +50,13 @@ The detailed work packages below remain the long-term graduation criteria,
 not a claim that every experimental module is now stable.  In particular,
 implementation completeness and API stability are different promises.
 
-Two evidence gates intentionally remain open: GPU-backed CuPy CI and reviewed
-standard-profile multi-machine performance runs.  The Linux/macOS/Windows
-development smoke matrix passed for commit ``32b9d8c`` and produced one
-artifact per runner; this closes the initial platform-smoke gate without
-turning short CI measurements into portable performance promises.  The manual
-resize and development matrices provide the deeper evidence when requested.
+One evidence gate intentionally remains open: GPU-backed CuPy CI.  The
+Linux/macOS/Windows development smoke matrix passed for commit ``32b9d8c`` and
+the standard matrix was reviewed during the sixth pass.  Standard results
+confirmed numerical portability but not universal explicit-axis speedups, so
+the policy and performance claims were narrowed instead of tuning thresholds to
+one machine.  The manual resize and development matrices provide deeper
+evidence when requested.
 The maintainer
 cleared the current distribution's provenance on
 2026-07-15.  Higher-order research modules remain experimental where a

@@ -24,6 +24,10 @@ These artifacts are part of the stored numerical-equivalence policy. A commit
 whose message contains `[standard-bench]` intentionally selects the standard
 profile for the three-platform publication-branch workflow; other matching
 pushes use smoke, and `workflow_dispatch` retains an explicit profile choice.
+The policy keeps a broad 0.5x complete-workflow regression floor but does not
+require affine or differential batch orchestration to beat scalar dispatch on
+every runner. The standard matrix showed those ratios depend on the platform;
+their numerical-equivalence gates remain strict.
 
 Run the checker after generating the named artifacts:
 
