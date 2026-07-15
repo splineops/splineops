@@ -3,12 +3,13 @@
 """
 haar.py
 -------
-Implements a 2D Haar wavelet transform via row->column decomposition 
+Implements a 2D Haar wavelet transform via row->column decomposition
 (analysis) and column->row synthesis. Requires ny >= 2 and nx >= 2.
 """
 
 import numpy as np
 from .abstract_wavelets import AbstractWavelets
+
 
 class HaarWavelets(AbstractWavelets):
     """
@@ -66,8 +67,10 @@ class HaarWavelets(AbstractWavelets):
             Transformed array (same shape).
         """
         ny, nx = inp.shape
-        if ny < 2 or nx < 2:
-            raise ValueError(f"Haar2D needs ny>=2 and nx>=2, got shape=({ny},{nx}).")
+        if ny < 2 or nx < 2 or ny % 2 or nx % 2:
+            raise ValueError(
+                "Haar2D needs even ny>=2 and nx>=2, " f"got shape=({ny},{nx})."
+            )
 
         out = inp.copy()
         # 1) row-wise
@@ -93,8 +96,10 @@ class HaarWavelets(AbstractWavelets):
             Reconstructed array.
         """
         ny, nx = inp.shape
-        if ny < 2 or nx < 2:
-            raise ValueError(f"Haar2D needs ny>=2 and nx>=2, got shape=({ny},{nx}).")
+        if ny < 2 or nx < 2 or ny % 2 or nx % 2:
+            raise ValueError(
+                "Haar2D needs even ny>=2 and nx>=2, " f"got shape=({ny},{nx})."
+            )
 
         out = inp.copy()
         # 1) col-merge
@@ -126,11 +131,11 @@ class HaarWavelets(AbstractWavelets):
         half = n // 2
         out = np.zeros(n, dtype=v.dtype)
         for i in range(half):
-            j = 2*i
-            a = (v[j] + v[j+1]) / self.q
-            d = (v[j] - v[j+1]) / self.q
+            j = 2 * i
+            a = (v[j] + v[j + 1]) / self.q
+            d = (v[j] - v[j + 1]) / self.q
             out[i] = a
-            out[i+half] = d
+            out[i + half] = d
         return out
 
     def _merge(self, v: np.ndarray) -> np.ndarray:
@@ -154,7 +159,7 @@ class HaarWavelets(AbstractWavelets):
         out = np.zeros(n, dtype=v.dtype)
         for i in range(half):
             a = v[i]
-            d = v[i+half]
-            out[2*i]   = (a + d) / self.q
-            out[2*i+1] = (a - d) / self.q
+            d = v[i + half]
+            out[2 * i] = (a + d) / self.q
+            out[2 * i + 1] = (a - d) / self.q
         return out

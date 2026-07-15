@@ -5,12 +5,8 @@ import numpy as np
 import numpy.typing as npt
 from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
 
-def fBmper(
-    epsH: float,
-    H: float,
-    m: int,
-    N: int
-) -> Tuple[npt.NDArray, npt.NDArray]:
+
+def fBmper(epsH: float, H: float, m: int, N: int) -> Tuple[npt.NDArray, npt.NDArray]:
     """
     Generate a fractional (pseudo-)Brownian motion signal (fBM).
 
@@ -48,7 +44,7 @@ def fBmper(
     Examples
     --------
     >>> import numpy as np
-    >>> from splineops.interpolate.smooth.fBmper import fBmper
+    >>> from splineops.smoothing_splines.fBm_per import fBmper
     >>> epsH = 1.0
     >>> H = 0.7
     >>> m = 4

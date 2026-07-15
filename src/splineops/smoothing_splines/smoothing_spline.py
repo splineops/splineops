@@ -1,10 +1,12 @@
 # splineops/src/splineops/smoothing_splines/smoothing_spline.py
 
+import operator
 from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
 from scipy.fft import fftn, ifftn
+
 
 def periodize(x: npt.NDArray, m: int) -> npt.NDArray:
     """
@@ -26,19 +28,25 @@ def periodize(x: npt.NDArray, m: int) -> npt.NDArray:
     Examples
     --------
     >>> import numpy as np
-    >>> from splineops.interpolate.smooth.smoothing_spline import periodize
+    >>> from splineops.smoothing_splines.smoothing_spline import periodize
     >>> x = np.array([1, 2, 3])
     >>> periodize(x, 2)
     array([1, 2, 3, 1, 2, 3])
     """
-    return np.tile(x, m)
+    x = np.asarray(x)
+    if x.ndim == 0 or x.size == 0:
+        raise ValueError("'x' must be a non-empty array.")
+    try:
+        repetitions = operator.index(m)
+    except TypeError as exc:
+        raise TypeError("'m' must be a positive integer.") from exc
+    if isinstance(m, (bool, np.bool_)) or repetitions <= 0:
+        raise ValueError("'m' must be a positive integer.")
+    return np.tile(x, repetitions)
 
 
 def smoothing_spline(
-    y: npt.NDArray,
-    lamb: float,
-    m: int,
-    gamma: float
+    y: npt.NDArray, lamb: float, m: int, gamma: float
 ) -> Tuple[npt.NDArray, npt.NDArray]:
     """
     Compute the fractional smoothing spline at m-times upsampling of the input.
@@ -68,14 +76,33 @@ def smoothing_spline(
     Examples
     --------
     >>> import numpy as np
-    >>> from splineops.interpolate.smooth.smoothing_spline import smoothing_spline
+    >>> from splineops.smoothing_splines.smoothing_spline import smoothing_spline
     >>> y = np.array([1., 2., 3.])
     >>> t, ys = smoothing_spline(y, lamb=0.1, m=2, gamma=1.5)
     >>> t.shape, ys.shape
     ((6,), (6,))
     """
 
-    y = np.asarray(y).flatten()
+    y = np.asarray(y)
+    if y.ndim != 1 or y.size == 0:
+        raise ValueError("'y' must be a non-empty one-dimensional array.")
+    if not np.issubdtype(y.dtype, np.number):
+        raise TypeError("'y' must have a numeric dtype.")
+    if np.iscomplexobj(y):
+        raise TypeError("'y' must be real-valued.")
+    if not np.all(np.isfinite(y)):
+        raise ValueError("'y' must contain only finite values.")
+    if not np.isfinite(lamb) or lamb < 0:
+        raise ValueError("'lamb' must be finite and non-negative.")
+    if not np.isfinite(gamma) or gamma <= 0.5:
+        raise ValueError("'gamma' must be finite and greater than 0.5.")
+    try:
+        m = operator.index(m)
+    except TypeError as exc:
+        raise TypeError("'m' must be a positive integer.") from exc
+    if isinstance(m, (bool, np.bool_)) or m <= 0:
+        raise ValueError("'m' must be a positive integer.")
+    y = y.flatten()
     N = len(y)
 
     # Compute the FFT of the input signal
@@ -101,8 +128,7 @@ def smoothing_spline(
     Agm = Agm[1:]
 
     # Compute the smoothing spline filter H_m
-    Hm = (m ** (-2 * gamma + 1) * (sinm2g / sin2g) * Ag /
-          (Agm + lamb * sinm2g))
+    Hm = m ** (-2 * gamma + 1) * (sinm2g / sin2g) * Ag / (Agm + lamb * sinm2g)
     # Insert the DC term at the beginning
     Hm = np.concatenate(([m], Hm))
 
@@ -112,59 +138,7 @@ def smoothing_spline(
     return t, ys
 
 
-def recursive_smoothing_spline(
-    signal: npt.NDArray,
-    lamb: float = 1.0
-) -> npt.NDArray:
-    """
-    Apply a recursive smoothing spline filter to the input signal.
-
-    Implements a causal and anticausal IIR filter based on the smoothing
-    parameter `lamb`.
-
-    Parameters
-    ----------
-    signal : ndarray
-        1D array of data points to smooth.
-    lamb : float, optional
-        Smoothing parameter controlling the amount of smoothing. Default is 1.0.
-
-    Returns
-    -------
-    smoothed_signal : ndarray
-        1D array of smoothed data, same length as `signal`.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from splineops.interpolate.smooth.smoothing_spline import recursive_smoothing_spline
-    >>> x = np.array([1., 2., 2., 3., 5.])
-    >>> xs = recursive_smoothing_spline(x, lamb=1.0)
-    >>> xs
-    array([...])
-    """
-    # Define the filter pole (z1) based on the regularization parameter lamb
-    z1 = -lamb / (1 + np.sqrt(1 + 4 * lamb))
-    K = len(signal)
-    
-    # Causal filtering (forward pass)
-    y_causal = np.zeros(K, dtype=signal.dtype)
-    y_causal[0] = signal[0]
-    for k in range(1, K):
-        y_causal[k] = signal[k] + z1 * y_causal[k - 1]
-
-    # Anticausal filtering (backward pass)
-    smoothed_signal = np.zeros(K, dtype=signal.dtype)
-    smoothed_signal[-1] = y_causal[-1]
-    for k in range(K - 2, -1, -1):
-        smoothed_signal[k] = y_causal[k] + z1 * smoothed_signal[k + 1]
-        
-    return smoothed_signal
-
-def recursive_smoothing_spline(
-    signal: npt.NDArray,
-    lamb: float = 1.0
-) -> npt.NDArray:
+def recursive_smoothing_spline(signal: npt.NDArray, lamb: float = 1.0) -> npt.NDArray:
     """
     Apply a recursive first-order smoothing spline filter (piecewise-linear).
 
@@ -189,10 +163,20 @@ def recursive_smoothing_spline(
         Smoothed data, same length as `signal`.
     """
     x = np.asarray(signal)
+    if x.ndim != 1 or x.size == 0:
+        raise ValueError("'signal' must be a non-empty one-dimensional array.")
+    if not np.issubdtype(x.dtype, np.number):
+        raise TypeError("'signal' must have a numeric dtype.")
+    if np.iscomplexobj(x):
+        raise TypeError("'signal' must be real-valued.")
+    if not np.all(np.isfinite(x)):
+        raise ValueError("'signal' must contain only finite values.")
+    if not np.isfinite(lamb) or lamb < 0:
+        raise ValueError("'lamb' must be finite and non-negative.")
     dtype = np.result_type(x.dtype, np.float64)
     x = x.astype(dtype, copy=False)
 
-    if lamb <= 0:
+    if lamb == 0:
         return x.copy()
 
     # --- Legacy (kept for reference; not consistent with the paper) ---
@@ -200,7 +184,7 @@ def recursive_smoothing_spline(
 
     # Paper-consistent pole for first-order smoothing spline:
     r = np.sqrt(1.0 + 4.0 * lamb)
-    z1 = (r - 1.0) / (r + 1.0)      # in (0, 1)
+    z1 = (r - 1.0) / (r + 1.0)  # in (0, 1)
 
     # DC normalization (preserves constants): (1 - z1)^2 == z1 / lamb
     scale = (1.0 - z1) ** 2
@@ -221,11 +205,8 @@ def recursive_smoothing_spline(
 
     return scale * y
 
-def smoothing_spline_nd(
-    data: npt.NDArray,
-    lamb: float,
-    gamma: float
-) -> npt.NDArray:
+
+def smoothing_spline_nd(data: npt.NDArray, lamb: float, gamma: float) -> npt.NDArray:
     """
     Apply multi-dimensional fractional smoothing spline to the input data.
 
@@ -246,24 +227,38 @@ def smoothing_spline_nd(
     Examples
     --------
     >>> import numpy as np
-    >>> from splineops.interpolate.smooth.smoothing_spline import smoothing_spline_nd
+    >>> from splineops.smoothing_splines.smoothing_spline import smoothing_spline_nd
     >>> x = np.random.rand(4, 4)
     >>> x_smooth = smoothing_spline_nd(x, lamb=0.5, gamma=1.0)
     >>> x_smooth.shape
     (4, 4)
     """
     data = np.asarray(data)
+    if data.ndim == 0 or data.size == 0:
+        raise ValueError(
+            "'data' must be a non-empty array with at least one dimension."
+        )
+    if not np.issubdtype(data.dtype, np.number):
+        raise TypeError("'data' must have a numeric dtype.")
+    if np.iscomplexobj(data):
+        raise TypeError("'data' must be real-valued.")
+    if not np.all(np.isfinite(data)):
+        raise ValueError("'data' must contain only finite values.")
+    if not np.isfinite(lamb) or lamb < 0:
+        raise ValueError("'lamb' must be finite and non-negative.")
+    if not np.isfinite(gamma) or gamma <= 0:
+        raise ValueError("'gamma' must be finite and positive.")
     dims = data.shape
 
     # Compute the frequency grids for each dimension
-    freq_grids = np.meshgrid(*[np.fft.fftfreq(n) for n in dims], indexing='ij')
-    
+    freq_grids = np.meshgrid(*[np.fft.fftfreq(n) for n in dims], indexing="ij")
+
     # Vectorized computation of omega_squared
     freq_grids_stacked = np.stack(freq_grids, axis=0)  # Shape: (ndim, dims...)
     omega_squared = np.sum((2 * np.pi * freq_grids_stacked) ** 2, axis=0)
 
     # Compute the Butterworth-like filter in the Fourier domain
-    H = 1 / (1 + lamb * (omega_squared ** gamma))
+    H = 1 / (1 + lamb * (omega_squared**gamma))
 
     # Apply the filter
     data_fft = fftn(data)

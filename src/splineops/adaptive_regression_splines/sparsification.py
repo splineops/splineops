@@ -3,8 +3,8 @@
 # Sparsest Piecewise-Linear Interpolation
 # =======================================
 
-# This Python implementation computes the sparsest piecewise-linear spline that interpolates 
-# given data points using total variation regularization on the second derivative. This method 
+# This Python implementation computes the sparsest piecewise-linear spline that interpolates
+# given data points using total variation regularization on the second derivative. This method
 # promotes solutions with the fewest number of knots while maintaining fidelity to the data.
 
 # Author: Thomas Debarre
@@ -13,23 +13,22 @@
 #         BM-Ecublens
 #         CH-1015 Lausanne EPFL, Switzerland
 
-# This script provides functionality for computing optimal sparse splines, evaluating them, 
-# and performing operations such as sparsification of amplitudes and identification of 
+# This script provides functionality for computing optimal sparse splines, evaluating them,
+# and performing operations such as sparsification of amplitudes and identification of
 # saturation zones.
 
 from typing import Tuple
 import numpy as np
 
+
 def sparsest_interpolant(
-    x: np.ndarray, 
-    y: np.ndarray, 
-    sparsity_tol: float = 1e-5
+    x: np.ndarray, y: np.ndarray, sparsity_tol: float = 1e-5
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Computes the sparsest piecewise-linear spline that interpolates the given data points.
 
-    This function implements a method for finding the sparsest linear spline, based on 
-    total variation regularization on the second derivative. This approach promotes 
+    This function implements a method for finding the sparsest linear spline, based on
+    total variation regularization on the second derivative. This approach promotes
     solutions with the fewest number of knots while maintaining fidelity to the data.
 
     The optimal spline can be evaluated using the `linear_spline()` function with the outputs of this function.
@@ -53,16 +52,32 @@ def sparsest_interpolant(
         Coefficients (b, a) of the linear component p(t) = at + b.
     """
 
+    x = np.asarray(x)
+    y = np.asarray(y)
+    if x.ndim != 1 or y.ndim != 1:
+        raise ValueError("'x' and 'y' must be one-dimensional arrays.")
     if x.size != y.size:
-        raise Exception("x and y must be of the same size")
+        raise ValueError("'x' and 'y' must have the same size.")
+    if x.size < 2:
+        raise ValueError("At least two samples are required.")
+    if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
+        raise ValueError("'x' and 'y' must contain only finite values.")
+    if not np.all(np.diff(x) > 0):
+        raise ValueError("'x' must be strictly increasing.")
+    if not np.isfinite(sparsity_tol) or sparsity_tol < 0:
+        raise ValueError("'sparsity_tol' must be finite and non-negative.")
 
     knots = x[1:-1]
     amplitudes_cano, polynomial_cano = _connect_points(x, y)
-    amplitudes_cano = _sparsify_amplitudes(amplitudes_cano, sparsity_tol)  # Set knots below tolerance to exactly zero
+    amplitudes_cano = _sparsify_amplitudes(
+        amplitudes_cano, sparsity_tol
+    )  # Set knots below tolerance to exactly zero
 
     # Identify phantom knots (amplitude = 0) which are outside of saturation zones
     saturations = _saturation_zones(amplitudes_cano, sparsity_tol)
-    pruned_bool = np.logical_or(saturations != 0, np.abs(amplitudes_cano) > sparsity_tol)
+    pruned_bool = np.logical_or(
+        saturations != 0, np.abs(amplitudes_cano) > sparsity_tol
+    )
     # Remove these phantom knots
     knots_pruned = knots[pruned_bool]
     amplitudes_pruned = amplitudes_cano[pruned_bool]
@@ -73,36 +88,45 @@ def sparsest_interpolant(
     knots_sparsest = np.array([])
     i = 0
     last_nz_idx = 0
-    num_saturations = 0  # Number of consecutive saturation intervals after knots_pruned[i]
+    num_saturations = (
+        0  # Number of consecutive saturation intervals after knots_pruned[i]
+    )
     while i < len(knots_pruned):
         if saturations_pruned[i] != 0:
             num_saturations = saturations_pruned[i]
         for j in range(int(np.ceil(num_saturations / 2))):
-            new_amp = amplitudes_pruned[i+2*j] + amplitudes_pruned[i+2*j+1]
+            new_amp = amplitudes_pruned[i + 2 * j] + amplitudes_pruned[i + 2 * j + 1]
             if new_amp != 0:
                 amplitudes_sparsest = np.append(amplitudes_sparsest, new_amp)
-                barycenter = (amplitudes_pruned[i+2*j] * knots_pruned[i+2*j] +
-                              amplitudes_pruned[i+2*j+1] * knots_pruned[i+2*j+1]) / new_amp
+                barycenter = (
+                    amplitudes_pruned[i + 2 * j] * knots_pruned[i + 2 * j]
+                    + amplitudes_pruned[i + 2 * j + 1] * knots_pruned[i + 2 * j + 1]
+                ) / new_amp
                 knots_sparsest = np.append(knots_sparsest, barycenter)
         if (num_saturations % 2) == 0:
             # Keep last existing knot if even number of saturations (including 0)
-            amplitudes_sparsest = np.append(amplitudes_sparsest, amplitudes_pruned[i+num_saturations])
-            knots_sparsest = np.append(knots_sparsest, knots_pruned[i+num_saturations])
+            amplitudes_sparsest = np.append(
+                amplitudes_sparsest, amplitudes_pruned[i + num_saturations]
+            )
+            knots_sparsest = np.append(
+                knots_sparsest, knots_pruned[i + num_saturations]
+            )
 
         i += num_saturations + 1
         last_nz_idx += 1
         num_saturations = 0
 
         idx = np.argsort(knots_sparsest)
-        knots_sparsest, amplitudes_sparsest = knots_sparsest[idx], amplitudes_sparsest[idx]
+        knots_sparsest, amplitudes_sparsest = (
+            knots_sparsest[idx],
+            amplitudes_sparsest[idx],
+        )
 
     return knots_sparsest, amplitudes_sparsest, polynomial_cano
 
+
 def linear_spline(
-    t: np.ndarray, 
-    knots: np.ndarray, 
-    amplitudes: np.ndarray, 
-    polynomial: np.ndarray
+    t: np.ndarray, knots: np.ndarray, amplitudes: np.ndarray, polynomial: np.ndarray
 ) -> np.ndarray:
     """
     Evaluates a parametrized linear spline at specified location(s) t.
@@ -111,7 +135,7 @@ def linear_spline(
 
         s(t) = at + b + sum_{k=0}^{K} a_k (t - τ_k)_+
 
-    where `a` and `b` are the parameters of the linear component, and `a_k` and `τ_k` 
+    where `a` and `b` are the parameters of the linear component, and `a_k` and `τ_k`
     are the amplitudes and locations of the knots, respectively.
 
     Parameters
@@ -136,9 +160,9 @@ def linear_spline(
         values = values + amplitudes[i] * (t - knots[i]) * ((t - knots[i]) > 0)
     return values
 
+
 def _sparsify_amplitudes(
-    amplitudes: np.ndarray, 
-    sparsity_tol: float = 1e-5
+    amplitudes: np.ndarray, sparsity_tol: float = 1e-5
 ) -> np.ndarray:
     """
     Adjusts amplitudes by setting values below the threshold to zero.
@@ -159,31 +183,34 @@ def _sparsify_amplitudes(
         Modified amplitudes after thresholding.
     """
 
-    zero_indices = np.nonzero(np.abs(amplitudes) <= sparsity_tol)
-    amplitudes_sparsified = amplitudes
-    amplitudes_sparsified[zero_indices] = 0  # Set knots below tolerance to zero
-    i = 0
-    while i < len(zero_indices):
-        # Compensate close to zero amplitudes on previous knot
-        amplitudes_sparsified[zero_indices[i]-1] += amplitudes_sparsified[zero_indices[i]]
-        if i == len(zero_indices) - 1:
-            break
-        j = 0
-        # If consecutive phantom knots, compensate all of them on the closest previous true knot
-        while i + j + 1 < len(zero_indices) and zero_indices[i+j+1] == zero_indices[i+j] + 1:
-            amplitudes_sparsified[zero_indices[i]-1] += amplitudes_sparsified[zero_indices[i+j+1]]
-            j += 1
-        i += j + 1
+    amplitudes_sparsified = np.array(amplitudes, copy=True)
+    zero_indices = np.flatnonzero(np.abs(amplitudes_sparsified) <= sparsity_tol)
+    if zero_indices.size == 0:
+        return amplitudes_sparsified
+
+    # Collapse each consecutive phantom-knot run into an adjacent retained
+    # amplitude before zeroing it. This preserves the far-field slope change
+    # while never mutating the caller's array.
+    run_starts = np.r_[0, np.flatnonzero(np.diff(zero_indices) != 1) + 1]
+    run_stops = np.r_[run_starts[1:], zero_indices.size]
+    for start_pos, stop_pos in zip(run_starts, run_stops):
+        run = zero_indices[start_pos:stop_pos]
+        correction = np.sum(amplitudes_sparsified[run])
+        left = int(run[0]) - 1
+        right = int(run[-1]) + 1
+        if left >= 0:
+            amplitudes_sparsified[left] += correction
+        elif right < amplitudes_sparsified.size:
+            amplitudes_sparsified[right] += correction
+        amplitudes_sparsified[run] = 0
     return amplitudes_sparsified
 
-def _saturation_zones(
-    amplitudes: np.ndarray, 
-    sparsity_tol: float = 1e-5
-) -> np.ndarray:
+
+def _saturation_zones(amplitudes: np.ndarray, sparsity_tol: float = 1e-5) -> np.ndarray:
     """
     Identifies saturation zones in the sequence of amplitudes.
 
-    Saturation zones correspond to consecutive segments where the amplitudes 
+    Saturation zones correspond to consecutive segments where the amplitudes
     are small and should be pruned to maintain sparsity.
 
     Parameters
@@ -203,22 +230,20 @@ def _saturation_zones(
     nz_idx = np.nonzero(np.abs(amplitudes) > sparsity_tol)[0]
     if len(nz_idx) > 0:
         sat_idx_start = nz_idx[0]
-        for i in range(len(nz_idx)-1):
-            if np.sign(amplitudes[nz_idx[i]]) != np.sign(amplitudes[nz_idx[i+1]]):
-                saturations[sat_idx_start:nz_idx[i]+1] = nz_idx[i] - sat_idx_start
-                sat_idx_start = nz_idx[i+1]
-        saturations[sat_idx_start:nz_idx[-1]+1] = nz_idx[-1] - sat_idx_start
+        for i in range(len(nz_idx) - 1):
+            if np.sign(amplitudes[nz_idx[i]]) != np.sign(amplitudes[nz_idx[i + 1]]):
+                saturations[sat_idx_start : nz_idx[i] + 1] = nz_idx[i] - sat_idx_start
+                sat_idx_start = nz_idx[i + 1]
+        saturations[sat_idx_start : nz_idx[-1] + 1] = nz_idx[-1] - sat_idx_start
 
     return saturations.astype(int)
 
-def _connect_points(
-    x: np.ndarray, 
-    y: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+
+def _connect_points(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Computes the canonical linear spline solution that connects given data points.
 
-    This function determines the piecewise-linear spline that interpolates the 
+    This function determines the piecewise-linear spline that interpolates the
     given points with minimal complexity.
 
     Parameters

@@ -7,6 +7,8 @@ Defines a base class for wavelet analysis & synthesis on 2D (or 3D) signals.
 """
 
 import numpy as np
+import operator
+
 
 class AbstractWavelets:
     """
@@ -28,7 +30,7 @@ class AbstractWavelets:
     """
 
     def __init__(self, scales=3):
-        self.scales = scales
+        self.set_scale(scales)
 
     def set_scale(self, scale: int):
         """
@@ -39,7 +41,27 @@ class AbstractWavelets:
         scale : int
             New scale value.
         """
+        try:
+            scale = operator.index(scale)
+        except TypeError as exc:
+            raise TypeError("'scales' must be a positive integer.") from exc
+        if isinstance(scale, (bool, np.bool_)) or scale < 1:
+            raise ValueError("'scales' must be a positive integer.")
         self.scales = scale
+
+    def _validate_multiscale_input(self, inp):
+        if not isinstance(inp, np.ndarray):
+            raise TypeError("Wavelet input must be a NumPy array.")
+        if inp.ndim != 2 or any(length == 0 for length in inp.shape):
+            raise ValueError("Wavelet input must be a non-empty 2D array.")
+        if not np.issubdtype(inp.dtype, np.number) or np.iscomplexobj(inp):
+            raise TypeError("Wavelet input must have a real numeric dtype.")
+        divisor = 2**self.scales
+        if any(length % divisor for length in inp.shape):
+            raise ValueError(
+                "Both wavelet dimensions must be divisible by "
+                f"2**scales ({divisor}); received shape {inp.shape}."
+            )
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
         """
@@ -88,14 +110,15 @@ class AbstractWavelets:
         np.ndarray
             Full wavelet decomposition (in-place layout).
         """
+        self._validate_multiscale_input(inp)
         out = np.copy(inp)
         ny, nx = out.shape[:2]  # for 2D
         for _ in range(self.scales):
             sub = out[:ny, :nx]
             sub_out = self.analysis1(sub)
             out[:ny, :nx] = sub_out
-            nx = max(1, nx//2)
-            ny = max(1, ny//2)
+            nx = max(1, nx // 2)
+            ny = max(1, ny // 2)
         return out
 
     def synthesis(self, inp: np.ndarray) -> np.ndarray:
@@ -113,6 +136,7 @@ class AbstractWavelets:
         np.ndarray
             Reconstructed array (same shape as input).
         """
+        self._validate_multiscale_input(inp)
         out = np.copy(inp)
         ny_full, nx_full = out.shape[:2]
         factor = 2 ** (self.scales - 1)

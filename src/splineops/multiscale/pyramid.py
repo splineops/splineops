@@ -39,10 +39,10 @@ Usage Example
 
 import numpy as np
 
-
 # -------------------------------------------------------------------------
 # 1) Retrieve Filter Coefficients
 # -------------------------------------------------------------------------
+
 
 def get_pyramid_filter(name: str, order: int):
     """
@@ -54,7 +54,7 @@ def get_pyramid_filter(name: str, order: int):
         Filter family name, e.g. "Spline", "Centered Spline".
     order : int
         Spline order (e.g. 3).
-    
+
     Returns
     -------
     g : np.ndarray
@@ -76,36 +76,95 @@ def get_pyramid_filter(name: str, order: int):
 
     if name == "spline" and order == 3:
         # Example: from your PyramidFilterSplinel2(...) with order=3
-        g = np.array([
-            0.596797, 0.313287, -0.0827691, -0.0921993,
-            0.0540288, 0.0436996, -0.0302508, -0.0225552,
-            0.0162251, 0.0118738, -0.00861788, -0.00627964,
-            0.00456713, 0.00332464, -0.00241916, -0.00176059,
-            0.00128128, 0.000932349, -0.000678643, -0.000493682
-        ])
-        h = np.array([
-            1.0, 0.600481, 0.0, -0.127405,
-            0.0, 0.034138, 0.0, -0.00914725,
-            0.0, 0.002451, 0.0, -0.000656743
-        ])
+        g = np.array(
+            [
+                0.596797,
+                0.313287,
+                -0.0827691,
+                -0.0921993,
+                0.0540288,
+                0.0436996,
+                -0.0302508,
+                -0.0225552,
+                0.0162251,
+                0.0118738,
+                -0.00861788,
+                -0.00627964,
+                0.00456713,
+                0.00332464,
+                -0.00241916,
+                -0.00176059,
+                0.00128128,
+                0.000932349,
+                -0.000678643,
+                -0.000493682,
+            ]
+        )
+        h = np.array(
+            [
+                1.0,
+                0.600481,
+                0.0,
+                -0.127405,
+                0.0,
+                0.034138,
+                0.0,
+                -0.00914725,
+                0.0,
+                0.002451,
+                0.0,
+                -0.000656743,
+            ]
+        )
         is_centered = False
 
     elif name == "centered spline" and order == 3:
         # Example: from your PyramidFilterCentered(...) with order=3
-        g = np.array([
-            0.708792, 0.328616, -0.165157, -0.114448, 
-            0.0944036, 0.0543881, -0.05193, -0.0284868,
-            0.0281854, 0.0152877, -0.0152508, -0.00825077,
-            0.00824629, 0.00445865, -0.0044582, -0.00241009,
-            0.00241022, 0.00130278, -0.00130313, -0.000704109,
-            0.000704784
-        ])
-        h = np.array([
-            1.13726, 0.625601, -0.0870191, -0.159256,
-            0.0233167, 0.0426725, -0.00624769, -0.0114341,
-            0.00167406, 0.00306375, -0.000448564, -0.000820929,
-            0.000120192, 0.000219967, -3.22054e-05, -5.894e-05
-        ])
+        g = np.array(
+            [
+                0.708792,
+                0.328616,
+                -0.165157,
+                -0.114448,
+                0.0944036,
+                0.0543881,
+                -0.05193,
+                -0.0284868,
+                0.0281854,
+                0.0152877,
+                -0.0152508,
+                -0.00825077,
+                0.00824629,
+                0.00445865,
+                -0.0044582,
+                -0.00241009,
+                0.00241022,
+                0.00130278,
+                -0.00130313,
+                -0.000704109,
+                0.000704784,
+            ]
+        )
+        h = np.array(
+            [
+                1.13726,
+                0.625601,
+                -0.0870191,
+                -0.159256,
+                0.0233167,
+                0.0426725,
+                -0.00624769,
+                -0.0114341,
+                0.00167406,
+                0.00306375,
+                -0.000448564,
+                -0.000820929,
+                0.000120192,
+                0.000219967,
+                -3.22054e-05,
+                -5.894e-05,
+            ]
+        )
         is_centered = True
 
     else:
@@ -118,10 +177,11 @@ def get_pyramid_filter(name: str, order: int):
 # 2) Utility: robust mirror reflection
 # -------------------------------------------------------------------------
 
+
 def wrap_reflect(i: int, n: int) -> int:
     """
     Mirror boundary reflection of index `i` into the range [0..n-1].
-    
+
     If n >= 2, uses period = 2*(n-1).
     If n < 2, everything maps to 0.
 
@@ -139,7 +199,7 @@ def wrap_reflect(i: int, n: int) -> int:
     """
     if n < 2:
         return 0
-    period = 2*(n - 1)
+    period = 2 * (n - 1)
     i = i % period  # now in [0..period-1]
     if i >= n:
         i = period - i  # reflect
@@ -149,6 +209,7 @@ def wrap_reflect(i: int, n: int) -> int:
 # -------------------------------------------------------------------------
 # 3) 1D Reduce & Expand
 # -------------------------------------------------------------------------
+
 
 def reduce_1d(signal: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
     """
@@ -168,7 +229,10 @@ def reduce_1d(signal: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
     np.ndarray
         Reduced signal of length roughly n/2.
     """
+    signal, g = _validate_1d_inputs(signal, g)
     n = signal.shape[0]
+    if n == 1:
+        return signal.copy()
     half = n // 2 if n >= 2 else 1
     out = np.zeros(half, dtype=signal.dtype)
 
@@ -197,8 +261,9 @@ def expand_1d(signal: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
     np.ndarray
         Expanded signal of length ~ 2*n.
     """
+    signal, h = _validate_1d_inputs(signal, h)
     n = signal.shape[0]
-    outlen = 2*n if n >= 2 else n
+    outlen = 2 * n if n >= 2 else n
     out = np.zeros(outlen, dtype=signal.dtype)
 
     if centered:
@@ -208,9 +273,25 @@ def expand_1d(signal: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
     return out
 
 
+def _validate_1d_inputs(signal: np.ndarray, filter_: np.ndarray):
+    if not isinstance(signal, np.ndarray) or signal.ndim != 1:
+        raise ValueError("'signal' must be a one-dimensional NumPy array.")
+    if signal.size == 0:
+        raise ValueError("'signal' must be non-empty.")
+    if not np.issubdtype(signal.dtype, np.number) or np.iscomplexobj(signal):
+        raise TypeError("'signal' must have a real numeric dtype.")
+    filter_ = np.asarray(filter_)
+    if filter_.ndim != 1 or filter_.size == 0:
+        raise ValueError("The pyramid filter must be a non-empty 1D array.")
+    if not np.all(np.isfinite(signal)) or not np.all(np.isfinite(filter_)):
+        raise ValueError("Signal and filter values must be finite.")
+    return signal, filter_
+
+
 # -------------------------------------------------------------------------
 # 4) 2D Reduce & Expand
 # -------------------------------------------------------------------------
+
 
 def reduce_2d(image: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
     """
@@ -230,6 +311,10 @@ def reduce_2d(image: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
     np.ndarray
         Reduced image of shape (ny//2, nx//2) if ny,nx >= 2, else smaller.
     """
+    if not isinstance(image, np.ndarray) or image.ndim != 2:
+        raise ValueError("'image' must be a two-dimensional NumPy array.")
+    if any(length == 0 for length in image.shape):
+        raise ValueError("'image' dimensions must be non-empty.")
     ny, nx = image.shape
     # 1) reduce along X for each row
     row_reduced = []
@@ -269,6 +354,10 @@ def expand_2d(image: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
     np.ndarray
         Expanded image, roughly 2*ny by 2*nx.
     """
+    if not isinstance(image, np.ndarray) or image.ndim != 2:
+        raise ValueError("'image' must be a two-dimensional NumPy array.")
+    if any(length == 0 for length in image.shape):
+        raise ValueError("'image' dimensions must be non-empty.")
     ny, nx = image.shape
     NxOut = nx * 2 if nx >= 2 else nx
     NyOut = ny * 2 if ny >= 2 else ny
@@ -295,9 +384,10 @@ def expand_2d(image: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
 # 5) Internal 1D Routines
 # -------------------------------------------------------------------------
 
+
 def _reduce_standard_1d(x: np.ndarray, g: np.ndarray) -> np.ndarray:
     """
-    Standard (non-centered) 1D reduction by factor of 2, 
+    Standard (non-centered) 1D reduction by factor of 2,
     mirror boundary conditions. Matches 'ReduceStandard_1D' from the C code.
     """
     n = x.shape[0]
@@ -321,7 +411,7 @@ def _expand_standard_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
     mirror boundary conditions. Matches "ExpandStandard_1D" from the C code.
     """
     n = x.shape[0]
-    outlen = 2*n if n > 1 else n
+    outlen = 2 * n if n > 1 else n
     y = np.zeros(outlen, dtype=x.dtype)
 
     # trivial cases
@@ -330,13 +420,13 @@ def _expand_standard_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
     if h.size < 2:
         # replicate each sample
         for i in range(n):
-            j = 2*i
+            j = 2 * i
             y[j] = x[i]
-            if j+1 < outlen:
-                y[j+1] = x[i]
+            if j + 1 < outlen:
+                y[j + 1] = x[i]
         return y
 
-    # The C code loops over i in [0..outlen-1], 
+    # The C code loops over i in [0..outlen-1],
     # then handles pairs (i-k)/2 and (i+k)/2 for even/odd offsets.
     for i in range(outlen):
         val = 0.0
@@ -344,12 +434,12 @@ def _expand_standard_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
         for k in range(i % 2, h.size, 2):
             i1 = (i - k) // 2
             i1 = wrap_reflect(i1, n)
-            val += h[k]* x[i1]
+            val += h[k] * x[i1]
         # b) loop for k in [ 2-(i % 2), h.size, step=2 ]
         for k in range(2 - (i % 2), h.size, 2):
             i2 = (i + k) // 2
             i2 = wrap_reflect(i2, n)
-            val += h[k]* x[i2]
+            val += h[k] * x[i2]
 
         y[i] = val
     return y
@@ -370,28 +460,28 @@ def _reduce_centered_1d(x: np.ndarray, g: np.ndarray) -> np.ndarray:
     #     The "centered" code in C used period=2*n for reflection indexing
     #     Then if index >= n => index=2*n-1-index
     for k in range(n):
-        val = x[k]*g[0]
+        val = x[k] * g[0]
         for i in range(1, g.size):
-            km = (k - i) % (2*n)
+            km = (k - i) % (2 * n)
             if km >= n:
-                km = 2*n - 1 - km
-            kp = (k + i) % (2*n)
+                km = 2 * n - 1 - km
+            kp = (k + i) % (2 * n)
             if kp >= n:
-                kp = 2*n - 1 - kp
-            val += g[i]*(x[km] + x[kp])
+                kp = 2 * n - 1 - kp
+            val += g[i] * (x[km] + x[kp])
         ytmp[k] = val
 
     # (b) downsample 2->1 by averaging pairs
     out = np.zeros(half, dtype=x.dtype)
     for i in range(half):
-        k = 2*i
-        out[i] = 0.5*(ytmp[k] + ytmp[k+1])
+        k = 2 * i
+        out[i] = 0.5 * (ytmp[k] + ytmp[k + 1])
     return out
 
 
 def _expand_centered_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
     """
-    1D expansion with 'centered' pyramid logic. 
+    1D expansion with 'centered' pyramid logic.
     This is the inverse of _reduce_centered_1d:
       1) Upsample with inverse Haar,
       2) Convolve with mirror boundary using h[].
@@ -400,45 +490,45 @@ def _expand_centered_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
     """
 
     n = x.shape[0]
-    outlen = 2*n if n > 1 else n
+    outlen = 2 * n if n > 1 else n
     y = np.zeros(outlen, dtype=x.dtype)
     if n < 2:
         return x.copy()
 
-    # Step 1) "inverse Haar": 
+    # Step 1) "inverse Haar":
     # Expand x from length n -> length 2n
     # If we consider that the reduce step was (y[i] = (xtmp[2i] + xtmp[2i+1])/2 ),
-    # then the inverse is: 
-    #   xtmp[2i]   = x[i], 
+    # then the inverse is:
+    #   xtmp[2i]   = x[i],
     #   xtmp[2i+1] = x[i]  (naive, but the original code did some partial shift).
     # More precisely, from your C code ExpandCentered_1D does partial sum:
-    #   for j in reversed range(1..2n-1): y[j] = (y[j] + y[j-1])/2. 
+    #   for j in reversed range(1..2n-1): y[j] = (y[j] + y[j-1])/2.
     # We'll do a simpler approach: we place x in the even positions, then do
-    # half-lifting to fill the odd. 
+    # half-lifting to fill the odd.
     # For a direct replicate of the C logic, see "ExpandCentered_1D" code.
 
     # We'll first upsample x into an intermediate "tmp_upsampled" of length 2n
     tmp_upsampled = np.zeros(outlen, dtype=x.dtype)
     for i in range(n):
-        j = 2*i
+        j = 2 * i
         tmp_upsampled[j] = x[i]
     # Next do the half-ladder: y[j] = (y[j]+ y[j-1])/2 for j=1..end
-    for j in range(outlen-1, 0, -1):
-        tmp_upsampled[j] = 0.5*(tmp_upsampled[j] + tmp_upsampled[j-1])
+    for j in range(outlen - 1, 0, -1):
+        tmp_upsampled[j] = 0.5 * (tmp_upsampled[j] + tmp_upsampled[j - 1])
     tmp_upsampled[0] *= 0.5
 
     # Step 2) convolve with h[] with mirror boundary (like the forward pass but reversed).
     # We'll write the result into y:
     for k in range(outlen):
-        val = tmp_upsampled[k]*h[0]
+        val = tmp_upsampled[k] * h[0]
         for i in range(1, h.size):
-            km = (k - i) % (2*outlen)  # bigger period for reflection
+            km = (k - i) % (2 * outlen)  # bigger period for reflection
             if km >= outlen:
-                km = 2*outlen - 1 - km
-            kp = (k + i) % (2*outlen)
+                km = 2 * outlen - 1 - km
+            kp = (k + i) % (2 * outlen)
             if kp >= outlen:
-                kp = 2*outlen - 1 - kp
-            val += h[i]*(tmp_upsampled[km] + tmp_upsampled[kp])
+                kp = 2 * outlen - 1 - kp
+            val += h[i] * (tmp_upsampled[km] + tmp_upsampled[kp])
         y[k] = val
 
     return y

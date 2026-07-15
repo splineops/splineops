@@ -1,13 +1,10 @@
 # splineops/src/splineops/smoothing_splines/fract_spline_auto_corr.py
 
-from typing import Union
 import numpy as np
 import numpy.typing as npt
 
-def fractsplineautocorr(
-    alpha: float,
-    nu: npt.NDArray
-) -> npt.NDArray:
+
+def fractsplineautocorr(alpha: float, nu: npt.NDArray) -> npt.NDArray:
     """
     Compute the frequency response of the autocorrelation filter
     of a fractional spline of degree `alpha`.
@@ -26,8 +23,7 @@ def fractsplineautocorr(
     -------
     A : ndarray
         Frequency response of the autocorrelation filter. Its length matches
-        that of `nu`. If `alpha <= -0.5`, an empty array is returned (and a
-        warning is printed).
+        that of `nu`.
 
     Notes
     -----
@@ -37,7 +33,7 @@ def fractsplineautocorr(
     Examples
     --------
     >>> import numpy as np
-    >>> from splineops.interpolate.smooth.fractsplineautocorr import fractsplineautocorr
+    >>> from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
     >>> alpha = 0.5
     >>> nu = np.linspace(-0.5, 0.5, 5)
     >>> A = fractsplineautocorr(alpha, nu)
@@ -47,11 +43,13 @@ def fractsplineautocorr(
     """
     N = 100  # Number of terms in the summation
 
-    if alpha <= -0.5:
-        print("The autocorrelation of the fractional splines exists only for "
-              "degrees strictly larger than -0.5!")
-        # Return an empty array to keep the same ndarray return type
-        return np.array([])
+    if not np.isfinite(alpha) or alpha <= -0.5:
+        raise ValueError("'alpha' must be finite and strictly greater than -0.5.")
+    nu = np.asarray(nu)
+    if nu.ndim != 1:
+        raise ValueError("'nu' must be a one-dimensional array.")
+    if not np.all(np.isfinite(nu)):
+        raise ValueError("'nu' must contain only finite values.")
 
     # Initialize sum
     S = np.zeros(len(nu))
