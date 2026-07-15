@@ -17,7 +17,7 @@ import scipy
 from scipy.ndimage import affine_transform
 
 from splineops import __version__
-from splineops.affine import rotate
+from splineops.affine import AffinePlan, rotate
 
 
 @dataclass(frozen=True)
@@ -122,6 +122,18 @@ def main() -> int:
             args.repeats,
             args.warmups,
         )
+        plan = AffinePlan(
+            case.shape,
+            matrix,
+            offset,
+            degree=case.degree,
+            mode="mirror",
+            dtype=data.dtype,
+        )
+        planned_output, planned_seconds, planned_peak = _measure(
+            lambda: plan(data), args.repeats, args.warmups
+        )
+        np.testing.assert_equal(planned_output, spline_output)
         scipy_output, scipy_seconds, scipy_peak = _measure(
             lambda: affine_transform(
                 data,
@@ -140,15 +152,20 @@ def main() -> int:
             "shape": "x".join(str(value) for value in case.shape),
             "degree": case.degree,
             "splineops_median_seconds": spline_seconds,
+            "splineops_plan_median_seconds": planned_seconds,
+            "plan_speedup_over_one_shot": spline_seconds / planned_seconds,
+            "plan_retained_bytes": plan.retained_bytes,
             "scipy_median_seconds": scipy_seconds,
             "scipy_speedup_over_splineops": spline_seconds / scipy_seconds,
             "splineops_tracemalloc_peak_bytes": spline_peak,
+            "splineops_plan_tracemalloc_peak_bytes": planned_peak,
             "scipy_tracemalloc_peak_bytes": scipy_peak,
             "max_abs_difference": float(np.max(np.abs(spline_output - scipy_output))),
         }
         rows.append(row)
         print(
             f"{case.name:12s} splineops={spline_seconds:8.4f}s "
+            f"planned={planned_seconds:8.4f}s "
             f"scipy={scipy_seconds:8.4f}s "
             f"scipy-speedup={row['scipy_speedup_over_splineops']:6.2f}x "
             f"max-error={row['max_abs_difference']:.3e}"

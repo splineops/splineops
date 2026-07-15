@@ -114,6 +114,22 @@ Choosing :math:`\lambda`:
 Practical tip: run the solver on a grid of :math:`\lambda` values and
 *plot sparsity vs. data-fidelity* (e.g., root-MSE) to pick a balanced point.
 
+For such a sweep, :class:`splineops.adaptive_regression_splines.DenoisingPlan`
+factorizes the fixed ``x``/``rho`` system once.  Observations and regularization
+strength may change between solves:
+
+.. code-block:: python
+
+   from splineops.adaptive_regression_splines import DenoisingPlan
+
+   plan = DenoisingPlan(x, rho=1e-3)
+   solutions = [plan.solve(y, lamb=value) for value in lambda_values]
+
+This removes repeated sparse factorization but does not make the iterative ADMM
+work disappear.  ``x`` must stay strictly increasing and ``rho`` is fixed by
+the plan; construct another plan when either changes.  Zero regularization and
+the linear-regression limit still use their direct branches.
+
 Convergence diagnostics
 -----------------------
 

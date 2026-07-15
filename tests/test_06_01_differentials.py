@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from splineops.differentials import Differentials
+from splineops.differentials import DifferentialPlan, Differentials
 from splineops.differentials.differentials import differentials
 
 
@@ -154,6 +154,61 @@ def test_trigonometric_derivatives_are_analytical_in_the_interior():
 def test_constructor_rejects_invalid_spacing(spacing, error):
     with pytest.raises(error):
         Differentials(np.ones((3, 4)), spacing=spacing)
+
+
+def test_differential_plan_returns_gradient_hessian_and_laplacian_together():
+    row_spacing, column_spacing = 0.2, 0.125
+    yy, xx = np.mgrid[:72, :80]
+    y = yy * row_spacing
+    x = xx * column_spacing
+    image = 1.5 * x**2 - 0.75 * x * y + 2.25 * y**2
+    plan = DifferentialPlan(image.shape, spacing=(row_spacing, column_spacing))
+
+    result = plan(image)
+    interior = np.s_[20:-20, 20:-20]
+
+    assert len(result.gradient) == 2
+    assert len(result.hessian) == 3
+    np.testing.assert_allclose(
+        result.gradient[0][interior], 4.5 * y[interior] - 0.75 * x[interior], atol=2e-9
+    )
+    np.testing.assert_allclose(
+        result.gradient[1][interior], 3.0 * x[interior] - 0.75 * y[interior], atol=2e-9
+    )
+    np.testing.assert_allclose(result.hessian[0][interior], 4.5, atol=2e-9)
+    np.testing.assert_allclose(result.hessian[1][interior], -0.75, atol=2e-9)
+    np.testing.assert_allclose(result.hessian[2][interior], 3.0, atol=2e-9)
+    np.testing.assert_allclose(result.laplacian[interior], 7.5, atol=3e-9)
+
+
+def test_differential_plan_supports_analytical_3d_volume():
+    spacing = (0.25, 0.2, 0.125)
+    zz, yy, xx = np.mgrid[:48, :52, :56]
+    z, y, x = zz * spacing[0], yy * spacing[1], xx * spacing[2]
+    volume = 0.5 * z**2 + 1.5 * y**2 + 2.5 * x**2 + 0.4 * z * x
+    plan = DifferentialPlan(volume.shape, spacing=spacing)
+
+    result = plan(volume)
+    interior = np.s_[16:-16, 16:-16, 16:-16]
+
+    assert len(result.gradient) == 3
+    assert len(result.hessian) == 6
+    expected_hessian = (1.0, 0.0, 0.4, 3.0, 0.0, 5.0)
+    for component, expected in zip(result.hessian, expected_hessian):
+        np.testing.assert_allclose(component[interior], expected, atol=1e-6)
+    np.testing.assert_allclose(result.laplacian[interior], 9.0, atol=2e-6)
+
+
+def test_differentials_3d_component_api_matches_plan():
+    rng = np.random.default_rng(20260715)
+    volume = rng.standard_normal((8, 9, 10))
+    operator = Differentials(volume, spacing=(1.0, 1.5, 2.0))
+    result = DifferentialPlan(volume.shape, spacing=operator.spacing)(volume)
+
+    for actual, expected in zip(operator.gradient_components(), result.gradient):
+        np.testing.assert_equal(actual, expected)
+    for actual, expected in zip(operator.hessian_components(), result.hessian):
+        np.testing.assert_equal(actual, expected)
 
 
 ##############################################################################

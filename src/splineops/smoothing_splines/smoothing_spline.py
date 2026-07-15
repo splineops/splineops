@@ -5,7 +5,7 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
-from scipy.fft import fftn, ifftn
+from scipy.fft import irfftn, rfftn
 
 
 def periodize(x: npt.NDArray, m: int) -> npt.NDArray:
@@ -206,6 +206,102 @@ def recursive_smoothing_spline(signal: npt.NDArray, lamb: float = 1.0) -> npt.ND
     return scale * y
 
 
+class SmoothingSplinePlan:
+    """Reusable real-FFT smoothing filter for a fixed array shape.
+
+    Constructing the frequency response is independent of the input samples.
+    Keeping it in a plan avoids rebuilding frequency grids and the filter when
+    smoothing multiple arrays with the same shape and parameters.  The plan
+    stores only the non-redundant real-FFT half spectrum.
+
+    Parameters
+    ----------
+    shape : tuple of int
+        Shape of every array that will be passed to :meth:`apply`.
+    lamb : float
+        Non-negative regularization parameter.
+    gamma : float
+        Positive order of the spline operator.
+    """
+
+    def __init__(self, shape: tuple[int, ...], lamb: float, gamma: float) -> None:
+        try:
+            shape = tuple(operator.index(length) for length in shape)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                "'shape' must be a non-empty sequence of integers."
+            ) from exc
+        if not shape or any(
+            isinstance(length, (bool, np.bool_)) or length <= 0 for length in shape
+        ):
+            raise ValueError("'shape' must contain only positive integers.")
+        if not np.isfinite(lamb) or lamb < 0:
+            raise ValueError("'lamb' must be finite and non-negative.")
+        if not np.isfinite(gamma) or gamma <= 0:
+            raise ValueError("'gamma' must be finite and positive.")
+
+        self.shape = shape
+        self.lamb = float(lamb)
+        self.gamma = float(gamma)
+        spectrum_shape = shape[:-1] + (shape[-1] // 2 + 1,)
+        omega_squared = np.zeros(spectrum_shape, dtype=np.float64)
+        for axis, length in enumerate(shape):
+            frequencies = (
+                np.fft.rfftfreq(length)
+                if axis == len(shape) - 1
+                else np.fft.fftfreq(length)
+            )
+            broadcast_shape = [1] * len(shape)
+            broadcast_shape[axis] = frequencies.size
+            angular_frequencies = 2.0 * np.pi * frequencies.reshape(broadcast_shape)
+            omega_squared += angular_frequencies**2
+
+        self.frequency_response = 1.0 / (1.0 + self.lamb * omega_squared**self.gamma)
+        self.frequency_response.flags.writeable = False
+
+    @property
+    def retained_bytes(self) -> int:
+        """Number of bytes retained for repeated execution."""
+
+        return self.frequency_response.nbytes
+
+    def apply(
+        self, data: npt.NDArray, *, out: npt.NDArray | None = None
+    ) -> npt.NDArray:
+        """Smooth ``data`` and optionally copy the result into ``out``."""
+
+        data = np.asarray(data)
+        if data.shape != self.shape:
+            raise ValueError(
+                f"'data' must have shape {self.shape}; received {data.shape}."
+            )
+        if not np.issubdtype(data.dtype, np.number):
+            raise TypeError("'data' must have a numeric dtype.")
+        if np.iscomplexobj(data):
+            raise TypeError("'data' must be real-valued.")
+        if not np.all(np.isfinite(data)):
+            raise ValueError("'data' must contain only finite values.")
+
+        spectrum = rfftn(data)
+        result = irfftn(self.frequency_response * spectrum, s=self.shape)
+        if out is None:
+            return result
+        if not isinstance(out, np.ndarray):
+            raise TypeError("'out' must be a NumPy array.")
+        if out.shape != self.shape:
+            raise ValueError(
+                f"'out' must have shape {self.shape}; received {out.shape}."
+            )
+        if out.dtype != result.dtype:
+            raise TypeError(
+                f"'out' must have dtype {result.dtype}; received {out.dtype}."
+            )
+        np.copyto(out, result, casting="no")
+        return out
+
+    __call__ = apply
+
+
 def smoothing_spline_nd(data: npt.NDArray, lamb: float, gamma: float) -> npt.NDArray:
     """
     Apply multi-dimensional fractional smoothing spline to the input data.
@@ -248,21 +344,4 @@ def smoothing_spline_nd(data: npt.NDArray, lamb: float, gamma: float) -> npt.NDA
         raise ValueError("'lamb' must be finite and non-negative.")
     if not np.isfinite(gamma) or gamma <= 0:
         raise ValueError("'gamma' must be finite and positive.")
-    dims = data.shape
-
-    # Compute the frequency grids for each dimension
-    freq_grids = np.meshgrid(*[np.fft.fftfreq(n) for n in dims], indexing="ij")
-
-    # Vectorized computation of omega_squared
-    freq_grids_stacked = np.stack(freq_grids, axis=0)  # Shape: (ndim, dims...)
-    omega_squared = np.sum((2 * np.pi * freq_grids_stacked) ** 2, axis=0)
-
-    # Compute the Butterworth-like filter in the Fourier domain
-    H = 1 / (1 + lamb * (omega_squared**gamma))
-
-    # Apply the filter
-    data_fft = fftn(data)
-    data_smooth_fft = H * data_fft
-    data_smooth = np.real(ifftn(data_smooth_fft))
-
-    return data_smooth
+    return SmoothingSplinePlan(data.shape, lamb=lamb, gamma=gamma).apply(data)

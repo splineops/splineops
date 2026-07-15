@@ -44,12 +44,47 @@ Compatibility matrix
      - NumPy is the package-wide backend.  CuPy remains experimental and must
        not leak into modules that have no GPU contract.
    * - Plan/cache objects
-     - Resize, ``TensorSpline``
+     - Resize, ``TensorSpline``, affine, smoothing, regression, differentials
      - Separate public concepts
      - ``ResizePlan`` represents reusable regular-grid projection work.
-       ``TensorSplineQueryPlan`` retains support geometry for one spline and
-       one fixed coordinate query.  Neither abstraction is forced onto the
-       other module.
+       ``TensorSplineGeometryPlan`` retains fixed query support independently
+       of compatible sample values, and ``AffinePlan`` composes detached
+       geometry plans.  Smoothing retains a frequency response, regression a
+       sparse factorization, and differentials a fixed shape/spacing contract.
+       These purpose-specific lifetimes are not forced into one abstraction.
+
+Array-role contract
+-------------------
+
+``batch`` and ``channel`` are roles assigned by a public API, not inferred from
+array rank:
+
+.. list-table:: Spatial and non-spatial axes
+   :header-rows: 1
+   :widths: 20 34 46
+
+   * - Module
+     - Spatial axes
+     - Batch/channel behavior
+   * - Resize
+     - Explicit ``axes``; all axes when omitted
+     - Unselected axes are preserved exactly.
+   * - Affine
+     - Exactly two or three ``spatial_axes``
+     - Every remaining slice is transformed independently.
+   * - ``TensorSpline``
+     - Every construction-data axis is a spline dimension
+     - Query coordinates may be batched; sample-value channel axes are not
+       inferred.
+   * - Smoothing
+     - Every input axis participates in the periodic N-D frequency response
+     - Smooth channels independently when channel mixing is not intended.
+   * - Differentials
+     - One scalar 2-D image or 3-D volume
+     - Batch and channel arrays must currently be looped externally.
+   * - Multiscale
+     - One scalar 1-D signal or 2-D image, depending on the operation
+     - Batch and channel arrays must currently be looped externally.
 
 Rules for shared internals
 --------------------------
@@ -60,6 +95,9 @@ Rules for shared internals
   behavior, and mutation are part of a primitive's contract.
 * Internal APIs may change between releases.  Public modules must not expose
   private helper objects as accidental compatibility promises.
+* Interpolation prefiltering is shared only by ``TensorSpline`` and
+  differentials, which use the same cardinal-spline coefficient contract.
+  Resize's scale-dependent projection filters remain specialized.
 * Future legacy ports retain source-level attribution and method records even
   though the maintainer has cleared the current distribution's provenance; see
   :doc:`provenance`.

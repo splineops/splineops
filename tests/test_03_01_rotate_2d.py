@@ -4,7 +4,11 @@ import numpy as np
 import pytest
 import splineops.affine.affine as affine_module
 from scipy.ndimage import affine_transform
-from splineops.affine.affine import rotate
+from splineops.affine.affine import (
+    AffinePlan,
+    affine_transform as spline_affine,
+    rotate,
+)
 
 
 def generate_rotated_data_and_mask(data_shape, custom_center, margin, angle, k):
@@ -157,3 +161,71 @@ def test_rotate_2d_matches_equivalent_scipy_transform(degree, dtype):
 
     tolerance = 2e-4 if dtype == np.float32 else 2e-12
     np.testing.assert_allclose(actual, expected, rtol=tolerance, atol=tolerance)
+
+
+def test_affine_plan_reuses_fixed_geometry_across_images():
+    shape = (13, 17)
+    angle = np.radians(-19.0)
+    matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+    center = (np.asarray(shape) - 1.0) / 2.0
+    plan = AffinePlan(
+        shape,
+        matrix,
+        center - matrix @ center,
+        degree=3,
+        mode="mirror",
+    )
+    rng = np.random.default_rng(20260715)
+
+    assert plan.geometry_cached
+    assert plan.retained_bytes > 0
+    for data in (rng.standard_normal(shape), rng.standard_normal(shape)):
+        expected = spline_affine(
+            data,
+            matrix,
+            center - matrix @ center,
+            degree=3,
+            mode="mirror",
+        )
+        np.testing.assert_allclose(plan(data), expected, rtol=0.0, atol=0.0)
+
+
+def test_rotate_supports_explicit_batch_and_channel_axes():
+    rng = np.random.default_rng(20260715)
+    data = rng.standard_normal((2, 11, 13, 3))
+
+    result = rotate(
+        data,
+        angle=17.0,
+        degree=1,
+        mode="mirror",
+        spatial_axes=(1, 2),
+    )
+    expected = np.empty_like(result)
+    for batch in range(data.shape[0]):
+        for channel in range(data.shape[-1]):
+            expected[batch, :, :, channel] = rotate(
+                data[batch, :, :, channel],
+                angle=17.0,
+                degree=1,
+                mode="mirror",
+            )
+
+    np.testing.assert_allclose(result, expected, rtol=0.0, atol=0.0)
+
+
+def test_affine_plan_supports_output_buffer():
+    data = np.arange(63, dtype=np.float64).reshape(7, 9)
+    plan = AffinePlan(data.shape, np.eye(2), degree=1, mode="mirror")
+    expected = plan(data)
+    out = np.empty_like(expected)
+
+    returned = plan(data, out=out)
+
+    assert returned is out
+    np.testing.assert_equal(out, expected)
+
+
+def test_affine_plan_enforces_geometry_memory_limit():
+    with pytest.raises(MemoryError, match="max_retained_bytes"):
+        AffinePlan((20, 20), np.eye(2), max_retained_bytes=1)

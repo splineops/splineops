@@ -58,7 +58,7 @@ class SplineWavelets(AbstractWavelets):
         np.ndarray
             Transformed 2D array (same shape).
         """
-        out = np.copy(inp)
+        out = self._prepare_single_scale_input(inp)
         ny, nx = out.shape
         if ny < 2 or nx < 2 or ny % 2 or nx % 2:
             raise ValueError(
@@ -66,20 +66,8 @@ class SplineWavelets(AbstractWavelets):
                 f"received {out.shape}."
             )
 
-        # 1) Row pass if nx>1
-        if nx > 1:
-            for r in range(ny):
-                out[r, :] = self._split_mirror_1d(
-                    out[r, :], self.filter.h, self.filter.g
-                )
-
-        # 2) Column pass if ny>1
-        if ny > 1:
-            for c in range(nx):
-                col = out[:, c]
-                out[:, c] = self._split_mirror_1d(col, self.filter.h, self.filter.g)
-
-        return out
+        out = self._apply_axis(out, axis=1, split=True)
+        return self._apply_axis(out, axis=0, split=True)
 
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
         """
@@ -97,7 +85,7 @@ class SplineWavelets(AbstractWavelets):
         np.ndarray
             Reconstructed array (same shape).
         """
-        out = np.copy(inp)
+        out = self._prepare_single_scale_input(inp)
         ny, nx = out.shape
         if ny < 2 or nx < 2 or ny % 2 or nx % 2:
             raise ValueError(
@@ -105,21 +93,14 @@ class SplineWavelets(AbstractWavelets):
                 f"received {out.shape}."
             )
 
-        # 1) Column pass if ny>1
-        if ny > 1:
-            for c in range(nx):
-                out[:, c] = self._merge_mirror_1d(
-                    out[:, c], self.filter.h, self.filter.g
-                )
+        out = self._apply_axis(out, axis=0, split=False)
+        return self._apply_axis(out, axis=1, split=False)
 
-        # 2) Row pass if nx>1
-        if nx > 1:
-            for r in range(ny):
-                out[r, :] = self._merge_mirror_1d(
-                    out[r, :], self.filter.h, self.filter.g
-                )
-
-        return out
+    def _apply_axis(self, array, axis, *, split):
+        moved = np.moveaxis(array, axis, -1)
+        function = self._split_mirror_1d if split else self._merge_mirror_1d
+        transformed = function(moved, self.filter.h, self.filter.g)
+        return np.moveaxis(transformed, -1, axis)
 
     # -----------------------------------------------------------------------
     # The key mirror-based 1D "split" (analysis) and "merge" (synthesis)
@@ -133,49 +114,28 @@ class SplineWavelets(AbstractWavelets):
         1D mirror-based split for low-pass & high-pass.
         The first half of the output is the lowpass, the second half is the detail.
         """
-        n = vin.shape[0]
-        vout = np.zeros(n, dtype=vin.dtype)
+        n = vin.shape[-1]
         half = n // 2
         period = 2 * (n - 1) if n > 1 else 1
+        centers = 2 * np.arange(half)
 
-        for i in range(half):
-            j = 2 * i
-            # Low pass
-            pix_low = vin[j] * h[0]
-            for k in range(1, len(h)):
-                jm = j - k
-                if jm < 0:
-                    jm = jm % period
-                    if jm >= n:
-                        jm = period - jm
-                jp = j + k
-                if jp >= n:
-                    jp = jp % period
-                    if jp >= n:
-                        jp = period - jp
-                pix_low += h[k] * (vin[jm] + vin[jp])
-            vout[i] = pix_low
+        def reflect(index):
+            index = np.mod(index, period)
+            return np.where(index >= n, period - index, index)
 
-            # High pass
-            j2 = j + 1
-            if j2 >= n:
-                j2 = j2 % period  # typically for odd n
-            pix_high = vin[j2] * g[0]
-            for k in range(1, len(g)):
-                jm = j2 - k
-                if jm < 0:
-                    jm = jm % period
-                    if jm >= n:
-                        jm = period - jm
-                jp = j2 + k
-                if jp >= n:
-                    jp = jp % period
-                    if jp >= n:
-                        jp = period - jp
-                pix_high += g[k] * (vin[jm] + vin[jp])
-            vout[i + half] = pix_high
-
-        return vout
+        low = vin[..., centers] * h[0]
+        for k in range(1, len(h)):
+            low = low + h[k] * (
+                vin[..., reflect(centers - k)] + vin[..., reflect(centers + k)]
+            )
+        high_centers = centers + 1
+        high = vin[..., high_centers] * g[0]
+        for k in range(1, len(g)):
+            high = high + g[k] * (
+                vin[..., reflect(high_centers - k)]
+                + vin[..., reflect(high_centers + k)]
+            )
+        return np.concatenate((low, high), axis=-1).astype(vin.dtype, copy=False)
 
     def _merge_mirror_1d(
         self, vin: np.ndarray, h: np.ndarray, g: np.ndarray
@@ -183,8 +143,8 @@ class SplineWavelets(AbstractWavelets):
         """
         Inverse of _split_mirror_1d.
         """
-        n = vin.shape[0]
-        vout = np.zeros(n, dtype=vin.dtype)
+        n = vin.shape[-1]
+        vout = np.zeros_like(vin)
         half = n // 2
         if half < 1:
             return vin.copy()
@@ -200,73 +160,47 @@ class SplineWavelets(AbstractWavelets):
         k01 = (len(h) // 2) * 2 - 1
         k02 = (len(g) // 2) * 2 - 1
 
-        for i in range(half):
-            j = 2 * i
+        indices = np.arange(half)
 
-            # pix1 => from lowpass portion (h filter)
-            pix1 = h[0] * vin[i]
-            # loop k=2..(step2).. < len(h)
-            for k in range(2, len(h), 2):
-                i1 = i - (k // 2)
-                if i1 < 0:
-                    i1 = (-i1) % period
-                    if i1 >= half:
-                        i1 = period - i1
-                i2 = i + (k // 2)
-                if i2 >= half:
-                    i2 = i2 % period
-                    if i2 >= half:
-                        i2 = period - i2
-                pix1 += h[k] * (vin[i1] + vin[i2])
+        # Even reconstructed samples.
+        pix1 = h[0] * vin[..., indices]
+        for k in range(2, len(h), 2):
+            i1 = indices - (k // 2)
+            i1 = np.where(i1 < 0, np.mod(-i1, period), i1)
+            i1 = np.where(i1 >= half, period - i1, i1)
+            i2 = indices + (k // 2)
+            i2 = np.mod(i2, period)
+            i2 = np.where(i2 >= half, period - i2, i2)
+            pix1 = pix1 + h[k] * (vin[..., i1] + vin[..., i2])
 
             # pix2 => from highpass portion (g filter)
-            pix2 = 0.0
-            for k in range(-k02, len(g), 2):
-                kk = abs(k)
-                i1 = i + (k - 1) // 2
-                if i1 < 0:
-                    i1 = (-i1 - 1) % period
-                    if i1 >= half:
-                        i1 = (period - 1) - i1
-                if i1 >= half:
-                    i1 = i1 % period
-                    if i1 >= half:
-                        i1 = (period - 1) - i1
-                pix2 += g[kk] * vin[i1 + half]
+        pix2 = np.zeros_like(pix1)
+        for k in range(-k02, len(g), 2):
+            i1 = indices + (k - 1) // 2
+            i1 = np.where(i1 < 0, np.mod(-i1 - 1, period), i1)
+            i1 = np.mod(i1, period)
+            i1 = np.where(i1 >= half, (period - 1) - i1, i1)
+            pix2 = pix2 + g[abs(k)] * vin[..., i1 + half]
+        vout[..., 0::2] = pix1 + pix2
 
-            vout[j] = pix1 + pix2
+        # Next sample j+1
+        pix1 = np.zeros_like(pix1)
+        for k in range(-k01, len(h), 2):
+            i1 = indices + (k + 1) // 2
+            i1 = np.where(i1 < 0, np.mod(-i1, period), i1)
+            i1 = np.mod(i1, period)
+            i1 = np.where(i1 >= half, period - i1, i1)
+            pix1 = pix1 + h[abs(k)] * vin[..., i1]
 
-            # Next sample j+1
-            j = j + 1
-            pix1 = 0.0
-            for k in range(-k01, len(h), 2):
-                kk = abs(k)
-                i1 = i + (k + 1) // 2
-                if i1 < 0:
-                    i1 = (-i1) % period
-                    if i1 >= half:
-                        i1 = period - i1
-                if i1 >= half:
-                    i1 = i1 % period
-                    if i1 >= half:
-                        i1 = period - i1
-                pix1 += h[kk] * vin[i1]
-
-            pix2 = g[0] * vin[i + half]
-            for k in range(2, len(g), 2):
-                i1 = i - (k // 2)
-                if i1 < 0:
-                    i1 = (-i1 - 1) % period
-                    if i1 >= half:
-                        i1 = (period - 1) - i1
-                i2 = i + (k // 2)
-                if i2 >= half:
-                    i2 = i2 % period
-                    if i2 >= half:
-                        i2 = (period - 1) - i2
-                pix2 += g[k] * (vin[i1 + half] + vin[i2 + half])
-
-            vout[j] = pix1 + pix2
+        pix2 = g[0] * vin[..., indices + half]
+        for k in range(2, len(g), 2):
+            i1 = indices - (k // 2)
+            i1 = np.where(i1 < 0, np.mod(-i1 - 1, period), i1)
+            i1 = np.where(i1 >= half, (period - 1) - i1, i1)
+            i2 = np.mod(indices + (k // 2), period)
+            i2 = np.where(i2 >= half, (period - 1) - i2, i2)
+            pix2 = pix2 + g[k] * (vin[..., i1 + half] + vin[..., i2 + half])
+        vout[..., 1::2] = pix1 + pix2
 
         return vout
 

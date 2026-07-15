@@ -124,6 +124,25 @@ Because the filter is applied element-wise in the frequency domain, the
 computation still needs just one forward FFT and one inverse FFT,
 whatever the data dimension.
 
+For repeated arrays of the same shape and parameters,
+:class:`splineops.smoothing_splines.SmoothingSplinePlan` constructs the radial
+response once and stores only the non-redundant real-FFT half spectrum:
+
+.. code-block:: python
+
+   import numpy as np
+   from splineops.smoothing_splines import SmoothingSplinePlan
+
+   plan = SmoothingSplinePlan(image.shape, lamb=0.02, gamma=1.5)
+   output = np.empty(image.shape, dtype=np.float64)
+   plan.apply(image, out=output)
+   next_output = plan(next_image)
+
+``retained_bytes`` reports the response storage.  The plan accepts finite real
+arrays of exactly its construction shape.  All array axes participate in the
+frequency response, so batch or channel dimensions should be processed
+independently when smoothing across them is not intended.
+
 Fast Recursive Linear Smoother
 ------------------------------
 
@@ -174,14 +193,15 @@ Current contract
 ----------------
 
 The public smoothing functions accept finite, real-valued arrays.  The 1D
-fractional and N-D FFT methods assume periodic extension.  The recursive
-method uses steady-state causal and anticausal initialization.  These routines
-remain experimental because the three formulations intentionally implement
-different operators.  Current independent checks cover identity at zero
-regularization, the analytical response of periodic N-D cosine modes, a dense
-linear-system reference for the recursive boundary equations, and constant
-preservation.  These checks support the stated contracts but do not make the
-three methods interchangeable.
+fractional and N-D FFT methods assume periodic extension; the N-D path and its
+plan use ``rfftn``/``irfftn`` because the public contract is real-valued.  The
+recursive method uses steady-state causal and anticausal initialization.  These
+routines remain experimental because the three formulations intentionally
+implement different operators.  Current independent checks cover identity at
+zero regularization, the analytical response of periodic N-D cosine modes, a
+dense linear-system reference for the recursive boundary equations, and
+constant preservation.  These checks support the stated contracts but do not
+make the three methods interchangeable.
 
 .. note::
 

@@ -50,18 +50,28 @@ class AbstractWavelets:
         self.scales = scale
 
     def _validate_multiscale_input(self, inp):
+        out = self._prepare_single_scale_input(inp)
+        divisor = 2**self.scales
+        if any(length % divisor for length in out.shape):
+            raise ValueError(
+                "Both wavelet dimensions must be divisible by "
+                f"2**scales ({divisor}); received shape {out.shape}."
+            )
+        return out
+
+    def _prepare_single_scale_input(self, inp):
         if not isinstance(inp, np.ndarray):
             raise TypeError("Wavelet input must be a NumPy array.")
         if inp.ndim != 2 or any(length == 0 for length in inp.shape):
             raise ValueError("Wavelet input must be a non-empty 2D array.")
         if not np.issubdtype(inp.dtype, np.number) or np.iscomplexobj(inp):
             raise TypeError("Wavelet input must have a real numeric dtype.")
-        divisor = 2**self.scales
-        if any(length % divisor for length in inp.shape):
-            raise ValueError(
-                "Both wavelet dimensions must be divisible by "
-                f"2**scales ({divisor}); received shape {inp.shape}."
-            )
+        if not np.all(np.isfinite(inp)):
+            raise ValueError("Wavelet input must contain only finite values.")
+        dtype = (
+            inp.dtype if np.issubdtype(inp.dtype, np.floating) else np.dtype(np.float64)
+        )
+        return np.array(inp, dtype=dtype, copy=True, order="C")
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
         """
@@ -110,8 +120,7 @@ class AbstractWavelets:
         np.ndarray
             Full wavelet decomposition (in-place layout).
         """
-        self._validate_multiscale_input(inp)
-        out = np.copy(inp)
+        out = self._validate_multiscale_input(inp)
         ny, nx = out.shape[:2]  # for 2D
         for _ in range(self.scales):
             sub = out[:ny, :nx]
@@ -136,8 +145,7 @@ class AbstractWavelets:
         np.ndarray
             Reconstructed array (same shape as input).
         """
-        self._validate_multiscale_input(inp)
-        out = np.copy(inp)
+        out = self._validate_multiscale_input(inp)
         ny_full, nx_full = out.shape[:2]
         factor = 2 ** (self.scales - 1)
         nx_coarse = max(1, nx_full // factor)

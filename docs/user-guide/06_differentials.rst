@@ -20,11 +20,11 @@ It offers several operations such as
 - Smallest Hessian Eigenvalue: the minimal curvature; and
 - Hessian Orientation: the principal orientation of the curvature.
 
-The stable numerical behavior is deliberately separate from visualization:
+The numerical behavior is deliberately separate from visualization:
 ``Differentials.run`` returns raw values, does not replace the source image,
 and performs no console output.  ``normalize=True`` is an explicit convenience
-for non-angular display maps.  ``spacing=(row_spacing, column_spacing)`` gives
-derivatives in physical coordinate units; both values default to one.
+for non-angular display maps.  ``spacing`` gives one physical sample distance
+per array axis; all values default to one.
 
 Image Representation
 --------------------
@@ -127,6 +127,34 @@ reconstructing quantities from composite maps:
 increasing column coordinates.  Mirror-boundary derivatives are zero at the
 outermost sample for the antisymmetric first-derivative filter.  Polynomial
 and trigonometric fields are used as analytical tests away from that boundary.
+
+Volumes and multi-output plans
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The same component interface accepts one scalar 3-D volume.  Components are
+returned in increasing axis order, while Hessians use packed
+upper-triangular order ``(00, 01, 02, 11, 12, 22)``.  Gradient magnitude,
+Laplacian, and minimum/maximum Hessian eigenvalue maps generalize to 3-D;
+gradient direction and Hessian orientation remain explicitly 2-D quantities.
+
+Use :class:`splineops.differentials.DifferentialPlan` when several derivative
+families are needed together, or when changing volumes share one shape and
+spacing:
+
+.. code-block:: python
+
+   from splineops.differentials import DifferentialPlan
+
+   plan = DifferentialPlan(volume.shape, spacing=(0.7, 0.7, 1.5))
+   result = plan.apply(volume, gradient=True, hessian=True)
+   gx, gy, gz = result.gradient
+   hxx, hxy, hxz, hyy, hyz, hzz = result.hessian
+   laplacian = result.laplacian
+
+One cached workspace is used within each call, so shared coefficient and
+derivative intermediates are not recomputed for the requested outputs.  The
+module currently models one scalar image or volume; batch and channel axes
+must be processed independently.
 
 The following figure, taken from
 :ref:`sphx_glr_auto_examples_06_differentials_01_differentials_module.py`,

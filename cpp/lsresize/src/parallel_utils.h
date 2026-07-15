@@ -170,13 +170,16 @@ inline std::int64_t round_up_thread_count(
 
 inline std::int64_t default_thread_count(
   std::int64_t nlines,
-  const lsresize::Plan1D& plan)
+  const lsresize::Plan1D& plan,
+  std::int64_t automatic_max_threads =
+      static_cast<std::int64_t>(detail::kMaxParallelParticipants))
 {
   const std::int64_t logical_threads =
       static_cast<std::int64_t>(hardware_threads());
   std::int64_t max_threads = std::min<std::int64_t>(
       {logical_threads,
        nlines,
+       std::max<std::int64_t>(1, automatic_max_threads),
        static_cast<std::int64_t>(detail::kMaxParallelParticipants)});
   if (max_threads <= 1) {
     return max_threads;
@@ -204,7 +207,9 @@ inline std::int64_t default_thread_count(
 
 inline std::int64_t thread_count(
   std::int64_t nlines,
-  const lsresize::Plan1D& plan)
+  const lsresize::Plan1D& plan,
+  std::int64_t automatic_max_threads =
+      static_cast<std::int64_t>(detail::kMaxParallelParticipants))
 {
   if (nlines <= 0) {
     return 0;
@@ -214,7 +219,7 @@ inline std::int64_t thread_count(
   if (explicit_threads > 0) {
     return explicit_threads;
   }
-  return default_thread_count(nlines, plan);
+  return default_thread_count(nlines, plan, automatic_max_threads);
 }
 
 inline bool persistent_threads_enabled()
@@ -240,19 +245,31 @@ template <typename Worker>
 inline void run_parallel_or_serial(
   std::int64_t nlines,
   const lsresize::Plan1D& plan,
-  Worker&& worker)
+  Worker&& worker,
+  std::int64_t automatic_max_threads =
+      static_cast<std::int64_t>(detail::kMaxParallelParticipants),
+  bool force_automatic_parallel = false)
 {
   if (nlines <= 0) {
     return;
   }
 
-  if (!use_parallel(nlines, plan)) {
+  const bool explicitly_serial = explicit_thread_count(nlines) == 1;
+  if (!use_parallel(nlines, plan) &&
+      !(force_automatic_parallel && !explicitly_serial)) {
     // Serial fallback
     worker(0, nlines);
     return;
   }
 
-  const std::int64_t nthreads = thread_count(nlines, plan);
+  std::int64_t nthreads = thread_count(nlines, plan, automatic_max_threads);
+  if (force_automatic_parallel && explicit_thread_count(nlines) == 0) {
+    nthreads = std::min<std::int64_t>(
+        {nlines,
+         std::max<std::int64_t>(1, automatic_max_threads),
+         static_cast<std::int64_t>(hardware_threads()),
+         static_cast<std::int64_t>(detail::kMaxParallelParticipants)});
+  }
   if (nthreads <= 1) {
     worker(0, nlines);
     return;

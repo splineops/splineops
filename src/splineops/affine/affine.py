@@ -2,12 +2,317 @@
 
 import numbers
 import operator
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 import numpy as np
 import numpy.typing as npt
 from splineops.spline_interpolation.tensor_spline import TensorSpline
+from splineops.spline_interpolation.query_plan import TensorSplineGeometryPlan
 
 _AFFINE_TILE_SIZE = 65_536
+_DEFAULT_PLAN_BYTES = 256 * 1024**2
+
+
+def _normalize_spatial_axes(
+    data: np.ndarray,
+    spatial_ndim: int,
+    spatial_axes: Sequence[int] | None,
+) -> tuple[int, ...]:
+    if spatial_axes is None:
+        if data.ndim != spatial_ndim:
+            raise ValueError(
+                "'spatial_axes' is required when data contains batch or channel axes."
+            )
+        return tuple(range(spatial_ndim))
+    try:
+        axes = tuple(operator.index(axis) for axis in spatial_axes)
+    except TypeError as exc:
+        raise TypeError("'spatial_axes' must be a sequence of integer axes.") from exc
+    if len(axes) != spatial_ndim:
+        raise ValueError(f"'spatial_axes' must contain exactly {spatial_ndim} axes.")
+    axes = tuple(axis + data.ndim if axis < 0 else axis for axis in axes)
+    if any(axis < 0 or axis >= data.ndim for axis in axes) or len(set(axes)) != len(
+        axes
+    ):
+        raise ValueError("'spatial_axes' must contain distinct valid axes.")
+    return axes
+
+
+class AffinePlan:
+    """Reusable pull-back affine transform on a fixed spatial geometry.
+
+    The plan can cache spline support indexes and weights for repeated frames.
+    Non-spatial axes are treated independently, so explicit ``spatial_axes``
+    provide batch and channel support without changing :class:`TensorSpline`.
+
+    Parameters
+    ----------
+    input_shape : tuple of int
+        Spatial input shape; two and three dimensions are supported.
+    matrix : ndarray
+        Pull-back matrix mapping output coordinates to input coordinates.
+    offset : ndarray, optional
+        Pull-back offset.  Defaults to zero.
+    output_shape : tuple of int, optional
+        Spatial output shape.  Defaults to ``input_shape``.
+    degree : int, optional
+        B-spline degree from 0 through 7.
+    mode : str, optional
+        TensorSpline boundary extension mode.
+    dtype : dtype, optional
+        Floating execution precision.
+    cache_geometry : bool, optional
+        Cache support indexes and weights.  Disable for one-shot transforms.
+    max_retained_bytes : int, optional
+        Hard limit for cached geometry arrays.
+    """
+
+    def __init__(
+        self,
+        input_shape: tuple[int, ...],
+        matrix: npt.ArrayLike,
+        offset: npt.ArrayLike | None = None,
+        *,
+        output_shape: tuple[int, ...] | None = None,
+        degree: int = 3,
+        mode: str = "zero",
+        dtype: npt.DTypeLike = np.float64,
+        cache_geometry: bool = True,
+        max_retained_bytes: int = _DEFAULT_PLAN_BYTES,
+    ) -> None:
+        try:
+            input_shape = tuple(operator.index(length) for length in input_shape)
+        except TypeError as exc:
+            raise TypeError("'input_shape' must be a sequence of integers.") from exc
+        if len(input_shape) not in (2, 3) or any(length <= 0 for length in input_shape):
+            raise ValueError(
+                "'input_shape' must contain two or three positive lengths."
+            )
+        if output_shape is None:
+            output_shape = input_shape
+        try:
+            output_shape = tuple(operator.index(length) for length in output_shape)
+        except TypeError as exc:
+            raise TypeError("'output_shape' must be a sequence of integers.") from exc
+        if len(output_shape) != len(input_shape) or any(
+            length <= 0 for length in output_shape
+        ):
+            raise ValueError(
+                "'output_shape' must contain positive lengths matching input dimensionality."
+            )
+        try:
+            degree = operator.index(degree)
+        except TypeError as exc:
+            raise TypeError("'degree' must be an integer from 0 through 7.") from exc
+        if isinstance(degree, (bool, np.bool_)) or not 0 <= degree <= 7:
+            raise ValueError("'degree' must be an integer from 0 through 7.")
+        dtype = np.dtype(dtype)
+        if not np.issubdtype(dtype, np.floating):
+            raise TypeError("'dtype' must be a real floating dtype.")
+        if not isinstance(cache_geometry, (bool, np.bool_)):
+            raise TypeError("'cache_geometry' must be a boolean.")
+        try:
+            max_retained_bytes = operator.index(max_retained_bytes)
+        except TypeError as exc:
+            raise TypeError("'max_retained_bytes' must be a positive integer.") from exc
+        if max_retained_bytes <= 0:
+            raise ValueError("'max_retained_bytes' must be a positive integer.")
+
+        ndim = len(input_shape)
+        matrix = np.asarray(matrix, dtype=dtype)
+        if matrix.shape != (ndim, ndim):
+            raise ValueError(f"'matrix' must have shape {(ndim, ndim)}.")
+        if offset is None:
+            offset = np.zeros(ndim, dtype=dtype)
+        offset = np.asarray(offset, dtype=dtype)
+        if offset.shape != (ndim,):
+            raise ValueError(f"'offset' must have shape {(ndim,)}.")
+        if not np.all(np.isfinite(matrix)) or not np.all(np.isfinite(offset)):
+            raise ValueError("'matrix' and 'offset' must contain only finite values.")
+
+        self.input_shape = input_shape
+        self.output_shape = output_shape
+        self.matrix = np.array(matrix, copy=True)
+        self.offset = np.array(offset, copy=True)
+        self.matrix.flags.writeable = False
+        self.offset.flags.writeable = False
+        self.degree = degree
+        self.mode = mode
+        self.dtype = dtype
+        self._basis = f"bspline{degree}"
+        self._geometry_plans: tuple[TensorSplineGeometryPlan, ...] = ()
+        self._retained_bytes = 0
+
+        if cache_geometry:
+            coordinates = tuple(
+                np.arange(length, dtype=dtype) for length in self.input_shape
+            )
+            template = TensorSpline(
+                data=np.zeros(self.input_shape, dtype=dtype),
+                coordinates=coordinates,
+                bases=self._basis,
+                modes=mode,
+            )
+            support_entries = sum(basis.support for basis in template.bases)
+            estimated_bytes = (
+                int(np.prod(self.output_shape, dtype=np.int64))
+                * support_entries
+                * (np.dtype(np.int64).itemsize + dtype.itemsize)
+            )
+            if estimated_bytes > max_retained_bytes:
+                raise MemoryError(
+                    "AffinePlan geometry would retain approximately "
+                    f"{estimated_bytes} bytes, above max_retained_bytes="
+                    f"{max_retained_bytes}. Disable geometry caching for a "
+                    "bounded-memory one-shot transform."
+                )
+            plans: list[TensorSplineGeometryPlan] = []
+            output_size = int(np.prod(self.output_shape, dtype=np.int64))
+            for start in range(0, output_size, _AFFINE_TILE_SIZE):
+                stop = min(start + _AFFINE_TILE_SIZE, output_size)
+                transformed = self._transformed_coordinates(start, stop)
+                remaining = max_retained_bytes - self._retained_bytes
+                geometry_plan: TensorSplineGeometryPlan = template.query_plan(
+                    tuple(transformed),
+                    grid=False,
+                    max_retained_bytes=remaining,
+                ).detach()
+                self._retained_bytes += geometry_plan.retained_bytes
+                plans.append(geometry_plan)
+            self._geometry_plans = tuple(plans)
+
+    @property
+    def geometry_cached(self) -> bool:
+        """Whether spline supports and weights are retained by this plan."""
+
+        return bool(self._geometry_plans)
+
+    @property
+    def retained_bytes(self) -> int:
+        """Bytes retained by cached spline supports and weights."""
+
+        return self._retained_bytes
+
+    def _transformed_coordinates(self, start: int, stop: int) -> np.ndarray:
+        flat_indices = np.arange(start, stop)
+        coordinates = np.asarray(
+            np.unravel_index(flat_indices, self.output_shape), dtype=self.dtype
+        )
+        return self.matrix @ coordinates + self.offset[:, np.newaxis]
+
+    def _apply_spatial(self, data: np.ndarray) -> np.ndarray:
+        coordinates = tuple(
+            np.arange(length, dtype=self.dtype) for length in self.input_shape
+        )
+        spline = TensorSpline(
+            data=data,
+            coordinates=coordinates,
+            bases=self._basis,
+            modes=self.mode,
+        )
+        result = np.empty(
+            int(np.prod(self.output_shape, dtype=np.int64)), dtype=self.dtype
+        )
+        if self.geometry_cached:
+            start = 0
+            for geometry_plan in self._geometry_plans:
+                stop = start + int(np.prod(geometry_plan.output_shape, dtype=np.int64))
+                geometry_plan.apply(spline, out=result[start:stop])
+                start = stop
+        else:
+            for start in range(0, result.size, _AFFINE_TILE_SIZE):
+                stop = min(start + _AFFINE_TILE_SIZE, result.size)
+                transformed = self._transformed_coordinates(start, stop)
+                spline(tuple(transformed), grid=False, out=result[start:stop])
+        return result.reshape(self.output_shape)
+
+    def apply(
+        self,
+        data: npt.NDArray,
+        *,
+        spatial_axes: Sequence[int] | None = None,
+        out: npt.NDArray | None = None,
+    ) -> np.ndarray:
+        """Apply the fixed transform to one array or independent batches/channels."""
+
+        if not isinstance(data, np.ndarray):
+            raise TypeError("'data' must be a NumPy array.")
+        if not np.issubdtype(data.dtype, np.number) or np.iscomplexobj(data):
+            raise TypeError("'data' must have a real numeric dtype.")
+        axes = _normalize_spatial_axes(data, len(self.input_shape), spatial_axes)
+        if tuple(data.shape[axis] for axis in axes) != self.input_shape:
+            raise ValueError(
+                "The dimensions selected by 'spatial_axes' must match input_shape."
+            )
+        nonspatial_axes = tuple(axis for axis in range(data.ndim) if axis not in axes)
+        permutation = nonspatial_axes + axes
+        canonical = np.transpose(data, permutation).astype(self.dtype, copy=False)
+        batch_shape = canonical.shape[: len(nonspatial_axes)]
+        flattened = canonical.reshape((-1,) + self.input_shape)
+        transformed = np.empty(
+            (flattened.shape[0],) + self.output_shape, dtype=self.dtype
+        )
+        for index, spatial_data in enumerate(flattened):
+            transformed[index] = self._apply_spatial(spatial_data)
+        canonical_result = transformed.reshape(batch_shape + self.output_shape)
+        result = np.ascontiguousarray(
+            np.transpose(canonical_result, tuple(np.argsort(permutation)))
+        )
+
+        if out is None:
+            return result
+        if not isinstance(out, np.ndarray):
+            raise TypeError("'out' must be a NumPy array.")
+        if out.shape != result.shape:
+            raise ValueError(
+                f"'out' must have shape {result.shape}; received {out.shape}."
+            )
+        if out.dtype != result.dtype:
+            raise TypeError(
+                f"'out' must have dtype {result.dtype}; received {out.dtype}."
+            )
+        np.copyto(out, result, casting="no")
+        return out
+
+    __call__ = apply
+
+
+def affine_transform(
+    data: npt.NDArray,
+    matrix: npt.ArrayLike,
+    offset: npt.ArrayLike | None = None,
+    *,
+    output_shape: tuple[int, ...] | None = None,
+    spatial_axes: Sequence[int] | None = None,
+    degree: int = 3,
+    mode: str = "zero",
+    out: npt.NDArray | None = None,
+) -> np.ndarray:
+    """Apply a one-shot two- or three-dimensional pull-back affine transform."""
+
+    if not isinstance(data, np.ndarray):
+        raise TypeError("'data' must be a NumPy array.")
+    matrix_array = np.asarray(matrix)
+    if matrix_array.ndim != 2 or matrix_array.shape[0] != matrix_array.shape[1]:
+        raise ValueError("'matrix' must be a square two- or three-dimensional matrix.")
+    spatial_ndim = matrix_array.shape[0]
+    if spatial_ndim not in (2, 3):
+        raise ValueError("'matrix' must be a square two- or three-dimensional matrix.")
+    axes = _normalize_spatial_axes(data, spatial_ndim, spatial_axes)
+    input_shape = tuple(data.shape[axis] for axis in axes)
+    work_dtype = (
+        data.dtype if np.issubdtype(data.dtype, np.floating) else np.dtype(np.float64)
+    )
+    plan = AffinePlan(
+        input_shape,
+        matrix_array,
+        offset,
+        output_shape=output_shape,
+        degree=degree,
+        mode=mode,
+        dtype=work_dtype,
+        cache_geometry=False,
+    )
+    return plan.apply(data, spatial_axes=axes, out=out)
 
 
 def rotate(
@@ -17,6 +322,9 @@ def rotate(
     center: Optional[Tuple[float, float, float]] = None,
     degree: int = 3,
     mode: str = "zero",
+    *,
+    spatial_axes: Sequence[int] | None = None,
+    out: npt.NDArray | None = None,
 ) -> npt.NDArray:
     """
     Rotate 2D or 3D data around a specified center using spline interpolation.
@@ -35,6 +343,12 @@ def rotate(
         B-spline degree (0 to 7). Default is 3.
     mode : str, optional
         Boundary handling mode (e.g., "zero", "mirror"). Default is "zero".
+    spatial_axes : sequence of int, optional
+        Two or three axes to rotate.  Required for arrays that also contain
+        batch or channel dimensions; every non-spatial slice is transformed
+        independently.
+    out : ndarray, optional
+        Exact-shape and exact-dtype output buffer.
 
     Returns
     -------
@@ -61,10 +375,21 @@ def rotate(
     """
     if not isinstance(data, np.ndarray):
         raise TypeError("'data' must be a NumPy array.")
-    ndim = data.ndim
+    if spatial_axes is None:
+        ndim = data.ndim
+    else:
+        try:
+            spatial_axes = tuple(spatial_axes)
+        except TypeError as exc:
+            raise TypeError(
+                "'spatial_axes' must be a sequence of integer axes."
+            ) from exc
+        ndim = len(spatial_axes)
     if ndim not in (2, 3):
-        raise ValueError("rotate: only 2D or 3D data are supported.")
-    if any(length == 0 for length in data.shape):
+        raise ValueError("rotate: exactly two or three spatial axes are supported.")
+    axes = _normalize_spatial_axes(data, ndim, spatial_axes)
+    input_shape = tuple(data.shape[axis] for axis in axes)
+    if any(length == 0 for length in input_shape):
         raise ValueError("'data' dimensions must be non-empty.")
     if not np.issubdtype(data.dtype, np.number) or np.iscomplexobj(data):
         raise TypeError("'data' must have a real numeric dtype.")
@@ -73,33 +398,15 @@ def rotate(
     if not np.isfinite(angle):
         raise ValueError("'angle' must be finite.")
 
-    try:
-        degree = operator.index(degree)
-    except TypeError as exc:
-        raise TypeError("'degree' must be an integer from 0 through 7.") from exc
-    if isinstance(degree, (bool, np.bool_)) or not 0 <= degree <= 7:
-        raise ValueError("'degree' must be an integer from 0 through 7.")
-    basis = f"bspline{degree}"
-
     # Integer samples describe values, not an integer interpolation space.
     # Promote them predictably; preserve supported floating precision.
     work_dtype = (
         data.dtype if np.issubdtype(data.dtype, np.floating) else np.dtype(np.float64)
     )
-    data = data.astype(work_dtype, copy=False)
-
-    # Setup tensor spline on N-dimensional data
-    coordinates = [np.linspace(0, dim - 1, dim, dtype=data.dtype) for dim in data.shape]
-    tensor_spline = TensorSpline(
-        data=data,
-        coordinates=coordinates,
-        bases=basis,
-        modes=mode,
-    )
 
     # Use specified center or default to array center
     if center is None:
-        center_coords = [(dim - 1) / 2.0 for dim in data.shape]
+        center_coords = [(dim - 1) / 2.0 for dim in input_shape]
     else:
         if len(center) != ndim:
             raise ValueError("center must have same length as data.ndim")
@@ -116,7 +423,7 @@ def rotate(
         sin_angle = np.sin(-angle_rad)
         R = np.array(
             [[cos_angle, -sin_angle], [sin_angle, cos_angle]],
-            dtype=data.dtype,
+            dtype=work_dtype,
         )
     else:  # ndim == 3
         # Default axis of rotation (z-axis) if not provided
@@ -124,7 +431,7 @@ def rotate(
             axis = (0.0, 0.0, 1.0)
         if len(axis) != 3:
             raise ValueError("'axis' must contain three values for 3D rotation.")
-        axis_vec = np.array(axis, dtype=data.dtype)
+        axis_vec = np.array(axis, dtype=work_dtype)
         if not np.all(np.isfinite(axis_vec)):
             raise ValueError("'axis' entries must be finite.")
         norm = np.linalg.norm(axis_vec)
@@ -155,26 +462,18 @@ def rotate(
                     cos_angle + uz**2 * one_minus_cos,
                 ],
             ],
-            dtype=data.dtype,
+            dtype=work_dtype,
         )
 
-    # Generate, transform, and evaluate output coordinates in bounded tiles.
-    # This avoids allocating ``ndim`` full-size meshgrid arrays and another two
-    # full coordinate stacks for large images or volumes.
-    center_array = np.asarray(center_coords, dtype=data.dtype)[:, None]
-    interpolated_values = np.empty(data.size, dtype=data.dtype)
-    for start in range(0, data.size, _AFFINE_TILE_SIZE):
-        stop = min(start + _AFFINE_TILE_SIZE, data.size)
-        flat_indices = np.arange(start, stop)
-        coords = np.asarray(
-            np.unravel_index(flat_indices, data.shape), dtype=data.dtype
-        )
-        rotated_coords = R @ (coords - center_array) + center_array
-        interpolated_values[start:stop] = tensor_spline(
-            coordinates=tuple(rotated_coords),
-            grid=False,
-        )
-
-    rotated_data = interpolated_values.reshape(data.shape)
-
-    return rotated_data
+    center_array = np.asarray(center_coords, dtype=work_dtype)
+    offset = center_array - R @ center_array
+    plan = AffinePlan(
+        input_shape,
+        R,
+        offset,
+        degree=degree,
+        mode=mode,
+        dtype=work_dtype,
+        cache_geometry=False,
+    )
+    return plan.apply(data, spatial_axes=axes, out=out)

@@ -17,21 +17,33 @@ All notable changes to SplineOps are documented here.
   B-spline degrees 0--5 now have SciPy parity coverage through four dimensions.
 - Added experimental, memory-capped `TensorSplineQueryPlan` support for repeated
   fixed-coordinate evaluation, with measured construction break-even evidence.
+  Query plans now represent geometry independently of one data array, can be
+  reused across compatible `TensorSpline` instances, and support exact output
+  buffers.  Separable tensor grids use axis-wise contraction to reduce runtime
+  and peak memory.
 - Replaced affine full-volume coordinate meshgrids with tiled pull-back
   evaluation, made integer promotion and degree validation explicit, and added
-  matched SciPy comparisons across degrees 0--5.
+  matched SciPy comparisons across degrees 0--5.  Added a general pull-back
+  `affine_transform`, reusable memory-capped `AffinePlan`, output buffers, and
+  explicit spatial axes for independent batch and channel transforms.
 - Made differential operations return raw results without replacing the source
   image, removed implicit normalization and console output, and vectorized
   row/column spline prefiltering. Added physical spacing, standard increasing-
-  coordinate directions, direct gradient/Hessian components, and analytical
-  polynomial and trigonometric tests.
+  coordinate directions, direct gradient/Hessian components, 3-D support, and
+  analytical polynomial and trigonometric tests.  `DifferentialPlan` computes
+  requested gradient, packed Hessian, and Laplacian outputs through one cached
+  workspace.
 - Corrected adaptive-regression amplitude sparsification, eliminated caller
   mutation, added opt-in convergence diagnostics, removed a duplicate smoothing
-  implementation, and tightened research-module parameter validation.
+  implementation, and tightened research-module parameter validation.  Added a
+  fixed-geometry `DenoisingPlan`, prefix-sum linear-spline evaluation, and a
+  real-FFT `SmoothingSplinePlan` with a reusable half-spectrum response.
 - Defined reversible wavelet shape requirements, singleton/odd pyramid
   behavior, and rectangular reconstruction audits. Haar and cubic spline
   transforms meet tight reconstruction bounds; order 5 is explicitly documented
-  as approximate because the inherited taps have limited precision.
+  as approximate because the inherited taps have limited precision.  Pyramid,
+  Haar, and spline-wavelet axis passes now operate on whole arrays instead of
+  dispatching one Python call per row or column.
 
 ### Project maturity
 
@@ -43,8 +55,12 @@ All notable changes to SplineOps are documented here.
   formatting, scoped static typing, coverage, package-build, and clean-wheel
   quality gates.
 - Added machine-readable TensorSpline memory/query-plan, affine, and
-  differentials benchmark paths. Equivalent affine comparisons report the
-  current SciPy performance advantage instead of implying a SplineOps win.
+  differentials benchmark paths, plus a multiscale vectorization benchmark.
+  Equivalent affine comparisons report the current SciPy performance advantage
+  instead of implying a SplineOps win.
+- Re-profiled the native resize scheduler after the v2 numerical rewrite.  A
+  measured small-3-D automatic participation cap avoids excessive default
+  worker fan-out while preserving explicit `LSRESIZE_NUM_THREADS` overrides.
 
 ## 2.0.0 - 2026-07-14
 

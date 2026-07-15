@@ -7,7 +7,10 @@ from scipy.ndimage import map_coordinates
 
 from splineops.spline_interpolation.tensor_spline import TensorSpline
 from splineops.spline_interpolation.bases.utils import asbasis, basis_map
-from splineops.spline_interpolation.modes.utils import mode_map
+from splineops.spline_interpolation.modes.utils import asmode, mode_map
+from splineops.spline_interpolation._prefilter import (
+    prefilter_interpolation_coefficients,
+)
 
 
 def test_tensorspline_stable_public_import() -> None:
@@ -16,6 +19,41 @@ def test_tensorspline_stable_public_import() -> None:
 
     assert PublicTensorSpline is TensorSpline
     assert ModuleTensorSpline is TensorSpline
+
+
+@pytest.mark.parametrize("length", [1, 2, 37])
+@pytest.mark.parametrize("axis", [0, 1])
+def test_internal_prefilter_handles_short_long_and_strided_axes(length, axis):
+    rng = np.random.default_rng(20260715 + length + axis)
+    full = rng.standard_normal((length, 14) if axis == 0 else (9, 2 * length))
+    data = full if axis == 0 else full[:, ::2]
+    basis = asbasis("bspline3")
+    mode = asmode("mirror")
+    moved = np.ascontiguousarray(np.moveaxis(data, axis, -1))
+    expected = np.moveaxis(mode.compute_coefficients(moved, basis), -1, axis)
+
+    result = prefilter_interpolation_coefficients(
+        data,
+        bases=(basis,),
+        modes=(mode,),
+        axes=(axis,),
+        dtype=np.float64,
+        backend="numpy",
+    )
+
+    assert result.flags.c_contiguous
+    assert not np.shares_memory(result, data)
+    np.testing.assert_equal(result, expected)
+
+
+def test_internal_prefilter_backend_contract_is_explicit():
+    with pytest.raises(TypeError, match="backend"):
+        prefilter_interpolation_coefficients(
+            np.arange(6.0),
+            bases=(asbasis("bspline3"),),
+            modes=(asmode("mirror"),),
+            backend="cupy",
+        )
 
 
 def test_tensorspline_rejects_nonuniform_construction_grid() -> None:
@@ -240,6 +278,92 @@ def test_query_plan_is_independent_of_coordinate_mutation() -> None:
     np.testing.assert_equal(plan(), expected)
 
 
+def test_geometry_plan_reuses_coordinates_across_compatible_splines() -> None:
+    construction = (np.arange(7.0), np.arange(6.0))
+    query = (np.linspace(-1.0, 7.0, 31), np.linspace(-2.0, 6.0, 31))
+    first = TensorSpline(
+        np.arange(42.0).reshape(7, 6),
+        construction,
+        bases="bspline3",
+        modes="mirror",
+    )
+    second = TensorSpline(
+        np.arange(42.0, 84.0).reshape(7, 6),
+        construction,
+        bases="bspline3",
+        modes="mirror",
+    )
+
+    plan = first.query_plan(query, grid=False)
+
+    np.testing.assert_allclose(
+        plan.apply(second), second(query, grid=False), rtol=2e-15, atol=2e-15
+    )
+    # Historical no-argument behavior remains available.
+    np.testing.assert_allclose(
+        plan.apply(), first(query, grid=False), rtol=2e-15, atol=2e-15
+    )
+
+
+def test_geometry_plan_rejects_incompatible_spline() -> None:
+    first = TensorSpline(
+        np.ones((5, 4)),
+        (np.arange(5.0), np.arange(4.0)),
+        bases="linear",
+        modes="mirror",
+    )
+    incompatible = TensorSpline(
+        np.ones((5, 4)),
+        (np.arange(5.0), np.arange(4.0)),
+        bases="bspline3",
+        modes="mirror",
+    )
+    plan = first.query_plan((np.arange(5.0), np.arange(4.0)), grid=True)
+
+    with pytest.raises(ValueError, match="incompatible"):
+        plan.apply(incompatible)
+
+
+@pytest.mark.parametrize("grid", [False, True])
+def test_tensorspline_output_buffer(grid: bool) -> None:
+    data = np.arange(30.0).reshape(6, 5)
+    spline = TensorSpline(
+        data,
+        (np.arange(6.0), np.arange(5.0)),
+        bases="linear",
+        modes="mirror",
+    )
+    query = (
+        (np.linspace(0.0, 5.0, 9), np.linspace(0.0, 4.0, 7))
+        if grid
+        else (np.linspace(0.0, 5.0, 13), np.linspace(0.0, 4.0, 13))
+    )
+    expected = spline(query, grid=grid)
+    output = np.empty_like(expected)
+
+    returned = spline(query, grid=grid, out=output)
+
+    assert returned is output
+    np.testing.assert_equal(output, expected)
+
+
+def test_geometry_plan_output_buffer() -> None:
+    spline = TensorSpline(
+        np.arange(20.0).reshape(5, 4),
+        (np.arange(5.0), np.arange(4.0)),
+        bases="linear",
+        modes="mirror",
+    )
+    query = (np.linspace(0.0, 4.0, 9), np.linspace(0.0, 3.0, 7))
+    plan = spline.query_plan(query, grid=True)
+    output = np.empty(plan.output_shape, dtype=spline.coefficients.dtype)
+
+    returned = plan.apply(out=output)
+
+    assert returned is output
+    np.testing.assert_equal(output, spline(query, grid=True))
+
+
 def test_query_plan_enforces_retained_memory_limit() -> None:
     spline = TensorSpline(
         np.ones((8, 8)),
@@ -404,13 +528,19 @@ def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
     # Meshgrid evaluation
     eval_coords_mg = np.meshgrid(*eval_coords_seq, indexing="ij")
     data_eval_mg = tensor_spline(coordinates=eval_coords_mg, grid=False)
-    np.testing.assert_equal(data_eval_tp, data_eval_mg)
+    evaluation_atol = 8e-5 if real_dtype == np.float32 else 2e-12
+    np.testing.assert_allclose(
+        data_eval_tp, data_eval_mg, rtol=evaluation_atol, atol=evaluation_atol
+    )
 
     # Reshaped meshgrid evaluation
     eval_coords_mg_rs = np.reshape(eval_coords_mg, (ndim, -1))
     data_eval_mg_rs = tensor_spline(coordinates=eval_coords_mg_rs, grid=False)
-    np.testing.assert_equal(
-        data_eval_tp, np.reshape(data_eval_mg_rs, data_eval_mg.shape)
+    np.testing.assert_allclose(
+        data_eval_tp,
+        np.reshape(data_eval_mg_rs, data_eval_mg.shape),
+        rtol=evaluation_atol,
+        atol=evaluation_atol,
     )
 
     # Batch-processing: tensor product
@@ -430,7 +560,12 @@ def test_interpolate_ndim_dtype(ndim: int, dtype: npt.DTypeLike) -> None:
         eval_coords_mg_batch.append(coords_mg_batch)
     eval_coords_mg_batch = tuple(eval_coords_mg_batch)
     data_eval_mg_batch = tensor_spline(coordinates=eval_coords_mg_batch, grid=False)
-    np.testing.assert_equal(data_eval_tp_batch, data_eval_mg_batch)
+    np.testing.assert_allclose(
+        data_eval_tp_batch,
+        data_eval_mg_batch,
+        rtol=evaluation_atol,
+        atol=evaluation_atol,
+    )
 
 
 # --------------------------------------------------------------------------- #

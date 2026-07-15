@@ -10,6 +10,7 @@ from .bases.utils import asbasis
 from .modes.extension_mode import ExtensionMode
 from .modes.utils import asmode
 from .utils import is_cupy_type, is_ndarray
+from ._prefilter import prefilter_interpolation_coefficients
 
 TSplineBasis = Union[SplineBasis, str]
 TSplineBases = Union[TSplineBasis, Sequence[TSplineBasis]]
@@ -316,12 +317,18 @@ class TensorSpline:
         self,
         coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
         grid: bool = True,
+        *,
+        out: npt.NDArray | None = None,
         # TODO(dperdios): extrapolate?
     ) -> npt.NDArray:
-        return self.eval(coordinates=coordinates, grid=grid)
+        return self.eval(coordinates=coordinates, grid=grid, out=out)
 
     def eval(
-        self, coordinates: Union[npt.NDArray, Sequence[npt.NDArray]], grid: bool = True
+        self,
+        coordinates: Union[npt.NDArray, Sequence[npt.NDArray]],
+        grid: bool = True,
+        *,
+        out: npt.NDArray | None = None,
     ) -> npt.NDArray:
         """
         Evaluate the tensor spline at the given coordinates.
@@ -354,9 +361,31 @@ class TensorSpline:
         """
         coordinates = self._prepare_evaluation_coordinates(coordinates, grid=grid)
 
-        if grid:
-            return self._evaluate_grid(coordinates)
-        return self._evaluate_points(coordinates)
+        result = (
+            self._evaluate_grid(coordinates)
+            if grid
+            else self._evaluate_points(coordinates)
+        )
+        return self._copy_result_to_output(result, out)
+
+    def _copy_result_to_output(self, result, out):
+        """Validate an optional caller buffer and copy *result* into it."""
+        if out is None:
+            return result
+        if not is_ndarray(out):
+            raise TypeError("'out' must be a NumPy or CuPy array.")
+        if is_cupy_type(out) != is_cupy_type(self._coefficients):
+            raise TypeError("'out' and spline coefficients must use one backend.")
+        if out.shape != result.shape:
+            raise ValueError(
+                f"'out' has shape {out.shape}; expected exact shape {result.shape}."
+            )
+        if out.dtype != result.dtype:
+            raise TypeError(
+                f"'out' has dtype {out.dtype}; expected exact dtype {result.dtype}."
+            )
+        out[...] = result
+        return out
 
     def _prepare_evaluation_coordinates(
         self,
@@ -417,9 +446,9 @@ class TensorSpline:
         evaluation.  Ordinary calls remain the right choice for coordinates
         that are evaluated only once.
         """
-        from .query_plan import TensorSplineQueryPlan
+        from .query_plan import TensorSplineGeometryPlan
 
-        return TensorSplineQueryPlan(
+        return TensorSplineGeometryPlan(
             self,
             coordinates,
             grid=grid,
@@ -441,31 +470,78 @@ class TensorSpline:
         return output.reshape(query_shape)
 
     def _evaluate_grid(self, coordinates: Tuple[npt.NDArray, ...]) -> npt.NDArray:
-        """Evaluate tensor grids without materializing full coordinate meshes."""
+        """Evaluate tensor grids through bounded separable contractions."""
         xp = self._array_module()
         batch_shape = coordinates[0].shape[:-1]
         grid_shape = tuple(c.shape[-1] for c in coordinates)
-        count = math.prod(grid_shape)
-        tile_size = self._EVALUATION_TILE_SIZE
-        if not batch_shape and count <= tile_size:
-            return self._evaluate_small_grid(coordinates)
-
         output = xp.empty(batch_shape + grid_shape, dtype=self._coefficients.dtype)
         batch_indexes = np.ndindex(batch_shape) if batch_shape else ((),)
 
         for batch_index in batch_indexes:
             vectors = tuple(c[batch_index] if batch_shape else c for c in coordinates)
-            batch_output = xp.empty(count, dtype=self._coefficients.dtype)
-            for start in range(0, count, tile_size):
-                stop = min(count, start + tile_size)
-                flat_indexes = xp.arange(start, stop)
-                indexes = xp.unravel_index(flat_indexes, grid_shape)
-                points = tuple(
-                    vector[indexes[axis]] for axis, vector in enumerate(vectors)
-                )
-                batch_output[start:stop] = self._evaluate_point_chunk(points)
-            output[batch_index] = batch_output.reshape(grid_shape)
+            indexes = []
+            weights = []
+            for axis, vector in enumerate(vectors):
+                axis_indexes, axis_weights = self._compute_support(axis, vector)
+                indexes.append(axis_indexes)
+                weights.append(axis_weights)
+            output[batch_index] = self._evaluate_separable_grid_from_support(
+                tuple(indexes), tuple(weights)
+            )
         return output
+
+    def _evaluate_separable_grid_from_support(self, indexes_seq, weights_seq):
+        """Contract one tensor-product query axis at a time.
+
+        Every support gather is tiled along the newly evaluated coordinate
+        axis.  The required output and intermediate values still scale with
+        the grid, while the support-expanded temporary is bounded by the
+        evaluation tile target whenever a single remaining slice permits it.
+        """
+        xp = self._array_module()
+        values = self._coefficients
+        axis_labels = list(range(self._ndim))
+
+        # Shrinking axes first reduces later intermediates.  This ordering is
+        # an internal execution choice; labels restore public axis order.
+        order = sorted(
+            range(self._ndim),
+            key=lambda axis: (
+                indexes_seq[axis].shape[1] / self._lengths[axis],
+                indexes_seq[axis].shape[1],
+            ),
+        )
+        for logical_axis in order:
+            current_axis = axis_labels.index(logical_axis)
+            moved = xp.moveaxis(values, current_axis, -1)
+            indexes = indexes_seq[logical_axis]
+            weights = weights_seq[logical_axis]
+            support, query_length = indexes.shape
+            other_count = moved.size // moved.shape[-1]
+            chunk_length = max(
+                1,
+                min(
+                    query_length,
+                    self._EVALUATION_TILE_SIZE // max(1, other_count * support),
+                ),
+            )
+            contracted = xp.empty(
+                moved.shape[:-1] + (query_length,), dtype=self._coefficients.dtype
+            )
+            weight_prefix = (1,) * (moved.ndim - 1)
+            for start in range(0, query_length, chunk_length):
+                stop = min(start + chunk_length, query_length)
+                gathered = xp.take(moved, indexes[:, start:stop], axis=-1)
+                chunk_weights = weights[:, start:stop].reshape(
+                    weight_prefix + (support, stop - start)
+                )
+                contracted[..., start:stop] = xp.sum(gathered * chunk_weights, axis=-2)
+            values = contracted
+            axis_labels.pop(current_axis)
+            axis_labels.append(logical_axis)
+
+        permutation = tuple(axis_labels.index(axis) for axis in range(self._ndim))
+        return xp.transpose(values, permutation)
 
     def _evaluate_small_grid(self, coordinates: Tuple[npt.NDArray, ...]) -> npt.NDArray:
         """Use direct separable broadcasting when its temporary is bounded."""
@@ -575,14 +651,32 @@ class TensorSpline:
         the end and accepting the mode's explicit output array keeps all
         filtered coefficients connected to the returned tensor.
         """
-        xp = self._array_module_for(data)
-        coefficients = xp.array(data, copy=True, order="C")
-        for axis, (basis, mode) in enumerate(zip(self._bases, self._modes)):
-            axis_last = xp.ascontiguousarray(xp.moveaxis(coefficients, axis, -1))
-            axis_last = mode.compute_coefficients(data=axis_last, basis=basis)
-            coefficients = xp.moveaxis(axis_last, -1, axis)
+        backend = "cupy" if is_cupy_type(data) else "numpy"
+        return prefilter_interpolation_coefficients(
+            data,
+            bases=self._bases,
+            modes=self._modes,
+            axes=tuple(range(self._ndim)),
+            dtype=data.dtype,
+            backend=backend,
+        )
 
-        return coefficients
+    def _geometry_signature(self):
+        """Hashable numerical-space signature used by geometry plans."""
+        backend = "cupy" if is_cupy_type(self._coefficients) else "numpy"
+        basis_signature = tuple(
+            (type(basis), basis.support, basis.degree, basis.poles)
+            for basis in self._bases
+        )
+        return (
+            backend,
+            self._real_dtype.str,
+            self._lengths,
+            tuple((float(low), float(high)) for low, high in self._bounds),
+            tuple(float(step) for step in self._steps),
+            basis_signature,
+            tuple(type(mode) for mode in self._modes),
+        )
 
     @staticmethod
     def _array_module_for(array):

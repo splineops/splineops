@@ -4,13 +4,19 @@ Development roadmap
 Execution status (2026-07-15)
 -----------------------------
 
-The first repository-wide execution pass is complete.  It delivered the
-positioning and provenance inventory, ``TensorSpline`` contracts and bounded
-evaluation, conservative internal sharing, tiled affine rotation, raw and
-vectorized differentials, focused research-module repairs, reproducible
-benchmarks, and packaging/quality workflows.  The detailed work packages below
-remain the long-term graduation criteria rather than a claim that every
-experimental module is now stable.
+Two repository-wide implementation passes are complete.  The first established
+positioning, provenance, numerical contracts, bounded ``TensorSpline``
+evaluation, conservative internal sharing, reproducible benchmarks, and the
+packaging and quality workflows.  The second added reusable geometry plans,
+separable tensor-grid contraction, a general affine API with batch/channel
+axes, 3-D and multi-output differentials, cached smoothing and denoising plans,
+vectorized multiscale axis passes, and a measured native resize scheduler
+policy.  These capabilities remain in their independent public modules; this
+work did not fold ``TensorSpline`` or the research tools into resize.
+
+The detailed work packages below remain the long-term graduation criteria,
+not a claim that every experimental module is now stable.  In particular,
+implementation completeness and API stability are different promises.
 
 Two infrastructure gates intentionally remain open because they cannot be
 completed by a code-only pass: GPU-backed CuPy CI and multi-machine performance

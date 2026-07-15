@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
 from splineops.smoothing_splines.smoothing_spline import (
+    SmoothingSplinePlan,
     periodize,
     recursive_smoothing_spline,
     smoothing_spline,
@@ -154,3 +155,39 @@ def test_recursive_smoother_matches_independent_dense_boundary_system():
     result = recursive_smoothing_spline(signal, lamb=lamb)
 
     np.testing.assert_allclose(result, expected, rtol=2e-15, atol=2e-15)
+
+
+def test_nd_smoothing_plan_matches_one_shot_api_across_inputs():
+    rng = np.random.default_rng(20260715)
+    plan = SmoothingSplinePlan((17, 24), lamb=0.3, gamma=1.4)
+
+    for data in (rng.standard_normal(plan.shape), rng.standard_normal(plan.shape)):
+        expected = smoothing_spline_nd(data, lamb=0.3, gamma=1.4)
+        np.testing.assert_allclose(plan(data), expected, rtol=0.0, atol=0.0)
+
+
+def test_nd_smoothing_plan_retains_only_real_fft_half_spectrum():
+    plan = SmoothingSplinePlan((10, 12, 14), lamb=0.2, gamma=1.25)
+
+    assert plan.frequency_response.shape == (10, 12, 8)
+    assert plan.retained_bytes == plan.frequency_response.nbytes
+    assert not plan.frequency_response.flags.writeable
+
+
+def test_nd_smoothing_plan_supports_output_buffer():
+    data = np.arange(48, dtype=np.float64).reshape(6, 8)
+    plan = SmoothingSplinePlan(data.shape, lamb=0.5, gamma=1.0)
+    expected = plan(data)
+    out = np.empty_like(expected)
+
+    returned = plan(data, out=out)
+
+    assert returned is out
+    np.testing.assert_equal(out, expected)
+
+
+def test_nd_smoothing_plan_rejects_incompatible_shape():
+    plan = SmoothingSplinePlan((6, 8), lamb=0.5, gamma=1.0)
+
+    with pytest.raises(ValueError, match="shape"):
+        plan(np.ones((8, 6)))

@@ -9,10 +9,11 @@ Overview
 --------
 
 The :ref:`affine <api-affine>` module in :ref:`SplineOps <api-index>` provides
-affine geometric transforms for 2D or 3D data arrays using spline
-interpolation. At the moment it exposes a single helper,
-:func:`~splineops.affine.rotate`, which rotates data around a specified axis
-and center. Such operations are widely used in image processing, computer
+affine geometric transforms for 2-D or 3-D spatial data using spline
+interpolation.  :func:`splineops.affine.affine_transform` accepts a general
+pull-back matrix and offset, :func:`splineops.affine.rotate` constructs rotation
+geometry, and :class:`splineops.affine.AffinePlan` reuses fixed geometry across
+frames.  Such operations are widely used in image processing, computer
 graphics, and scientific computing [1]_.
 
 2D Rotation
@@ -104,14 +105,68 @@ dimensions while minimizing artifacts like aliasing. The process asks one to fir
 with the origin, then to apply the appropriate 2D or 3D rotation matrix to the recentered coordinates, followed by a translation of the rotated recentered coordinates 
 back to their original reference frame, to compensate for the recentering step, and finally to use spline interpolation to determine the data values at these new positions.
 
-``rotate`` implements a pull-back transform about the array center by default,
-or about an explicit center in array-axis coordinates.  The output shape is the
-input shape, samples outside the domain use whole-sample mirror extension, and
-degrees 0 through 7 are supported.  Degrees 0 through 5 in two and three
+``affine_transform`` follows the pull-back convention
+:math:`x_\mathrm{input}=A x_\mathrm{output}+b`.  ``rotate`` builds that geometry
+about the array center by default, or about an explicit center in array-axis
+coordinates.  Rotation keeps the spatial input shape; a general affine
+transform may request another spatial output shape.  The default boundary mode
+is ``"zero"``; pass ``mode="mirror"`` for whole-sample mirror extension.
+Degrees 0 through 7 are supported.  Degrees 0 through 5 in two and three
 dimensions are tested against equivalently configured
 ``scipy.ndimage.affine_transform`` (SciPy's maximum spline order is 5).
-Coordinates are generated in bounded tiles rather than as a complete stacked
-volume.
+One-shot coordinates are generated in bounded tiles rather than as a complete
+stacked volume.
+
+General and repeated transforms
+--------------------------------
+
+Use the function for one transform and a plan when geometry is reused:
+
+.. code-block:: python
+
+   import numpy as np
+   from splineops.affine import AffinePlan, affine_transform
+
+   matrix = np.array([[1.0, 0.15], [0.0, 1.0]])
+   offset = np.array([-4.0, 0.0])
+   first = affine_transform(
+       image,
+       matrix,
+       offset,
+       degree=3,
+       mode="mirror",
+   )
+
+   plan = AffinePlan(
+       image.shape,
+       matrix,
+       offset,
+       degree=3,
+       mode="mirror",
+       max_retained_bytes=256 * 1024**2,
+   )
+   output = np.empty(image.shape, dtype=np.float64)
+   plan.apply(next_image, out=output)
+
+The plan retains support indexes and weights, not interpolation coefficients,
+so each new frame still performs its spline coefficient prefilter.  Set
+``cache_geometry=False`` for bounded-memory streaming with no retained query
+geometry.  Plan construction raises ``MemoryError`` rather than exceeding
+``max_retained_bytes``.
+
+Batch and channel axes
+----------------------
+
+For an array with non-spatial dimensions, select exactly two or three
+``spatial_axes``.  Every remaining slice is transformed independently:
+
+.. code-block:: python
+
+   # NCHW data: rotate the height and width axes of every batch/channel plane.
+   rotated = rotate(batch, 12.0, spatial_axes=(-2, -1), mode="mirror")
+
+``TensorSpline`` itself remains a scalar continuous N-D model; affine owns this
+batch/channel orchestration so the module boundaries stay clear.
 
 .. note::
    The geometry of the transform (center, axis, angle) is identical across methods; what changes is the spline used for resampling. 
@@ -121,8 +176,10 @@ volume.
 
    This module favors a clear spline contract and integration with
    ``TensorSpline``.  It is currently substantially slower than SciPy's
-   specialized affine kernels; see :doc:`../performance`.  SplineOps does not
-   present rotation as a speed advantage.
+   specialized affine kernels on the matched benchmark, even though cached
+   geometry materially improves repeated SplineOps execution; see
+   :doc:`../performance`.  SplineOps does not present affine transforms as a
+   universal speed advantage.
 
 The following figure from
 :ref:`sphx_glr_auto_examples_03_affine_01_rotate_image.py`

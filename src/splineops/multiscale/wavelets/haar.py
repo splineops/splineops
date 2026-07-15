@@ -66,20 +66,15 @@ class HaarWavelets(AbstractWavelets):
         np.ndarray
             Transformed array (same shape).
         """
-        ny, nx = inp.shape
+        out = self._prepare_single_scale_input(inp)
+        ny, nx = out.shape
         if ny < 2 or nx < 2 or ny % 2 or nx % 2:
             raise ValueError(
                 "Haar2D needs even ny>=2 and nx>=2, " f"got shape=({ny},{nx})."
             )
 
-        out = inp.copy()
-        # 1) row-wise
-        for r in range(ny):
-            out[r, :] = self._split(out[r, :])
-        # 2) col-wise
-        for c in range(nx):
-            out[:, c] = self._split(out[:, c])
-        return out
+        out = self._split_axis(out, axis=1)
+        return self._split_axis(out, axis=0)
 
     def synthesis1(self, inp: np.ndarray) -> np.ndarray:
         """
@@ -95,20 +90,23 @@ class HaarWavelets(AbstractWavelets):
         np.ndarray
             Reconstructed array.
         """
-        ny, nx = inp.shape
+        out = self._prepare_single_scale_input(inp)
+        ny, nx = out.shape
         if ny < 2 or nx < 2 or ny % 2 or nx % 2:
             raise ValueError(
                 "Haar2D needs even ny>=2 and nx>=2, " f"got shape=({ny},{nx})."
             )
 
-        out = inp.copy()
-        # 1) col-merge
-        for c in range(nx):
-            out[:, c] = self._merge(out[:, c])
-        # 2) row-merge
-        for r in range(ny):
-            out[r, :] = self._merge(out[r, :])
-        return out
+        out = self._merge_axis(out, axis=0)
+        return self._merge_axis(out, axis=1)
+
+    def _split_axis(self, array, axis):
+        moved = np.moveaxis(array, axis, -1)
+        return np.moveaxis(self._split(moved), -1, axis)
+
+    def _merge_axis(self, array, axis):
+        moved = np.moveaxis(array, axis, -1)
+        return np.moveaxis(self._merge(moved), -1, axis)
 
     def _split(self, v: np.ndarray) -> np.ndarray:
         """
@@ -127,16 +125,13 @@ class HaarWavelets(AbstractWavelets):
         np.ndarray
             Concatenated [A..., D...].
         """
-        n = len(v)
+        n = v.shape[-1]
         half = n // 2
-        out = np.zeros(n, dtype=v.dtype)
-        for i in range(half):
-            j = 2 * i
-            a = (v[j] + v[j + 1]) / self.q
-            d = (v[j] - v[j + 1]) / self.q
-            out[i] = a
-            out[i + half] = d
-        return out
+        even = v[..., 0::2]
+        odd = v[..., 1::2]
+        return np.concatenate(
+            ((even + odd) / self.q, (even - odd) / self.q), axis=-1
+        ).astype(v.dtype, copy=False)
 
     def _merge(self, v: np.ndarray) -> np.ndarray:
         """
@@ -154,12 +149,11 @@ class HaarWavelets(AbstractWavelets):
         np.ndarray
             Reconstructed array of length n.
         """
-        n = len(v)
+        n = v.shape[-1]
         half = n // 2
-        out = np.zeros(n, dtype=v.dtype)
-        for i in range(half):
-            a = v[i]
-            d = v[i + half]
-            out[2 * i] = (a + d) / self.q
-            out[2 * i + 1] = (a - d) / self.q
+        out = np.empty_like(v)
+        approximation = v[..., :half]
+        detail = v[..., half:]
+        out[..., 0::2] = (approximation + detail) / self.q
+        out[..., 1::2] = (approximation - detail) / self.q
         return out

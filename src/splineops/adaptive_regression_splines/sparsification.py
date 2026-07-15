@@ -84,8 +84,8 @@ def sparsest_interpolant(
     saturations_pruned = saturations[pruned_bool]
 
     # Sparsification of saturation zones
-    amplitudes_sparsest = np.array([])
-    knots_sparsest = np.array([])
+    amplitudes_sparsest = []
+    knots_sparsest = []
     i = 0
     last_nz_idx = 0
     num_saturations = (
@@ -97,32 +97,26 @@ def sparsest_interpolant(
         for j in range(int(np.ceil(num_saturations / 2))):
             new_amp = amplitudes_pruned[i + 2 * j] + amplitudes_pruned[i + 2 * j + 1]
             if new_amp != 0:
-                amplitudes_sparsest = np.append(amplitudes_sparsest, new_amp)
+                amplitudes_sparsest.append(new_amp)
                 barycenter = (
                     amplitudes_pruned[i + 2 * j] * knots_pruned[i + 2 * j]
                     + amplitudes_pruned[i + 2 * j + 1] * knots_pruned[i + 2 * j + 1]
                 ) / new_amp
-                knots_sparsest = np.append(knots_sparsest, barycenter)
+                knots_sparsest.append(barycenter)
         if (num_saturations % 2) == 0:
             # Keep last existing knot if even number of saturations (including 0)
-            amplitudes_sparsest = np.append(
-                amplitudes_sparsest, amplitudes_pruned[i + num_saturations]
-            )
-            knots_sparsest = np.append(
-                knots_sparsest, knots_pruned[i + num_saturations]
-            )
+            amplitudes_sparsest.append(amplitudes_pruned[i + num_saturations])
+            knots_sparsest.append(knots_pruned[i + num_saturations])
 
         i += num_saturations + 1
         last_nz_idx += 1
         num_saturations = 0
 
-        idx = np.argsort(knots_sparsest)
-        knots_sparsest, amplitudes_sparsest = (
-            knots_sparsest[idx],
-            amplitudes_sparsest[idx],
-        )
+    knots_array = np.asarray(knots_sparsest)
+    amplitudes_array = np.asarray(amplitudes_sparsest)
+    indices = np.argsort(knots_array)
 
-    return knots_sparsest, amplitudes_sparsest, polynomial_cano
+    return knots_array[indices], amplitudes_array[indices], polynomial_cano
 
 
 def linear_spline(
@@ -155,10 +149,38 @@ def linear_spline(
         The evaluated spline values at `t`.
     """
 
-    values = polynomial[0] + polynomial[1] * t
-    for i in range(len(knots)):
-        values = values + amplitudes[i] * (t - knots[i]) * ((t - knots[i]) > 0)
-    return values
+    t = np.asarray(t)
+    knots = np.asarray(knots)
+    amplitudes = np.asarray(amplitudes)
+    polynomial = np.asarray(polynomial)
+    if knots.ndim != 1 or amplitudes.ndim != 1:
+        raise ValueError("'knots' and 'amplitudes' must be one-dimensional arrays.")
+    if knots.size != amplitudes.size:
+        raise ValueError("'knots' and 'amplitudes' must have the same size.")
+    if polynomial.shape != (2,):
+        raise ValueError("'polynomial' must contain exactly two coefficients.")
+    if not np.all(np.isfinite(knots)) or not np.all(np.isfinite(amplitudes)):
+        raise ValueError("'knots' and 'amplitudes' must contain only finite values.")
+    if not np.all(np.isfinite(polynomial)) or not np.all(np.isfinite(t)):
+        raise ValueError("'t' and 'polynomial' must contain only finite values.")
+    if not np.all(np.diff(knots) >= 0):
+        raise ValueError("'knots' must be sorted in non-decreasing order.")
+
+    dtype = np.result_type(t, knots, amplitudes, polynomial)
+    t = t.astype(dtype, copy=False)
+    prefix_amplitudes = np.concatenate(
+        (np.zeros(1, dtype=dtype), np.cumsum(amplitudes, dtype=dtype))
+    )
+    prefix_moments = np.concatenate(
+        (np.zeros(1, dtype=dtype), np.cumsum(amplitudes * knots, dtype=dtype))
+    )
+    active = np.searchsorted(knots, t, side="left")
+    return (
+        polynomial[0]
+        + polynomial[1] * t
+        + t * prefix_amplitudes[active]
+        - prefix_moments[active]
+    )
 
 
 def _sparsify_amplitudes(

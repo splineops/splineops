@@ -355,29 +355,43 @@ tensor-grid axis; any leading batch shape must agree across axes.  With
 ``grid=False``, coordinate arrays must have identical shapes, or may be passed
 as one stacked array whose leading dimension is ``data.ndim``.  Large queries
 are evaluated in bounded internal tiles; the public result is still allocated
-at its requested shape.
+at its requested shape unless an exact-shape and exact-dtype ``out`` array is
+provided.  Unbatched one-dimensional coordinate arrays form a separable tensor
+grid and are contracted one axis at a time, avoiding a full coordinate
+meshgrid.
 
 Reusable fixed-coordinate queries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When one spline is evaluated repeatedly at exactly the same coordinates,
-``TensorSpline.query_plan`` can retain the support indexes and basis weights:
+When compatible splines are evaluated repeatedly at exactly the same
+coordinates, ``TensorSpline.query_plan`` can retain the support indexes and
+basis weights independently of the sample values:
 
 .. code-block:: python
 
-   row = np.random.uniform(0, data.shape[0] - 1, 200_000)
-   column = np.random.uniform(0, data.shape[1] - 1, 200_000)
-   plan = ts.query_plan((row, column), grid=False)
+   rng = np.random.default_rng(0)
+   row = rng.uniform(0, data.shape[0] - 1, 200_000)
+   column = rng.uniform(0, data.shape[1] - 1, 200_000)
+   geometry = ts.query_plan((row, column), grid=False)
 
-   first_result = plan.apply()
-   second_result = plan()  # equivalent shorthand
+   next_frame = TensorSpline(
+       data=other_data,
+       coordinates=coords,
+       bases="bspline3",
+       modes="mirror",
+   )
+   output = np.empty(row.shape, dtype=data.dtype)
+   geometry.apply(next_frame, out=output)
 
-Plans are experimental and bound to the ``TensorSpline`` that created them.
-They are intended for repeated coordinates, not one-shot work.  Construction
-costs time and retained memory; ``max_retained_bytes`` enforces an explicit
-cap (256 MiB by default).  Unbatched tensor grids and arbitrary-shaped point
-queries are supported.  See :doc:`../performance` for a measured break-even
-example.
+Compatibility requires the same construction coordinates, bases, extension
+modes, shape, dtype precision, and array backend.  Calling ``geometry()`` or
+``geometry.apply()`` without a spline still evaluates the originating spline;
+``geometry.detach()`` removes that convenience reference for geometry-only
+ownership.  Plans are intended for fixed coordinates, not one-shot work.
+Construction costs time and retained memory; ``max_retained_bytes`` enforces
+an explicit cap (256 MiB by default).  Unbatched tensor grids and
+arbitrary-shaped point queries are supported.  See :doc:`../performance` for a
+measured changing-frame break-even example.
 
 Using :func:`~splineops.resize.resize` for the same operation:
 

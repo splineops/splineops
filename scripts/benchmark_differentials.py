@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 
 from splineops import __version__
-from splineops.differentials import Differentials
+from splineops.differentials import DifferentialPlan, Differentials
 
 
 def _measure(call, repeats: int, warmups: int):
@@ -69,10 +69,18 @@ def main() -> int:
     shape = (64, 80) if args.profile == "smoke" else (512, 640)
     spacing = (0.7, 1.3)
     image = np.random.default_rng(args.seed).standard_normal(shape)
-    operator = Differentials(image, spacing=spacing)
-
     vectorized, vectorized_seconds, vectorized_peak = _measure(
+        lambda: Differentials(image, spacing=spacing).gradient_magnitude(),
+        args.repeats,
+        args.warmups,
+    )
+    operator = Differentials(image, spacing=spacing)
+    cached, cached_seconds, cached_peak = _measure(
         operator.gradient_magnitude, args.repeats, args.warmups
+    )
+    plan = DifferentialPlan(shape, spacing=spacing)
+    multi_output, multi_output_seconds, multi_output_peak = _measure(
+        lambda: plan(image), args.repeats, args.warmups
     )
     scalar, scalar_seconds, scalar_peak = _measure(
         lambda: _scalar_gradient_magnitude(operator), args.repeats, args.warmups
@@ -81,12 +89,25 @@ def main() -> int:
     # ``FLT_EPSILON``.  It is therefore a close numerical oracle, not a
     # bit-identical implementation of the batched coefficient helper.
     np.testing.assert_allclose(vectorized, scalar, rtol=1e-5, atol=2e-6)
+    np.testing.assert_equal(cached, vectorized)
+    assert multi_output.gradient is not None
+    assert multi_output.hessian is not None
 
     rows = [
         {
-            "path": "vectorized",
+            "path": "vectorized_cold",
             "median_seconds": vectorized_seconds,
             "tracemalloc_peak_bytes": vectorized_peak,
+        },
+        {
+            "path": "cached_instance",
+            "median_seconds": cached_seconds,
+            "tracemalloc_peak_bytes": cached_peak,
+        },
+        {
+            "path": "multi_output_plan",
+            "median_seconds": multi_output_seconds,
+            "tracemalloc_peak_bytes": multi_output_peak,
         },
         {
             "path": "scalar_reference",
@@ -111,6 +132,8 @@ def main() -> int:
             "boundary": "whole-sample mirror",
         },
         "vectorized_speedup": scalar_seconds / vectorized_seconds,
+        "cached_speedup": vectorized_seconds / cached_seconds,
+        "multi_output_seconds": multi_output_seconds,
         "max_abs_difference": float(np.max(np.abs(vectorized - scalar))),
         "results": rows,
     }
@@ -118,6 +141,7 @@ def main() -> int:
         f"shape={shape} vectorized={vectorized_seconds:.6f}s "
         f"scalar={scalar_seconds:.6f}s "
         f"speedup={payload['vectorized_speedup']:.2f}x "
+        f"cached={cached_seconds:.6f}s "
         f"max-error={payload['max_abs_difference']:.3e}"
     )
     if args.output_json:

@@ -272,6 +272,7 @@ def test_tensorspline_query_plan_benchmark_smoke(tmp_path):
         "query_plan",
     }
     assert payload["results"][1]["retained_bytes"] > 0
+    assert payload["configuration"]["data_workload"].startswith("changing")
     assert output_csv.exists()
 
 
@@ -312,6 +313,7 @@ def test_affine_benchmark_smoke(tmp_path):
         "3d_cubic",
     }
     assert all(row["max_abs_difference"] < 1e-10 for row in payload["results"])
+    assert all(row["plan_retained_bytes"] > 0 for row in payload["results"])
     assert output_csv.exists()
 
 
@@ -348,7 +350,46 @@ def test_differentials_benchmark_smoke(tmp_path):
     assert payload["vectorized_speedup"] > 0
     assert payload["max_abs_difference"] < 2e-6
     assert {row["path"] for row in payload["results"]} == {
-        "vectorized",
+        "vectorized_cold",
+        "cached_instance",
+        "multi_output_plan",
         "scalar_reference",
     }
+    assert output_csv.exists()
+
+
+def test_multiscale_benchmark_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "multiscale.json"
+    output_csv = tmp_path / "multiscale.csv"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "benchmark_multiscale.py"),
+            "--profile",
+            "smoke",
+            "--repeats",
+            "1",
+            "--warmups",
+            "0",
+            "--output-json",
+            str(output_json),
+            "--output-csv",
+            str(output_csv),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert {row["operation"] for row in payload["results"]} == {
+        "pyramid_reduce_2d",
+        "haar_analysis_2d",
+    }
+    assert all(row["speedup"] > 0 for row in payload["results"])
     assert output_csv.exists()

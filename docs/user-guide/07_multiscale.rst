@@ -83,15 +83,22 @@ to perfectly reconstruct the original data (synthesis).
 Implementation Details
 ----------------------
 
-- Reduce and expand features perform the core downsampling and upsampling based on spline filters.
-- Wavelet transforms such as Haar wavelets or spline wavelets (analysis and synthesis) are implemented by the combination of pyramid steps with detail sub-bands.
-- Various spline degrees (e.g., degree 3) are supported. They allow one to control how the data are dispatched in the approximation channel and the sub-bands.
+- Reduce and expand perform the core downsampling and upsampling with spline
+  filters.  Whole-array axis operations replace row-by-row and column-by-column
+  Python dispatch.
+- Haar split/merge operations are vectorized over complete scale regions.
+  Spline wavelets vectorize over samples and image axes while retaining short,
+  explicit loops over filter taps.
+- Various spline degrees (e.g., degree 3) control how data are dispatched
+  between the approximation channel and sub-bands.
 
 Supported shapes and boundaries
 -------------------------------
 
-The pyramid functions accept non-empty real 1D signals and 2D arrays and use
-their documented mirror mappings.  Reducing an odd length returns
+The pyramid functions accept finite, non-empty real 1-D signals and 2-D arrays
+and use their documented mirror mappings.  Floating inputs preserve their
+precision; integer inputs promote to float64, and booleans are rejected.
+Reducing an odd length returns
 ``floor(n / 2)`` samples; expanding that result therefore does not recover the
 dropped extent.  A singleton is preserved exactly.
 
@@ -106,6 +113,12 @@ produce errors up to about ``2e-3`` in the current randomized rectangular
 audit.  Order 5 is therefore an approximate research implementation, not a
 perfect-reconstruction transform.  The test suite records that limitation so
 it cannot silently become a stronger claim.
+
+These APIs model one scalar signal or image.  They do not infer batch or
+channel dimensions; applications should transform those slices independently.
+The vectorized implementation improves the standard 2-D workloads without
+changing this public shape contract.  See :doc:`../performance` for the
+reproducible row/column-oracle comparison.
 
 Multiscale Examples
 -------------------

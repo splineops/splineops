@@ -131,6 +131,16 @@ void test_environment_parsing()
     require(lsresize::persistent_threads_enabled(),
             "all non-false tokens must preserve enabled behavior");
   }
+
+  lsresize::Plan1D plan{};
+  plan.out_total = 100;
+  plan.row_ptr = {0, 1000};
+  unset_environment("LSRESIZE_NUM_THREADS");
+  require(lsresize::thread_count(1000, plan, 8) <= 8,
+          "automatic thread ceilings must bound the default scheduler");
+  set_environment("LSRESIZE_NUM_THREADS", "16");
+  require(lsresize::thread_count(1000, plan, 8) == 16,
+          "explicit thread counts must override automatic ceilings");
 }
 
 void test_nested_exception_runs_every_task()

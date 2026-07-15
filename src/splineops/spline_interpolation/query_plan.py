@@ -1,4 +1,4 @@
-"""Experimental fixed-coordinate evaluation plans for :class:`TensorSpline`."""
+"""Reusable fixed-coordinate geometry plans for :class:`TensorSpline`."""
 
 from __future__ import annotations
 
@@ -11,13 +11,17 @@ if TYPE_CHECKING:
     from .tensor_spline import TensorSpline
 
 
-class TensorSplineQueryPlan:
-    """A memory-capped support/weight plan bound to one ``TensorSpline``.
+class TensorSplineGeometryPlan:
+    """A memory-capped support/weight plan for compatible tensor splines.
 
     Construct plans through :meth:`TensorSpline.query_plan`.  A plan is useful
-    when the same coordinates are evaluated repeatedly.  Plan construction is
-    extra work and retained memory, so one-shot calls should use the spline
-    directly.
+    when the same coordinates are evaluated against changing sample values,
+    such as successive image or volume frames.  Plan construction is extra
+    work and retained memory, so one-shot calls should use the spline directly.
+
+    The spline used at construction remains the default for backward
+    compatibility.  Pass another compatible spline to :meth:`apply` to obtain
+    the useful geometry-reuse behavior.
     """
 
     def __init__(
@@ -41,7 +45,8 @@ class TensorSplineQueryPlan:
                 "Query plans currently require unbatched grid coordinates."
             )
 
-        self._spline = spline
+        self._default_spline: TensorSpline | None = spline
+        self._geometry_signature = spline._geometry_signature()
         self._grid = bool(grid)
         self._query_shape = (
             tuple(coordinate.size for coordinate in coordinates)
@@ -81,17 +86,54 @@ class TensorSplineQueryPlan:
         """Shape returned by :meth:`apply`."""
         return self._query_shape
 
-    def __call__(self):
-        return self.apply()
+    def __call__(self, spline: TensorSpline | None = None, *, out=None):
+        return self.apply(spline, out=out)
 
-    def apply(self):
-        """Evaluate the bound spline using the precomputed query geometry."""
+    def detach(self) -> TensorSplineGeometryPlan:
+        """Drop the construction spline while retaining reusable geometry.
+
+        Detached plans must receive an explicit compatible spline in
+        :meth:`apply`.  This is useful for higher-level reusable operators that
+        should not retain the samples used to define their geometry.
+        """
+
+        self._default_spline = None
+        return self
+
+    def apply(self, spline: TensorSpline | None = None, *, out=None):
+        """Evaluate a compatible spline using the precomputed geometry.
+
+        Parameters
+        ----------
+        spline : TensorSpline, optional
+            Spline with the same construction grid, bases, modes, backend and
+            real precision as the spline used to construct this plan.  If
+            omitted, the construction spline is evaluated for compatibility
+            with the original experimental API.
+        out : ndarray, optional
+            Exact-shape, exact-dtype output buffer on the same array backend.
+        """
+        if spline is None:
+            spline = self._default_spline
+        if spline is None:
+            raise TypeError(
+                "A detached geometry plan requires an explicit compatible spline."
+            )
+        if spline._geometry_signature() != self._geometry_signature:
+            raise ValueError(
+                "The supplied TensorSpline is incompatible with this geometry "
+                "plan; construction coordinates, bases, modes, backend and "
+                "real precision must match."
+            )
         if self._grid:
-            return self._apply_grid()
-        return self._apply_points()
+            result = spline._evaluate_separable_grid_from_support(
+                self._indexes, self._weights
+            )
+        else:
+            result = self._apply_points(spline)
+        return spline._copy_result_to_output(result, out)
 
-    def _apply_points(self):
-        spline = self._spline
+    def _apply_points(self, spline):
         xp = spline._array_module()
         count = int(np.prod(self._query_shape, dtype=np.int64))
         output = xp.empty(count, dtype=spline._coefficients.dtype)
@@ -104,23 +146,7 @@ class TensorSplineQueryPlan:
             )
         return output.reshape(self._query_shape)
 
-    def _apply_grid(self):
-        spline = self._spline
-        xp = spline._array_module()
-        count = int(np.prod(self._query_shape, dtype=np.int64))
-        output = xp.empty(count, dtype=spline._coefficients.dtype)
-        for start in range(0, count, spline._EVALUATION_TILE_SIZE):
-            stop = min(count, start + spline._EVALUATION_TILE_SIZE)
-            flat_indexes = xp.arange(start, stop)
-            grid_indexes = xp.unravel_index(flat_indexes, self._query_shape)
-            indexes = tuple(
-                index[:, grid_indexes[axis]] for axis, index in enumerate(self._indexes)
-            )
-            weights = tuple(
-                weight[:, grid_indexes[axis]]
-                for axis, weight in enumerate(self._weights)
-            )
-            output[start:stop] = spline._evaluate_precomputed_point_chunk(
-                indexes, weights
-            )
-        return output.reshape(self._query_shape)
+
+# Backward-compatible name for the first experimental release.  The object is
+# now geometry-reusable; only the historical spelling remains an alias.
+TensorSplineQueryPlan = TensorSplineGeometryPlan

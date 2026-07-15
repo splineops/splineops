@@ -38,51 +38,59 @@ Current capability matrix
      - N-D native and Python paths, explicit axes and output geometry,
        interpolation and direct projection, reusable plans, bounded caches,
        output buffers, concurrency and fork handling.
-     - Continue cross-platform performance monitoring and re-profile the v2
-       direct projection pipeline before new kernel work.
+     - Continue cross-platform performance monitoring; validate the measured
+       small-3-D scheduler policy on additional machines before generalizing
+       it to other workload classes.
    * - ``TensorSpline``
      - Stabilizing
      - Multiple bases and per-axis modes, N-D and batched evaluation, real and
        complex data, tested singleton/short-periodic behavior, bounded-memory
-       queries, reusable fixed-coordinate plans, SciPy parity for B-spline
-       degrees 0--5 through four dimensions, and partial CuPy interoperability.
+       queries, separable grid contraction, reusable geometry plans across
+       compatible sample arrays, SciPy parity for B-spline degrees 0--5 through
+       four dimensions, and partial CuPy interoperability.
      - Complete dedicated CuPy CI before making a stable backend-wide promise;
        continue independent references for non-B-spline bases and modes.
    * - Affine
      - Experimental
-     - Analytical 2-D and 3-D rotation tests, explicit dtype/degree validation,
-       bounded tiled coordinate evaluation, and equivalent SciPy parity for
-       degrees 0--5; SplineOps also accepts its higher-order degrees 6 and 7.
-     - Improve performance only with profile-backed changes and decide whether
-       a general matrix API has a sufficiently clear contract.  SciPy is
-       currently 7.46x--15.42x faster in the standard matched benchmark.
+     - General 2-D/3-D matrix transforms, analytical rotation tests, explicit
+       batch/channel axes, output buffers, bounded one-shot execution, cached
+       fixed-geometry plans, and equivalent SciPy parity for degrees 0--5;
+       SplineOps also accepts its higher-order degrees 6 and 7.
+     - Improve performance only with profile-backed changes.  SciPy remains
+       5.41x--12.56x faster than the SplineOps one-shot path in the standard
+       matched benchmark, despite useful gains from cached geometry.
    * - Differentials
      - Experimental
-     - Raw repeatable outputs, preserved source arrays, batched coefficient
-       filtering, physical spacing, direct gradient/Hessian components,
-       legacy-reference coverage, and polynomial and trigonometric invariants.
-     - Define additional boundary/dtype contracts and add 3-D support before
-       describing the module as a general N-D differential engine.
+     - Raw repeatable outputs, preserved source arrays, vectorized coefficient
+       filtering, physical spacing, 2-D/3-D gradient and packed Hessian
+       components, cached multi-output plans, legacy-reference coverage, and
+       polynomial and trigonometric invariants.
+     - Define additional boundary/dtype contracts and batch/channel policy
+       before describing the module as a general N-D differential engine;
+       angular maps intentionally remain 2-D.
    * - Smoothing splines
      - Experimental
-     - Fractional FFT and recursive examples, explicit real/finite parameter
-       domains, constant preservation, periodic cosine-response checks, and an
-       independent dense-system reference for the recursive formulation.
+     - Fractional FFT and recursive examples, reusable real-FFT half-spectrum
+       plans, explicit real/finite parameter domains, constant preservation,
+       periodic cosine-response checks, and an independent dense-system
+       reference for the recursive formulation.
      - Add broader published numerical fixtures while preserving the clear
        distinction between exact fractional, radial approximate, and recursive
        formulations.
    * - Adaptive regression
      - Experimental
      - Deterministic denoising and piecewise-linear reconstruction tests,
-       non-mutating amplitude sparsification, sorted-input validation, and
-       opt-in ADMM convergence diagnostics.
+       reusable fixed-sample sparse factorizations, prefix-sum spline
+       evaluation, non-mutating amplitude sparsification, sorted-input
+       validation, and opt-in ADMM convergence diagnostics.
      - Add larger optimization-reference comparisons and systematic penalty
        parameter guidance.
    * - Multiscale
      - Experimental
-     - Explicit odd/singleton pyramid behavior and perfect reconstruction for
-       supported even rectangular Haar and cubic spline-wavelet shapes, plus a
-       reconstruction-error audit for spline orders 1, 3, and 5.
+     - Explicit odd/singleton pyramid behavior, vectorized whole-axis pyramid
+       and wavelet passes, perfect reconstruction for supported even
+       rectangular Haar and cubic spline-wavelet shapes, and a reconstruction-
+       error audit for spline orders 1, 3, and 5.
      - Obtain higher-precision order-5 taps or continue labeling it approximate;
        expand supported shape and scale classes only with reversible evidence.
 
@@ -118,12 +126,20 @@ builds, and a clean-environment wheel smoke test all passed.  The wheel smoke
 also exercised the native resize extension and an experimental repeated-query
 ``TensorSpline`` plan.
 
+After the second optimization pass, a recreated Python 3.12 tox environment
+built the native extension from this worktree and completed ``1167 passed`` in
+138.32 seconds.  The strict documentation build, Black check, scoped MyPy
+check, standalone native scheduler test, benchmark smoke tests, and package
+build are the accompanying branch-level gates.  This is pre-release validation,
+not a claim that a new distribution has been published.
+
 The development benchmarks from this pass are recorded in
 :doc:`performance`.  Their central conclusions are intentionally mixed:
-``TensorSpline`` has bounded query overhead and a useful repeated-coordinate
-plan, vectorized 2-D differentials substantially outperform their scalar
-oracle, and affine rotation matches SciPy numerically while remaining much
-slower.  These are development-machine measurements, not release promises.
+``TensorSpline`` has bounded query overhead and a useful reusable-geometry
+plan, vectorized differentials substantially outperform their scalar oracle,
+and affine transforms match SciPy numerically while remaining slower.  Cached
+affine geometry and vectorized multiscale passes are useful workload-specific
+gains.  These are development-machine measurements, not release promises.
 
 Reproducing validation
 ----------------------

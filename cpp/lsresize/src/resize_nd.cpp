@@ -45,6 +45,41 @@ static inline int64_t prod_elems(
   return p;
 }
 
+static inline int64_t automatic_thread_cap_for_shape(
+  const std::vector<int64_t>& shape)
+{
+  // Current v2 profiles show that small 3-D passes are memory/scheduler bound:
+  // larger automatic pools add synchronization and cache traffic without
+  // increasing useful throughput.  Keep this deliberately narrow; explicit
+  // LSRESIZE_NUM_THREADS values continue to override the automatic ceiling.
+  constexpr int64_t kSmall3DMaximumElements = 1000000;
+  if (shape.size() == 3 && prod_elems(shape) <= kSmall3DMaximumElements) {
+    return 8;
+  }
+  return static_cast<int64_t>(detail::kMaxParallelParticipants);
+}
+
+static inline bool is_small_3d_shape(const std::vector<int64_t>& shape)
+{
+  constexpr int64_t kSmall3DMaximumElements = 1000000;
+  return shape.size() == 3 && prod_elems(shape) <= kSmall3DMaximumElements;
+}
+
+template <typename Worker>
+static inline void run_parallel_for_shape(
+  int64_t nlines,
+  const Plan1D& plan,
+  const std::vector<int64_t>& shape,
+  Worker&& worker)
+{
+  run_parallel_or_serial(
+      nlines,
+      plan,
+      std::forward<Worker>(worker),
+      automatic_thread_cap_for_shape(shape),
+      is_small_3d_shape(shape));
+}
+
 enum class BatchedAxisMode {
   Off,
   On,
@@ -386,7 +421,10 @@ static inline bool should_use_direct_3d_axis1_scatter(
 
   // Direct writes are helpful for single/small worker pools, but large pools
   // can make the extra destination traffic slower than the buffered row.
-  return thread_count(nlines, plan) <= 8;
+  return thread_count(
+      nlines,
+      plan,
+      automatic_thread_cap_for_shape(in_shape)) <= 8;
 }
 
 static inline bool should_use_direct_2d_axis0_scatter(
@@ -2252,7 +2290,7 @@ static void resize_along_axis_2d_linear_direct(
       }
     };
 
-    run_parallel_or_serial(nlines, plan, fallback);
+    run_parallel_for_shape(nlines, plan, in_shape, fallback);
     return;
   }
 
@@ -2363,7 +2401,7 @@ static void resize_along_axis_2d_linear_direct(
     }
   };
 
-  run_parallel_or_serial(nlines, plan, worker);
+  run_parallel_for_shape(nlines, plan, in_shape, worker);
 }
 
 template <typename Scalar>
@@ -2421,7 +2459,7 @@ static void resize_along_axis_linear_direct(
       }
     };
 
-    run_parallel_or_serial(nlines, plan, fallback);
+    run_parallel_for_shape(nlines, plan, in_shape, fallback);
     return;
   }
 
@@ -2494,7 +2532,7 @@ static void resize_along_axis_linear_direct(
       }
     };
 
-    run_parallel_or_serial(nlines, plan, worker);
+    run_parallel_for_shape(nlines, plan, in_shape, worker);
     return;
   }
 
@@ -2548,7 +2586,7 @@ static void resize_along_axis_linear_direct(
     }
   };
 
-  run_parallel_or_serial(nlines, plan, worker);
+  run_parallel_for_shape(nlines, plan, in_shape, worker);
 }
 
 static inline bool can_use_linear_interp_fast_path(
@@ -2806,7 +2844,7 @@ static void resize_along_axis_batched_interp_t(
     }
   };
 
-  run_parallel_or_serial(nlines, plan, worker);
+  run_parallel_for_shape(nlines, plan, in_shape, worker);
 }
 
 template <typename Scalar>
@@ -3032,7 +3070,7 @@ static void resize_along_axis_batched_t(
     }
   };
 
-  run_parallel_or_serial(nlines, plan, worker);
+  run_parallel_for_shape(nlines, plan, in_shape, worker);
 }
 
 static void resize_along_axis_batched_interp_f32_internal(
@@ -3222,7 +3260,7 @@ static void resize_along_axis_batched_interp_f32_internal(
     }
   };
 
-  run_parallel_or_serial(nlines, plan, worker);
+  run_parallel_for_shape(nlines, plan, in_shape, worker);
 }
 
 static void resize_along_axis_batched_f32_internal(
@@ -3451,7 +3489,7 @@ static void resize_along_axis_batched_f32_internal(
     }
   };
 
-  run_parallel_or_serial(nlines, plan, worker);
+  run_parallel_for_shape(nlines, plan, in_shape, worker);
 }
 
 // -----------------------------------------------------------------------------
@@ -3825,7 +3863,7 @@ static void resize_along_axis_t(
   // Centralized scheduling: OpenMP, std::thread, or serial
   {
     LSRESIZE_PROFILE_SCOPE(profile::Phase::LineFallbackTotal);
-    run_parallel_or_serial(nlines, plan, worker);
+    run_parallel_for_shape(nlines, plan, in_shape, worker);
   }
 }
 
@@ -4183,7 +4221,7 @@ static void resize_2d_linear_t(
     }
   };
 
-  run_parallel_or_serial(out_h, row_plan, worker);
+  run_parallel_for_shape(out_h, row_plan, in_shape, worker);
 }
 
 template <typename Scalar>
@@ -4525,7 +4563,7 @@ static void resize_3d_linear_t(
     }
   };
 
-  run_parallel_or_serial(out_n0 * out_n1, plan2, worker);
+  run_parallel_for_shape(out_n0 * out_n1, plan2, in_shape, worker);
 }
 
 template <typename Scalar, typename Accum>
@@ -4719,7 +4757,7 @@ static void resize_3d_linear_axis02_t(
     }
   };
 
-  run_parallel_or_serial(out_n0 * in_n1, plan2, worker);
+  run_parallel_for_shape(out_n0 * in_n1, plan2, in_shape, worker);
 }
 
 template <typename Scalar>
@@ -4871,7 +4909,7 @@ static void resize_3d_linear_axis12_t(
     }
   };
 
-  run_parallel_or_serial(in_n0 * out_n1, plan2, worker);
+  run_parallel_for_shape(in_n0 * out_n1, plan2, in_shape, worker);
 }
 
 // -----------------------------------------------------------------------------

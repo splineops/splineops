@@ -2,7 +2,11 @@
 
 import numpy as np
 import pytest
-from splineops.adaptive_regression_splines import DenoisingDiagnostics, denoise_y
+from splineops.adaptive_regression_splines import (
+    DenoisingDiagnostics,
+    DenoisingPlan,
+    denoise_y,
+)
 from splineops.adaptive_regression_splines.sparsification import (
     _sparsify_amplitudes,
     linear_spline,
@@ -144,3 +148,44 @@ def test_iteration_limit_is_visible_in_diagnostics():
 
     assert diagnostics.iterations == 1
     assert not diagnostics.converged
+
+
+def test_denoising_plan_matches_one_shot_api_and_reuses_geometry():
+    x = np.linspace(0.0, 1.0, 48)
+    first = np.sin(2.0 * np.pi * x) + 0.03 * np.cos(19.0 * x)
+    second = np.cos(3.0 * np.pi * x) - 0.02 * np.sin(13.0 * x)
+    plan = DenoisingPlan(x, rho=0.5)
+
+    for signal, lamb in ((first, 1e-3), (second, 2e-3)):
+        expected = denoise_y(x, signal, lamb=lamb, rho=0.5)
+        result = plan.solve(signal, lamb=lamb)
+        np.testing.assert_allclose(result, expected, rtol=2e-12, atol=2e-12)
+
+
+def test_denoising_plan_keeps_an_immutable_copy_of_sample_locations():
+    x = np.linspace(0.0, 1.0, 8)
+    plan = DenoisingPlan(x)
+    x[:] = -1.0
+
+    np.testing.assert_equal(plan.x, np.linspace(0.0, 1.0, 8))
+    assert not plan.x.flags.writeable
+
+
+def test_linear_spline_prefix_evaluator_matches_direct_hinge_sum():
+    rng = np.random.default_rng(20260715)
+    knots = np.sort(rng.uniform(-2.0, 2.0, 200))
+    amplitudes = rng.standard_normal(knots.size)
+    polynomial = np.array([0.75, -1.25])
+    locations = rng.uniform(-3.0, 3.0, (17, 13))
+    expected = polynomial[0] + polynomial[1] * locations
+    for knot, amplitude in zip(knots, amplitudes):
+        expected += amplitude * np.maximum(locations - knot, 0.0)
+
+    result = linear_spline(locations, knots, amplitudes, polynomial)
+
+    np.testing.assert_allclose(result, expected, rtol=3e-14, atol=3e-13)
+
+
+def test_linear_spline_rejects_unsorted_knots():
+    with pytest.raises(ValueError, match="sorted"):
+        linear_spline(0.5, [1.0, 0.0], [2.0, 3.0], [0.0, 1.0])

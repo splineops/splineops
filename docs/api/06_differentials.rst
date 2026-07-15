@@ -6,22 +6,27 @@ Differentials
 =============
 
 The preferred public name is :class:`splineops.differentials.Differentials`;
-the historical lowercase ``differentials`` name remains available.  The class
-computes image differentials using cubic B-spline interpolation, including:
+the historical lowercase ``differentials`` name remains available.  Scalar
+2-D images and 3-D volumes are supported.  The class computes differentials
+using cubic B-spline interpolation, including:
 
 - **Gradient Magnitude** - the rate of intensity change.
-- **Gradient Direction** - the orientation of maximum change.
+- **Gradient Direction** - the 2-D orientation of maximum change.
 - **Laplacian** - the sum of second-order derivatives.
 - **Largest Hessian Eigenvalue** - the maximal curvature.
 - **Smallest Hessian Eigenvalue** - the minimal curvature.
-- **Hessian Orientation** - the principal direction of curvature.
+- **Hessian Orientation** - the 2-D principal direction of curvature.
 
-``run()`` returns a raw result and preserves the source image.  Visualization
+``run()`` returns a raw result and preserves the source array.  Visualization
 normalization is opt-in through ``normalize=True`` and is rejected for angular
-outputs.  Physical sample spacing is accepted as
-``spacing=(row_spacing, column_spacing)``.  ``gradient_components()`` returns
-``(vertical, horizontal)`` and ``hessian_components()`` returns
-``(vertical, cross, horizontal)``.
+outputs.  Physical ``spacing`` contains one value per axis.
+``gradient_components()`` returns derivatives in increasing axis order;
+``hessian_components()`` uses packed upper-triangular order ``(00, 01, 11)``
+in 2-D and ``(00, 01, 02, 11, 12, 22)`` in 3-D.
+
+For changing arrays with fixed shape and spacing,
+:class:`~splineops.differentials.differentials.DifferentialPlan` computes
+gradient, Hessian, and Laplacian outputs through one per-call cached workspace.
 
 .. automodule:: splineops.differentials.differentials
    :members:

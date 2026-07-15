@@ -24,29 +24,31 @@ Linux 6.17, Python 3.12.3, and NumPy 2.4.6:
      - Evaluation
      - Evaluation peak
    * - 1-D cubic grid
-     - 136.4 ms
-     - 40.5 ms
-     - 8.25 MiB
+     - 129.2 ms
+     - 36.4 ms
+     - 8.50 MiB
    * - 2-D cubic grid
-     - 42.7 ms
-     - 40.4 ms
-     - 16.54 MiB
+     - 35.9 ms
+     - 14.5 ms
+     - 2.54 MiB
    * - 2-D cubic, 200,000 points
-     - 42.5 ms
-     - 338.0 ms
-     - 28.53 MiB
+     - 36.6 ms
+     - 258.5 ms
+     - 26.03 MiB
    * - 3-D linear grid
-     - 16.2 ms
-     - 231.0 ms
-     - 22.51 MiB
+     - 6.0 ms
+     - 37.5 ms
+     - 6.01 MiB
    * - 3-D cubic grid
-     - 26.6 ms
-     - 67.9 ms
-     - 28.23 MiB
+     - 21.3 ms
+     - 10.1 ms
+     - 1.73 MiB
 
 These are a development-machine baseline, not portable promises.  The useful
-result is the bounded growth of query temporaries: evaluation is tiled at
-65,536 points while small grids retain a faster direct broadcast path.
+result is the bounded growth of point-query temporaries and the lower working
+set for separable tensor grids.  Point evaluation is tiled at 65,536 samples;
+unbatched grids contract one axis at a time instead of materializing the full
+coordinate-product support arrays.
 
 An explicit point-count sweep excludes the already-allocated input coordinates
 from tracing and subtracts the required output buffer.  On the same machine,
@@ -77,11 +79,13 @@ Repeated coordinates
 ~~~~~~~~~~~~~~~~~~~~
 
 ``TensorSpline.query_plan`` trades capped retained memory for repeated-query
-speed.  For 200,000 random cubic 2-D points and seven repeated evaluations, the
-ordinary path took 241.1 ms per call and the planned path 63.2 ms: a 3.81x
-speedup.  Plan construction broke even after an estimated 1.28 calls and
-retained 24.41 MiB.  This is a strong workload-specific capability, not a
-reason to plan one-shot queries.
+speed.  It stores coordinate geometry independently of sample values and can
+therefore serve compatible splines representing changing frames.  For 200,000
+random cubic 2-D points and seven changing-spline evaluations, the ordinary
+path took 255.7 ms per call and the planned path 68.5 ms: a 3.73x speedup.  Plan
+construction broke even after an estimated 1.30 calls and retained 24.41 MiB.
+This is a strong workload-specific capability, not a reason to plan one-shot
+queries.
 
 Reproduce it with:
 
@@ -104,31 +108,39 @@ maximum differences near ``1e-13``, but SciPy was materially faster:
 
 .. list-table:: Equivalent affine rotation profile
    :header-rows: 1
-   :widths: 24 19 19 19
+   :widths: 24 19 19 19 19
 
    * - Case
-     - SplineOps
+     - SplineOps one-shot
+     - Cached ``AffinePlan``
      - SciPy
-     - SciPy speedup
+     - SciPy vs. one-shot
    * - 2-D linear
-     - 178.9 ms
-     - 17.3 ms
-     - 10.34x
+     - 183.0 ms
+     - 54.3 ms
+     - 22.2 ms
+     - 8.23x
    * - 2-D cubic
-     - 485.4 ms
-     - 31.5 ms
-     - 15.42x
+     - 435.8 ms
+     - 206.6 ms
+     - 34.7 ms
+     - 12.56x
    * - 3-D linear
-     - 190.2 ms
-     - 25.5 ms
-     - 7.46x
+     - 130.0 ms
+     - 39.6 ms
+     - 24.1 ms
+     - 5.41x
    * - 3-D cubic
-     - 545.2 ms
-     - 59.4 ms
-     - 9.18x
+     - 542.4 ms
+     - 322.6 ms
+     - 59.8 ms
+     - 9.07x
 
 Affine's current achievements are exact spline semantics and bounded
-coordinate memory.  It does not beat SciPy's specialized kernels.
+coordinate memory.  A cached plan removes repeated support construction and is
+materially faster than the SplineOps one-shot path, but it still does not beat
+SciPy's specialized kernels on these cases.  Maximum absolute differences were
+between ``7e-14`` and ``6e-13``.
 
 Reproduce the profile with:
 
@@ -140,27 +152,70 @@ Reproduce the profile with:
 Differentials vectorization
 ---------------------------
 
-The 2-D spline differential implementation performs coefficient conversion
-in batched contiguous arrays.  Against the retained scalar row/column oracle,
-the standard 512x640 float64 gradient-magnitude benchmark measured 211.5 ms
-versus 12.340 s, a 58.35x speedup.  Maximum absolute difference was
-``1.704e-6``; the scalar oracle truncates its causal initialization at
-single-precision epsilon, so it is not bit-identical to the batched helper.
+The spline differential implementation performs coefficient conversion and
+derivative stencils across complete array axes.  Against the retained scalar
+row/column oracle, the standard 512x640 float64 gradient-magnitude benchmark
+measured 231.3 ms cold versus 12.663 s, a 54.75x speedup.  Reusing the
+``Differentials`` object's cached workspace reduced a repeated map to 9.4 ms.
+A ``DifferentialPlan`` request for gradient, packed Hessian, and Laplacian
+together took 340.3 ms; that row performs substantially more work and is
+reported to make multi-output cost visible, not as a direct speedup ratio.
+Maximum absolute difference from the scalar oracle was ``1.556e-7``.
 
 .. code-block:: shell
 
    python scripts/benchmark_differentials.py --profile standard \
      --output-json differentials.json --output-csv differentials.csv
 
-Resize comparisons
-------------------
+Reusable research-module plans
+------------------------------
 
-The initial 2026-07-15 smoke comparison found SplineOps faster than the tested
-SciPy configurations on three rows with close agreement where semantics were
-comparable.  OpenCV won all three generic 2-D timing rows, and PyTorch won two.
-Coordinates, boundaries, antialiasing, and output sizing differ between these
-libraries, so these are contextual comparisons rather than one universal
-leaderboard.  See :doc:`project-status` for the exact command.
+``SmoothingSplinePlan`` retains a real-FFT half-spectrum response for changing
+arrays with fixed shape, regularization, and order.  ``DenoisingPlan`` retains
+the sparse factorization determined by fixed sample locations and ADMM penalty
+while allowing observations and regularization strength to change.  These
+plans remove repeated setup; no portable speedup is claimed here until their
+standard workload sweeps are published by the benchmark suite.
+
+Multiscale vectorization
+------------------------
+
+``scripts/benchmark_multiscale.py`` compares current whole-axis execution with
+the retained row/column oracle on standard float64 images.  Pyramid reduction
+measured 467.7 ms versus 3.474 s (7.43x), and Haar analysis/synthesis measured
+32.8 ms versus 69.9 ms (2.13x).  These ratios measure Python dispatch and array
+execution on one development machine; reconstruction tolerances and supported
+shape contracts are unchanged.
+
+.. code-block:: shell
+
+   python scripts/benchmark_multiscale.py --profile standard \
+     --output-json multiscale.json --output-csv multiscale.csv
+
+Resize v2 scheduler profile
+---------------------------
+
+The native resize scheduler was re-profiled after the v2 direct cross-Gram
+rewrite rather than carrying forward pre-v2 tuning assumptions.  A proposed
+serial path for small 3-D work was rejected: one thread was typically three to
+five times slower in the focused sweep.  The retained policy keeps parallel
+execution but caps automatic participation at eight workers for 3-D workloads
+of at most one million elements.  An explicit ``LSRESIZE_NUM_THREADS`` value
+continues to override automatic selection.
+
+In an 11-repeat focused profile, automatic/default versus explicit-eight
+medians were 0.62/0.64 ms for linear downsampling, 3.51/3.12 ms for cubic
+downsampling, 1.51/1.67 ms for anisotropic cubic work, 2.43/2.21 ms for linear
+antialiasing, and 2.60/2.32 ms for cubic antialiasing.  The policy tracks the
+measured eight-worker operating point broadly; individual rows can still move
+in either direction, and it is not a claim that eight threads is ideal on every
+machine.
+
+The broader library comparison remains contextual.  SciPy, OpenCV, PyTorch,
+and SplineOps differ in coordinates, boundaries, antialiasing, and output-size
+rules.  SplineOps therefore reports both numerical differences and timings
+rather than presenting those libraries as one universal leaderboard.  See
+:doc:`project-status` for the smoke-comparison command.
 
 Historical optimization reports
 --------------------------------

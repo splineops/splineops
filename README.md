@@ -17,9 +17,9 @@ being strengthened; they are not folded into the resize API.
 | --- | --- | --- |
 | `resize`, `ResizePlan` | Stable | Native N-D interpolation and projection-based antialiasing with a Python reference path |
 | `TensorSpline` | Stabilizing | Continuous tensor-product models with B-spline, O-MOMS, and other bases |
-| Affine and differentials | Experimental | Spline-evaluated rotations and spline-derived image derivatives |
-| Smoothing and adaptive regression | Experimental | Fractional smoothing and sparse piecewise-linear models |
-| Pyramids and wavelets | Experimental | Spline multiscale analysis and reconstruction |
+| Affine and differentials | Experimental | General spline-evaluated transforms and 2-D/3-D spline derivatives |
+| Smoothing and adaptive regression | Experimental | Fractional smoothing and sparse piecewise-linear models with reusable fixed-geometry plans |
+| Pyramids and wavelets | Experimental | Vectorized spline multiscale analysis and reconstruction |
 
 "Experimental" describes API and validation maturity, not the importance of
 the underlying methods. See the
@@ -79,9 +79,11 @@ values = spline(coordinates=(np.linspace(0.0, 3.0, 31),))
 ```
 
 For repeated fixed coordinates, `spline.query_plan(...)` can retain support
-geometry behind an explicit memory cap. Resize and `TensorSpline` share only
-carefully validated internals where their mathematical contracts match; they
-retain distinct APIs, coordinate contracts, and optimized execution paths.
+geometry behind an explicit memory cap and apply it to compatible
+`TensorSpline` instances with changing sample values. Resize and `TensorSpline`
+share only carefully validated internals where their mathematical contracts
+match; they retain distinct APIs, coordinate contracts, and optimized execution
+paths.
 
 ## Performance position
 
@@ -91,9 +93,12 @@ antialiasing conventions are acceptable.
 
 SplineOps is strongest when the spline model itself matters: explicit degrees,
 defined boundaries and sampling grids, N-D projection antialiasing, native and
-reference parity, and repeated volumetric workloads. The benchmark tools report
-both runtime and numerical differences so contextual comparisons are not
-presented as equivalent algorithms.
+reference parity, and repeated fixed-geometry workloads. Separable
+`TensorSpline` grids, reusable query/affine/smoothing/denoising plans,
+multi-output differentials, and whole-axis multiscale operations now avoid
+substantial repeated setup or Python dispatch. The benchmark tools report both
+runtime and numerical differences so contextual comparisons are not presented
+as equivalent algorithms.
 
 ## Backend support
 

@@ -206,6 +206,22 @@ def wrap_reflect(i: int, n: int) -> int:
     return i
 
 
+def _wrap_reflect_array(index, length):
+    if length < 2:
+        return np.zeros_like(index, dtype=np.intp)
+    period = 2 * (length - 1)
+    wrapped = np.mod(index, period)
+    return np.where(wrapped >= length, period - wrapped, wrapped).astype(
+        np.intp, copy=False
+    )
+
+
+def _validate_centered(centered):
+    if not isinstance(centered, (bool, np.bool_)):
+        raise TypeError("'centered' must be a boolean.")
+    return bool(centered)
+
+
 # -------------------------------------------------------------------------
 # 3) 1D Reduce & Expand
 # -------------------------------------------------------------------------
@@ -230,6 +246,7 @@ def reduce_1d(signal: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
         Reduced signal of length roughly n/2.
     """
     signal, g = _validate_1d_inputs(signal, g)
+    centered = _validate_centered(centered)
     n = signal.shape[0]
     if n == 1:
         return signal.copy()
@@ -262,6 +279,7 @@ def expand_1d(signal: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
         Expanded signal of length ~ 2*n.
     """
     signal, h = _validate_1d_inputs(signal, h)
+    centered = _validate_centered(centered)
     n = signal.shape[0]
     outlen = 2 * n if n >= 2 else n
     out = np.zeros(outlen, dtype=signal.dtype)
@@ -283,9 +301,44 @@ def _validate_1d_inputs(signal: np.ndarray, filter_: np.ndarray):
     filter_ = np.asarray(filter_)
     if filter_.ndim != 1 or filter_.size == 0:
         raise ValueError("The pyramid filter must be a non-empty 1D array.")
+    if not np.issubdtype(filter_.dtype, np.number) or np.iscomplexobj(filter_):
+        raise TypeError("The pyramid filter must have a real numeric dtype.")
     if not np.all(np.isfinite(signal)) or not np.all(np.isfinite(filter_)):
         raise ValueError("Signal and filter values must be finite.")
+    if not np.issubdtype(signal.dtype, np.floating):
+        signal = signal.astype(np.float64)
     return signal, filter_
+
+
+def _validate_nd_input(array, filter_, ndim):
+    if not isinstance(array, np.ndarray) or array.ndim != ndim:
+        raise ValueError(f"Input must be a {ndim}-dimensional NumPy array.")
+    if any(length == 0 for length in array.shape):
+        raise ValueError("Input dimensions must be non-empty.")
+    flattened = array.reshape(-1)
+    validated, filter_ = _validate_1d_inputs(flattened, filter_)
+    return validated.reshape(array.shape), filter_
+
+
+def _apply_last_axis(array, filter_, centered, *, expand):
+    if array.shape[-1] == 1:
+        return array.copy()
+    function = (
+        _expand_centered_1d
+        if expand and centered
+        else (
+            _expand_standard_1d
+            if expand
+            else _reduce_centered_1d if centered else _reduce_standard_1d
+        )
+    )
+    return function(array, filter_)
+
+
+def _apply_axis(array, filter_, centered, axis, *, expand):
+    moved = np.moveaxis(array, axis, -1)
+    transformed = _apply_last_axis(moved, filter_, centered, expand=expand)
+    return np.moveaxis(transformed, -1, axis)
 
 
 # -------------------------------------------------------------------------
@@ -311,29 +364,15 @@ def reduce_2d(image: np.ndarray, g: np.ndarray, centered: bool) -> np.ndarray:
     np.ndarray
         Reduced image of shape (ny//2, nx//2) if ny,nx >= 2, else smaller.
     """
-    if not isinstance(image, np.ndarray) or image.ndim != 2:
-        raise ValueError("'image' must be a two-dimensional NumPy array.")
-    if any(length == 0 for length in image.shape):
-        raise ValueError("'image' dimensions must be non-empty.")
-    ny, nx = image.shape
-    # 1) reduce along X for each row
-    row_reduced = []
-    for y in range(ny):
-        rowdata = image[y, :]
-        row_out = reduce_1d(rowdata, g, centered)
-        row_reduced.append(row_out)
-    tmp = np.vstack(row_reduced)  # shape: (ny, NxOut)
-
-    # 2) reduce along Y for each column
-    NxOut = tmp.shape[1]
-    NyOut = ny // 2 if ny >= 2 else ny
-    out = np.zeros((NyOut, NxOut), dtype=tmp.dtype)
-    for x in range(NxOut):
-        coldata = tmp[:, x]
-        col_out = reduce_1d(coldata, g, centered)
-        out[:, x] = col_out
-
-    return out
+    image, g = _validate_nd_input(image, g, 2)
+    centered = _validate_centered(centered)
+    return _apply_axis(
+        _apply_axis(image, g, centered, 1, expand=False),
+        g,
+        centered,
+        0,
+        expand=False,
+    )
 
 
 def expand_2d(image: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
@@ -354,30 +393,15 @@ def expand_2d(image: np.ndarray, h: np.ndarray, centered: bool) -> np.ndarray:
     np.ndarray
         Expanded image, roughly 2*ny by 2*nx.
     """
-    if not isinstance(image, np.ndarray) or image.ndim != 2:
-        raise ValueError("'image' must be a two-dimensional NumPy array.")
-    if any(length == 0 for length in image.shape):
-        raise ValueError("'image' dimensions must be non-empty.")
-    ny, nx = image.shape
-    NxOut = nx * 2 if nx >= 2 else nx
-    NyOut = ny * 2 if ny >= 2 else ny
-
-    # 1) expand along X for each row
-    row_expanded = []
-    for y in range(ny):
-        rowdata = image[y, :]
-        row_out = expand_1d(rowdata, h, centered)
-        row_expanded.append(row_out)
-    tmp = np.vstack(row_expanded)  # shape: (ny, NxOut)
-
-    # 2) expand along Y for each column
-    out = np.zeros((NyOut, NxOut), dtype=tmp.dtype)
-    for x in range(NxOut):
-        coldata = tmp[:, x]
-        col_out = expand_1d(coldata, h, centered)
-        out[:, x] = col_out
-
-    return out
+    image, h = _validate_nd_input(image, h, 2)
+    centered = _validate_centered(centered)
+    return _apply_axis(
+        _apply_axis(image, h, centered, 1, expand=True),
+        h,
+        centered,
+        0,
+        expand=True,
+    )
 
 
 # -------------------------------------------------------------------------
@@ -390,19 +414,16 @@ def _reduce_standard_1d(x: np.ndarray, g: np.ndarray) -> np.ndarray:
     Standard (non-centered) 1D reduction by factor of 2,
     mirror boundary conditions. Matches 'ReduceStandard_1D' from the C code.
     """
-    n = x.shape[0]
+    n = x.shape[-1]
     half = n // 2 if n >= 2 else 1
-    y = np.zeros(half, dtype=x.dtype)
-
-    for kk in range(half):
-        k = 2 * kk
-        val = x[k] * g[0]
-        for i in range(1, g.size):
-            i1 = wrap_reflect(k - i, n)
-            i2 = wrap_reflect(k + i, n)
-            val += g[i] * (x[i1] + x[i2])
-        y[kk] = val
-    return y
+    centers = 2 * np.arange(half)
+    values = x[..., centers] * g[0]
+    if g.size > 1:
+        offsets = np.arange(1, g.size)
+        left = _wrap_reflect_array(centers[:, np.newaxis] - offsets, n)
+        right = _wrap_reflect_array(centers[:, np.newaxis] + offsets, n)
+        values = values + np.sum((x[..., left] + x[..., right]) * g[1:], axis=-1)
+    return values.astype(x.dtype, copy=False)
 
 
 def _expand_standard_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
@@ -410,38 +431,35 @@ def _expand_standard_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
     Standard (non-centered) 1D expansion by factor of 2,
     mirror boundary conditions. Matches "ExpandStandard_1D" from the C code.
     """
-    n = x.shape[0]
+    n = x.shape[-1]
     outlen = 2 * n if n > 1 else n
-    y = np.zeros(outlen, dtype=x.dtype)
+    y = np.zeros(x.shape[:-1] + (outlen,), dtype=x.dtype)
 
     # trivial cases
     if n < 2:
         return x.copy()
     if h.size < 2:
         # replicate each sample
-        for i in range(n):
-            j = 2 * i
-            y[j] = x[i]
-            if j + 1 < outlen:
-                y[j + 1] = x[i]
-        return y
+        return np.repeat(x, 2, axis=-1)
 
     # The C code loops over i in [0..outlen-1],
     # then handles pairs (i-k)/2 and (i+k)/2 for even/odd offsets.
-    for i in range(outlen):
-        val = 0.0
-        # a) loop for k in [ (i % 2), h.size, step=2 ]
-        for k in range(i % 2, h.size, 2):
-            i1 = (i - k) // 2
-            i1 = wrap_reflect(i1, n)
-            val += h[k] * x[i1]
-        # b) loop for k in [ 2-(i % 2), h.size, step=2 ]
-        for k in range(2 - (i % 2), h.size, 2):
-            i2 = (i + k) // 2
-            i2 = wrap_reflect(i2, n)
-            val += h[k] * x[i2]
-
-        y[i] = val
+    for parity in (0, 1):
+        positions = np.arange(parity, outlen, 2)
+        left_offsets = np.arange(parity, h.size, 2)
+        right_offsets = np.arange(2 - parity, h.size, 2)
+        values = np.zeros(x.shape[:-1] + (positions.size,), dtype=np.result_type(x, h))
+        if left_offsets.size:
+            left = _wrap_reflect_array(
+                (positions[:, np.newaxis] - left_offsets) // 2, n
+            )
+            values += np.sum(x[..., left] * h[left_offsets], axis=-1)
+        if right_offsets.size:
+            right = _wrap_reflect_array(
+                (positions[:, np.newaxis] + right_offsets) // 2, n
+            )
+            values += np.sum(x[..., right] * h[right_offsets], axis=-1)
+        y[..., positions] = values
     return y
 
 
@@ -452,31 +470,26 @@ def _reduce_centered_1d(x: np.ndarray, g: np.ndarray) -> np.ndarray:
       2) Then downsample with a Haar step (mean of pairs).
     This matches 'ReduceCentered_1D' from your C code.
     """
-    n = x.shape[0]
+    n = x.shape[-1]
     half = n // 2 if n >= 2 else 1
-    ytmp = np.zeros(n, dtype=x.dtype)
+    ytmp = np.zeros_like(x)
 
     # (a) convolve each sample with mirror boundary
     #     The "centered" code in C used period=2*n for reflection indexing
     #     Then if index >= n => index=2*n-1-index
-    for k in range(n):
-        val = x[k] * g[0]
-        for i in range(1, g.size):
-            km = (k - i) % (2 * n)
-            if km >= n:
-                km = 2 * n - 1 - km
-            kp = (k + i) % (2 * n)
-            if kp >= n:
-                kp = 2 * n - 1 - kp
-            val += g[i] * (x[km] + x[kp])
-        ytmp[k] = val
+    positions = np.arange(n)
+    values = x * g[0]
+    if g.size > 1:
+        offsets = np.arange(1, g.size)
+        minus = np.mod(positions[:, np.newaxis] - offsets, 2 * n)
+        plus = np.mod(positions[:, np.newaxis] + offsets, 2 * n)
+        minus = np.where(minus >= n, 2 * n - 1 - minus, minus)
+        plus = np.where(plus >= n, 2 * n - 1 - plus, plus)
+        values = values + np.sum((x[..., minus] + x[..., plus]) * g[1:], axis=-1)
+    ytmp[...] = values
 
     # (b) downsample 2->1 by averaging pairs
-    out = np.zeros(half, dtype=x.dtype)
-    for i in range(half):
-        k = 2 * i
-        out[i] = 0.5 * (ytmp[k] + ytmp[k + 1])
-    return out
+    return 0.5 * (ytmp[..., : 2 * half : 2] + ytmp[..., 1 : 2 * half : 2])
 
 
 def _expand_centered_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
@@ -489,9 +502,9 @@ def _expand_centered_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
     The logic is taken from 'ExpandCentered_1D' in the original code.
     """
 
-    n = x.shape[0]
+    n = x.shape[-1]
     outlen = 2 * n if n > 1 else n
-    y = np.zeros(outlen, dtype=x.dtype)
+    y = np.zeros(x.shape[:-1] + (outlen,), dtype=x.dtype)
     if n < 2:
         return x.copy()
 
@@ -508,27 +521,21 @@ def _expand_centered_1d(x: np.ndarray, h: np.ndarray) -> np.ndarray:
     # For a direct replicate of the C logic, see "ExpandCentered_1D" code.
 
     # We'll first upsample x into an intermediate "tmp_upsampled" of length 2n
-    tmp_upsampled = np.zeros(outlen, dtype=x.dtype)
-    for i in range(n):
-        j = 2 * i
-        tmp_upsampled[j] = x[i]
-    # Next do the half-ladder: y[j] = (y[j]+ y[j-1])/2 for j=1..end
-    for j in range(outlen - 1, 0, -1):
-        tmp_upsampled[j] = 0.5 * (tmp_upsampled[j] + tmp_upsampled[j - 1])
-    tmp_upsampled[0] *= 0.5
+    tmp_upsampled = 0.5 * np.repeat(x, 2, axis=-1)
 
     # Step 2) convolve with h[] with mirror boundary (like the forward pass but reversed).
     # We'll write the result into y:
-    for k in range(outlen):
-        val = tmp_upsampled[k] * h[0]
-        for i in range(1, h.size):
-            km = (k - i) % (2 * outlen)  # bigger period for reflection
-            if km >= outlen:
-                km = 2 * outlen - 1 - km
-            kp = (k + i) % (2 * outlen)
-            if kp >= outlen:
-                kp = 2 * outlen - 1 - kp
-            val += h[i] * (tmp_upsampled[km] + tmp_upsampled[kp])
-        y[k] = val
-
+    positions = np.arange(outlen)
+    values = tmp_upsampled * h[0]
+    if h.size > 1:
+        offsets = np.arange(1, h.size)
+        minus = np.mod(positions[:, np.newaxis] - offsets, 2 * outlen)
+        plus = np.mod(positions[:, np.newaxis] + offsets, 2 * outlen)
+        minus = np.where(minus >= outlen, 2 * outlen - 1 - minus, minus)
+        plus = np.where(plus >= outlen, 2 * outlen - 1 - plus, plus)
+        values = values + np.sum(
+            (tmp_upsampled[..., minus] + tmp_upsampled[..., plus]) * h[1:],
+            axis=-1,
+        )
+    y[...] = values
     return y

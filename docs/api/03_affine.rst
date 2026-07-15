@@ -5,11 +5,13 @@
 Affine
 ======
 
-Functions for affine transforms (currently rotation) on 2D or 3D data
-using spline interpolation.  Rotation uses pull-back coordinates,
-whole-sample mirror extension, the input shape as output shape, and bounded
-coordinate tiles.  Equivalent SciPy comparisons establish numerical parity,
-not a performance win.
+Spline-interpolated pull-back affine transforms on 2-D or 3-D spatial data.
+The module provides a general matrix-and-offset function, a rotation
+convenience function, and a reusable geometry plan.  Explicit spatial axes
+allow remaining dimensions to act as independent batch or channel axes.
+One-shot execution uses bounded coordinate tiles; cached plans retain geometry
+behind a caller-controlled memory cap.  Equivalent SciPy comparisons establish
+numerical parity, not a universal performance win.
 
 .. automodule:: splineops.affine.affine
    :members:
@@ -19,4 +21,4 @@ not a performance win.
 See also
 --------
 :class:`~splineops.spline_interpolation.tensor_spline.TensorSpline`
-   The base class used internally for spline interpolation.
+   The independent continuous spline model used internally for interpolation.

@@ -3,6 +3,8 @@
 import numpy as np
 import numpy.typing as npt
 
+_SUM_CHUNK_SIZE = 32
+
 
 def fractsplineautocorr(alpha: float, nu: npt.NDArray) -> npt.NDArray:
     """
@@ -51,11 +53,17 @@ def fractsplineautocorr(alpha: float, nu: npt.NDArray) -> npt.NDArray:
     if not np.all(np.isfinite(nu)):
         raise ValueError("'nu' must contain only finite values.")
 
-    # Initialize sum
+    # Sum several shifts at once.  The bounded chunk keeps temporary memory
+    # independent of the 201-term truncation while avoiding 201 Python-level
+    # full-array operations.
     S = np.zeros(len(nu))
-    for n in range(-N, N + 1):
+    shifts = np.arange(-N, N + 1)
+    for start in range(0, shifts.size, _SUM_CHUNK_SIZE):
+        chunk = shifts[start : start + _SUM_CHUNK_SIZE, np.newaxis]
         # np.sinc(x) = sin(pi*x)/(pi*x) in NumPy
-        S += np.abs(np.sinc(nu + n)) ** (2 * alpha + 2)
+        S += np.sum(
+            np.abs(np.sinc(nu[np.newaxis, :] + chunk)) ** (2 * alpha + 2), axis=0
+        )
 
     # Acceleration term U
     U = 2 / ((2 * alpha + 1) * N ** (2 * alpha + 1))

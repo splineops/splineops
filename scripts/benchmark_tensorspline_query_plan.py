@@ -1,4 +1,4 @@
-"""Benchmark repeated TensorSpline coordinates with and without a query plan."""
+"""Benchmark fixed geometry across changing compatible TensorSpline data."""
 
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ import numpy as np
 from splineops import TensorSpline, __version__
 
 
-def _measure(call, repeats: int) -> tuple[float, int]:
+def _measure(calls) -> tuple[float, int]:
     timings = []
     tracemalloc.start()
-    for _ in range(repeats):
+    for call in calls:
         started = time.perf_counter()
         call()
         timings.append(time.perf_counter() - started)
@@ -41,19 +41,28 @@ def main() -> int:
         parser.error("points/repeats must be positive and shape at least two")
 
     rng = np.random.default_rng(args.seed)
-    data = rng.standard_normal((args.shape, args.shape))
     construction = (np.arange(args.shape, dtype=float),) * 2
     query = tuple(rng.uniform(0.0, args.shape - 1.0, args.points) for _ in range(2))
-    spline = TensorSpline(data, construction, bases="bspline3", modes="mirror")
+    splines = [
+        TensorSpline(
+            rng.standard_normal((args.shape, args.shape)),
+            construction,
+            bases="bspline3",
+            modes="mirror",
+        )
+        for _ in range(args.repeats)
+    ]
 
     started = time.perf_counter()
-    plan = spline.query_plan(query, grid=False)
+    plan = splines[0].query_plan(query, grid=False)
     construction_seconds = time.perf_counter() - started
     ordinary_seconds, ordinary_peak = _measure(
-        lambda: spline(query, grid=False), args.repeats
+        [lambda spline=spline: spline(query, grid=False) for spline in splines]
     )
-    planned_seconds, planned_peak = _measure(plan.apply, args.repeats)
-    np.testing.assert_equal(plan(), spline(query, grid=False))
+    planned_seconds, planned_peak = _measure(
+        [lambda spline=spline: plan.apply(spline) for spline in splines]
+    )
+    np.testing.assert_equal(plan.apply(splines[-1]), splines[-1](query, grid=False))
 
     rows = [
         {
@@ -85,6 +94,7 @@ def main() -> int:
             "shape": [args.shape, args.shape],
             "basis": "bspline3",
             "mode": "mirror",
+            "data_workload": "changing preconstructed compatible splines",
         },
         "speedup": ordinary_seconds / planned_seconds,
         "break_even_repetitions": construction_seconds

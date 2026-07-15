@@ -87,18 +87,20 @@ Module status
        reference path.
    * - ``TensorSpline``
      - Stabilizing
-     - Rich continuous spline models; edge-case, dtype, and bounded-memory
-       contracts are being completed.
+     - Rich continuous spline models with separable-grid contraction,
+       bounded-memory queries, and reusable fixed-coordinate geometry.
    * - Affine and differentials
      - Experimental
-     - Valuable spline-based operations whose APIs and large-volume memory
-       behavior are being strengthened.
+     - General planned affine transforms and vectorized 2-D/3-D derivative
+       families with explicit spatial contracts.
    * - Smoothing and adaptive regression
      - Experimental
-     - Research methods undergoing implementation and provenance audits.
+     - Research methods with reusable frequency responses or sparse
+       factorizations; broader numerical references are still needed.
    * - Pyramids and wavelets
      - Experimental
-     - Multiscale tools awaiting broader perfect-reconstruction guarantees.
+     - Vectorized multiscale tools awaiting broader perfect-reconstruction
+       guarantees, especially for inherited order-5 taps.
 
 Experimental modules remain available and independent.  The label describes
 validation and API maturity, not the quality of the underlying research.

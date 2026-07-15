@@ -332,3 +332,28 @@ def test_all_spline_wavelet_orders_have_a_bounded_reconstruction_error(
     reconstructed = wavelet.synthesis(wavelet.analysis(image))
 
     assert np.max(np.abs(reconstructed - image)) < max_error
+
+
+@pytest.mark.parametrize("operation", [reduce_1d, expand_1d])
+def test_pyramid_promotes_integer_samples(operation):
+    result = operation(np.arange(8), np.array([1.0, 0.25]), centered=False)
+
+    assert result.dtype == np.float64
+
+
+@pytest.mark.parametrize("wavelet_class", [HaarWavelets, Spline3Wavelets])
+def test_wavelets_promote_integer_samples_and_preserve_float32(wavelet_class):
+    wavelet = wavelet_class(scales=2)
+
+    integer_result = wavelet.analysis(np.arange(64).reshape(8, 8))
+    float_result = wavelet.analysis(np.arange(64, dtype=np.float32).reshape(8, 8))
+
+    assert integer_result.dtype == np.float64
+    assert float_result.dtype == np.float32
+
+
+def test_multiscale_rejects_nonfinite_values():
+    with pytest.raises(ValueError, match="finite"):
+        reduce_1d(np.array([0.0, np.nan]), np.array([1.0]), False)
+    with pytest.raises(ValueError, match="finite"):
+        HaarWavelets(scales=1).analysis(np.full((2, 2), np.inf))

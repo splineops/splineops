@@ -40,6 +40,149 @@ class DenoisingDiagnostics:
     dual_residual: float
 
 
+class DenoisingPlan:
+    """Reusable factorization for TV denoising on fixed sample locations.
+
+    The expensive sparse factorization depends on ``x`` and ``rho``, but not
+    on the observations or regularization strength.  A plan is therefore most
+    useful for denoising many signals sampled at the same locations, or for a
+    regularization-parameter sweep.
+
+    Parameters
+    ----------
+    x : ndarray
+        Strictly increasing one-dimensional sample locations.
+    rho : float, optional
+        Positive ADMM penalty parameter.
+    """
+
+    def __init__(self, x: np.ndarray, rho: float = 1.0) -> None:
+        x = np.asarray(x)
+        if x.ndim != 1:
+            raise ValueError("'x' must be a one-dimensional array.")
+        if x.size < 3:
+            raise ValueError("At least three samples are required for TV denoising.")
+        if not np.all(np.isfinite(x)):
+            raise ValueError("'x' must contain only finite values.")
+        if not np.all(np.diff(x) > 0):
+            raise ValueError("'x' must be strictly increasing.")
+        if not np.isfinite(rho) or rho <= 0:
+            raise ValueError("'rho' must be finite and positive.")
+
+        self.x = np.array(x, copy=True)
+        self.x.flags.writeable = False
+        self.rho = float(rho)
+        self._regularizer = _regularization_matrix(self.x, fmt="csc")
+        self._regularizer_transpose = self._regularizer.transpose().tocsr()
+        normal_matrix = self._regularizer_transpose @ self._regularizer
+        system = sp.eye(self.x.size, format="csc") + self.rho * normal_matrix.tocsc()
+        self._solve_system = spla.factorized(system)
+
+    def solve(
+        self,
+        y: np.ndarray,
+        lamb: float,
+        *,
+        max_iter: int = int(1e4),
+        relative_tol: float = 1e-7,
+        return_diagnostics: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, DenoisingDiagnostics]:
+        """Denoise one signal while reusing this plan's factorization."""
+
+        y = np.asarray(y)
+        if y.ndim != 1:
+            raise ValueError("'y' must be a one-dimensional array.")
+        if y.size != self.x.size:
+            raise ValueError("'x' and 'y' must have the same size.")
+        if not np.all(np.isfinite(y)):
+            raise ValueError("'y' must contain only finite values.")
+        _validate_solver_parameters(lamb, max_iter, relative_tol, return_diagnostics)
+
+        lamb_max, polynomial = _lambda_max(self.x, y)
+        diagnostics = DenoisingDiagnostics(0, True, 0.0, 0.0)
+        if lamb == 0:
+            result = y.copy()
+        elif lamb >= lamb_max:
+            result = polynomial[0] * np.ones_like(self.x) + polynomial[1] * self.x
+        else:
+            result, diagnostics = self._solve_admm(
+                y,
+                float(lamb),
+                max_iter=int(max_iter),
+                relative_tol=float(relative_tol),
+            )
+        if return_diagnostics:
+            return result, diagnostics
+        return result
+
+    def _solve_admm(
+        self,
+        y: np.ndarray,
+        lamb: float,
+        *,
+        max_iter: int,
+        relative_tol: float,
+    ) -> tuple[np.ndarray, DenoisingDiagnostics]:
+        regularizer = self._regularizer
+        regularizer_transpose = self._regularizer_transpose
+        rho = self.rho
+        signal = np.result_type(y.dtype, np.float64).type(1) * y
+        xk = signal
+        zk = regularizer @ signal
+        yk = np.zeros(regularizer.shape[0], dtype=signal.dtype)
+        converged = False
+        primal_residual = np.inf
+        dual_residual = np.inf
+
+        for iteration in range(max_iter):
+            previous_z = zk
+            right_hand_side = signal + rho * regularizer_transpose @ (zk - yk / rho)
+            xk = self._solve_system(right_hand_side)
+            regularized_x = regularizer @ xk
+            zk = _prox_L1(regularized_x + yk / rho, lamb / rho)
+            yk += rho * (regularized_x - zk)
+
+            primal_residual = np.linalg.norm(regularized_x - zk)
+            dual_residual = rho * np.linalg.norm(
+                regularizer_transpose @ (zk - previous_z)
+            )
+            primal_epsilon = relative_tol * max(
+                np.linalg.norm(regularized_x), np.linalg.norm(zk)
+            )
+            dual_epsilon = relative_tol * np.linalg.norm(regularizer_transpose @ yk)
+            if primal_residual <= primal_epsilon and dual_residual <= dual_epsilon:
+                converged = True
+                break
+
+        diagnostics = DenoisingDiagnostics(
+            iterations=iteration + 1,
+            converged=converged,
+            primal_residual=float(primal_residual),
+            dual_residual=float(dual_residual),
+        )
+        return xk, diagnostics
+
+
+def _validate_solver_parameters(
+    lamb: float,
+    max_iter: int,
+    relative_tol: float,
+    return_diagnostics: bool,
+) -> None:
+    if not np.isfinite(lamb) or lamb < 0:
+        raise ValueError("'lamb' must be finite and non-negative.")
+    if (
+        isinstance(max_iter, (bool, np.bool_))
+        or int(max_iter) != max_iter
+        or max_iter <= 0
+    ):
+        raise ValueError("'max_iter' must be a positive integer.")
+    if not np.isfinite(relative_tol) or relative_tol <= 0:
+        raise ValueError("'relative_tol' must be finite and positive.")
+    if not isinstance(return_diagnostics, (bool, np.bool_)):
+        raise TypeError("'return_diagnostics' must be a boolean.")
+
+
 def denoise_y(
     x: np.ndarray,
     y: np.ndarray,
@@ -99,20 +242,9 @@ def denoise_y(
         raise ValueError("'x' and 'y' must contain only finite values.")
     if not np.all(np.diff(x) > 0):
         raise ValueError("'x' must be strictly increasing.")
-    if not np.isfinite(lamb) or lamb < 0:
-        raise ValueError("'lamb' must be finite and non-negative.")
+    _validate_solver_parameters(lamb, max_iter, relative_tol, return_diagnostics)
     if lamb > 0 and (not np.isfinite(rho) or rho <= 0):
         raise ValueError("'rho' must be finite and positive when 'lamb' is positive.")
-    if (
-        isinstance(max_iter, (bool, np.bool_))
-        or int(max_iter) != max_iter
-        or max_iter <= 0
-    ):
-        raise ValueError("'max_iter' must be a positive integer.")
-    if not np.isfinite(relative_tol) or relative_tol <= 0:
-        raise ValueError("'relative_tol' must be finite and positive.")
-    if not isinstance(return_diagnostics, (bool, np.bool_)):
-        raise TypeError("'return_diagnostics' must be a boolean.")
     lamb_max, polynomial = _lambda_max(x, y)
     diagnostics = DenoisingDiagnostics(0, True, 0.0, 0.0)
     if lamb == 0:
@@ -123,41 +255,12 @@ def denoise_y(
         # If lamb is too high, the problem amounts to linear regression
         y_denoised = polynomial[0] * np.ones_like(x) + polynomial[1] * x
     else:
-        # Otherwise, solve denoising problem using ADMM
-        # Define matrices
-        L = _regularization_matrix(x, fmt="csc")  # build as CSC directly
-        Lt = L.transpose().tocsr()  # transpose -> CSR
-        A = Lt @ L  # CSR @ CSC -> sparse
-        M = sp.eye(len(x), format="csc") + rho * A.tocsc()
-        # ADMM initialization
-        xk, zk, yk = y, L @ y, np.zeros(L.shape[0])
-        # Run ADMM
-        converged = False
-        primal_res = np.inf
-        dual_res = np.inf
-        for it in range(max_iter):
-            z_prev = zk  # Needed for stopping criterion
-            # ADMM updates (notations follow Boyd et al. 2011)
-            b = y + rho * Lt @ (zk - yk / rho)
-            xk = spla.spsolve(M, b)
-            Lxk = L @ xk  # Precomputation
-            zk = _prox_L1(Lxk + yk / rho, lamb / rho)
-            yk += rho * (Lxk - zk)
-
-            # ADMM stopping criterion (as suggested by Boyd et al. 2011)
-            primal_res = np.linalg.norm(Lxk - zk)
-            dual_res = rho * np.linalg.norm(Lt @ (zk - z_prev))
-            primal_eps = relative_tol * max(np.linalg.norm(Lxk), np.linalg.norm(zk))
-            dual_eps = relative_tol * np.linalg.norm(Lt @ yk)
-            if (primal_res <= primal_eps) and (dual_res <= dual_eps):
-                converged = True
-                break
-        y_denoised = xk
-        diagnostics = DenoisingDiagnostics(
-            iterations=it + 1,
-            converged=converged,
-            primal_residual=float(primal_res),
-            dual_residual=float(dual_res),
+        plan = DenoisingPlan(x, rho=rho)
+        y_denoised, diagnostics = plan._solve_admm(
+            y,
+            float(lamb),
+            max_iter=int(max_iter),
+            relative_tol=float(relative_tol),
         )
     if return_diagnostics:
         return y_denoised, diagnostics
