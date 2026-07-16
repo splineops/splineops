@@ -83,12 +83,12 @@ published numerical reference or exact reconstruction property is incomplete;
 the order-5 spline wavelet is one explicit example.  These limits are recorded in
 :doc:`project-status` and :doc:`provenance`.
 
-The stabilization work is intentionally unreleased.  The next decision point
-is evidence over time rather than another broad implementation wave: collect
-the new cross-platform API-soak artifacts and let real downstream use exercise
+This stabilization work informed the 2.1 release, but it does not promote the
+experimental modules.  The next decision point is evidence over time rather
+than another broad implementation wave: let real downstream use exercise
 coefficient persistence, output selection, and explicit-axis APIs without
 contract changes.  Promote modules only when their individual graduation
-audits close.  A release is explicitly not required at this stage.
+audits close.
 
 Purpose
 -------

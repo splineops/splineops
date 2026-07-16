@@ -284,18 +284,20 @@ plot_difference_image(
 
 from splineops.spline_interpolation.tensor_spline import TensorSpline
 
-# 1) Build uniform coordinate arrays that match the shape of 'input_image_normalized'
-height, width = input_image_normalized.shape
+# 1) Build a float64 spline model and matching uniform coordinate arrays.
+# TensorSpline requires construction coordinates and data to share precision.
+spline_data = input_image_normalized.astype(np.float64, copy=False)
+height, width = spline_data.shape
 
-# Use the same dtype as the image for coordinates, so everything lives in DTYPE.
-x_coords = np.linspace(0, height - 1, height, dtype=input_image_normalized.dtype)
-y_coords = np.linspace(0, width - 1, width, dtype=input_image_normalized.dtype)
+# Float64 also keeps an intended uniform grid uniform after spacing checks.
+x_coords = np.linspace(0, height - 1, height, dtype=np.float64)
+y_coords = np.linspace(0, width - 1, width, dtype=np.float64)
 coordinates_2d = (x_coords, y_coords)
 
 # 2) For "cubic interpolation", pick "bspline3".
 #    For boundary handling, we can pick "mirror", "zero", etc.
 ts = TensorSpline(
-    data=input_image_normalized,
+    data=spline_data,
     coordinates=coordinates_2d,
     bases="bspline3",  # cubic B-splines
     modes="mirror",  # handles boundaries with mirroring
@@ -305,26 +307,28 @@ ts = TensorSpline(
 zoomed_height = int(height * zoom_factors_2d[0])
 zoomed_width = int(width * zoom_factors_2d[1])
 
-x_coords_zoomed = np.linspace(
-    0, height - 1, zoomed_height, dtype=input_image_normalized.dtype
-)
-y_coords_zoomed = np.linspace(
-    0, width - 1, zoomed_width, dtype=input_image_normalized.dtype
-)
+x_coords_zoomed = np.linspace(0, height - 1, zoomed_height, dtype=np.float64)
+y_coords_zoomed = np.linspace(0, width - 1, zoomed_width, dtype=np.float64)
 coords_zoomed_2d = (x_coords_zoomed, y_coords_zoomed)
 
 # Evaluate (forward pass): zoom in or out
 resized_direct_ts = ts(coordinates=coords_zoomed_2d)
 
-# 4) Define coordinate grids for returning to the original shape
-x_coords_orig = np.linspace(0, height - 1, height, dtype=input_image_normalized.dtype)
-y_coords_orig = np.linspace(0, width - 1, width, dtype=input_image_normalized.dtype)
+# 4) Construct the resized spline on exact integer sample indices, then map the
+# original output length onto that index domain. This is the same endpoint
+# geometry without using a rounded linspace as a construction grid.
+coords_zoomed_indices = (
+    np.arange(zoomed_height, dtype=np.float64),
+    np.arange(zoomed_width, dtype=np.float64),
+)
+x_coords_orig = np.linspace(0, zoomed_height - 1, height, dtype=np.float64)
+y_coords_orig = np.linspace(0, zoomed_width - 1, width, dtype=np.float64)
 coords_orig_2d = (x_coords_orig, y_coords_orig)
 
 # Evaluate (backward pass): from zoomed shape back to original
 ts_zoomed = TensorSpline(
     data=resized_direct_ts,
-    coordinates=coords_zoomed_2d,
+    coordinates=coords_zoomed_indices,
     bases="bspline3",
     modes="mirror",
 )

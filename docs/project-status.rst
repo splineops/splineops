@@ -138,6 +138,11 @@ explicit spline semantics—not a claim of universal image-resize leadership.
 Current execution result
 ------------------------
 
+The dated accounts below preserve the wording used when each pre-release
+evidence pass completed.  They are an engineering record, not the current
+distribution status; see the `project changelog
+<https://github.com/splineops/splineops/blob/main/CHANGELOG.md>`_.
+
 After the first roadmap implementation pass, the same Linux development
 environment completed ``1134 passed`` in 125.37 seconds.  Black formatting,
 the scoped MyPy check, a strict Sphinx build, wheel and source-distribution

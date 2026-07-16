@@ -155,7 +155,7 @@ exclude_patterns = [
 # HTML output
 # -----------------------------------------------------------------------------
 html_theme = "pydata_sphinx_theme"
-html_title = f"{project} Documentation"
+html_title = f"{project} {release} documentation"
 
 # IMPORTANT: include GENERATED_STATIC_DIR so its contents get copied to final _static/
 html_static_path = ["_static", str(GENERATED_STATIC_DIR)]

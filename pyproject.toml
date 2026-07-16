@@ -11,8 +11,8 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "splineops"
-version = "2.0.0"
-description = "Precise spline interpolation and projection-based N-D resizing."
+version = "2.1.0"
+description = "Projection-based antialiased resizing for N-D scientific arrays."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [

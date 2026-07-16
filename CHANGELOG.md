@@ -2,7 +2,23 @@
 
 All notable changes to SplineOps are documented here.
 
-## Unreleased
+## 2.1.0 - 2026-07-16
+
+Version 2.1 makes the stable resize path easier to evaluate and adopt while
+keeping the broader research modules explicit about their maturity.
+
+### Documentation
+
+- Reworked the README and documentation home page around one clear use case:
+  projection-based antialiased resizing of N-D scientific arrays.
+- Added a short method-selection quickstart and a practical 3-D volume
+  downsampling tutorial with explicit spatial-axis examples.
+- Added a public maturity table, an evidence scorecard, and clearer limits on
+  performance and accuracy claims.
+- Updated the interpolation gallery example to follow ``TensorSpline``'s
+  uniform-grid and matching-precision construction contract.
+- Moved internal audits and execution records behind the user guides in the
+  navigation without removing the underlying evidence.
 
 ### Contracts and correctness
 
@@ -92,7 +108,8 @@ All notable changes to SplineOps are documented here.
   worker fan-out while preserving explicit `LSRESIZE_NUM_THREADS` overrides.
 - Added complete-workflow benchmarks, stored machine-relative regression
   thresholds, plan lifecycle recipes, and a manual Linux/macOS/Windows resize
-  benchmark matrix.  These are pre-release evidence gates, not a release.
+  benchmark matrix. These are evidence gates, not portable performance
+  promises.
 - Added targeted explicit-axis affine, differential, and wavelet workflow
   measurements and regression floors. CI failure annotations now select the
   pytest failure section, and cross-platform FFT equivalence uses a tight
@@ -101,7 +118,7 @@ All notable changes to SplineOps are documented here.
   machine-readable growth and equivalence summaries. The development benchmark
   now runs publication-branch smoke evidence, or a manually selected profile,
   on Linux, macOS, and Windows and publishes per-runner artifacts. These remain
-  evidence and soak gates, not release promises.
+  evidence and soak gates, not portable performance promises.
 - Added persisted registration and buffered 3-D feature soak workloads,
   independent Keys/O-MOMS/fractional-smoothing references, and an instrumented
   affine phase profile. A `[standard-bench]` commit deliberately requests the
@@ -115,8 +132,8 @@ All notable changes to SplineOps are documented here.
   across smoke/standard/extended profiles with cross-platform JSON artifacts.
 - Published the exact backend boundary and separate Affine/Differentials
   graduation audits. CuPy remains experimental TensorSpline interoperability,
-  including a documented CPU-transfer path, and no module is promoted or
-  released by this evidence pass.
+  including a documented CPU-transfer path, and no additional module is
+  promoted by this release.
 - Added a dated, consolidated progress snapshot covering all seven improvement
   passes, current module maturity, local and cross-platform evidence, measured
   performance conclusions, deliberate non-decisions, and the remaining

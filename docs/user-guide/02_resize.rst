@@ -8,11 +8,44 @@ Resize
 Overview
 --------
 
-The :ref:`resize <api-resize>` module in :ref:`SplineOps <api-index>` provides high-performance,
-high-fidelity resizing for N-dimensional arrays.
+The :ref:`resize <api-resize>` module provides regular-grid N-D interpolation
+and projection-based antialiasing with explicit output geometry.  A native CPU
+backend accelerates the same contract implemented by the Python reference.
 
-This module allows us to obtain classical standard cubic interpolation (see following animation, at left) and 
-high-quality antialiasing projection-based (see following animation, at right).
+Method selection
+----------------
+
+.. list-table:: Recommended starting points
+   :header-rows: 1
+   :widths: 31 30 39
+
+   * - Goal
+     - Method
+     - Note
+   * - Continuous-data downsampling
+     - ``cubic-antialiasing``
+     - Recommended starting point.
+   * - Faster downsampling
+     - ``linear-antialiasing``
+     - Uses a lower-order spline model.
+   * - Upsampling
+     - ``cubic``
+     - Interpolation without projection.
+   * - Categorical labels
+     - ``fast``
+     - Nearest-neighbour semantics; validate the intended grid convention.
+   * - Research configurations
+     - ``resize_degrees``
+     - Exposes the three spline degrees directly.
+
+Antialiasing methods are intended principally for downsampling.  When arrays
+contain batch or channel dimensions, pass only the spatial ``axes``.  SplineOps
+uses one endpoint-aligned coordinate grid; coordinate conventions must match
+before outputs are compared with another library.  See :doc:`../quickstart`
+for the shortest working examples.
+
+The animation below contrasts cubic interpolation with cubic projection
+antialiasing.
 
 .. only:: html
 
@@ -63,8 +96,8 @@ method, but use a lower-degree analysis space:
 
 This is the recommended public method family for antialiasing resize. It is
 less expensive than equal-degree least-squares projection in production
-downsampling cases, while preserving the spline model and high-quality N-D
-behavior. Equal-degree least-squares remains available through
+downsampling cases while retaining explicit spline semantics. Equal-degree
+least-squares remains available through
 ``resize_degrees`` for advanced and reference use, but it is deliberately not
 exposed as a routine preset.
 
@@ -98,8 +131,8 @@ Conceptually, resizing then means:
 - choosing the endpoint-aligned output grid with effective input-coordinate
   step :math:`T=(N-1)/(M-1)`
   (e.g., :math:`0, T, 2T, 3T, \dots`),
-- and constructing a new spline :math:`g` that “lives” on that new grid and
-  best represents the same underlying continuous function.
+- and constructing a projected spline :math:`g` that lives on the new grid
+  and approximates the same underlying continuous function.
 
 We illustrate this with the 1D example
 :ref:`sphx_glr_auto_examples_01_spline_interpolation_05_resample_a_1d_spline.py`,

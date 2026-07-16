@@ -1,96 +1,77 @@
-.. splineops/docs/user-guide/index.rst
-
-User Guide
+User guide
 ==========
 
-This guide provides detailed explanations, tutorials, and examples to use the modules available in :ref:`SplineOps <api-index>`.
+Start with resize
+-----------------
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Modules
-   :titlesonly:
-   :hidden:
+The stable product surface is regular-grid N-D resizing with explicit
+coordinates and projection antialiasing.
 
-   01_spline_interpolation
-   02_resize
-   03_affine
-   04_adaptive_regression_splines
-   05_smoothing_splines
-   06_differentials
-   07_multiscale
-
-Module Overview
----------------
-
-.. grid:: 3
+.. grid:: 2
    :gutter: 2
-
-   .. grid-item-card:: Spline Interpolation
-      :link: 01_spline_interpolation
-      :link-type: doc
-      :img-top: /auto_examples/01_spline_interpolation/images/sphx_glr_04_interpolate_1d_samples_003.png
-      :img-alt: Cubic B-spline basis
-      :shadow: md
-      :class-card: sd-rounded-2 sd-border
-
-      Extensible Python-based interpolation class for multidimensional data.
 
    .. grid-item-card:: Resize
       :link: 02_resize
       :link-type: doc
-      :img-top: /auto_examples/02_resize/images/sphx_glr_06_benchmarking_055.png
-      :img-alt: 1D spline resampling
-      :shadow: md
-      :class-card: sd-rounded-2 sd-border
 
-      Fast, top quality projection methods to resample multidimensional data.
+      Choose methods, geometry, axes, boundaries, and reusable plans.
+
+   .. grid-item-card:: Five-minute quickstart
+      :link: ../quickstart
+      :link-type: doc
+
+      Downsample an array and select spatial axes safely.
+
+Continuous models
+-----------------
+
+``TensorSpline`` is a separate, stabilizing abstraction for evaluating a
+continuous tensor-product spline at arbitrary coordinates.
+
+.. grid:: 1
+
+   .. grid-item-card:: TensorSpline
+      :link: 01_spline_interpolation
+      :link-type: doc
+
+      Construct and query continuous spline models with multiple bases and
+      extension modes.
+
+Research modules
+----------------
+
+The following modules are experimental.  Their APIs and validation contracts
+may still change.
+
+.. grid:: 3
+   :gutter: 2
 
    .. grid-item-card:: Affine
       :link: 03_affine
       :link-type: doc
-      :img-top: /auto_examples/03_affine/images/sphx_glr_01_rotate_image_001.png
-      :img-alt: Rotated image example
-      :shadow: md
-      :class-card: sd-rounded-2 sd-border
 
-      Affine transforms on 2D/3D data using spline interpolation.
-
-   .. grid-item-card:: Adaptive Regression Splines
-      :link: 04_adaptive_regression_splines
-      :link-type: doc
-      :img-top: /auto_examples/04_adaptive_regression_splines/images/sphx_glr_01_adaptive_regression_splines_module_004.png
-      :img-alt: Piecewise-linear regression
-      :shadow: md
-      :class-card: sd-rounded-2 sd-border
-
-      Perform sparsest linear regression on 1D data.
-
-   .. grid-item-card:: Smoothing Splines
-      :link: 05_smoothing_splines
-      :link-type: doc
-      :img-top: /auto_examples/05_smoothing_splines/images/sphx_glr_01_1d_fractional_brownian_motion_001.png
-      :img-alt: Smoothing spline on an image
-      :shadow: md
-      :class-card: sd-rounded-2 sd-border
-
-      Fit splines to noisy data.
+      Spline-evaluated 2-D and 3-D affine transforms.
 
    .. grid-item-card:: Differentials
       :link: 06_differentials
       :link-type: doc
-      :img-top: /auto_examples/06_differentials/images/sphx_glr_01_differentials_module_002.png
-      :img-alt: Gradient/Laplacian visualisation
-      :shadow: md
-      :class-card: sd-rounded-2 sd-border
 
-      Compute first and second-order derivatives on 2D images.
+      Gradients, Laplacians, and Hessian features.
+
+   .. grid-item-card:: Smoothing
+      :link: 05_smoothing_splines
+      :link-type: doc
+
+      Fractional smoothing and related research methods.
+
+   .. grid-item-card:: Adaptive regression
+      :link: 04_adaptive_regression_splines
+      :link-type: doc
+
+      Sparse one-dimensional piecewise-linear models.
 
    .. grid-item-card:: Multiscale
       :link: 07_multiscale
       :link-type: doc
-      :img-top: /auto_examples/07_multiscale/images/sphx_glr_02_wavelet_decomposition_001.png
-      :img-alt: Multiscale / wavelet decomposition
-      :shadow: md
-      :class-card: sd-rounded-2 sd-border
 
-      Analyze 1D signals and 2D images at multiple scales.
+      Spline pyramids and wavelets.

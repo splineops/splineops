@@ -7,6 +7,37 @@ semantics, projection antialiasing, N-D execution, or reusable resize plans.
 It does not claim to beat specialized image libraries on every ordinary 2-D
 resize.
 
+Evidence summary
+----------------
+
+.. list-table:: What the current evidence establishes
+   :header-rows: 1
+   :widths: 25 32 43
+
+   * - Capability
+     - Evidence
+     - Interpretation
+   * - Native/reference agreement
+     - Contract and property tests across shapes, dtypes, and concurrency.
+     - The accelerated resize path follows the maintained numerical reference.
+   * - Native acceleration
+     - Reproducible native-versus-reference benchmarks.
+     - This measures internal acceleration, not competitive superiority.
+   * - Repeated geometry
+     - ``ResizePlan`` and query-plan benchmarks.
+     - Reuse can avoid meaningful setup work in matching workloads.
+   * - Cross-library behavior
+     - Timings plus numerical and semantic differences.
+     - Libraries with different grids, boundaries, or filters are not treated
+       as equivalent algorithms.
+   * - Independent competitive accuracy
+     - Not yet established across representative N-D applications.
+     - No universal best-quality claim is made.
+
+Numerical difference from SplineOps is not an accuracy metric unless an
+independent ground truth is available.  All dated values below are development
+snapshots rather than portable guarantees.
+
 TensorSpline baseline
 ---------------------
 

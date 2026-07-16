@@ -1,47 +1,15 @@
-SplineOps: precise spline operations in N-D
-===========================================
+SplineOps
+=========
 
-**SplineOps** provides mathematically explicit spline interpolation and
-projection-based resizing for data sampled on regular N-dimensional grids.  It
-combines a readable Python reference implementation with a carefully tested
-native resize backend for demanding 2-D and 3-D workloads.
+**Projection-based antialiased resizing for N-D scientific arrays.**
 
-The project grows from an exceptional lineage of spline research and software
-developed by the `Biomedical Imaging Group at EPFL
-<https://bigwww.epfl.ch/>`_ and its collaborators.  SplineOps brings those
-methods into a modern Python package with explicit numerical contracts,
-cross-platform tests, reproducible benchmarks, and honest module maturity
-labels.
-
-Why SplineOps?
---------------
-
-* **Precise N-D resizing.**  Resize uses a defined endpoint-aligned sampling
-  grid and offers projection-based antialiasing rather than treating
-  downsampling as interpolation alone.
-* **A true continuous model.**  ``TensorSpline`` constructs independent
-  tensor-product spline models with B-spline, O-MOMS, and other bases for
-  evaluation at arbitrary coordinates.
-* **Reference and accelerated paths.**  Native resize execution is checked
-  against the Python numerical reference across shapes, dtypes, concurrency,
-  and resource limits.
-* **Scientific honesty.**  Comparisons report numerical differences and
-  semantic mismatches as well as timing.  SplineOps is not presented as the
-  fastest generic 2-D image resizer.
-* **A visible path to maturity.**  Stable, stabilizing, and experimental
-  modules have published graduation gates in the :doc:`roadmap`.
-
-.. figure:: _static/waveletbird_full.jpeg
-   :alt: A medley of spline functions and derivatives
-   :align: center
-   :scale: 40%
-
-   A medley of spline functions and their derivatives.
+SplineOps is designed for precise, repeatable downsampling of regular-grid
+2-D images and 3-D volumes.  It combines explicit coordinate semantics, a
+readable Python reference implementation, a native CPU backend, and reusable
+plans for fixed-geometry workloads.
 
 Start here
 ----------
-
-Resize a volume with projection antialiasing:
 
 .. code-block:: python
 
@@ -49,131 +17,114 @@ Resize a volume with projection antialiasing:
    from splineops import resize
 
    volume = np.random.default_rng(0).random((64, 192, 192), dtype=np.float32)
-   smaller = resize(
+   coarse = resize(
        volume,
        output_size=(32, 96, 96),
        method="cubic-antialiasing",
    )
 
-Construct an independent continuous spline model:
+The antialiasing methods project the input spline onto a coarser spline space
+instead of treating downsampling as interpolation alone.  Continue with the
+:doc:`quickstart`, then use the :doc:`volume-downsampling` tutorial for a
+batched 3-D workflow.
 
-.. code-block:: python
+Choose SplineOps when
+---------------------
 
-   import numpy as np
-   from splineops.spline_interpolation.tensor_spline import TensorSpline
+* continuous-valued 2-D or 3-D NumPy data must be downsampled;
+* coordinate, boundary, and output-shape semantics must be explicit;
+* aliasing matters; or
+* many arrays share one resize geometry.
 
-   data = np.array([0.0, 1.0, 0.0, -1.0])
-   grid = np.arange(data.size, dtype=np.float64)
-   spline = TensorSpline(data, (grid,), bases="bspline3", modes="mirror")
-   values = spline((np.linspace(0.0, 3.0, 31),))
+Choose another tool when differentiable GPU execution or automatic
+physical-space image metadata is required.  For ordinary display-image scaling,
+OpenCV or Pillow may be simpler.  Categorical labels normally require
+nearest-neighbour rather than spline-projection semantics.
 
-``TensorSpline`` is not implemented as resize, and resize is not implemented by
-constructing a ``TensorSpline``.  The modules have different purposes and keep
-their own public contracts.
+Release status
+--------------
 
-Module status
--------------
-
-.. list-table:: Current maturity
+.. list-table:: SplineOps 2.1 public maturity
    :header-rows: 1
-   :widths: 22 15 63
+   :widths: 24 16 60
 
    * - Module
      - Status
-     - Current strength
+     - Public position
    * - Resize and ``ResizePlan``
      - Stable
      - Native N-D interpolation and projection antialiasing with a Python
        reference path.
    * - ``TensorSpline``
      - Stabilizing
-     - Rich continuous spline models with separable-grid contraction,
-       bounded-memory queries, and reusable fixed-coordinate geometry.
-   * - Affine and differentials
+     - Continuous tensor-product models evaluated at arbitrary coordinates.
+   * - Other spline modules
      - Experimental
-     - General planned affine transforms and vectorized 2-D/3-D derivative
-       families with explicit spatial contracts.
-   * - Smoothing and adaptive regression
-     - Experimental
-     - Research methods with reusable frequency responses or sparse
-       factorizations; broader numerical references are still needed.
-   * - Pyramids and wavelets
-     - Experimental
-     - Vectorized multiscale tools awaiting broader perfect-reconstruction
-       guarantees, especially for inherited order-5 taps.
+     - Available for research while their contracts and independent reference
+       coverage mature.
 
-Experimental modules remain available and independent.  The label describes
-validation and API maturity, not the quality of the underlying research.
-See :doc:`progress` for the consolidated development snapshot and
-:doc:`project-status` for the evidence behind these labels.
+SplineOps does not claim to be the fastest generic 2-D resizer.  Its strongest
+position is explicit spline semantics, N-D projection antialiasing,
+native/reference parity, and reusable fixed-geometry execution.  See
+:doc:`performance` for measured wins, losses, and limitations.
 
-Modules at a glance
--------------------
+Research lineage
+----------------
 
-.. grid:: 3
-   :gutter: 2
-
-   .. grid-item-card:: Spline Interpolation
-      :link: user-guide/01_spline_interpolation
-      :link-type: doc
-
-      Continuous tensor-product spline models evaluated at arbitrary
-      coordinates.
-
-   .. grid-item-card:: Resize
-      :link: user-guide/02_resize
-      :link-type: doc
-
-      Specialized regular-grid resampling with projection-based antialiasing.
-
-   .. grid-item-card:: Affine
-      :link: user-guide/03_affine
-      :link-type: doc
-
-      Geometric transformations on images and volumes.
-
-   .. grid-item-card:: Adaptive Regression Splines
-      :link: user-guide/04_adaptive_regression_splines
-      :link-type: doc
-
-      Sparse one-dimensional piecewise-linear models.
-
-   .. grid-item-card:: Smoothing Splines
-      :link: user-guide/05_smoothing_splines
-      :link-type: doc
-
-      Fractional and recursive smoothing methods for signals and arrays.
-
-   .. grid-item-card:: Differentials
-      :link: user-guide/06_differentials
-      :link-type: doc
-
-      Gradients, Laplacians, and Hessian features from spline representations.
-
-   .. grid-item-card:: Multiscale
-      :link: user-guide/07_multiscale
-      :link-type: doc
-
-      Spline pyramids and wavelets for multiscale analysis.
-
-Contents
---------
+SplineOps modernizes spline methods developed across the `Biomedical Imaging
+Group at EPFL <https://bigwww.epfl.ch/>`_ and its collaborators.  Method
+citations, implementation history, and source provenance are recorded in
+:doc:`provenance`.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Documentation
+   :caption: Getting started
 
    installation/index
-   progress
+   quickstart
+   volume-downsampling
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Core guides
+
+   user-guide/index
+   user-guide/02_resize
+   user-guide/01_spline_interpolation
+   consolidation-recipes
+   auto_examples/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Evidence
+
+   performance
    project-status
    backend-support
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Research modules
+
+   user-guide/03_affine
+   user-guide/04_adaptive_regression_splines
+   user-guide/05_smoothing_splines
+   user-guide/06_differentials
+   user-guide/07_multiscale
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Project
+
+   provenance
+   roadmap
+   progress
    stability-soak
    graduation-audits
-   consolidation-recipes
-   user-guide/index
-   auto_examples/index
-   api/index
-   provenance
    internal-contracts
-   performance
-   roadmap
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Reference
+
+   api/index

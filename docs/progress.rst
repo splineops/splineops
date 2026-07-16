@@ -3,12 +3,11 @@ Progress so far
 
 Snapshot: 2026-07-16, commit ``df94733`` on ``feature/publication``.
 
-SplineOps has completed seven repository-wide improvement passes without
-collapsing its independent public modules into one abstraction and without
-rushing a new release.  The project now has a clear purpose, substantially
-stronger numerical and resource contracts, reproducible performance evidence,
-and explicit maturity gates.  This page summarizes the outcome in one place;
-the :doc:`project-status`, :doc:`performance`, :doc:`stability-soak`, and
+SplineOps completed seven repository-wide improvement passes before the 2.1
+release preparation.  The work kept independent public modules separate while
+strengthening numerical and resource contracts, reproducible performance
+evidence, and maturity gates.  This page is the dated engineering record; the
+:doc:`project-status`, :doc:`performance`, :doc:`stability-soak`, and
 :doc:`roadmap` pages retain the detailed evidence.
 
 Current outcome
@@ -167,8 +166,8 @@ Decisions deliberately not taken
 * Affine and Differentials were audited but not promoted.  Their remaining gate
   is compatibility evidence over time, not another burst of implementation;
   see :doc:`graduation-audits`.
-* No release or tag was created.  This work is intentionally pre-release
-  stabilization evidence.
+* The evidence passes did not promote Affine, Differentials, or any other
+  experimental module.  The 2.1 release keeps those maturity labels.
 
 Practical next steps
 --------------------
@@ -185,8 +184,8 @@ Practical next steps
 #. Accept further performance work only when a representative profile identifies
    a numerical kernel or allocation pattern—not orchestration that the soak is
    intentionally designed to exercise.
-#. Defer release planning until these observations justify either module
-   promotion or a user-facing compatibility milestone.
+#. Treat 2.1 as a compatibility milestone for the stable resize surface;
+   defer other module promotions until their published gates close.
 
 Reproducing the current evidence
 --------------------------------
