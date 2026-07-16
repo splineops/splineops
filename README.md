@@ -120,8 +120,11 @@ controlled denoising paths, and plan memory inspection.
 
 - NumPy is the supported array backend across the package.
 - The native C++ backend accelerates resize on CPU.
-- CuPy interoperability exists in parts of `TensorSpline`, but GPU support is
-  experimental until it has dedicated continuous-integration coverage.
+- CuPy interoperability exists only in parts of `TensorSpline`. No CuPy
+  configuration is currently advertised as supported: zero-boundary
+  coefficient filtering can transfer through a CPU solve, and the basis/mode
+  matrix has no dedicated GPU continuous-integration coverage. See the
+  [exact backend contract](https://splineops.github.io/backend-support.html).
 
 Set `SPLINEOPS_ACCEL=never` to force the Python resize reference path or
 `SPLINEOPS_ACCEL=always` to require the native extension.

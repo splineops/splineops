@@ -155,6 +155,42 @@ def test_nd_smoother_matches_published_fractional_transfer_function_fixture():
     np.testing.assert_allclose(result, expected, rtol=2e-15, atol=2e-15)
 
 
+def test_nd_smoother_matches_independent_two_dimensional_dense_dft():
+    # Build both Fourier matrices directly.  This checks the radial fractional
+    # response and 2-D frequency indexing without reusing scipy.fft, np.fft's
+    # transform implementation, or SmoothingSplinePlan's cached half-spectrum.
+    signal = np.array(
+        [
+            [0.5, -1.0, 0.25, 1.5, -0.2],
+            [1.1, 0.0, -0.7, 0.4, 0.9],
+            [-0.3, 0.8, 1.7, -1.2, 0.2],
+            [0.6, -0.4, 0.3, 1.0, -0.8],
+        ]
+    )
+    lamb = 0.3
+    gamma = 1.4
+    height, width = signal.shape
+    rows = np.arange(height)
+    columns = np.arange(width)
+    forward_rows = np.exp(-2j * np.pi * rows[:, None] * rows[None, :] / height)
+    forward_columns = np.exp(-2j * np.pi * columns[:, None] * columns[None, :] / width)
+    omega_rows = 2.0 * np.pi * np.fft.fftfreq(height)
+    omega_columns = 2.0 * np.pi * np.fft.fftfreq(width)
+    omega_squared = omega_rows[:, np.newaxis] ** 2 + omega_columns[np.newaxis, :] ** 2
+    response = 1.0 / (1.0 + lamb * omega_squared**gamma)
+    spectrum = forward_rows @ signal @ forward_columns.T
+    expected = np.real(
+        forward_rows.conj().T
+        @ (response * spectrum)
+        @ forward_columns.conj()
+        / (height * width)
+    )
+
+    result = SmoothingSplinePlan(signal.shape, lamb=lamb, gamma=gamma)(signal)
+
+    np.testing.assert_allclose(result, expected, rtol=3e-15, atol=3e-15)
+
+
 def test_recursive_smoother_matches_independent_dense_boundary_system():
     signal = np.random.default_rng(20260715).standard_normal(31)
     lamb = 0.7

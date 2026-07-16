@@ -87,22 +87,22 @@ plt.tight_layout()
 plt.show()
 
 # %%
-# GPU Support
-# -----------
+# Experimental CuPy probe
+# -----------------------
 #
-# We leverage the GPU for TensorSpline if CuPy is installed **and**
-# the device supports SM >= 7.0 (required by the demo kernels).
-# Otherwise, we skip this section gracefully.
+# This example probes the current ``TensorSpline`` CuPy interoperability when
+# CuPy and a CUDA device are available.  It is not a supported-backend or
+# device-residency claim: some boundary paths can transfer through CPU code,
+# and the full basis/mode matrix is not covered by dedicated GPU CI.
 
 
-def _has_supported_cuda() -> bool:
+def _has_cuda_device() -> bool:
     try:
         import cupy as cp
 
         if cp.cuda.runtime.getDeviceCount() <= 0:
             return False
-        major, minor = cp.cuda.Device().compute_capability
-        return major >= 7
+        return True
     except Exception:
         return False
 
@@ -114,8 +114,8 @@ try:
 except ImportError:
     HAS_CUPY = False
 
-if not HAS_CUPY or not _has_supported_cuda():
-    print("CuPy GPU demo skipped (no GPU or compute capability < 7.0).")
+if not HAS_CUPY or not _has_cuda_device():
+    print("Experimental CuPy probe skipped (no CUDA device).")
 else:
     try:
         # Convert existing data/coordinates to CuPy
@@ -139,4 +139,4 @@ else:
         print(f"Max abs diff (CPU vs GPU): {np.max(np.abs(diff)):.3e}")
         print(f"MSE (CPU vs GPU): {np.mean(diff**2):.3e}")
     except Exception as e:
-        print(f"CuPy GPU demo skipped due to runtime compile error: {e}")
+        print(f"Experimental CuPy probe skipped after a runtime error: {e}")

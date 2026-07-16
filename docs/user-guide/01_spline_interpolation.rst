@@ -275,7 +275,9 @@ Comparison
      - Modes per axis (``"mirror"``, ``"zero"``, ``"periodic"``, …).
      - Currently uses mirror-like handling, tailored for resizing.
    * - Implementation / performance
-     - Vectorized Python with bounded evaluation tiles. Experimental CuPy interoperability exists for selected paths.
+     - Vectorized Python with bounded evaluation tiles.  CuPy interoperability
+       is experimental, ``TensorSpline``-only, and not a device-residency or
+       GPU-performance promise; see :doc:`../backend-support`.
      - C++ backend when available, with Python fallback; much faster and more memory-friendly.
    * - Typical use
      - Continuous spline models evaluated at arbitrary points or tensor grids.

@@ -59,7 +59,8 @@ Current capability matrix
        fixed-geometry plans, vectorized batch coefficient evaluation, immutable
        compatibility-tagged coefficients reusable across affine geometries,
        atomic endian-portable coefficient persistence with schema-1 reading,
-       thread/process field reuse, and
+       immutable schema-1/schema-2 archive fixtures, repeated thread/process
+       field reuse and corruption rejection, and
        equivalent SciPy parity for degrees 0--5; SplineOps also accepts its
        higher-order degrees 6 and 7.
      - Improve performance only with profile-backed changes.  SciPy remains
@@ -73,7 +74,8 @@ Current capability matrix
        workspace, independent output-family selection, exact structured output
        buffers prevalidated for writability and non-overlap, explicit mirror
        boundary/dtype checks, legacy-reference coverage, and polynomial and
-       trigonometric invariants.
+       trigonometric invariants.  Randomized explicit-axis and strided-buffer
+       parity plus repeated caller-buffer reuse are checked.
      - Define additional boundary/dtype contracts before describing the module
        as a general N-D differential engine; angular maps intentionally remain
        2-D and the legacy object remains scalar.
@@ -83,7 +85,8 @@ Current capability matrix
        plans with explicit batch/channel axes, real/finite parameter domains,
        constant preservation, periodic cosine-response checks, and an
        independent dense-system reference for the recursive formulation plus a
-       dense-DFT fixture for the published fractional response.
+       one- and two-dimensional dense-DFT reference for the published
+       fractional response.
      - Add broader published numerical fixtures while preserving the clear
        distinction between exact fractional, radial approximate, and recursive
        formulations.
@@ -94,6 +97,8 @@ Current capability matrix
        evaluation, stateless warm-start lambda paths, non-mutating amplitude
        sparsification, sorted-input validation, opt-in ADMM convergence
        diagnostics, and a constrained-optimizer reference.
+       Known sparse hinge models on nonuniform samples are recovered and
+       checked between sample locations.
      - Add larger optimization-reference comparisons and systematic penalty
        and ADMM-parameter guidance.
    * - Multiscale
@@ -102,8 +107,9 @@ Current capability matrix
        adaptive small-plane vectorization and large-plane wavelet dispatch with
        explicit batch/channel axes, perfect
        reconstruction for supported even rectangular Haar and cubic
-       spline-wavelet shapes, and an inspectable bounded-approximation contract
-       for the source-verified order-5 tap table.
+       spline-wavelet shapes, randomized reversible shape/scale/dtype checks,
+       and an inspectable bounded-approximation contract for the source-verified
+       order-5 tap table.
      - Obtain higher-precision order-5 taps or continue labeling it approximate;
        expand supported shape and scale classes only with reversible evidence.
 
@@ -209,6 +215,16 @@ workflow 29429054326
 <https://github.com/splineops/splineops/actions/runs/29429054326>`_ also passed.
 No release or tag was created.
 
+After the seventh evidence pass, the full suite completed ``1222 passed`` in
+146.33 seconds.  Black, scoped MyPy, a warning-fatal documentation build, and
+source/native-wheel builds also passed.  The new Linux standard API soak
+completed 12 cycles with 36 archive replacements, 108 threaded applications,
+36 fresh spawned-process restorations, 12 corruption rejections, and 12 exact
+buffer reuses with zero numerical drift.  Parent profiling was dominated by
+the deliberately fresh process lifecycle, so it did not justify another spline
+kernel change.  Affine and Differentials remain experimental, CuPy remains an
+experimental ``TensorSpline`` path, and no release was made.
+
 Stability-soak and graduation review
 ------------------------------------
 
@@ -291,9 +307,10 @@ Native C++ resize
    Required and exercised in the main test matrix and published wheels.
 
 CuPy
-   Experimental and limited to portions of spline interpolation.  It is not a
-   package-wide GPU backend and will not be described as supported until
-   dedicated GPU CI covers the advertised combinations.
+   Experimental and limited to portions of ``TensorSpline``.  It is not a
+   package-wide GPU backend; the zero-boundary coefficient path can transfer
+   through a CPU solve, and no CuPy configuration is advertised as supported
+   until dedicated GPU CI covers the promised combinations.
 
-The exact graduation gates and execution order are maintained in the
-:doc:`roadmap`.
+The precise matrix is in :doc:`backend-support`.  Graduation gates and
+execution order are maintained in :doc:`graduation-audits` and :doc:`roadmap`.

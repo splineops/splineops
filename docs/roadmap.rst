@@ -1,7 +1,7 @@
 Development roadmap
 ===================
 
-Execution status (2026-07-15)
+Execution status (2026-07-16)
 -----------------------------
 
 Six repository-wide implementation passes are complete.  The first established
@@ -46,6 +46,16 @@ approximate rather than receiving invented taps.  Instrumented affine phases
 justify a narrower 3-D NumPy contraction change, while the public modules stay
 separate.
 
+The seventh pass turns the soak from two benchmark examples into a repeatable
+restart/corruption harness with smoke, standard, and extended profiles and a
+separate cross-platform workflow.  Randomized contracts now cover affine and
+differential axes/buffers, changing ``TensorSpline`` geometry, and reversible
+wavelet shapes.  Historical affine schemas have immutable byte fixtures;
+smoothing and sparse regression gain broader independent references.  The CuPy
+contract is narrowed to experimental ``TensorSpline`` interoperability with an
+explicit host-transfer caveat, and Affine/Differentials receive individual
+graduation audits without premature promotion.
+
 The detailed work packages below remain the long-term graduation criteria,
 not a claim that every experimental module is now stable.  In particular,
 implementation completeness and API stability are different promises.
@@ -66,12 +76,12 @@ published numerical reference or exact reconstruction property is incomplete;
 the order-5 spline wavelet is one explicit example.  These limits are recorded in
 :doc:`project-status` and :doc:`provenance`.
 
-The stabilization pass is intentionally unreleased.  The next decision point
-is evidence review rather than another broad implementation wave: review the
-standard platform profile and let the two checked-in workloads exercise
-coefficient persistence, output selection, and explicit-axis APIs through an
-API-soak period.  Promote modules only when their individual graduation gates
-are met.  A release is explicitly not required at this stage.
+The stabilization work is intentionally unreleased.  The next decision point
+is evidence over time rather than another broad implementation wave: collect
+the new cross-platform API-soak artifacts and let real downstream use exercise
+coefficient persistence, output selection, and explicit-axis APIs without
+contract changes.  Promote modules only when their individual graduation
+audits close.  A release is explicitly not required at this stage.
 
 Purpose
 -------

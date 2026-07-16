@@ -93,6 +93,51 @@ def test_sparsest_interpolant_reproduces_piecewise_linear_samples() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "knot_indices,amplitudes",
+    [
+        ((1,), (1.25,)),
+        ((2,), (-0.75,)),
+        ((1, 3), (1.0, -2.0)),
+        ((1, 2, 4), (1.0, -2.0, 3.0)),
+    ],
+)
+def test_sparsest_interpolant_recovers_known_nonuniform_hinge_models(
+    knot_indices, amplitudes
+):
+    # The alternating slope changes have a unique sparse hinge description at
+    # these samples.  Constructing the values from that independent formula
+    # checks knot location, amplitude, polynomial, and off-sample evaluation.
+    x = np.array([0.0, 0.4, 1.1, 1.9, 3.0, 4.5])
+    expected_knots = x[np.asarray(knot_indices)]
+    expected_amplitudes = np.asarray(amplitudes)
+    expected_polynomial = np.array([-0.3, 0.8])
+
+    def hinge_model(locations):
+        values = expected_polynomial[0] + expected_polynomial[1] * locations
+        for knot, amplitude in zip(expected_knots, expected_amplitudes):
+            values = values + amplitude * np.maximum(locations - knot, 0.0)
+        return values
+
+    y = hinge_model(x)
+    knots, actual_amplitudes, polynomial = sparsest_interpolant(
+        x, y, sparsity_tol=1e-10
+    )
+    query = np.linspace(x[0], x[-1], 51)
+
+    np.testing.assert_allclose(knots, expected_knots, rtol=0.0, atol=2e-14)
+    np.testing.assert_allclose(
+        actual_amplitudes, expected_amplitudes, rtol=0.0, atol=2e-14
+    )
+    np.testing.assert_allclose(polynomial, expected_polynomial, rtol=0.0, atol=2e-14)
+    np.testing.assert_allclose(
+        linear_spline(query, knots, actual_amplitudes, polynomial),
+        hinge_model(query),
+        rtol=0.0,
+        atol=2e-14,
+    )
+
+
 def test_regression_rejects_unsorted_samples() -> None:
     x = np.array([0.0, 2.0, 1.0])
     y = np.array([0.0, 1.0, 2.0])

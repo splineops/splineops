@@ -56,6 +56,24 @@ def test_internal_prefilter_backend_contract_is_explicit():
         )
 
 
+def test_tensorspline_does_not_duck_type_cuda_arrays():
+    class CudaArrayLookalike:
+        __cuda_array_interface__ = {
+            "shape": (4,),
+            "typestr": "<f8",
+            "data": (0, False),
+            "version": 3,
+        }
+
+    with pytest.raises(TypeError, match="NumPy or CuPy"):
+        TensorSpline(
+            CudaArrayLookalike(),
+            np.arange(4.0),
+            bases="linear",
+            modes="mirror",
+        )
+
+
 def test_tensorspline_rejects_nonuniform_construction_grid() -> None:
     data = np.arange(4.0)
     coordinates = np.array([0.0, 1.0, 2.1, 3.0])

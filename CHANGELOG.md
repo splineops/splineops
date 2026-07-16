@@ -107,6 +107,16 @@ All notable changes to SplineOps are documented here.
   affine phase profile. A `[standard-bench]` commit deliberately requests the
   standard Linux/macOS/Windows evidence matrix; ordinary relevant pushes remain
   smoke runs.
+- Added randomized affine, differential, TensorSpline-geometry, and exact
+  wavelet reconstruction contracts; immutable schema-1/schema-2 affine archive
+  specimens; and broader independent 2-D Fourier and sparse-hinge references.
+  A repeated correctness soak now covers atomic replacement, thread sharing,
+  fresh spawned-process restoration, corrupt copies, and caller-buffer reuse
+  across smoke/standard/extended profiles with cross-platform JSON artifacts.
+- Published the exact backend boundary and separate Affine/Differentials
+  graduation audits. CuPy remains experimental TensorSpline interoperability,
+  including a documented CPU-transfer path, and no module is promoted or
+  released by this evidence pass.
 
 ## 2.0.0 - 2026-07-14
 

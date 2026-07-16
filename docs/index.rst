@@ -164,7 +164,9 @@ Contents
 
    installation/index
    project-status
+   backend-support
    stability-soak
+   graduation-audits
    consolidation-recipes
    user-guide/index
    auto_examples/index

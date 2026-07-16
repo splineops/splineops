@@ -521,6 +521,39 @@ def test_downstream_workflow_benchmark_smoke(tmp_path):
     assert output_csv.exists()
 
 
+def test_api_stability_soak_smoke(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    output_json = tmp_path / "api-stability-soak.json"
+
+    subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "run_api_stability_soak.py"),
+            "--profile",
+            "smoke",
+            "--cycles",
+            "1",
+            "--output-json",
+            str(output_json),
+        ],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    payload = json.loads(output_json.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["environment"]["process_start_method"] == "spawn"
+    assert payload["results"]["cycles_completed"] == 1
+    assert payload["results"]["archive_replacements"] == 2
+    assert payload["results"]["corrupt_archives_rejected"] == 1
+    assert payload["results"]["source_arrays_unchanged"] is True
+    assert payload["results"]["caller_buffer_identities_preserved"] is True
+    assert max(payload["results"]["max_abs_difference"].values()) == 0.0
+
+
 def test_affine_phase_profile_smoke(tmp_path):
     repo_root = Path(__file__).resolve().parents[1]
     output_json = tmp_path / "affine-phases.json"
