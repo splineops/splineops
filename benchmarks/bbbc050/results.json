@@ -1,0 +1,878 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-16T12:48:36.062628+00:00",
+  "dataset": {
+    "name": "BBBC050 version 2",
+    "page": "https://bbbc.broadinstitute.org/BBBC050",
+    "license": "CC BY 3.0",
+    "images": {
+      "filename": "Images.zip",
+      "url": "https://data.broadinstitute.org/bbbc/BBBC050/Images.zip",
+      "sha256": "29f100abbfebfb1986b8e87eac091e86d8ec27cd8194f9a1c02c805e76b6dcd8"
+    },
+    "ground_truth": {
+      "filename": "GroundTruth.zip",
+      "url": "https://data.broadinstitute.org/bbbc/BBBC050/GroundTruth.zip",
+      "sha256": "1f19b308730dccf217c4d4dcf5745ad0fcde4eeb9f9c9306b2c8abd1fe73e5d1"
+    },
+    "counts": {
+      "train": 121,
+      "test": 44
+    },
+    "embryos": {
+      "train": 11,
+      "test": 4
+    },
+    "ground_truth_kind": "GroundTruth_QCANet > 0"
+  },
+  "protocol": {
+    "primary_metric": "mean semantic Dice per held-out embryo",
+    "validation": "leave-one-training-embryo-out",
+    "external_validation": "four acquisition-shifted test embryos",
+    "pilot_timepoint_excluded": "251",
+    "normalization_percentiles": [
+      1.0,
+      99.9
+    ],
+    "resize_axes": [
+      1,
+      2
+    ],
+    "resize_rule": "retain Z; Y and X become ceil(n / 2)",
+    "thresholds": [
+      0.04,
+      0.045,
+      0.05,
+      0.055,
+      0.06,
+      0.065,
+      0.07,
+      0.075,
+      0.08,
+      0.085,
+      0.09,
+      0.095,
+      0.1,
+      0.105,
+      0.11,
+      0.115,
+      0.12,
+      0.125,
+      0.13,
+      0.135,
+      0.14,
+      0.145,
+      0.15,
+      0.155,
+      0.16,
+      0.165,
+      0.17,
+      0.175,
+      0.18,
+      0.185,
+      0.19,
+      0.195,
+      0.2,
+      0.205,
+      0.21,
+      0.215,
+      0.22,
+      0.225,
+      0.23,
+      0.235,
+      0.24,
+      0.245,
+      0.25,
+      0.255,
+      0.26,
+      0.265,
+      0.27,
+      0.275,
+      0.28,
+      0.285,
+      0.29,
+      0.295,
+      0.3
+    ],
+    "practical_margin": 0.005,
+    "bootstrap_resamples": 20000,
+    "bootstrap_seed": 20260716,
+    "success_rule": "against every baseline: CV mean delta >= 0.005, paired 95% bootstrap lower bound > 0, external mean delta >= 0"
+  },
+  "methods": [
+    {
+      "key": "splineops_projection",
+      "label": "SplineOps projection AA",
+      "semantics": "endpoint-aligned cubic spline projection antialiasing",
+      "ground_truth_grid": "endpoint"
+    },
+    {
+      "key": "splineops_interpolation",
+      "label": "SplineOps cubic, no AA",
+      "semantics": "endpoint-aligned cubic interpolation without antialiasing",
+      "ground_truth_grid": "endpoint"
+    },
+    {
+      "key": "scipy_gaussian",
+      "label": "SciPy Gaussian + cubic",
+      "semantics": "Gaussian prefilter and endpoint-aligned cubic sampling",
+      "ground_truth_grid": "endpoint"
+    },
+    {
+      "key": "skimage_resize",
+      "label": "scikit-image cubic AA",
+      "semantics": "scikit-image resize grid, reflect boundary, cubic antialiasing",
+      "ground_truth_grid": "skimage"
+    }
+  ],
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.39",
+    "processor": "Intel(R) Core(TM) i7-7820X CPU @ 3.60GHz",
+    "thread_environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1"
+    },
+    "packages": {
+      "splineops": "2.1.0",
+      "numpy": "2.4.6",
+      "scipy": "1.17.1",
+      "scikit-image": "0.26.0",
+      "tifffile": "2026.6.1"
+    }
+  },
+  "summary": [
+    {
+      "method": "splineops_projection",
+      "label": "SplineOps projection AA",
+      "cv_mean_dice": 0.8418556274271836,
+      "cv_std_dice": 0.023292194142474597,
+      "external_mean_dice": 0.8588112146401405,
+      "external_std_dice": 0.007340193564596809,
+      "global_threshold": 0.135,
+      "runtime_median_ms": 4.162944002018776
+    },
+    {
+      "method": "splineops_interpolation",
+      "label": "SplineOps cubic, no AA",
+      "cv_mean_dice": 0.7898309717828439,
+      "cv_std_dice": 0.02324304915027055,
+      "external_mean_dice": 0.8364629946448539,
+      "external_std_dice": 0.011064081959046025,
+      "global_threshold": 0.155,
+      "runtime_median_ms": 2.838046999386279
+    },
+    {
+      "method": "scipy_gaussian",
+      "label": "SciPy Gaussian + cubic",
+      "cv_mean_dice": 0.8379844830015681,
+      "cv_std_dice": 0.020167799066939496,
+      "external_mean_dice": 0.8548082804957294,
+      "external_std_dice": 0.00847249638351874,
+      "global_threshold": 0.14,
+      "runtime_median_ms": 124.375601997599
+    },
+    {
+      "method": "skimage_resize",
+      "label": "scikit-image cubic AA",
+      "cv_mean_dice": 0.83966444145975,
+      "cv_std_dice": 0.02128296375366744,
+      "external_mean_dice": 0.8706656787609357,
+      "external_std_dice": 0.0103667879403025,
+      "global_threshold": 0.135,
+      "runtime_median_ms": 110.76064499866334
+    }
+  ],
+  "comparisons": [
+    {
+      "baseline": "splineops_interpolation",
+      "baseline_label": "SplineOps cubic, no AA",
+      "cv_mean_dice_delta": 0.05202465564433966,
+      "cv_bootstrap_ci_low": 0.04559031793520692,
+      "cv_bootstrap_ci_high": 0.05945975753851273,
+      "cv_sign_flip_pvalue_one_sided": 0.00048828125,
+      "external_mean_dice_delta": 0.022348219995286744,
+      "practical_margin": 0.005,
+      "demonstrated": true
+    },
+    {
+      "baseline": "scipy_gaussian",
+      "baseline_label": "SciPy Gaussian + cubic",
+      "cv_mean_dice_delta": 0.0038711444256153945,
+      "cv_bootstrap_ci_low": 0.0008938831621963037,
+      "cv_bootstrap_ci_high": 0.0070693905737452345,
+      "cv_sign_flip_pvalue_one_sided": 0.02197265625,
+      "external_mean_dice_delta": 0.00400293414441108,
+      "practical_margin": 0.005,
+      "demonstrated": false
+    },
+    {
+      "baseline": "skimage_resize",
+      "baseline_label": "scikit-image cubic AA",
+      "cv_mean_dice_delta": 0.002191185967433446,
+      "cv_bootstrap_ci_low": -0.002074613249421618,
+      "cv_bootstrap_ci_high": 0.006430114860677462,
+      "cv_sign_flip_pvalue_one_sided": 0.18115234375,
+      "external_mean_dice_delta": -0.011854464120795105,
+      "practical_margin": 0.005,
+      "demonstrated": false
+    }
+  ],
+  "embryo_scores": [
+    {
+      "split": "cross_validation",
+      "embryo": "Emb01",
+      "method": "splineops_projection",
+      "dice": 0.8599383065874935,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb02",
+      "method": "splineops_projection",
+      "dice": 0.8210546577794222,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb03",
+      "method": "splineops_projection",
+      "dice": 0.8383114604985413,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb04",
+      "method": "splineops_projection",
+      "dice": 0.8660059020091373,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb05",
+      "method": "splineops_projection",
+      "dice": 0.8542347486881944,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb06",
+      "method": "splineops_projection",
+      "dice": 0.8286422488614933,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb07",
+      "method": "splineops_projection",
+      "dice": 0.855583172591548,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb08",
+      "method": "splineops_projection",
+      "dice": 0.7876480167863311,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb09",
+      "method": "splineops_projection",
+      "dice": 0.8584188475210498,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb10",
+      "method": "splineops_projection",
+      "dice": 0.8326943474472059,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb11",
+      "method": "splineops_projection",
+      "dice": 0.8578801929286026,
+      "threshold": 0.135
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb1",
+      "method": "splineops_projection",
+      "dice": 0.8562830767585311,
+      "threshold": 0.135
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb2",
+      "method": "splineops_projection",
+      "dice": 0.866465750055777,
+      "threshold": 0.135
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb3",
+      "method": "splineops_projection",
+      "dice": 0.8627099024119462,
+      "threshold": 0.135
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb4",
+      "method": "splineops_projection",
+      "dice": 0.8497861293343079,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb01",
+      "method": "splineops_interpolation",
+      "dice": 0.812921334271745,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb02",
+      "method": "splineops_interpolation",
+      "dice": 0.7760712452038412,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb03",
+      "method": "splineops_interpolation",
+      "dice": 0.7921053097935287,
+      "threshold": 0.16
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb04",
+      "method": "splineops_interpolation",
+      "dice": 0.8227638731741183,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb05",
+      "method": "splineops_interpolation",
+      "dice": 0.7867850033942919,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb06",
+      "method": "splineops_interpolation",
+      "dice": 0.7894786209011307,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb07",
+      "method": "splineops_interpolation",
+      "dice": 0.8143090307305656,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb08",
+      "method": "splineops_interpolation",
+      "dice": 0.7359692592599307,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb09",
+      "method": "splineops_interpolation",
+      "dice": 0.782080467576306,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb10",
+      "method": "splineops_interpolation",
+      "dice": 0.785338657039578,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb11",
+      "method": "splineops_interpolation",
+      "dice": 0.7903178882662473,
+      "threshold": 0.155
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb1",
+      "method": "splineops_interpolation",
+      "dice": 0.8359789134614317,
+      "threshold": 0.155
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb2",
+      "method": "splineops_interpolation",
+      "dice": 0.8442485722946458,
+      "threshold": 0.155
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb3",
+      "method": "splineops_interpolation",
+      "dice": 0.8446388319191637,
+      "threshold": 0.155
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb4",
+      "method": "splineops_interpolation",
+      "dice": 0.820985660904174,
+      "threshold": 0.155
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb01",
+      "method": "scipy_gaussian",
+      "dice": 0.8551173386924814,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb02",
+      "method": "scipy_gaussian",
+      "dice": 0.8223174742721501,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb03",
+      "method": "scipy_gaussian",
+      "dice": 0.8389513063352034,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb04",
+      "method": "scipy_gaussian",
+      "dice": 0.861886283202274,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb05",
+      "method": "scipy_gaussian",
+      "dice": 0.8456326280192206,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb06",
+      "method": "scipy_gaussian",
+      "dice": 0.8318622908595309,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb07",
+      "method": "scipy_gaussian",
+      "dice": 0.8536527862986574,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb08",
+      "method": "scipy_gaussian",
+      "dice": 0.7889889170166735,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb09",
+      "method": "scipy_gaussian",
+      "dice": 0.8443437079694449,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb10",
+      "method": "scipy_gaussian",
+      "dice": 0.8282295310290191,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb11",
+      "method": "scipy_gaussian",
+      "dice": 0.8468470493225949,
+      "threshold": 0.14
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb1",
+      "method": "scipy_gaussian",
+      "dice": 0.8524114612360638,
+      "threshold": 0.14
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb2",
+      "method": "scipy_gaussian",
+      "dice": 0.8630852704199111,
+      "threshold": 0.14
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb3",
+      "method": "scipy_gaussian",
+      "dice": 0.8597361071042531,
+      "threshold": 0.14
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb4",
+      "method": "scipy_gaussian",
+      "dice": 0.8440002832226898,
+      "threshold": 0.14
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb01",
+      "method": "skimage_resize",
+      "dice": 0.8608382333683442,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb02",
+      "method": "skimage_resize",
+      "dice": 0.8181907368320784,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb03",
+      "method": "skimage_resize",
+      "dice": 0.835790402555547,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb04",
+      "method": "skimage_resize",
+      "dice": 0.8599753332438743,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb05",
+      "method": "skimage_resize",
+      "dice": 0.8496570601471077,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb06",
+      "method": "skimage_resize",
+      "dice": 0.83149432701659,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb07",
+      "method": "skimage_resize",
+      "dice": 0.8662045100201636,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb08",
+      "method": "skimage_resize",
+      "dice": 0.7951906572155547,
+      "threshold": 0.13
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb09",
+      "method": "skimage_resize",
+      "dice": 0.8417503523325985,
+      "threshold": 0.13
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb10",
+      "method": "skimage_resize",
+      "dice": 0.825624418814938,
+      "threshold": 0.135
+    },
+    {
+      "split": "cross_validation",
+      "embryo": "Emb11",
+      "method": "skimage_resize",
+      "dice": 0.851592824510455,
+      "threshold": 0.135
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb1",
+      "method": "skimage_resize",
+      "dice": 0.8760195525131936,
+      "threshold": 0.135
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb2",
+      "method": "skimage_resize",
+      "dice": 0.8668695250660413,
+      "threshold": 0.135
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb3",
+      "method": "skimage_resize",
+      "dice": 0.8816792502813168,
+      "threshold": 0.135
+    },
+    {
+      "split": "external_test",
+      "embryo": "Emb4",
+      "method": "skimage_resize",
+      "dice": 0.8580943871831909,
+      "threshold": 0.135
+    }
+  ],
+  "fold_thresholds": [
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb01",
+      "threshold": 0.135
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb02",
+      "threshold": 0.14
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb03",
+      "threshold": 0.14
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb04",
+      "threshold": 0.135
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb05",
+      "threshold": 0.135
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb06",
+      "threshold": 0.135
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb07",
+      "threshold": 0.14
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb08",
+      "threshold": 0.135
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb09",
+      "threshold": 0.135
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb10",
+      "threshold": 0.14
+    },
+    {
+      "method": "splineops_projection",
+      "held_out_embryo": "Emb11",
+      "threshold": 0.135
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb01",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb02",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb03",
+      "threshold": 0.16
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb04",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb05",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb06",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb07",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb08",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb09",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb10",
+      "threshold": 0.155
+    },
+    {
+      "method": "splineops_interpolation",
+      "held_out_embryo": "Emb11",
+      "threshold": 0.155
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb01",
+      "threshold": 0.135
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb02",
+      "threshold": 0.14
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb03",
+      "threshold": 0.14
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb04",
+      "threshold": 0.135
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb05",
+      "threshold": 0.14
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb06",
+      "threshold": 0.14
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb07",
+      "threshold": 0.14
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb08",
+      "threshold": 0.135
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb09",
+      "threshold": 0.135
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb10",
+      "threshold": 0.14
+    },
+    {
+      "method": "scipy_gaussian",
+      "held_out_embryo": "Emb11",
+      "threshold": 0.14
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb01",
+      "threshold": 0.135
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb02",
+      "threshold": 0.135
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb03",
+      "threshold": 0.135
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb04",
+      "threshold": 0.135
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb05",
+      "threshold": 0.135
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb06",
+      "threshold": 0.135
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb07",
+      "threshold": 0.135
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb08",
+      "threshold": 0.13
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb09",
+      "threshold": 0.13
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb10",
+      "threshold": 0.135
+    },
+    {
+      "method": "skimage_resize",
+      "held_out_embryo": "Emb11",
+      "threshold": 0.135
+    }
+  ],
+  "conclusion": {
+    "superiority_demonstrated": false,
+    "claim": "SplineOps projection is superior for the frozen BBBC050 threshold-segmentation protocol",
+    "statement": "The predeclared superiority criterion was not met against every baseline."
+  },
+  "limits": [
+    "The downstream segmenter is a fitted scalar threshold, not a neural network.",
+    "The primary analysis has 11 independent embryos; frames are not treated as independent.",
+    "The external test has four embryos and is directional confirmation only.",
+    "Runtime is machine-specific and the scikit-image grid is not endpoint-identical."
+  ]
+}

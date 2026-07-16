@@ -1,0 +1,4 @@
+baseline,baseline_label,cv_mean_dice_delta,cv_bootstrap_ci_low,cv_bootstrap_ci_high,cv_sign_flip_pvalue_one_sided,external_mean_dice_delta,practical_margin,demonstrated
+splineops_interpolation,"SplineOps cubic, no AA",0.05202465564433966,0.04559031793520692,0.05945975753851273,0.00048828125,0.022348219995286744,0.005,True
+scipy_gaussian,SciPy Gaussian + cubic,0.0038711444256153945,0.0008938831621963037,0.0070693905737452345,0.02197265625,0.00400293414441108,0.005,False
+skimage_resize,scikit-image cubic AA,0.002191185967433446,-0.002074613249421618,0.006430114860677462,0.18115234375,-0.011854464120795105,0.005,False

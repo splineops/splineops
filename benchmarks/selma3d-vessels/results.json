@@ -1,0 +1,208 @@
+{
+  "comparisons": [
+    {
+      "bonferroni_one_sided_low": 5.348771811575976e-05,
+      "ci95_high": 0.001143931889687807,
+      "ci95_low": 0.00011454741542752544,
+      "comparison": "scipy_gaussian",
+      "mean_auc_difference": 0.0007218276975375667,
+      "median_runtime_ratio": 12.494583619323219,
+      "noninferior": true,
+      "noninferior_margin": 0.01,
+      "quality_superior": true,
+      "required_runtime_ratio": 10.0,
+      "speed_pass": true
+    },
+    {
+      "bonferroni_one_sided_low": 0.004345202965649036,
+      "ci95_high": 0.006033993037839506,
+      "ci95_low": 0.0044113307167041255,
+      "comparison": "skimage_resize",
+      "mean_auc_difference": 0.005202123215362293,
+      "median_runtime_ratio": 15.17060230051018,
+      "noninferior": true,
+      "noninferior_margin": 0.01,
+      "quality_superior": true,
+      "required_runtime_ratio": 10.0,
+      "speed_pass": true
+    },
+    {
+      "bonferroni_one_sided_low": 0.00436306188583988,
+      "ci95_high": 0.006020490696774507,
+      "ci95_low": 0.004421764013853088,
+      "comparison": "torch_area",
+      "mean_auc_difference": 0.005186073658846873,
+      "median_runtime_ratio": 1.3589032608774603,
+      "noninferior": true,
+      "noninferior_margin": 0.01,
+      "quality_superior": true,
+      "required_runtime_ratio": 1.0,
+      "speed_pass": true
+    }
+  ],
+  "dataset": {
+    "accession": "S-BIAD1196",
+    "challenge_page": "https://selma3d.grand-challenge.org/data/",
+    "channel": "_0000 WGA microvessels",
+    "confirmation_sample_ids": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
+    "dataset_page": "https://www.ebi.ac.uk/bioimage-archive/galleries/ai/analysed-dataset/S-BIAD1196/",
+    "license_interpretation": "CC BY-NC (stricter of conflicting official metadata)",
+    "output_shape": [
+      250,
+      250,
+      50
+    ],
+    "pilot_sample_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "source_files_redistributed": false,
+    "source_shape": [
+      500,
+      500,
+      50
+    ],
+    "specimen_grouping_available": false,
+    "subset": "VessAP_vessel"
+  },
+  "decision": {
+    "broad_resampling_superiority_demonstrated": false,
+    "narrow_quality_at_speed_claim_pass": true,
+    "quality_noninferiority_pass": true,
+    "segmentation_superiority_demonstrated": false,
+    "speed_pass": true,
+    "strict_named_method_superiority_pass": true
+  },
+  "environment": {
+    "machine": "x86_64",
+    "packages": {
+      "matplotlib": "3.10.9",
+      "nibabel": "5.4.2",
+      "numpy": "2.4.6",
+      "scikit-image": "0.26.0",
+      "scipy": "1.17.1",
+      "splineops": "2.1.0",
+      "torch": "2.12.0+cpu"
+    },
+    "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python": "3.12.3"
+  },
+  "generated_at": "2026-07-16T14:44:51.317703+00:00",
+  "methods": [
+    {
+      "grid": "endpoint",
+      "key": "splineops_projection",
+      "label": "SplineOps projection AA",
+      "semantics": "endpoint-aligned cubic projection antialiasing"
+    },
+    {
+      "grid": "endpoint",
+      "key": "splineops_interpolation",
+      "label": "SplineOps cubic, no AA",
+      "semantics": "endpoint-aligned cubic interpolation without antialiasing"
+    },
+    {
+      "grid": "endpoint",
+      "key": "scipy_gaussian",
+      "label": "SciPy Gaussian + cubic",
+      "semantics": "Gaussian-prefiltered endpoint-aligned cubic sampling"
+    },
+    {
+      "grid": "half_pixel",
+      "key": "skimage_resize",
+      "label": "scikit-image cubic AA",
+      "semantics": "native half-pixel cubic resize with Gaussian antialiasing"
+    },
+    {
+      "grid": "half_pixel",
+      "key": "torch_area",
+      "label": "PyTorch area",
+      "semantics": "native regional area resize on the half-pixel geometry"
+    }
+  ],
+  "protocol": {
+    "bootstrap_resamples": 20000,
+    "bootstrap_seed": 20260716,
+    "minimum_cpu_speedup": 10.0,
+    "minimum_torch_speedup": 1.0,
+    "noninferiority_margin": 0.01,
+    "pilot_mean_auc": {
+      "scipy_gaussian": 0.9204433549034956,
+      "skimage_resize": 0.9195062241983747,
+      "splineops_projection": 0.9216086422123885,
+      "torch_area": 0.9193569129087099
+    },
+    "primary_metric": "microvessel voxel-ranking ROC AUC",
+    "superiority_one_sided_quantile": 0.016666666666666666,
+    "threads": 1,
+    "timing_repetitions": 7,
+    "timing_warmups": 2
+  },
+  "study": "SELMA3D microvessel quality-at-speed confirmation",
+  "summary": [
+    {
+      "label": "SplineOps projection AA",
+      "mean_average_precision": 0.7003640187393558,
+      "mean_roc_auc": 0.9273700774942336,
+      "mean_top_prevalence_dice": 0.6447196307383498,
+      "median_runtime_s": 0.11533472250084742,
+      "method": "splineops_projection"
+    },
+    {
+      "label": "SplineOps cubic, no AA",
+      "mean_average_precision": 0.6991229300379632,
+      "mean_roc_auc": 0.9268132782011773,
+      "mean_top_prevalence_dice": 0.643537522099932,
+      "median_runtime_s": 0.10414232199764228,
+      "method": "splineops_interpolation"
+    },
+    {
+      "label": "SciPy Gaussian + cubic",
+      "mean_average_precision": 0.696693962085694,
+      "mean_roc_auc": 0.926648249796696,
+      "mean_top_prevalence_dice": 0.6414295184013703,
+      "median_runtime_s": 1.4410593344982772,
+      "method": "scipy_gaussian"
+    },
+    {
+      "label": "scikit-image cubic AA",
+      "mean_average_precision": 0.687097247740761,
+      "mean_roc_auc": 0.9221679542788714,
+      "mean_top_prevalence_dice": 0.6339368915271616,
+      "median_runtime_s": 1.749697206500059,
+      "method": "skimage_resize"
+    },
+    {
+      "label": "PyTorch area",
+      "mean_average_precision": 0.6866805159535061,
+      "mean_roc_auc": 0.9221840038353868,
+      "mean_top_prevalence_dice": 0.6336013354765851,
+      "median_runtime_s": 0.15672873049879854,
+      "method": "torch_area"
+    }
+  ]
+}

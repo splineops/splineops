@@ -1,0 +1,9 @@
+method,label,semantics,target_grid,predeclared,mean_nrmse,median_nrmse,max_nrmse,mean_passband_nrmse,mean_stopband_leakage
+splineops_projection,SplineOps projection AA,endpoint-aligned cubic oblique projection antialiasing,endpoint,True,0.14493021469805495,0.1285615055484567,0.4043952699423459,0.01297248914836068,0.22700814900080948
+splineops_interpolation,"SplineOps cubic, no AA",endpoint-aligned cubic interpolation without antialiasing,endpoint,True,0.6081866223675834,0.6476282660152113,1.0038271290544916,0.000697313317816779,0.9602913515572041
+scipy_gaussian,SciPy Gaussian + cubic,Gaussian prefilter followed by endpoint-aligned cubic sampling,endpoint,True,0.37700606823607985,0.3951020841501807,0.681596815581141,0.09206759624396393,0.568520462197461
+scipy_cubic,"SciPy cubic, no AA",endpoint-aligned cubic sampling without antialiasing,endpoint,True,0.6078005747690258,0.6476212599967446,1.0038267954206628,0.0010063030072650083,0.9596806880128659
+skimage_resize,scikit-image cubic AA,half-pixel cubic resize with Gaussian antialiasing,half_pixel,True,0.3392443618282714,0.3372232711511483,0.6523394700076314,0.08947024635223877,0.5077862171376464
+torch_trilinear,"PyTorch trilinear, no AA",endpoint-aligned trilinear interpolation without antialiasing,endpoint,True,0.5871913435594406,0.6298227175414421,1.0038267954206628,0.026412396830863726,0.9238073128133123
+torch_area,PyTorch area,regional area resize evaluated against the half-pixel point-grid target,half_pixel,True,0.31966718024825336,0.3083727616028157,0.45139260777700535,0.2970023377903119,0.16651479804228073
+scipy_polyphase,SciPy polyphase FIR,separable endpoint-ratio polyphase FIR with reflect padding,endpoint,False,0.0021807320690207213,0.00205990530884861,0.004016882000789181,0.002022741586165867,0.0010274815262240526

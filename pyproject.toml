@@ -54,6 +54,18 @@ visualization = [
     "pooch >= 1.8",
     "IPython >= 8.26",
 ]
+study = [
+    "scikit-image >=0.25",
+    "tifffile >=2024.8",
+]
+wavefield-study = [
+    "scikit-image >=0.25",
+    "torch >=2.0",
+]
+selma3d-study = [
+    "splineops[wavefield-study]",
+    "nibabel >=5.2",
+]
 tests = [
     "tox >=4.13",
     "pytest >=6.0",

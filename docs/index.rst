@@ -68,6 +68,12 @@ position is explicit spline semantics, N-D projection antialiasing,
 native/reference parity, and reusable fixed-geometry execution.  See
 :doc:`performance` for measured wins, losses, and limitations.
 
+The current flagship is the :doc:`selma3d-vessels-study`: on 18 held-out
+expert-labelled 3-D microscopy patches, SplineOps passed a predeclared narrow
+quality-and-speed superiority rule against named SciPy, scikit-image, and
+PyTorch pipelines.  It is a preprocessing result, not segmentation or
+universal resampling superiority.
+
 Research lineage
 ----------------
 
@@ -98,6 +104,10 @@ citations, implementation history, and source provenance are recorded in
    :maxdepth: 1
    :caption: Evidence
 
+   selma3d-vessels-study
+   wavefield3d-study
+   bbbc050-study
+   cells3d-study
    performance
    project-status
    backend-support

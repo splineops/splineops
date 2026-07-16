@@ -4,6 +4,25 @@ All notable changes to SplineOps are documented here.
 
 ## Unreleased
 
+### Documentation
+
+- Added a checksum-pinned, reproducible 3-D microscopy downsampling study using
+  the public CC0 ``cells3d`` volume, with cross-library timings, explicitly
+  limited real-data proxies, and a separate known-target calibration.
+- Added a frozen, embryo-level BBBC050 segmentation validation with manual
+  ground truth, leave-one-embryo-out threshold fitting, an acquisition-shifted
+  external test, and an explicit report that the superiority criterion failed.
+- Added a frozen 72-case controlled 3-D spectral-coarsening validation. Its
+  generic-resize NRMSE criterion passed against six alternatives, while a
+  post-hoc SciPy polyphase FIR audit decisively rejected broader scientific-
+  resampling superiority. Both results and runtime trade-offs are published.
+- Added checksum-pinned SELMA3D nuclei and microvessel confirmations. The
+  nuclei study retained its failed 10x speed decision. The later 18-patch
+  anisotropic microvessel study passed a predeclared family-wise quality rule
+  against named SciPy, scikit-image, and PyTorch pipelines and its frozen local
+  speed thresholds, with explicit limits on segmentation, specimen-level,
+  licensing, and broad-resampling claims.
+
 ### Tests
 
 - Made the mixed-dtype workspace-cache concurrency test assert the documented

@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-16T12:09:22.258624+00:00",
+  "dataset": {
+    "name": "cells3d.tif",
+    "source": "scikit-image data repository",
+    "origin": "Allen Institute for Cell Science",
+    "license": "CC0-1.0",
+    "url": "https://gitlab.com/scikit-image/data/-/raw/2cdc5ce89b334d28f06a58c9f0ca21aa6992a5ba/cells3d.tif",
+    "sha256": "afc7c7d80d38bfde09788b4064ac1e64ec14e88454ab785ebdc8dbba5ca3b222",
+    "source_shape_zcyx": [
+      60,
+      2,
+      256,
+      256
+    ],
+    "channel_names": [
+      "membrane",
+      "nuclei"
+    ],
+    "input_spacing_um_zyx": [
+      0.29,
+      0.26,
+      0.26
+    ],
+    "output_spacing_um_zyx": [
+      0.59,
+      0.5220472440944882,
+      0.5220472440944882
+    ],
+    "normalization_for_measurement": [
+      {
+        "channel": "membrane",
+        "percentile_low": 696.0,
+        "percentile_high": 12417.0
+      },
+      {
+        "channel": "nuclei",
+        "percentile_low": 2513.0,
+        "percentile_high": 26081.0
+      }
+    ]
+  },
+  "configuration": {
+    "spatial_axes": [
+      0,
+      2,
+      3
+    ],
+    "output_spatial_shape": [
+      30,
+      128,
+      128
+    ],
+    "warmups": 1,
+    "repeats": 3,
+    "thread_environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1"
+    }
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.39",
+    "processor": "Intel(R) Core(TM) i7-7820X CPU @ 3.60GHz",
+    "packages": {
+      "splineops": "2.1.0",
+      "numpy": "2.4.6",
+      "scipy": "1.17.1",
+      "scikit-image": "0.26.0",
+      "tifffile": "2026.6.1"
+    }
+  },
+  "metric_limits": {
+    "gaussian_reference": "agreement with one chosen practical reference; not ground truth",
+    "roundtrip_psnr": "information-retention proxy; can reward aliased detail",
+    "high_band_energy_fraction": "spectral diagnostic; lower can mean less aliasing or more blur",
+    "synthetic_metrics": "known target on a constructed mirror-compatible cosine field",
+    "runtime": "local end-to-end median; not a universal speed ranking"
+  },
+  "results": [
+    {
+      "method": "splineops_projection",
+      "label": "SplineOps projection AA",
+      "semantics": "endpoint-aligned cubic spline projection antialiasing",
+      "runtime_median_s": 0.1602152310006204,
+      "runtime_min_s": 0.15325255599964294,
+      "gaussian_reference_nrmse": 0.06449496292059784,
+      "gaussian_reference_ssim": 0.9799048366380667,
+      "roundtrip_psnr_db": 29.26869531992746,
+      "high_band_energy_fraction": 0.06607942723560384,
+      "synthetic_nrmse": 0.08184208252981316,
+      "synthetic_psnr_db": 27.555903157699042
+    },
+    {
+      "method": "splineops_interpolation",
+      "label": "SplineOps cubic, no AA",
+      "semantics": "endpoint-aligned cubic interpolation without antialiasing",
+      "runtime_median_s": 0.07570773099905637,
+      "runtime_min_s": 0.0716597640002874,
+      "gaussian_reference_nrmse": 0.0655425122700646,
+      "gaussian_reference_ssim": 0.9742436712303391,
+      "roundtrip_psnr_db": 28.044400482172396,
+      "high_band_energy_fraction": 0.07397045472714282,
+      "synthetic_nrmse": 0.1371616678624702,
+      "synthetic_psnr_db": 23.070781444777218
+    },
+    {
+      "method": "scipy_gaussian",
+      "label": "SciPy Gaussian + cubic",
+      "semantics": "Gaussian prefilter and endpoint-aligned cubic sampling",
+      "runtime_median_s": 0.758940640000219,
+      "runtime_min_s": 0.7572027109999908,
+      "gaussian_reference_nrmse": 0.0,
+      "gaussian_reference_ssim": 1.0,
+      "roundtrip_psnr_db": 28.57355342350045,
+      "high_band_energy_fraction": 0.044225990976462584,
+      "synthetic_nrmse": 0.10042494480213614,
+      "synthetic_psnr_db": 25.778604559275582
+    },
+    {
+      "method": "skimage_resize",
+      "label": "scikit-image cubic AA",
+      "semantics": "scikit-image resize grid, reflect boundary, cubic antialiasing",
+      "runtime_median_s": 0.8965941030000977,
+      "runtime_min_s": 0.835359258000608,
+      "gaussian_reference_nrmse": 0.08433099504302959,
+      "gaussian_reference_ssim": 0.9741154083422966,
+      "roundtrip_psnr_db": 27.763192642872486,
+      "high_band_energy_fraction": 0.0426813744862344,
+      "synthetic_nrmse": 0.09432532797890465,
+      "synthetic_psnr_db": 26.32287011396471
+    }
+  ]
+}
