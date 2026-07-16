@@ -225,6 +225,16 @@ the deliberately fresh process lifecycle, so it did not justify another spline
 kernel change.  Affine and Differentials remain experimental, CuPy remains an
 experimental ``TensorSpline`` path, and no release was made.
 
+The corresponding `API stability soak run 29479718318
+<https://github.com/splineops/splineops/actions/runs/29479718318>`_ then passed
+on Linux, macOS, and Windows and published one JSON artifact per runner.  The
+`nine-job Test Library run 29479718365
+<https://github.com/splineops/splineops/actions/runs/29479718365>`_ and `Quality
+gates run 29479718142
+<https://github.com/splineops/splineops/actions/runs/29479718142>`_ also passed
+for commit ``df94733``.  The consolidated snapshot is maintained in
+:doc:`progress`.
+
 Stability-soak and graduation review
 ------------------------------------
 

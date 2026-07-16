@@ -117,6 +117,10 @@ All notable changes to SplineOps are documented here.
   graduation audits. CuPy remains experimental TensorSpline interoperability,
   including a documented CPU-transfer path, and no module is promoted or
   released by this evidence pass.
+- Added a dated, consolidated progress snapshot covering all seven improvement
+  passes, current module maturity, local and cross-platform evidence, measured
+  performance conclusions, deliberate non-decisions, and the remaining
+  practical gates.
 
 ## 2.0.0 - 2026-07-14
 

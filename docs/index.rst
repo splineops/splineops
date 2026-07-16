@@ -104,7 +104,8 @@ Module status
 
 Experimental modules remain available and independent.  The label describes
 validation and API maturity, not the quality of the underlying research.
-See :doc:`project-status` for the evidence behind these labels.
+See :doc:`progress` for the consolidated development snapshot and
+:doc:`project-status` for the evidence behind these labels.
 
 Modules at a glance
 -------------------
@@ -163,6 +164,7 @@ Contents
    :caption: Documentation
 
    installation/index
+   progress
    project-status
    backend-support
    stability-soak

@@ -4,7 +4,7 @@ Development roadmap
 Execution status (2026-07-16)
 -----------------------------
 
-Six repository-wide implementation passes are complete.  The first established
+Seven repository-wide implementation passes are complete.  The first established
 positioning, provenance, numerical contracts, bounded ``TensorSpline``
 evaluation, conservative internal sharing, reproducible benchmarks, and the
 packaging and quality workflows.  The second added reusable geometry plans,
@@ -55,6 +55,13 @@ smoothing and sparse regression gain broader independent references.  The CuPy
 contract is narrowed to experimental ``TensorSpline`` interoperability with an
 explicit host-transfer caveat, and Affine/Differentials receive individual
 graduation audits without premature promotion.
+
+The first cross-platform API-soak run subsequently passed on Linux, macOS, and
+Windows for commit ``df94733`` alongside the nine-job Python/OS test matrix and
+quality workflow.  This closes the workflow-construction gate, but not the
+time-based compatibility gate: one successful matrix is a starting point for
+the soak period rather than proof that experimental APIs can already be frozen.
+See :doc:`progress` for the consolidated snapshot.
 
 The detailed work packages below remain the long-term graduation criteria,
 not a claim that every experimental module is now stable.  In particular,

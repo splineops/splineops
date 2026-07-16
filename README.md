@@ -23,9 +23,15 @@ being strengthened; they are not folded into the resize API.
 
 "Experimental" describes API and validation maturity, not the importance of
 the underlying methods. See the
+[progress snapshot](https://splineops.github.io/progress.html),
 [project status](https://splineops.github.io/project-status.html) and
 [development roadmap](https://splineops.github.io/roadmap.html) for the exact
 graduation criteria.
+
+The current evidence snapshot contains 1,222 passing tests and successful
+Linux, macOS, and Windows API-soak jobs. It records seven completed improvement
+passes while deliberately keeping Affine and Differentials experimental, CuPy
+narrowly experimental, and release planning deferred.
 
 ## Installation
 
@@ -156,6 +162,7 @@ and newly generated benchmark artifacts for current behavior.
 ## Documentation and provenance
 
 - [Documentation](https://splineops.github.io/)
+- [Progress snapshot](https://splineops.github.io/progress.html)
 - [Resize API](https://splineops.github.io/api/02_resize.html)
 - [Project status](https://splineops.github.io/project-status.html)
 - [Roadmap](https://splineops.github.io/roadmap.html)
