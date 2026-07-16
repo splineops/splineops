@@ -2,6 +2,13 @@
 
 All notable changes to SplineOps are documented here.
 
+## Unreleased
+
+### Tests
+
+- Made the mixed-dtype workspace-cache concurrency test assert the documented
+  retention cap rather than a scheduler-dependent exact cache fill.
+
 ## 2.1.0 - 2026-07-16
 
 Version 2.1 makes the stable resize path easier to evaluate and adopt while

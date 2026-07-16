@@ -297,7 +297,10 @@ def test_mixed_dtype_concurrency_obeys_shared_workspace_count(monkeypatch):
     assert all(np.isfinite(value) for value in results)
     info = plan._workspace_cache_info
     assert info["retained_count"] == (info["float32_count"] + info["float64_count"])
-    assert info["retained_count"] == info["max_retained_count"] == 4
+    # Thread scheduling controls how many leases overlap and which dtype returns
+    # first, so the cache need not fill every slot or retain a particular dtype
+    # mix. The contract is one useful primary allocation plus a shared cap.
+    assert 1 <= info["retained_count"] <= info["max_retained_count"] == 4
     assert info["retained_bytes"] <= info["limit_bytes"] == 64 * 1024 * 1024
     assert info["retained_bytes"] == (info["float32_bytes"] + info["float64_bytes"])
     assert info["float32_scratch_bytes"] == 0
