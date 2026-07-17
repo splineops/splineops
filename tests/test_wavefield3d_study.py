@@ -1,4 +1,3 @@
-import hashlib
 import importlib.util
 import json
 import sys
@@ -72,7 +71,17 @@ def test_target_grids_and_bootstrap_are_deterministic():
     assert first[0] > study.CI_REDUCTION_MARGIN
 
 
+def test_protocol_digest_is_portable_across_line_endings(tmp_path):
+    study = load_study_module()
+    unix = tmp_path / "unix.md"
+    windows = tmp_path / "windows.md"
+    unix.write_bytes(b"frozen\nprotocol\n")
+    windows.write_bytes(b"frozen\r\nprotocol\r\n")
+    assert study.sha256_text(unix) == study.sha256_text(windows)
+
+
 def test_recorded_superiority_claim_is_narrow_and_complete():
+    study = load_study_module()
     root = Path(__file__).resolve().parents[1]
     result_path = root / "benchmarks" / "wavefield3d" / "results.json"
     protocol_path = root / "benchmarks" / "wavefield3d" / "PROTOCOL.md"
@@ -84,10 +93,7 @@ def test_recorded_superiority_claim_is_narrow_and_complete():
     assert payload["schema_version"] == 1
     assert payload["protocol"]["protocol_conforming_run"] is True
     assert payload["protocol"]["frozen_before_confirmation_run"] is True
-    assert (
-        payload["protocol"]["sha256"]
-        == hashlib.sha256(protocol_path.read_bytes()).hexdigest()
-    )
+    assert payload["protocol"]["sha256"] == study.sha256_text(protocol_path)
     assert payload["conclusion"]["generic_resize_superiority_demonstrated"] is True
     assert (
         payload["conclusion"]["scientific_resampling_superiority_demonstrated"] is False

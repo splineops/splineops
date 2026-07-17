@@ -89,12 +89,11 @@ def protocol_path() -> Path:
     )
 
 
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+def sha256_text(path: Path) -> str:
+    """Hash UTF-8 text after universal-newline normalization."""
+
+    normalized = path.read_text(encoding="utf-8").encode("utf-8")
+    return hashlib.sha256(normalized).hexdigest()
 
 
 def package_version(name: str) -> str | None:
@@ -931,7 +930,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "protocol": {
             "path": "benchmarks/wavefield3d/PROTOCOL.md",
-            "sha256": sha256_file(protocol_path()),
+            "sha256": sha256_text(protocol_path()),
             "frozen_before_confirmation_run": True,
             "independently_preregistered": False,
             "excluded_before_confirmation": {
