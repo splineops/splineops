@@ -1,0 +1,883 @@
+{
+  "comparisons": [
+    {
+      "bonferroni_one_sided_low": 0.02908882730366947,
+      "ci95_high": 0.03849429934162953,
+      "ci95_low": 0.029842853518097436,
+      "comparison": "scipy_gaussian",
+      "mean_dice_difference": 0.03420844876228515,
+      "median_runtime_ratio": 3.2837264248070497,
+      "quality_margin_pass": true,
+      "required_quality_margin": 0.005,
+      "required_runtime_ratio": 3.0,
+      "runtime_ratio_strict": false,
+      "speed_pass": true
+    },
+    {
+      "bonferroni_one_sided_low": 0.029995829751852113,
+      "ci95_high": 0.04050239568211736,
+      "ci95_low": 0.030868827853648497,
+      "comparison": "skimage_resize",
+      "mean_dice_difference": 0.035680148153065964,
+      "median_runtime_ratio": 3.2553594545645748,
+      "quality_margin_pass": true,
+      "required_quality_margin": 0.005,
+      "required_runtime_ratio": 3.0,
+      "runtime_ratio_strict": false,
+      "speed_pass": true
+    },
+    {
+      "bonferroni_one_sided_low": 0.007014603245803505,
+      "ci95_high": 0.012184443958087708,
+      "ci95_low": 0.007444650906897427,
+      "comparison": "torch_area",
+      "mean_dice_difference": 0.009827083428129654,
+      "median_runtime_ratio": 0.5994521203937027,
+      "quality_margin_pass": true,
+      "required_quality_margin": 0.005,
+      "required_runtime_ratio": 1.0,
+      "runtime_ratio_strict": true,
+      "speed_pass": false
+    },
+    {
+      "bonferroni_one_sided_low": 0.0070168207973976635,
+      "ci95_high": 0.01218815880934113,
+      "ci95_low": 0.007446680142349685,
+      "comparison": "opencv_area",
+      "mean_dice_difference": 0.009828297622686786,
+      "median_runtime_ratio": 0.4866466647249706,
+      "quality_margin_pass": true,
+      "required_quality_margin": 0.005,
+      "required_runtime_ratio": null,
+      "runtime_ratio_strict": false,
+      "speed_pass": null
+    },
+    {
+      "bonferroni_one_sided_low": 0.02251240973263155,
+      "ci95_high": 0.03176186167845181,
+      "ci95_low": 0.02334693639394598,
+      "comparison": "scipy_polyphase",
+      "mean_dice_difference": 0.027556244005761555,
+      "median_runtime_ratio": 2.451225615219934,
+      "quality_margin_pass": true,
+      "required_quality_margin": 0.005,
+      "required_runtime_ratio": 3.0,
+      "runtime_ratio_strict": false,
+      "speed_pass": false
+    }
+  ],
+  "dataset": {
+    "archive_objects": {
+      "raw/mv01.nii.gz": {
+        "bytes": 7635569,
+        "md5": "6a5eb374911a0195ec51e7d347b1a859"
+      },
+      "raw/mv02.nii.gz": {
+        "bytes": 21690241,
+        "md5": "380618699cf5f988652b69eec1312e29"
+      },
+      "raw/mv03.nii.gz": {
+        "bytes": 19980308,
+        "md5": "31a2b98b956e05f2418270f062106f13"
+      },
+      "raw/mv04.nii.gz": {
+        "bytes": 18147589,
+        "md5": "784e09334d38d5c492bf790a0c9d2c25"
+      },
+      "raw/mv05.nii.gz": {
+        "bytes": 20690430,
+        "md5": "9d2d625a6c924918dc379e9401ac63ee"
+      },
+      "raw/mv07.nii.gz": {
+        "bytes": 23367373,
+        "md5": "b8d1f7e393acee99cc5fbe0667d35cc4"
+      },
+      "raw/mv08.nii.gz": {
+        "bytes": 16194287,
+        "md5": "88b3ed2cd73c7bfd5b0676a3b52f1192"
+      },
+      "raw/mv09.nii.gz": {
+        "bytes": 22275566,
+        "md5": "7965da075b4f92e3e942087bfa4363c0"
+      },
+      "raw/mv10.nii.gz": {
+        "bytes": 19492236,
+        "md5": "58024af72bb38fb04a5dbb18bfbf24a4"
+      },
+      "raw/mv11.nii.gz": {
+        "bytes": 20739670,
+        "md5": "49c4b43f34ad7e59bbf492dd9c962f1c"
+      },
+      "raw/mv12.nii.gz": {
+        "bytes": 7083161,
+        "md5": "bc965d585f3624e684c960e683def274"
+      },
+      "raw/mv13.nii.gz": {
+        "bytes": 10787491,
+        "md5": "47937c9050eeec9ca806bec2f805c676"
+      },
+      "raw/mv14.nii.gz": {
+        "bytes": 18622237,
+        "md5": "15ff5408365ee4183ad3bb1818d798be"
+      },
+      "raw/mv15.nii.gz": {
+        "bytes": 12122835,
+        "md5": "81bf376d4471c5049316063543e4c99d"
+      },
+      "raw/mv16.nii.gz": {
+        "bytes": 12951723,
+        "md5": "43e043610e44aeed60626122cdcf2035"
+      },
+      "raw/mv17.nii.gz": {
+        "bytes": 10151376,
+        "md5": "1e7889a623bbb1c5acb528d1066ee364"
+      },
+      "raw/mv18.nii.gz": {
+        "bytes": 12271714,
+        "md5": "09571f153f2ac56bb95cc3cd50ccf4b3"
+      },
+      "raw/mv19.nii.gz": {
+        "bytes": 10474410,
+        "md5": "6e7f07632bd490d3c9f7a9923b7a663c"
+      },
+      "raw/mv20.nii.gz": {
+        "bytes": 10795035,
+        "md5": "e17ca6414d41edaede6ad06549b11777"
+      },
+      "raw/mv21.nii.gz": {
+        "bytes": 10187536,
+        "md5": "78ebbe754538a5d84709185b285d8793"
+      },
+      "raw/mv22.nii.gz": {
+        "bytes": 19849077,
+        "md5": "2d4b784b805159cb24bad3aa222333ef"
+      },
+      "raw/mv23.nii.gz": {
+        "bytes": 19144345,
+        "md5": "18ab1d6c44c404916ede7ec33842d8a8"
+      },
+      "raw/mv24.nii.gz": {
+        "bytes": 33755393,
+        "md5": "64b4dc40d010b82d4da508860fc50b47"
+      },
+      "raw/mv25.nii.gz": {
+        "bytes": 17424278,
+        "md5": "dd8d1cd11c5149530f543eb0a6de1b27"
+      },
+      "raw/mv26.nii.gz": {
+        "bytes": 16882348,
+        "md5": "e36c5ffad4d0be29dc63ee018e3f8a6d"
+      },
+      "raw/mv27.nii.gz": {
+        "bytes": 24539601,
+        "md5": "dfdd2f1cb440913682d9d97b078a42e8"
+      },
+      "raw/mv29.nii.gz": {
+        "bytes": 13273364,
+        "md5": "4b0411923d23592da3c0269e97c56531"
+      },
+      "raw/mv30.nii.gz": {
+        "bytes": 8762274,
+        "md5": "cd833a390b7299630b9b8eb899794550"
+      },
+      "raw/mv31.nii.gz": {
+        "bytes": 6532778,
+        "md5": "32cfdd5eaa6411ad3b9ebcfda6d48bbd"
+      },
+      "raw/mv32.nii.gz": {
+        "bytes": 7835012,
+        "md5": "ae217b2edc5c1cdd207844a122501c0b"
+      },
+      "raw/mv33.nii.gz": {
+        "bytes": 14118860,
+        "md5": "fbcbcbf2eefe91bae9fa085390427156"
+      },
+      "raw/mv34.nii.gz": {
+        "bytes": 32147175,
+        "md5": "365c2aca5b05097e9dea6b496b91f502"
+      },
+      "raw/mv36.nii.gz": {
+        "bytes": 7876775,
+        "md5": "a63b728bf149d4709d53585990e0cce7"
+      },
+      "raw/mv37.nii.gz": {
+        "bytes": 4826280,
+        "md5": "8c32ff40e72922911adc31c8763d1099"
+      },
+      "raw/mv39.nii.gz": {
+        "bytes": 1636489,
+        "md5": "ccc08adc936bea171e6683aed1be1b1d"
+      },
+      "raw/mv40.nii.gz": {
+        "bytes": 2777019,
+        "md5": "b9438fae846fb8311147ce18e7399ca5"
+      },
+      "raw/mv41.nii.gz": {
+        "bytes": 21788654,
+        "md5": "97b9674096dec71545bc42ce8b02544f"
+      },
+      "raw/mv42.nii.gz": {
+        "bytes": 11637108,
+        "md5": "23edbd407b49af2424d649da478babd9"
+      },
+      "raw/mv43.nii.gz": {
+        "bytes": 14466157,
+        "md5": "4f3a25a64dfe8f74ed0db81d84ddacb6"
+      },
+      "raw/mv45.nii.gz": {
+        "bytes": 26553895,
+        "md5": "52aebc98d3f602ee032304362a72c218"
+      },
+      "raw/mv46.nii.gz": {
+        "bytes": 12600589,
+        "md5": "bfa431a7e43002674235c4b9f8b256c3"
+      },
+      "raw/mv47.nii.gz": {
+        "bytes": 5892831,
+        "md5": "c9a9fc62deb91306c1c8a3ce1729d474"
+      },
+      "raw/mv49.nii.gz": {
+        "bytes": 9435635,
+        "md5": "e05519204e5713991ff13fe2cc747298"
+      },
+      "raw/mv50.nii.gz": {
+        "bytes": 7914239,
+        "md5": "d6514409c835f597ee76499778940f96"
+      },
+      "raw/mv51.nii.gz": {
+        "bytes": 9924945,
+        "md5": "ac00b3833d15cd1c9e38fedd2151b8ff"
+      },
+      "raw/mv52.nii.gz": {
+        "bytes": 7286050,
+        "md5": "0c122881d810b7f529ee5c416dac29e2"
+      },
+      "raw/mv53.nii.gz": {
+        "bytes": 13075238,
+        "md5": "71a284df382287c687c7d9ff84a20aca"
+      },
+      "raw/mv54.nii.gz": {
+        "bytes": 9257988,
+        "md5": "5a4991f63106edec4ef3b05f15cb6182"
+      },
+      "raw/mv55.nii.gz": {
+        "bytes": 6920457,
+        "md5": "386b59de4c89b67fc9e5712030effb29"
+      },
+      "raw/mv56.nii.gz": {
+        "bytes": 4062378,
+        "md5": "09a105d70aa8080df05e70098eadac5e"
+      },
+      "raw/mv57.nii.gz": {
+        "bytes": 4759372,
+        "md5": "54bd26c0ad4739496e25dcdb8568c33c"
+      },
+      "raw/mv59.nii.gz": {
+        "bytes": 11691764,
+        "md5": "c3b37eb973b547f40b852667229487f4"
+      },
+      "raw/mv60.nii.gz": {
+        "bytes": 19302755,
+        "md5": "2f4d40e4077c5a9b191e892278fb4b16"
+      },
+      "raw/mv61.nii.gz": {
+        "bytes": 13393582,
+        "md5": "d01e01793ea1e6361459c5aedc2df66f"
+      },
+      "raw/mv62.nii.gz": {
+        "bytes": 17957669,
+        "md5": "9a6119a3f26f31d8bf8cb16a7b7819d8"
+      },
+      "raw/mv63.nii.gz": {
+        "bytes": 18592486,
+        "md5": "41b3736017688effeccd11fd37d8625f"
+      },
+      "raw/mv64.nii.gz": {
+        "bytes": 11596489,
+        "md5": "87b09863659aa50010d854701c79b4e9"
+      },
+      "raw/mv65.nii.gz": {
+        "bytes": 10227452,
+        "md5": "67d10095acea850906395bea3a811da6"
+      },
+      "raw/mv66.nii.gz": {
+        "bytes": 943159,
+        "md5": "28cc9ba0c23233543e55b91bf69f29f0"
+      },
+      "raw/mv67.nii.gz": {
+        "bytes": 1606067,
+        "md5": "55eea6d9f685a25c22ff10f250f85707"
+      },
+      "raw/mv69.nii.gz": {
+        "bytes": 11635333,
+        "md5": "e2bc35e87d89aec345c523db36b23ec0"
+      },
+      "raw/mv70.nii.gz": {
+        "bytes": 5259634,
+        "md5": "ce768c497c7c66ece4a2d340fe975ba7"
+      },
+      "seg/mv01_y.nii.gz": {
+        "bytes": 224074,
+        "md5": "6ec12af8b69dbee45e63406618336e55"
+      },
+      "seg/mv02_y.nii.gz": {
+        "bytes": 447323,
+        "md5": "773f2be39e90e79231fecbcdb5d1fd6c"
+      },
+      "seg/mv03_y.nii.gz": {
+        "bytes": 401820,
+        "md5": "57ebcde59d8d1946ab0523cfe1929696"
+      },
+      "seg/mv04_y.nii.gz": {
+        "bytes": 438220,
+        "md5": "e42453387de45a23feed53080a5f4491"
+      },
+      "seg/mv05_y.nii.gz": {
+        "bytes": 371560,
+        "md5": "b0e3305f3a54c3f080572cbb122db71c"
+      },
+      "seg/mv07_y.nii.gz": {
+        "bytes": 428396,
+        "md5": "391514f8211dabc8eb6eddb18592d38b"
+      },
+      "seg/mv08_y.nii.gz": {
+        "bytes": 209467,
+        "md5": "6239d8ca2d9915b48774038b6709dbac"
+      },
+      "seg/mv09_y.nii.gz": {
+        "bytes": 570660,
+        "md5": "497528fcaa399bdcda771df5fdf6e673"
+      },
+      "seg/mv10_y.nii.gz": {
+        "bytes": 351076,
+        "md5": "b222c380c1b8eec460c10de4e033c1d8"
+      },
+      "seg/mv11_y.nii.gz": {
+        "bytes": 398972,
+        "md5": "16e791d7de6238bad06e4752e686fa08"
+      },
+      "seg/mv12_y.nii.gz": {
+        "bytes": 114759,
+        "md5": "4c06c1847b248d7e7d331166cd089e3f"
+      },
+      "seg/mv13_y.nii.gz": {
+        "bytes": 147416,
+        "md5": "dce52ec8d195a4302edf30370cdec160"
+      },
+      "seg/mv14_y.nii.gz": {
+        "bytes": 238083,
+        "md5": "b5844e5b1b6de5de9b17e7a59559103b"
+      },
+      "seg/mv15_y.nii.gz": {
+        "bytes": 190767,
+        "md5": "7347ae5a9eef9cfaa3d99d91a1295cd8"
+      },
+      "seg/mv16_y.nii.gz": {
+        "bytes": 138084,
+        "md5": "ce194e31989406a984f6d584d6467dc4"
+      },
+      "seg/mv17_y.nii.gz": {
+        "bytes": 132590,
+        "md5": "7c3672b98ae99d0b38f317271543a8a9"
+      },
+      "seg/mv18_y.nii.gz": {
+        "bytes": 123477,
+        "md5": "121ffa232fcca4059473c19f6cac93a6"
+      },
+      "seg/mv19_y.nii.gz": {
+        "bytes": 176124,
+        "md5": "52936fe86ed0412bfbaf407c43330eb2"
+      },
+      "seg/mv20_y.nii.gz": {
+        "bytes": 185904,
+        "md5": "10a018bc7214f55ffceeb8abb0b3d2f8"
+      },
+      "seg/mv21_y.nii.gz": {
+        "bytes": 220117,
+        "md5": "7015eee13773fd24cb6b22316d4544cf"
+      },
+      "seg/mv22_y.nii.gz": {
+        "bytes": 437077,
+        "md5": "bf2ee4e573728b227f95a92393f24cc0"
+      },
+      "seg/mv23_y.nii.gz": {
+        "bytes": 363638,
+        "md5": "a853ebb53664a482edf422a0c1332550"
+      },
+      "seg/mv24_y.nii.gz": {
+        "bytes": 734861,
+        "md5": "aa695360b1e2964aa2b7d3f2c98b1dc8"
+      },
+      "seg/mv25_y.nii.gz": {
+        "bytes": 244288,
+        "md5": "a45f2a0a18b9a0e3541ae4ce1d6aea03"
+      },
+      "seg/mv26_y.nii.gz": {
+        "bytes": 241596,
+        "md5": "59cd2670f0f588b5b068b0f43d7326a8"
+      },
+      "seg/mv27_y.nii.gz": {
+        "bytes": 439630,
+        "md5": "f98ade03b75baccf07939c8d9973da82"
+      },
+      "seg/mv29_y.nii.gz": {
+        "bytes": 231069,
+        "md5": "f59070864a768362260e780ded69d4c5"
+      },
+      "seg/mv30_y.nii.gz": {
+        "bytes": 177891,
+        "md5": "1e44a6493a7624fbaa6e922835ecca18"
+      },
+      "seg/mv31_y.nii.gz": {
+        "bytes": 99151,
+        "md5": "3ecfc0bba6738227854bfa09c8d7ce80"
+      },
+      "seg/mv32_y.nii.gz": {
+        "bytes": 119651,
+        "md5": "2d59f938b28d814bf1cbf9db0337c217"
+      },
+      "seg/mv33_y.nii.gz": {
+        "bytes": 248184,
+        "md5": "bead615a78c99812546d7a0553ea7d00"
+      },
+      "seg/mv34_y.nii.gz": {
+        "bytes": 606796,
+        "md5": "64b7b81294e316bf7793f9c612c725e8"
+      },
+      "seg/mv36_y.nii.gz": {
+        "bytes": 284415,
+        "md5": "c32c5d455bf4c7a8d05c7da0208135a2"
+      },
+      "seg/mv37_y.nii.gz": {
+        "bytes": 169117,
+        "md5": "18ae163d278c459e1743216c7fe15f4f"
+      },
+      "seg/mv39_y.nii.gz": {
+        "bytes": 51356,
+        "md5": "353239f32494e0960d9a900f23a70e36"
+      },
+      "seg/mv40_y.nii.gz": {
+        "bytes": 71365,
+        "md5": "6ed712f94982efa191588b613bf86c34"
+      },
+      "seg/mv41_y.nii.gz": {
+        "bytes": 425755,
+        "md5": "8a851e4212cee56c469d3987971bf983"
+      },
+      "seg/mv42_y.nii.gz": {
+        "bytes": 219289,
+        "md5": "7cb65aa075910ad1e1328720ec05c200"
+      },
+      "seg/mv43_y.nii.gz": {
+        "bytes": 339858,
+        "md5": "3746a95668e135e3657e3603390f98bd"
+      },
+      "seg/mv45_y.nii.gz": {
+        "bytes": 804366,
+        "md5": "9f9ceeb60a17bfd395cd75543213af15"
+      },
+      "seg/mv46_y.nii.gz": {
+        "bytes": 233181,
+        "md5": "0c233928cd6eaf59b4858acfce5013e2"
+      },
+      "seg/mv47_y.nii.gz": {
+        "bytes": 178793,
+        "md5": "3b5ab1b3d0133c82bea1f8b26ade50f8"
+      },
+      "seg/mv49_y.nii.gz": {
+        "bytes": 230375,
+        "md5": "a65db526bd8da3c6e2d2cf16af108723"
+      },
+      "seg/mv50_y.nii.gz": {
+        "bytes": 224573,
+        "md5": "6d273cc2270f7fe0de7daf0e5de0c66c"
+      },
+      "seg/mv51_y.nii.gz": {
+        "bytes": 279577,
+        "md5": "2fa310b7f020627282119ae8c7c5ccd5"
+      },
+      "seg/mv52_y.nii.gz": {
+        "bytes": 212328,
+        "md5": "c6d8548ae7af0ef40dd38cfe6c6ddae5"
+      },
+      "seg/mv53_y.nii.gz": {
+        "bytes": 212128,
+        "md5": "a7d348524cd20f6aab8566b210c39059"
+      },
+      "seg/mv54_y.nii.gz": {
+        "bytes": 112325,
+        "md5": "dfe0a977d59cf7e300805923b99ab5b5"
+      },
+      "seg/mv55_y.nii.gz": {
+        "bytes": 217939,
+        "md5": "8bc893c57ed40209e600e387b19a17e0"
+      },
+      "seg/mv56_y.nii.gz": {
+        "bytes": 61618,
+        "md5": "cd62d4fa2f7c31aafd78f78ab42b76e7"
+      },
+      "seg/mv57_y.nii.gz": {
+        "bytes": 149814,
+        "md5": "b9327c13861d26c431b254790c2f2c2a"
+      },
+      "seg/mv59_y.nii.gz": {
+        "bytes": 227247,
+        "md5": "e24b1011f94c680ac48628da569331f7"
+      },
+      "seg/mv60_y.nii.gz": {
+        "bytes": 364277,
+        "md5": "bb7373531379ec93f2d0b4df6847ea4b"
+      },
+      "seg/mv61_y.nii.gz": {
+        "bytes": 298665,
+        "md5": "3f28670fbfb202a5fe0b2e73b515a2fb"
+      },
+      "seg/mv62_y.nii.gz": {
+        "bytes": 398300,
+        "md5": "f45ea368c3fb34d2e0a2f01b7c0c3fa0"
+      },
+      "seg/mv63_y.nii.gz": {
+        "bytes": 322688,
+        "md5": "a0334b5bec519ae3b49eef305d5a69e9"
+      },
+      "seg/mv64_y.nii.gz": {
+        "bytes": 280633,
+        "md5": "e097890a4d5e46d2e6fad55015901f18"
+      },
+      "seg/mv65_y.nii.gz": {
+        "bytes": 200296,
+        "md5": "97870dbeb7644a8f93ff58c0e723715a"
+      },
+      "seg/mv66_y.nii.gz": {
+        "bytes": 79826,
+        "md5": "1ae3f2c5d32d83dbcdf36d0ff6dff706"
+      },
+      "seg/mv67_y.nii.gz": {
+        "bytes": 70256,
+        "md5": "deb405cbaed67678ec25f036ceecc1ac"
+      },
+      "seg/mv69_y.nii.gz": {
+        "bytes": 218468,
+        "md5": "c232e52126829c4cb58fcaab0844b40c"
+      },
+      "seg/mv70_y.nii.gz": {
+        "bytes": 90387,
+        "md5": "90b855d79b7c97d9dcfc7f6f70ed1192"
+      }
+    },
+    "code_page": "https://github.com/ctpn/minivess",
+    "confirmation_sample_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      36,
+      37,
+      39,
+      40,
+      41,
+      42,
+      43,
+      45,
+      46,
+      47,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      69,
+      70
+    ],
+    "dataset_page": "https://search.kg.ebrains.eu/instances/bf268b89-1420-476b-b428-b85a913eb523",
+    "doi": "10.25493/HPBE-YHK",
+    "evaluated_sample_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      36,
+      37,
+      39,
+      40,
+      41,
+      42,
+      43,
+      45,
+      46,
+      47,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      69,
+      70
+    ],
+    "id": "bf268b89-1420-476b-b428-b85a913eb523",
+    "license": "CC BY-NC-SA 4.0",
+    "output_xy": [
+      64,
+      64
+    ],
+    "paper_page": "https://doi.org/10.1038/s41597-023-02048-8",
+    "pilot_sample_ids": [
+      6,
+      28,
+      35,
+      38,
+      44,
+      48,
+      58,
+      68
+    ],
+    "sample_set": "confirmation",
+    "source_files_redistributed": false,
+    "source_xy": [
+      512,
+      512
+    ],
+    "specimen_grouping_available": false
+  },
+  "decision": {
+    "broad_resampling_superiority_demonstrated": false,
+    "confirmation_eligible": true,
+    "fastest_method_claimed": false,
+    "quality_margin_pass": true,
+    "segmentation_superiority_demonstrated": false,
+    "speed_pass": false,
+    "strict_vessel_overview_claim_pass": false
+  },
+  "environment": {
+    "machine": "x86_64",
+    "packages": {
+      "matplotlib": "3.10.9",
+      "nibabel": "5.4.2",
+      "numpy": "2.4.6",
+      "opencv-python-headless": "4.13.0.92",
+      "scikit-image": "0.26.0",
+      "scipy": "1.17.1",
+      "splineops": "2.1.0",
+      "torch": "2.12.0+cpu"
+    },
+    "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python": "3.12.3",
+    "thread_controls": {
+      "LSRESIZE_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "opencv_api_threads": 1,
+      "torch_api_threads": 1
+    }
+  },
+  "generated_at": "2026-07-17T10:08:34.082909+00:00",
+  "methods": [
+    {
+      "grid": "endpoint",
+      "key": "splineops_projection",
+      "label": "SplineOps projection AA",
+      "semantics": "endpoint-aligned cubic projection antialiasing"
+    },
+    {
+      "grid": "endpoint",
+      "key": "splineops_interpolation",
+      "label": "SplineOps cubic, no AA",
+      "semantics": "endpoint-aligned cubic interpolation without antialiasing"
+    },
+    {
+      "grid": "endpoint",
+      "key": "scipy_gaussian",
+      "label": "SciPy Gaussian + cubic",
+      "semantics": "Gaussian-prefiltered endpoint-aligned cubic sampling"
+    },
+    {
+      "grid": "half_pixel",
+      "key": "skimage_resize",
+      "label": "scikit-image cubic AA",
+      "semantics": "native half-pixel cubic resize with Gaussian antialiasing"
+    },
+    {
+      "grid": "half_pixel",
+      "key": "torch_area",
+      "label": "PyTorch area",
+      "semantics": "native regional area resize on the half-pixel geometry"
+    },
+    {
+      "grid": "half_pixel",
+      "key": "opencv_area",
+      "label": "OpenCV area",
+      "semantics": "native INTER_AREA resize on the half-pixel geometry"
+    },
+    {
+      "grid": "phase_zero",
+      "key": "scipy_polyphase",
+      "label": "SciPy polyphase FIR",
+      "semantics": "separable default polyphase FIR with linear boundary continuation"
+    }
+  ],
+  "protocol": {
+    "bootstrap_resamples": 20000,
+    "bootstrap_resamples_shared_across_comparisons": true,
+    "bootstrap_seed": 20260716,
+    "minimum_speedups": {
+      "scipy_gaussian": 3.0,
+      "scipy_polyphase": 3.0,
+      "skimage_resize": 3.0,
+      "torch_area": 1.0
+    },
+    "primary_metric": "top-prevalence vessel Dice",
+    "required_quality_margin": 0.005,
+    "strict_speedups": [
+      "torch_area"
+    ],
+    "superiority_one_sided_quantile": 0.01,
+    "threads": 1,
+    "timing_cache_state": "warm process-local public-call caches enabled",
+    "timing_repetitions": 3,
+    "timing_warmups": 1
+  },
+  "study": "MiniVess 8x vessel-overview confirmation",
+  "summary": [
+    {
+      "label": "SplineOps projection AA",
+      "mean_average_precision": 0.8995610513274236,
+      "mean_roc_auc": 0.9911417007148834,
+      "mean_top_prevalence_dice": 0.8202651709525725,
+      "median_runtime_s": 0.20500726550005766,
+      "method": "splineops_projection"
+    },
+    {
+      "label": "SplineOps cubic, no AA",
+      "mean_average_precision": 0.8177341731789827,
+      "mean_roc_auc": 0.9640862778277917,
+      "mean_top_prevalence_dice": 0.7536847510074918,
+      "median_runtime_s": 0.15314242250008192,
+      "method": "splineops_interpolation"
+    },
+    {
+      "label": "SciPy Gaussian + cubic",
+      "mean_average_precision": 0.8675303110008231,
+      "mean_roc_auc": 0.9882433835256924,
+      "mean_top_prevalence_dice": 0.7860567221902873,
+      "median_runtime_s": 0.673187774999974,
+      "method": "scipy_gaussian"
+    },
+    {
+      "label": "scikit-image cubic AA",
+      "mean_average_precision": 0.8655269717364918,
+      "mean_roc_auc": 0.9881508392828087,
+      "mean_top_prevalence_dice": 0.7845850227995065,
+      "median_runtime_s": 0.6673723400000426,
+      "method": "skimage_resize"
+    },
+    {
+      "label": "PyTorch area",
+      "mean_average_precision": 0.8901966222596126,
+      "mean_roc_auc": 0.9907285929187358,
+      "mean_top_prevalence_dice": 0.8104380875244428,
+      "median_runtime_s": 0.12289204000012433,
+      "method": "torch_area"
+    },
+    {
+      "label": "OpenCV area",
+      "mean_average_precision": 0.8901958049708277,
+      "mean_roc_auc": 0.9907285897065167,
+      "mean_top_prevalence_dice": 0.8104368733298856,
+      "median_runtime_s": 0.09976610199998959,
+      "method": "opencv_area"
+    },
+    {
+      "label": "SciPy polyphase FIR",
+      "mean_average_precision": 0.8737360195461336,
+      "mean_roc_auc": 0.9891166581873038,
+      "mean_top_prevalence_dice": 0.7927089269468109,
+      "median_runtime_s": 0.5025190604999352,
+      "method": "scipy_polyphase"
+    }
+  ]
+}

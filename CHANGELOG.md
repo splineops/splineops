@@ -22,6 +22,12 @@ All notable changes to SplineOps are documented here.
   against named SciPy, scikit-image, and PyTorch pipelines and its frozen local
   speed thresholds, with explicit limits on segmentation, specimen-level,
   licensing, and broad-resampling claims.
+- Added a frozen 62-volume MiniVess 8x vessel-overview confirmation with
+  method-native label grids and paired family-wise inference. All five quality
+  margins passed, but the joint quality-at-speed claim failed because the
+  PyTorch and SciPy-polyphase speed thresholds did not pass. The complete
+  negative decision, per-volume scores, timings, and source checksums are
+  retained.
 
 ### Tests
 

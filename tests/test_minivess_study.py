@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import csv
+import json
 import os
+import statistics
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +12,17 @@ import pytest
 from scripts import benchmark_minivess_overview as study
 
 ROOT = Path(__file__).resolve().parents[1]
+MINIVESS_DIR = ROOT / "benchmarks" / "minivess"
+
+
+def read_json(path: Path) -> dict[str, object]:
+    with path.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def read_csv(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
 
 
 def test_pilot_and_confirmation_are_disjoint_and_complete() -> None:
@@ -107,3 +121,90 @@ def test_method_registry_includes_strong_and_fast_counterchecks() -> None:
         "scipy_polyphase",
     }
     assert "opencv_area" not in study.MINIMUM_SPEEDUPS
+
+
+def test_confirmation_retains_failed_joint_claim_and_thread_controls() -> None:
+    result = read_json(MINIVESS_DIR / "results.json")
+    assert result["decision"] == {
+        "broad_resampling_superiority_demonstrated": False,
+        "confirmation_eligible": True,
+        "fastest_method_claimed": False,
+        "quality_margin_pass": True,
+        "segmentation_superiority_demonstrated": False,
+        "speed_pass": False,
+        "strict_vessel_overview_claim_pass": False,
+    }
+    dataset = result["dataset"]
+    assert dataset["evaluated_sample_ids"] == list(study.CONFIRMATION_IDS)
+    assert dataset["source_files_redistributed"] is False
+    assert dataset["specimen_grouping_available"] is False
+    assert result["environment"]["thread_controls"] == {
+        **{name: "1" for name in study.THREAD_ENVIRONMENT},
+        "opencv_api_threads": 1,
+        "torch_api_threads": 1,
+    }
+
+
+def test_confirmation_scores_comparisons_and_timings_are_consistent() -> None:
+    scores = read_csv(MINIVESS_DIR / "scores.csv")
+    timings = read_csv(MINIVESS_DIR / "timings.csv")
+    comparisons = read_csv(MINIVESS_DIR / "comparisons.csv")
+    assert len(scores) == 62 * 7
+    assert len(timings) == 62 * 7 * 3
+    assert len(comparisons) == 5
+
+    dice_by_method = {
+        method: {
+            row["sample"]: float(row["top_prevalence_dice"])
+            for row in scores
+            if row["method"] == method
+        }
+        for method in {row["method"] for row in scores}
+    }
+
+    def study_median(method: str) -> float:
+        samples = sorted({row["sample"] for row in timings if row["method"] == method})
+        per_sample = [
+            statistics.median(
+                float(row["runtime_s"])
+                for row in timings
+                if row["method"] == method and row["sample"] == sample
+            )
+            for sample in samples
+        ]
+        return statistics.median(per_sample)
+
+    spline_time = study_median("splineops_projection")
+    speed_results = {}
+    for row in comparisons:
+        comparison = row["comparison"]
+        differences = [
+            dice_by_method["splineops_projection"][sample]
+            - dice_by_method[comparison][sample]
+            for sample in sorted(dice_by_method[comparison])
+        ]
+        assert float(row["mean_dice_difference"]) == pytest.approx(
+            statistics.fmean(differences), abs=1e-15
+        )
+        assert float(row["bonferroni_one_sided_low"]) > study.QUALITY_MARGIN
+        assert row["quality_margin_pass"] == "True"
+        assert float(row["median_runtime_ratio"]) == pytest.approx(
+            study_median(comparison) / spline_time
+        )
+        speed_results[comparison] = row["speed_pass"]
+    assert speed_results == {
+        "scipy_gaussian": "True",
+        "skimage_resize": "True",
+        "torch_area": "False",
+        "opencv_area": "",
+        "scipy_polyphase": "False",
+    }
+
+
+def test_confirmation_artifacts_preserve_scope_and_provenance() -> None:
+    readme = (MINIVESS_DIR / "README.md").read_text(encoding="utf-8")
+    assert "overall predeclared claim **failed**" in readme
+    assert "not segmentation, animal-level, or broad resampling superiority" in readme
+    assert (MINIVESS_DIR / "minivess_overview.png").stat().st_size > 50_000
+    assert not list(MINIVESS_DIR.glob("*.nii*"))
+    assert not list(MINIVESS_DIR.glob("*.gz"))
