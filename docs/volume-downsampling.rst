@@ -3,7 +3,7 @@ Volume downsampling
 
 This tutorial downsamples continuous-valued 3-D volumes with an explicit
 spatial-axis contract.  SplineOps operates on array grids; it does not manage
-medical-image origin, direction, or physical-spacing metadata in version 2.1.
+medical-image origin, direction, or physical-spacing metadata.
 
 One volume
 ----------
@@ -66,7 +66,7 @@ resizing, depending on the application.
 
 If an input comes from NIfTI, DICOM, or another physical-space format, update
 and validate its metadata in the library that owns that metadata.  SplineOps
-2.1 returns an array, not a physical-space image object.
+SplineOps returns an array, not a physical-space image object.
 
 See :doc:`user-guide/02_resize` for the endpoint-aligned coordinate contract
 and :doc:`performance` for measured performance and its limitations.

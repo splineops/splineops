@@ -31,8 +31,10 @@ Evidence summary
      - Libraries with different grids, boundaries, or filters are not treated
        as equivalent algorithms.
    * - Independent competitive accuracy
-     - Not yet established across representative N-D applications.
-     - No universal best-quality claim is made.
+     - Established for one held-out microvessel application and controlled
+       analytical fields, but not across representative N-D applications.
+     - The :doc:`claims` page defines the narrow supported wording; no
+       universal best-quality claim is made.
 
 Numerical difference from SplineOps is not an accuracy metric unless an
 independent ground truth is available.  All dated values below are development

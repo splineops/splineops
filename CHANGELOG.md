@@ -4,8 +4,21 @@ All notable changes to SplineOps are documented here.
 
 ## Unreleased
 
+## 2.2.0 - 2026-07-17
+
 ### Documentation
 
+- Added an installable `splineops-selma3d-demo` napari comparison with a
+  checksum-pinned single-patch workflow, grid-aware expert masks, local versus
+  frozen evidence, and an explicit post-study presentation-sample disclosure.
+- Added a canonical claims registry separating the supported SELMA3D
+  quality-at-speed statement, internal acceleration evidence, controlled-field
+  results, and explicit nonclaims.
+- Reorganized the documentation header around visible Getting started,
+  Modules, Examples, Evidence, Project, and API destinations so module and
+  gallery navigation no longer falls into the generic `More` menu.
+- Split the interactive demo dependencies into a lightweight default extra and
+  a `selma3d-demo-all` extra for the optional PyTorch-area comparison.
 - Added a checksum-pinned, reproducible 3-D microscopy downsampling study using
   the public CC0 ``cells3d`` volume, with cross-library timings, explicitly
   limited real-data proxies, and a separate known-target calibration.

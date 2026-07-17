@@ -11,8 +11,34 @@ permissions:
   id-token: write  # OIDC for PyPI
 
 jobs:
+  validate_release:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Match tag to package version
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import tomllib
+
+          with pathlib.Path("pyproject.toml").open("rb") as handle:
+              version = tomllib.load(handle)["project"]["version"]
+          tag = os.environ["GITHUB_REF_NAME"]
+          assert tag == f"v{version}", (tag, version)
+          PY
+
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
+    needs: [validate_release]
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -59,14 +85,38 @@ jobs:
           # (Intel: 10.13+ matches cp312 minimum; arm64 will still be 11.0+)
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=10.13
 
-          # Simple smoke test: import and check native module presence
+          # Smoke-test the native module, packaged demo evidence, and command.
           CIBW_TEST_COMMAND: >
-            python -c "import importlib.util, numpy as np, splineops;
-            print('ok', importlib.util.find_spec('splineops._lsresize') is not None)"
+            python -c "import importlib.resources, importlib.util, subprocess,
+            splineops; assert importlib.util.find_spec('splineops._lsresize');
+            assert importlib.resources.files('splineops.demos.data').joinpath('selma3d_vessels_summary.json').is_file();
+            subprocess.run(['splineops-selma3d-demo', '--help'], check=True)"
 
       - name: Build sdist (once on Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: python -m build -s -o dist
+
+      - name: Audit sdist (once on Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python - <<'PY'
+          import pathlib
+          import tarfile
+
+          archive = next(pathlib.Path("dist").glob("*.tar.gz"))
+          with tarfile.open(archive) as source:
+              names = source.getnames()
+          leaks = [
+              name
+              for name in names
+              if "__pycache__" in name or name.endswith(".pyc")
+          ]
+          assert not leaks, leaks
+          assert any(
+              name.endswith("src/splineops/demos/data/selma3d_vessels_summary.json")
+              for name in names
+          )
+          PY
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v6
@@ -98,6 +148,23 @@ jobs:
         with:
           name: sdist
           path: dist
+
+      - name: Validate release artifacts
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+
+          expected = os.environ["GITHUB_REF_NAME"].removeprefix("v")
+          artifacts = list(pathlib.Path("dist").iterdir())
+          wheels = [path for path in artifacts if path.suffix == ".whl"]
+          sdists = [path for path in artifacts if path.name.endswith(".tar.gz")]
+          assert len(wheels) == 12, [path.name for path in wheels]
+          assert len(sdists) == 1, [path.name for path in sdists]
+          assert all(path.name.startswith(f"splineops-{expected}-") for path in wheels)
+          assert sdists[0].name == f"splineops-{expected}.tar.gz"
+          PY
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

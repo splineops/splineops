@@ -44,7 +44,7 @@ nearest-neighbour rather than spline-projection semantics.
 Release status
 --------------
 
-.. list-table:: SplineOps 2.1 public maturity
+.. list-table:: SplineOps 2.2 public maturity
    :header-rows: 1
    :widths: 24 16 60
 
@@ -74,6 +74,30 @@ quality-and-speed superiority rule against named SciPy, scikit-image, and
 PyTorch pipelines.  It is a preprocessing result, not segmentation or
 universal resampling superiority.
 
+Explore the package
+-------------------
+
+.. grid:: 3
+   :gutter: 2
+
+   .. grid-item-card:: Modules
+      :link: modules
+      :link-type: doc
+
+      See every stable, stabilizing, and research module in one place.
+
+   .. grid-item-card:: Examples
+      :link: examples
+      :link-type: doc
+
+      Browse the executable gallery by module or complete workflow.
+
+   .. grid-item-card:: Claims and evidence
+      :link: evidence
+      :link-type: doc
+
+      Read the approved wording, limitations, studies, and interactive demo.
+
 Research lineage
 ----------------
 
@@ -83,58 +107,12 @@ citations, implementation history, and source provenance are recorded in
 :doc:`provenance`.
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Getting started
+   :hidden:
+   :maxdepth: 2
 
-   installation/index
-   quickstart
-   volume-downsampling
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Core guides
-
-   user-guide/index
-   user-guide/02_resize
-   user-guide/01_spline_interpolation
-   consolidation-recipes
-   auto_examples/index
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Evidence
-
-   selma3d-vessels-study
-   wavefield3d-study
-   bbbc050-study
-   cells3d-study
-   performance
-   project-status
-   backend-support
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Research modules
-
-   user-guide/03_affine
-   user-guide/04_adaptive_regression_splines
-   user-guide/05_smoothing_splines
-   user-guide/06_differentials
-   user-guide/07_multiscale
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Project
-
-   provenance
-   roadmap
-   progress
-   stability-soak
-   graduation-audits
-   internal-contracts
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Reference
-
+   getting-started
+   modules
+   examples
+   evidence
+   project
    api/index

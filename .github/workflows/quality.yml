@@ -45,13 +45,31 @@ jobs:
       - name: Build wheel and source distribution
         run: python -m build
 
+      - name: Audit source distribution
+        run: |
+          python - <<'PY'
+          import pathlib
+          import tarfile
+
+          archive = next(pathlib.Path("dist").glob("*.tar.gz"))
+          with tarfile.open(archive) as source:
+              names = source.getnames()
+          leaks = [
+              name
+              for name in names
+              if "__pycache__" in name or name.endswith(".pyc")
+          ]
+          assert not leaks, leaks
+          PY
+
       - name: Clean wheel smoke test
         shell: bash
         run: |
           python -m venv /tmp/splineops-wheel-smoke
           /tmp/splineops-wheel-smoke/bin/python -m pip install --upgrade pip
           /tmp/splineops-wheel-smoke/bin/python -m pip install dist/*.whl
-          /tmp/splineops-wheel-smoke/bin/python -c "import importlib.util, splineops; assert importlib.util.find_spec('splineops._lsresize')"
+          /tmp/splineops-wheel-smoke/bin/python -c "import importlib.resources, importlib.util, splineops; assert importlib.util.find_spec('splineops._lsresize'); assert importlib.resources.files('splineops.demos.data').joinpath('selma3d_vessels_summary.json').is_file()"
+          /tmp/splineops-wheel-smoke/bin/splineops-selma3d-demo --help
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v6

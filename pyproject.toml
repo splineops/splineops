@@ -11,10 +11,17 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "splineops"
-version = "2.1.0"
+version = "2.2.0"
 description = "Projection-based antialiased resizing for N-D scientific arrays."
 readme = "README.md"
 license = { file = "LICENSE" }
+keywords = [
+    "spline",
+    "resampling",
+    "antialiasing",
+    "microscopy",
+    "n-dimensional",
+]
 authors = [
     { name = "Pablo Garcia-Amorena" },
     { name = "Philippe Thévenaz" },
@@ -45,9 +52,14 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://splineops.github.io/"
+Documentation = "https://splineops.github.io/"
 Source = "https://github.com/splineops/splineops"
 Issues = "https://github.com/splineops/splineops/issues"
 Download = "https://github.com/splineops/splineops.git"
+Evidence = "https://splineops.github.io/claims.html"
+
+[project.scripts]
+splineops-selma3d-demo = "splineops.demos.selma3d:main"
 
 [project.optional-dependencies]
 visualization = [
@@ -65,6 +77,15 @@ wavefield-study = [
 selma3d-study = [
     "splineops[wavefield-study]",
     "nibabel >=5.2",
+]
+selma3d-demo = [
+    "splineops[study]",
+    "nibabel >=5.2",
+    "napari[pyqt6] >=0.6",
+]
+selma3d-demo-all = [
+    "splineops[selma3d-demo]",
+    "torch >=2.0",
 ]
 minivess-study = [
     "splineops[selma3d-study]",
@@ -115,12 +136,19 @@ docs = [
 wheel.packages = ["src/splineops"]
 editable.mode = "redirect"
 sdist.include = [
-  "src/splineops/**",
+  "src/splineops/**/*.py",
+  "src/splineops/demos/data/*.json",
   "cpp/**",
+  "demos/*.py",
+  "demos/*.md",
   "CMakeLists.txt",
   "README.md",
   "CHANGELOG.md",
   "LICENSE",
+]
+sdist.exclude = [
+  "**/__pycache__/**",
+  "**/*.pyc",
 ]
 
 cmake.build-type = "Release"

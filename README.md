@@ -84,6 +84,17 @@ It was 12.49x, 15.17x, and 1.36x faster, respectively, on the recorded
 one-thread CPU run. This is narrow preprocessing superiority—not segmentation
 or universal resampling superiority.
 
+Explore that result interactively with the
+[installed SELMA3D napari comparison demo](https://splineops.github.io/selma3d-demo.html).
+It downloads one
+checksum-verified public patch, runs the named methods locally, and provides a
+curtain slider over their outputs and expert vessel labels.
+The default demo extra avoids PyTorch; install `selma3d-demo-all` when the
+PyTorch-area comparison is required.
+
+The exact approved public wording and its limits are maintained in
+[Claims and evidence](https://splineops.github.io/claims.html).
+
 The [3-D microscopy case study](https://splineops.github.io/cells3d-study.html)
 tests that position on a public two-channel volume. It publishes the input
 checksum, code, raw results, local timings, and the limits of each metric.
@@ -112,10 +123,14 @@ scope.
 
 ## Documentation
 
-- [Getting started](https://splineops.github.io/quickstart.html)
+- [Getting started](https://splineops.github.io/getting-started.html)
+- [Modules](https://splineops.github.io/modules.html)
+- [Examples](https://splineops.github.io/examples.html)
+- [Claims and evidence](https://splineops.github.io/claims.html)
 - [Resize guide](https://splineops.github.io/user-guide/02_resize.html)
 - [Volume downsampling tutorial](https://splineops.github.io/volume-downsampling.html)
 - [SELMA3D microvessel validation](https://splineops.github.io/selma3d-vessels-study.html)
+- [Interactive SELMA3D napari demo](https://splineops.github.io/selma3d-demo.html)
 - [Controlled 3-D spectral-coarsening validation](https://splineops.github.io/wavefield3d-study.html)
 - [3-D microscopy case study](https://splineops.github.io/cells3d-study.html)
 - [BBBC050 segmentation validation](https://splineops.github.io/bbbc050-study.html)

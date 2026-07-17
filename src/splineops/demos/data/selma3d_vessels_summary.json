@@ -1,0 +1,68 @@
+{
+  "comparisons": [
+    {
+      "comparison": "scipy_gaussian",
+      "mean_auc_difference": 0.0007218276975375667,
+      "median_runtime_ratio": 12.494583619323219,
+      "quality_superior": true,
+      "speed_pass": true
+    },
+    {
+      "comparison": "skimage_resize",
+      "mean_auc_difference": 0.005202123215362293,
+      "median_runtime_ratio": 15.17060230051018,
+      "quality_superior": true,
+      "speed_pass": true
+    },
+    {
+      "comparison": "torch_area",
+      "mean_auc_difference": 0.005186073658846873,
+      "median_runtime_ratio": 1.3589032608774603,
+      "quality_superior": true,
+      "speed_pass": true
+    }
+  ],
+  "decision": {
+    "broad_resampling_superiority_demonstrated": false,
+    "narrow_quality_at_speed_claim_pass": true,
+    "quality_noninferiority_pass": true,
+    "segmentation_superiority_demonstrated": false,
+    "speed_pass": true,
+    "strict_named_method_superiority_pass": true
+  },
+  "source_artifact": "https://github.com/splineops/splineops/blob/main/benchmarks/selma3d-vessels/results.json",
+  "study": "SELMA3D microvessel quality-at-speed confirmation",
+  "summary": [
+    {
+      "label": "SplineOps projection AA",
+      "mean_roc_auc": 0.9273700774942336,
+      "median_runtime_s": 0.11533472250084742,
+      "method": "splineops_projection"
+    },
+    {
+      "label": "SplineOps cubic, no AA",
+      "mean_roc_auc": 0.9268132782011773,
+      "median_runtime_s": 0.10414232199764228,
+      "method": "splineops_interpolation"
+    },
+    {
+      "label": "SciPy Gaussian + cubic",
+      "mean_roc_auc": 0.926648249796696,
+      "median_runtime_s": 1.4410593344982772,
+      "method": "scipy_gaussian"
+    },
+    {
+      "label": "scikit-image cubic AA",
+      "mean_roc_auc": 0.9221679542788714,
+      "median_runtime_s": 1.749697206500059,
+      "method": "skimage_resize"
+    },
+    {
+      "label": "PyTorch area",
+      "mean_roc_auc": 0.9221840038353868,
+      "median_runtime_s": 0.15672873049879854,
+      "method": "torch_area"
+    }
+  ]
+}
+

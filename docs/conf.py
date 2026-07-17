@@ -188,6 +188,9 @@ html_theme_options = {
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-nav"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    # Keep the six deliberate top-level destinations visible instead of
+    # collapsing Modules, Examples, or API into the generic "More" menu.
+    "header_links_before_dropdown": 8,
     "icon_links": [
         {
             "name": "",
@@ -227,14 +230,17 @@ try:
 except Exception as e:
     print("[docs] could not configure gallery sidebars:", e)
 
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "NumPy [stable]": ("https://numpy.org/doc/stable/", None),
-    "CuPy [latest]": ("https://docs.cupy.dev/en/latest/", None),
-    "SciPy [latest]": ("https://docs.scipy.org/doc/scipy/", None),
-    "Pytest [latest]": ("https://docs.pytest.org/en/latest/", None),
-    "Matplotlib [stable]": ("https://matplotlib.org/stable/", None),
-}
+if os.environ.get("SPLINEOPS_DOCS_OFFLINE", "0") == "1":
+    intersphinx_mapping = {}
+else:
+    intersphinx_mapping = {
+        "python": ("https://docs.python.org/3", None),
+        "NumPy [stable]": ("https://numpy.org/doc/stable/", None),
+        "CuPy [latest]": ("https://docs.cupy.dev/en/latest/", None),
+        "SciPy [latest]": ("https://docs.scipy.org/doc/scipy/", None),
+        "Pytest [latest]": ("https://docs.pytest.org/en/latest/", None),
+        "Matplotlib [stable]": ("https://matplotlib.org/stable/", None),
+    }
 
 def make_sphinx_gallery_conf_picklable(app, config):
     new_conf = config.sphinx_gallery_conf.copy()

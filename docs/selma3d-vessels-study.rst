@@ -133,6 +133,10 @@ deployed segmenter.  It covers one lateral 2x geometry, one channel, one CPU,
 and four alternatives.  A different library, geometry, boundary condition, or
 downstream task may reverse the ranking.
 
+The canonical reusable wording is maintained in :doc:`claims`.  The
+:doc:`selma3d-demo` provides an interactive view while keeping the frozen
+aggregate result separate from its post-study presentation patch.
+
 Two additional limitations matter.  The archive does not expose specimen IDs
 for the patches, so bootstrap units are patches rather than independent
 animals.  The BioImage Archive page says CC BY 4.0, while the official
