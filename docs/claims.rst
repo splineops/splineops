@@ -90,3 +90,11 @@ For space-constrained material, use:
 
 Link this sentence back to the full claim above.  Do not shorten it to
 “SplineOps is the best image resizer” or “SplineOps segments vessels better.”
+
+Planning from the evidence
+--------------------------
+
+The :doc:`positioning` page translates these supported claims and nonclaims
+into competitor boundaries, adoption priorities, and the proposed 2.3 scope.
+It is a planning interpretation; this page remains the canonical registry for
+public claim wording.

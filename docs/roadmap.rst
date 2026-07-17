@@ -1,6 +1,16 @@
 Development roadmap
 ===================
 
+Post-2.2 direction
+------------------
+
+SplineOps 2.2 completed the first evidence-backed publication milestone.  The
+immediate priority is adoption, portable replication, and optional
+scientific-volume integration rather than another broad implementation wave.
+The quantified competitive interpretation, staged execution plan, and proposed
+2.3 boundary are maintained in :doc:`positioning`.  The work packages below
+remain the longer-term module graduation criteria.
+
 Execution status (2026-07-16)
 -----------------------------
 
@@ -83,12 +93,12 @@ published numerical reference or exact reconstruction property is incomplete;
 the order-5 spline wavelet is one explicit example.  These limits are recorded in
 :doc:`project-status` and :doc:`provenance`.
 
-This stabilization work informed the 2.1 release, but it does not promote the
-experimental modules.  The next decision point is evidence over time rather
-than another broad implementation wave: let real downstream use exercise
-coefficient persistence, output selection, and explicit-axis APIs without
-contract changes.  Promote modules only when their individual graduation
-audits close.
+This stabilization work informed the 2.1 and 2.2 releases, but it does not
+promote the experimental modules.  The next decision point is evidence over
+time rather than another broad implementation wave: let real downstream use
+exercise coefficient persistence, output selection, and explicit-axis APIs
+without contract changes.  Promote modules only when their individual
+graduation audits close.
 
 Purpose
 -------

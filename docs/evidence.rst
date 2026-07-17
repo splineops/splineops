@@ -3,7 +3,8 @@ Evidence
 
 Claims are tied to reproducible artifacts, including negative results and
 scope limitations.  Start with the claims registry before reusing benchmark
-language elsewhere.
+language elsewhere.  The :doc:`positioning` page explains how those boundaries
+shape product focus and the next development cycle.
 
 .. grid:: 3
    :gutter: 2
@@ -58,4 +59,3 @@ language elsewhere.
    performance
    project-status
    backend-support
-

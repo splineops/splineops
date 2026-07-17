@@ -4,6 +4,12 @@ All notable changes to SplineOps are documented here.
 
 ## Unreleased
 
+### Documentation
+
+- Added a quantified competitive-position page and staged post-2.2 adoption
+  plan, including explicit competitor boundaries, portable-replication and
+  scientific-volume integration gates, and a deliberately narrow 2.3 scope.
+
 ## 2.2.0 - 2026-07-17
 
 ### Documentation

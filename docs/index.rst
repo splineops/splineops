@@ -66,7 +66,9 @@ Release status
 SplineOps does not claim to be the fastest generic 2-D resizer.  Its strongest
 position is explicit spline semantics, N-D projection antialiasing,
 native/reference parity, and reusable fixed-geometry execution.  See
-:doc:`performance` for measured wins, losses, and limitations.
+:doc:`performance` for measured wins, losses, and limitations, and
+:doc:`positioning` for the quantified competitive boundaries and post-2.2
+plan.
 
 The current flagship is the :doc:`selma3d-vessels-study`: on 18 held-out
 expert-labelled 3-D microscopy patches, SplineOps passed a predeclared narrow

@@ -4,8 +4,14 @@ Project
 SplineOps records method lineage, provenance, maturity decisions, compatibility
 work, and remaining graduation gates alongside the user-facing package.
 
-.. grid:: 3
+.. grid:: 2
    :gutter: 2
+
+   .. grid-item-card:: Position and next steps
+      :link: positioning
+      :link-type: doc
+
+      Quantified competitive boundaries and the post-2.2 adoption plan.
 
    .. grid-item-card:: Provenance
       :link: provenance
@@ -29,10 +35,10 @@ work, and remaining graduation gates alongside the user-facing package.
    :hidden:
    :maxdepth: 1
 
+   positioning
    provenance
    roadmap
    progress
    stability-soak
    graduation-audits
    internal-contracts
-

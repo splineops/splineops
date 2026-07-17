@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "benchmarks" / "selma3d-vessels" / "results.json"
+WAVEFIELD_RESULTS = ROOT / "benchmarks" / "wavefield3d" / "results.json"
 
 
 def load_json(path: Path) -> dict[str, object]:
@@ -93,6 +94,47 @@ def test_primary_navigation_keeps_modules_and_examples_visible() -> None:
         assert f"   {destination}\n" in index
     conf = (ROOT / "docs/conf.py").read_text(encoding="utf-8")
     assert '"header_links_before_dropdown": 8' in conf
+
+
+def test_positioning_preserves_frozen_metrics_and_claim_boundaries() -> None:
+    result = load_json(RESULTS)
+    wavefield = load_json(WAVEFIELD_RESULTS)
+    positioning = (ROOT / "docs/positioning.rst").read_text(encoding="utf-8")
+    normalized_positioning = " ".join(positioning.split())
+    comparisons = {row["comparison"]: row for row in result["comparisons"]}
+
+    for method in ("scipy_gaussian", "skimage_resize", "torch_area"):
+        row = comparisons[method]
+        assert f'{row["mean_auc_difference"]:+.6f}' in positioning
+        assert f'{row["median_runtime_ratio"]:.2f}x' in positioning
+
+    wavefield_accuracy = {row["baseline"]: row for row in wavefield["comparisons"]}
+    wavefield_runtime = {
+        row["baseline"]: row for row in wavefield["runtime_comparisons"]
+    }
+    assert (
+        f'{wavefield_accuracy["torch_area"]["mean_relative_nrmse_reduction"]:.1%}'
+        in positioning
+    )
+    for method in ("scipy_gaussian", "skimage_resize", "scipy_polyphase"):
+        assert (
+            f'{wavefield_runtime[method]["geometric_mean_speedup"]:.2f}x' in positioning
+        )
+
+    for phrase in (
+        "There is no honest library-wide multiplier",
+        "not portable promises",
+        "not universal scientific-resampling superiority",
+        "not claims that every such application has already been validated",
+        "Universal speed or accuracy claims",
+        "Segmentation, biological, or clinical outcome claims",
+        ":doc:`claims`",
+    ):
+        assert phrase in normalized_positioning
+
+    project = (ROOT / "docs/project.rst").read_text(encoding="utf-8")
+    assert ":link: positioning" in project
+    assert "   positioning\n" in project
 
 
 def test_public_surfaces_point_to_the_claim_registry() -> None:
