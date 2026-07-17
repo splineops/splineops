@@ -1,0 +1,3757 @@
+{
+  "metadata": {
+    "python": "3.12.3",
+    "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.39",
+    "numpy": "2.4.6",
+    "splineops": "2.1.0",
+    "scipy": "1.17.1",
+    "skimage": "0.26.0",
+    "opencv": "4.13.0",
+    "torch": "2.12.0+cpu",
+    "profile": "full",
+    "repeats": 3,
+    "warmups": 1,
+    "backends": [
+      "splineops",
+      "scipy",
+      "skimage",
+      "opencv",
+      "torch"
+    ],
+    "LSRESIZE_NUM_THREADS": "<default>",
+    "LSRESIZE_BATCHED_AXIS": "auto",
+    "LSRESIZE_AVX2_LINEAR": "<default:on-if-supported>",
+    "LSRESIZE_FUSED_3D_TWO_AXIS_LINEAR": "<default:on>",
+    "LSRESIZE_FUSED_PROJECTION_AVG_RESTORE": "<default:single-thread-auto>",
+    "LSRESIZE_LAST_AXIS_LINEAR_DIRECT": "<default:on>",
+    "LSRESIZE_GATHER_PREFILTER_SCALE": "<default:on>",
+    "LSRESIZE_PROJECTION_OUTPUT_PREFILTER_SCALE": "<default:single-thread-auto>",
+    "LSRESIZE_2D_PROJECTION_BATCH_TUNE": "<default:on>",
+    "LSRESIZE_BATCH_TUNE_V2": "<default:on>",
+    "LSRESIZE_ROWWISE_INITIAL_CAUSAL": "<default:on>",
+    "LSRESIZE_3D_AXIS1_DIRECT_SCATTER": "<default:on>",
+    "LSRESIZE_2D_AXIS0_DIRECT_SCATTER": "<default:on>",
+    "coordinate_note": "Backends use different coordinate, boundary, and antialiasing semantics; quality metrics are deltas against splineops, not parity checks."
+  },
+  "results": [
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_down_ramp_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        128,
+        128
+      ],
+      "zoom": [
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "ramp",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.18400200019641488,
+      "median_ms": 0.18412000008538598,
+      "mean_ms": 0.20756300007936565,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_down_ramp_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        128,
+        128
+      ],
+      "zoom": [
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "ramp",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.6776329998956498,
+      "median_ms": 0.7354009999289701,
+      "mean_ms": 0.7269513332630595,
+      "speedup_vs_splineops": 0.250366806821271,
+      "max_abs_diff": 1.1920928955078125e-07,
+      "mean_abs_diff": 1.8572677618067246e-08,
+      "p99_abs_diff": 5.960464477539063e-08,
+      "rel_l2_diff": 5.73804680826472e-08
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_down_ramp_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        128,
+        128
+      ],
+      "zoom": [
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "ramp",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.6977340001412813,
+      "median_ms": 0.7141440000850707,
+      "mean_ms": 0.7390476666842005,
+      "speedup_vs_splineops": 0.25781915140847383,
+      "max_abs_diff": 0.0019608139991760254,
+      "mean_abs_diff": 0.0006587081122830796,
+      "p99_abs_diff": 0.0017755180597305298,
+      "rel_l2_diff": 0.001492175538789896
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_down_ramp_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        128,
+        128
+      ],
+      "zoom": [
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "ramp",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.14225999984773807,
+      "median_ms": 0.14703900001222792,
+      "mean_ms": 0.14599333326259512,
+      "speedup_vs_splineops": 1.2521847949868699,
+      "max_abs_diff": 0.001960784662514925,
+      "mean_abs_diff": 0.0006586932305197024,
+      "p99_abs_diff": 0.0017755143344402313,
+      "rel_l2_diff": 0.0014921531018462866
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_down_ramp_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        128,
+        128
+      ],
+      "zoom": [
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "ramp",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.2532839998821146,
+      "median_ms": 0.25673200002529484,
+      "mean_ms": 0.25998233331847587,
+      "speedup_vs_splineops": 0.7171680977332211,
+      "max_abs_diff": 1.7881393432617188e-07,
+      "mean_abs_diff": 2.2013637135387398e-08,
+      "p99_abs_diff": 1.1920928955078125e-07,
+      "rel_l2_diff": 6.555921884189505e-08
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_cubic_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.5111919999762904,
+      "median_ms": 0.5463540001073852,
+      "mean_ms": 0.630518666715337,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "2d_cubic_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.1165910000036092,
+      "median_ms": 2.13300700011132,
+      "mean_ms": 2.3062180000579247,
+      "speedup_vs_splineops": 0.2561426193532752,
+      "max_abs_diff": 2.384185791015625e-07,
+      "mean_abs_diff": 4.612425035201116e-08,
+      "p99_abs_diff": 1.7881393432617188e-07,
+      "rel_l2_diff": 1.1152291843318848e-07
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=False)",
+      "case": "2d_cubic_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.1604710000246996,
+      "median_ms": 2.174995000132185,
+      "mean_ms": 2.1712330000506577,
+      "speedup_vs_splineops": 0.2511978188796667,
+      "max_abs_diff": 1.060758039355278,
+      "mean_abs_diff": 0.1949843225179587,
+      "p99_abs_diff": 0.6863029789924623,
+      "rel_l2_diff": 0.4473840338471966
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_CUBIC)",
+      "case": "2d_cubic_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.15904699989732762,
+      "median_ms": 0.16280299996651593,
+      "mean_ms": 0.16401800000191238,
+      "speedup_vs_splineops": 3.3559209610372975,
+      "max_abs_diff": 1.0761705935001373,
+      "mean_abs_diff": 0.19267985940917326,
+      "p99_abs_diff": 0.6731575435400011,
+      "rel_l2_diff": 0.4423555504100265
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bicubic, align_corners=True, aa=False)",
+      "case": "2d_cubic_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.3619419999267848,
+      "median_ms": 0.37161400018703716,
+      "mean_ms": 0.3686133334213082,
+      "speedup_vs_splineops": 1.4702190978606824,
+      "max_abs_diff": 0.08616816997528076,
+      "mean_abs_diff": 0.015781087777538644,
+      "p99_abs_diff": 0.053669569492340106,
+      "rel_l2_diff": 0.035872804355700165
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_cubic_aa_down_checker_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "checkerboard",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.8811089999198884,
+      "median_ms": 0.8816119998300564,
+      "mean_ms": 0.8827676665532636,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "2d_cubic_aa_down_checker_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "checkerboard",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.122544000030757,
+      "median_ms": 2.1247800000310235,
+      "mean_ms": 2.1263913333010955,
+      "speedup_vs_splineops": 0.4149191915479175,
+      "max_abs_diff": 0.5726774483919144,
+      "mean_abs_diff": 0.19221393838960812,
+      "p99_abs_diff": 0.5400774478912354,
+      "rel_l2_diff": 0.34475816949944144
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=True)",
+      "case": "2d_cubic_aa_down_checker_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "checkerboard",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 3.359108999802629,
+      "median_ms": 3.4471550000034767,
+      "mean_ms": 3.5245173332138315,
+      "speedup_vs_splineops": 0.2557506116867873,
+      "max_abs_diff": 0.5932554602622986,
+      "mean_abs_diff": 0.22997400623795233,
+      "p99_abs_diff": 0.5806575156748295,
+      "rel_l2_diff": 0.40439410576743107
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_AREA)",
+      "case": "2d_cubic_aa_down_checker_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "checkerboard",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.19367400000191992,
+      "median_ms": 0.19912800007659825,
+      "mean_ms": 0.19801799999186187,
+      "speedup_vs_splineops": 4.427363301448958,
+      "max_abs_diff": 0.6044363975524902,
+      "mean_abs_diff": 0.22650921541150051,
+      "p99_abs_diff": 0.5769428908824921,
+      "rel_l2_diff": 0.4005206400901423
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bicubic, align_corners=True, aa=True)",
+      "case": "2d_cubic_aa_down_checker_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "checkerboard",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.44831099990005896,
+      "median_ms": 0.45737599998574296,
+      "mean_ms": 0.46788899999228306,
+      "speedup_vs_splineops": 1.9275432026550092,
+      "max_abs_diff": 0.6818313598632812,
+      "mean_abs_diff": 0.3268310294186571,
+      "p99_abs_diff": 0.6721647608280182,
+      "rel_l2_diff": 0.5415283515718657
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.2901689999816881,
+      "median_ms": 0.30386999992515484,
+      "mean_ms": 0.3339253332796943,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.2196780000977014,
+      "median_ms": 1.2480140001116524,
+      "mean_ms": 1.2597956667074566,
+      "speedup_vs_splineops": 0.24348284546324753,
+      "max_abs_diff": 1.1920928955078125e-07,
+      "mean_abs_diff": 1.8446293070356296e-08,
+      "p99_abs_diff": 5.960464477539063e-08,
+      "rel_l2_diff": 5.7867893469632926e-08
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.2345800000730378,
+      "median_ms": 1.2471709999317682,
+      "mean_ms": 1.2510456667011265,
+      "speedup_vs_splineops": 0.24364742280070603,
+      "max_abs_diff": 0.7818573638796806,
+      "mean_abs_diff": 0.13809002927897882,
+      "p99_abs_diff": 0.4977993428707141,
+      "rel_l2_diff": 0.3349456160269827
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.22449499988397292,
+      "median_ms": 0.225550000095609,
+      "mean_ms": 0.22635733337968608,
+      "speedup_vs_splineops": 1.347240078902002,
+      "max_abs_diff": 0.7818573638796806,
+      "mean_abs_diff": 0.1380900287514614,
+      "p99_abs_diff": 0.4977993279695529,
+      "rel_l2_diff": 0.33494561493183844
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.33058700000765384,
+      "median_ms": 0.33606300007704704,
+      "mean_ms": 0.3359753333522046,
+      "speedup_vs_splineops": 0.9042054610459601,
+      "max_abs_diff": 3.483891487121582e-05,
+      "mean_abs_diff": 2.898305678720694e-06,
+      "p99_abs_diff": 1.4209747314453212e-05,
+      "rel_l2_diff": 7.990071913677104e-06
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_aniso_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.2525980000882555,
+      "median_ms": 0.2762469998742745,
+      "mean_ms": 0.3190333333501864,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_aniso_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.791205000221453,
+      "median_ms": 2.8089279999221617,
+      "mean_ms": 2.873756000023301,
+      "speedup_vs_splineops": 0.09834605937992344,
+      "max_abs_diff": 5.960464477539063e-08,
+      "mean_abs_diff": 1.0137207494360622e-08,
+      "p99_abs_diff": 5.960464477539063e-08,
+      "rel_l2_diff": 4.0709183924851895e-08
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_aniso_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.8135150000707654,
+      "median_ms": 2.8159900000446214,
+      "mean_ms": 2.8330096667256535,
+      "speedup_vs_splineops": 0.0980994250227796,
+      "max_abs_diff": 0.8184376135468483,
+      "mean_abs_diff": 0.11842229839344291,
+      "p99_abs_diff": 0.5175884845852856,
+      "rel_l2_diff": 0.3024517104967885
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_aniso_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.2443139999286359,
+      "median_ms": 0.2447509998546593,
+      "mean_ms": 0.24524133323211572,
+      "speedup_vs_splineops": 1.1286858890804061,
+      "max_abs_diff": 0.818437622860074,
+      "mean_abs_diff": 0.1184222978314233,
+      "p99_abs_diff": 0.5175884845852856,
+      "rel_l2_diff": 0.30245170956429474
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_aniso_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.4800850001629442,
+      "median_ms": 0.5000789999485278,
+      "mean_ms": 0.5120583333185399,
+      "speedup_vs_splineops": 0.5524067195437282,
+      "max_abs_diff": 2.390146255493164e-05,
+      "mean_abs_diff": 2.1678391944579076e-06,
+      "p99_abs_diff": 1.4185905456542969e-05,
+      "rel_l2_diff": 6.691626396458778e-06
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.46710300011909567,
+      "median_ms": 0.4858400000102847,
+      "mean_ms": 0.49819833338915487,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 11.08092000004035,
+      "median_ms": 11.113320000049498,
+      "mean_ms": 11.422066333352632,
+      "speedup_vs_splineops": 0.043716909079205925,
+      "max_abs_diff": 1.1920928955078125e-07,
+      "mean_abs_diff": 1.2515721401346048e-08,
+      "p99_abs_diff": 5.960464477539063e-08,
+      "rel_l2_diff": 5.1363918611378954e-08
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 11.070167999832847,
+      "median_ms": 11.110277999932805,
+      "mean_ms": 11.331498333220225,
+      "speedup_vs_splineops": 0.04372887879252194,
+      "max_abs_diff": 0.07477069646120071,
+      "mean_abs_diff": 0.018152341369952918,
+      "p99_abs_diff": 0.056555805243551735,
+      "rel_l2_diff": 0.04807561357257516
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.4398119999677874,
+      "median_ms": 0.4431459999523213,
+      "mean_ms": 0.4421329999786394,
+      "speedup_vs_splineops": 1.0963429661162618,
+      "max_abs_diff": 0.07477069273591042,
+      "mean_abs_diff": 0.018041252614901686,
+      "p99_abs_diff": 0.05629584193229675,
+      "rel_l2_diff": 0.047813129965394226
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.7165610001939058,
+      "median_ms": 1.7283909999150637,
+      "mean_ms": 1.7279266667173943,
+      "speedup_vs_splineops": 0.2810938034473448,
+      "max_abs_diff": 1.7374753952026367e-05,
+      "mean_abs_diff": 2.3413893450840993e-06,
+      "p99_abs_diff": 1.0669231414794922e-05,
+      "rel_l2_diff": 6.959663930440451e-06
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.3043680001155735,
+      "median_ms": 0.3113029999894934,
+      "mean_ms": 0.30937800003509136,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.2058560000696161,
+      "median_ms": 1.2208999999074877,
+      "mean_ms": 1.2161950000214954,
+      "speedup_vs_splineops": 0.25497829471134575,
+      "max_abs_diff": 3.3306690738754696e-16,
+      "mean_abs_diff": 3.5399897509011213e-17,
+      "p99_abs_diff": 2.220446049250313e-16,
+      "rel_l2_diff": 1.1303671317474597e-16
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.2482760000693816,
+      "median_ms": 1.2639169999602018,
+      "mean_ms": 1.2662156667223219,
+      "speedup_vs_splineops": 0.24630019217978372,
+      "max_abs_diff": 0.8253635075101484,
+      "mean_abs_diff": 0.13876489944527368,
+      "p99_abs_diff": 0.5009646718015552,
+      "rel_l2_diff": 0.3364393405791125
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.2772289999484201,
+      "median_ms": 0.27823599998555437,
+      "mean_ms": 0.28107233333685144,
+      "speedup_vs_splineops": 1.11884515305588,
+      "max_abs_diff": 0.8253635075101484,
+      "mean_abs_diff": 0.1387648994452737,
+      "p99_abs_diff": 0.5009646718015552,
+      "rel_l2_diff": 0.3364393405791125
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.3893690000040806,
+      "median_ms": 0.3906700001152785,
+      "mean_ms": 0.3960196666715395,
+      "speedup_vs_splineops": 0.7968438833225854,
+      "max_abs_diff": 2.220446049250313e-16,
+      "mean_abs_diff": 2.1537164270709168e-17,
+      "p99_abs_diff": 1.1102230246251565e-16,
+      "rel_l2_diff": 8.425343352676526e-17
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_aniso_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.357003000090117,
+      "median_ms": 0.35707500001080916,
+      "mean_ms": 0.3592726667041764,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_aniso_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.903520000018034,
+      "median_ms": 2.9248959999677027,
+      "mean_ms": 3.021769666702312,
+      "speedup_vs_splineops": 0.12208126374912204,
+      "max_abs_diff": 1.1102230246251565e-16,
+      "mean_abs_diff": 1.2469115995832985e-17,
+      "p99_abs_diff": 1.1102230246251565e-16,
+      "rel_l2_diff": 6.129331815474415e-17
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_aniso_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.9351459997997154,
+      "median_ms": 2.945882999938476,
+      "mean_ms": 2.9452426666315055,
+      "speedup_vs_splineops": 0.12121153488385879,
+      "max_abs_diff": 0.8440352389942543,
+      "mean_abs_diff": 0.11826895359492298,
+      "p99_abs_diff": 0.5234088430836467,
+      "rel_l2_diff": 0.30181023998245105
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_aniso_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.32177899993257597,
+      "median_ms": 0.33029100018211466,
+      "mean_ms": 0.33009133342905744,
+      "speedup_vs_splineops": 1.0810921272875327,
+      "max_abs_diff": 0.8440352389942544,
+      "mean_abs_diff": 0.11826895359492298,
+      "p99_abs_diff": 0.5234088430836467,
+      "rel_l2_diff": 0.30181023998245105
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_aniso_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.5553749999762658,
+      "median_ms": 0.5556179999075539,
+      "mean_ms": 0.586182999995799,
+      "speedup_vs_splineops": 0.6426627648316304,
+      "max_abs_diff": 1.1102230246251565e-16,
+      "mean_abs_diff": 1.674143253831878e-17,
+      "p99_abs_diff": 1.1102230246251565e-16,
+      "rel_l2_diff": 7.137921260287399e-17
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_up_sinusoid_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.648771999976816,
+      "median_ms": 0.6707300001380645,
+      "mean_ms": 0.8097106666961432,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_up_sinusoid_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 11.54597200002172,
+      "median_ms": 11.5498039999693,
+      "mean_ms": 12.010157333331032,
+      "speedup_vs_splineops": 0.05807284696258459,
+      "max_abs_diff": 3.3306690738754696e-16,
+      "mean_abs_diff": 2.6714190967157415e-17,
+      "p99_abs_diff": 1.1102230246251565e-16,
+      "rel_l2_diff": 1.0579963983654471e-16
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_up_sinusoid_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 11.556400000017675,
+      "median_ms": 11.58612299991546,
+      "mean_ms": 11.603980000018055,
+      "speedup_vs_splineops": 0.05789080610856268,
+      "max_abs_diff": 0.07477069852291512,
+      "mean_abs_diff": 0.01815234139554763,
+      "p99_abs_diff": 0.05655580918077409,
+      "rel_l2_diff": 0.04807561369026624
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_up_sinusoid_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.6283600000642764,
+      "median_ms": 0.6449310001244157,
+      "mean_ms": 0.6410790000093888,
+      "speedup_vs_splineops": 1.0400027289875533,
+      "max_abs_diff": 0.07477069852291512,
+      "mean_abs_diff": 0.018041252679932646,
+      "p99_abs_diff": 0.056295846956575774,
+      "rel_l2_diff": 0.047813130104901236
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_up_sinusoid_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        640,
+        640
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float64",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.048619000130202,
+      "median_ms": 2.460146000203167,
+      "mean_ms": 2.006888666831704,
+      "speedup_vs_splineops": 0.27263829060660355,
+      "max_abs_diff": 2.220446049250313e-16,
+      "mean_abs_diff": 2.147761869796887e-17,
+      "p99_abs_diff": 1.1102230246251565e-16,
+      "rel_l2_diff": 9.329088354162957e-17
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_cubic_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        435,
+        435
+      ],
+      "zoom": [
+        1.7,
+        1.7
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.1767419998705009,
+      "median_ms": 1.1825560000033875,
+      "mean_ms": 1.5894236666251043,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "2d_cubic_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        435,
+        435
+      ],
+      "zoom": [
+        1.7,
+        1.7
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 17.998795000039536,
+      "median_ms": 18.046990999891932,
+      "mean_ms": 18.04523433330966,
+      "speedup_vs_splineops": 0.0655264913696953,
+      "max_abs_diff": 4.172325134277344e-07,
+      "mean_abs_diff": 6.906866429384982e-08,
+      "p99_abs_diff": 2.384185791015625e-07,
+      "rel_l2_diff": 1.8705375115289463e-07
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=False)",
+      "case": "2d_cubic_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        435,
+        435
+      ],
+      "zoom": [
+        1.7,
+        1.7
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 18.062324000084118,
+      "median_ms": 18.148431000099663,
+      "mean_ms": 18.126895333352877,
+      "speedup_vs_splineops": 0.06516023341063992,
+      "max_abs_diff": 0.17165276408195496,
+      "mean_abs_diff": 0.038433047849252396,
+      "p99_abs_diff": 0.11984069943428054,
+      "rel_l2_diff": 0.09656987695295728
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_CUBIC)",
+      "case": "2d_cubic_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        435,
+        435
+      ],
+      "zoom": [
+        1.7,
+        1.7
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.3284990000338439,
+      "median_ms": 0.3295520000392571,
+      "mean_ms": 0.33041133337974316,
+      "speedup_vs_splineops": 3.588374520144069,
+      "max_abs_diff": 0.17696519941091537,
+      "mean_abs_diff": 0.03981519823456383,
+      "p99_abs_diff": 0.12368739187717438,
+      "rel_l2_diff": 0.09972877980284112
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bicubic, align_corners=True, aa=False)",
+      "case": "2d_cubic_up_sinusoid_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        435,
+        435
+      ],
+      "zoom": [
+        1.7,
+        1.7
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.725662999864653,
+      "median_ms": 2.7262959999916347,
+      "mean_ms": 2.7332509999572117,
+      "speedup_vs_splineops": 0.4337592103010883,
+      "max_abs_diff": 0.05701443552970886,
+      "mean_abs_diff": 0.010279528987005515,
+      "p99_abs_diff": 0.0271357560157776,
+      "rel_l2_diff": 0.025044873869437323
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.158709000037561,
+      "median_ms": 1.1991250000846776,
+      "mean_ms": 1.262468000049921,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.2304809999932331,
+      "median_ms": 1.2310679999245622,
+      "mean_ms": 1.233472666626767,
+      "speedup_vs_splineops": 0.9740526113570964,
+      "max_abs_diff": 0.7996192127466202,
+      "mean_abs_diff": 0.12063944500268446,
+      "p99_abs_diff": 0.4299216210842135,
+      "rel_l2_diff": 0.2928442526079442
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=True)",
+      "case": "2d_linear_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 5.146371999899202,
+      "median_ms": 5.354703000193695,
+      "mean_ms": 5.318443666737949,
+      "speedup_vs_splineops": 0.22393865729645546,
+      "max_abs_diff": 0.5561439990997314,
+      "mean_abs_diff": 0.09607424863238309,
+      "p99_abs_diff": 0.30751023292541524,
+      "rel_l2_diff": 0.22692013899903538
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_AREA)",
+      "case": "2d_linear_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.69619399982912,
+      "median_ms": 0.7073929998568929,
+      "mean_ms": 0.7071783332624667,
+      "speedup_vs_splineops": 1.6951326919085477,
+      "max_abs_diff": 0.5662084817886353,
+      "mean_abs_diff": 0.09309460313752514,
+      "p99_abs_diff": 0.30233975648880035,
+      "rel_l2_diff": 0.2206163696653233
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=True)",
+      "case": "2d_linear_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.8943970001382695,
+      "median_ms": 0.8957390000432497,
+      "mean_ms": 0.9018043334284206,
+      "speedup_vs_splineops": 1.3386991076940709,
+      "max_abs_diff": 0.607917845249176,
+      "mean_abs_diff": 0.11704432047386941,
+      "p99_abs_diff": 0.36609000563621524,
+      "rel_l2_diff": 0.2756025745646635
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_cubic_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.344498999969801,
+      "median_ms": 1.511703000005582,
+      "mean_ms": 1.6334230000059808,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "2d_cubic_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 8.634773000039786,
+      "median_ms": 8.779350999930102,
+      "mean_ms": 8.808126999989932,
+      "speedup_vs_splineops": 0.17218846814731723,
+      "max_abs_diff": 0.7536759003996849,
+      "mean_abs_diff": 0.1675929105693612,
+      "p99_abs_diff": 0.4928814992308617,
+      "rel_l2_diff": 0.3982893152294503
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=True)",
+      "case": "2d_cubic_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 12.328382000077909,
+      "median_ms": 12.410403000103543,
+      "mean_ms": 12.423774666785903,
+      "speedup_vs_splineops": 0.12180934011514127,
+      "max_abs_diff": 0.36397838592529297,
+      "mean_abs_diff": 0.06134442554592616,
+      "p99_abs_diff": 0.20539810657501223,
+      "rel_l2_diff": 0.15031715398185713
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_AREA)",
+      "case": "2d_cubic_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.7043200000680372,
+      "median_ms": 0.7064890000947344,
+      "mean_ms": 0.70753000007547,
+      "speedup_vs_splineops": 2.139740321226339,
+      "max_abs_diff": 0.35985642671585083,
+      "mean_abs_diff": 0.0611095275391713,
+      "p99_abs_diff": 0.20401158928871163,
+      "rel_l2_diff": 0.1497045807344148
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bicubic, align_corners=True, aa=True)",
+      "case": "2d_cubic_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.1847160001252632,
+      "median_ms": 1.1905240000942285,
+      "mean_ms": 1.1895353333481278,
+      "speedup_vs_splineops": 1.269779525558437,
+      "max_abs_diff": 0.40757618844509125,
+      "mean_abs_diff": 0.07980840605788461,
+      "p99_abs_diff": 0.25218815803527833,
+      "rel_l2_diff": 0.1929232242364782
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_cubic_aa_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.4578150000943424,
+      "median_ms": 1.5618850000009843,
+      "mean_ms": 1.527417333363701,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "2d_cubic_aa_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 9.288078000054156,
+      "median_ms": 9.306660999982341,
+      "mean_ms": 9.330965333295657,
+      "speedup_vs_splineops": 0.16782442167002193,
+      "max_abs_diff": 0.7210075095041564,
+      "mean_abs_diff": 0.16881601899236318,
+      "p99_abs_diff": 0.4889725910053906,
+      "rel_l2_diff": 0.40116811577866596
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=True)",
+      "case": "2d_cubic_aa_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 13.574407999840332,
+      "median_ms": 19.144489999916914,
+      "mean_ms": 22.322660333278083,
+      "speedup_vs_splineops": 0.08158404846552521,
+      "max_abs_diff": 0.3440711754794787,
+      "mean_abs_diff": 0.06087649691265248,
+      "p99_abs_diff": 0.20645888004173032,
+      "rel_l2_diff": 0.1495022416128179
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_AREA)",
+      "case": "2d_cubic_aa_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.8217919998969592,
+      "median_ms": 0.8412219999627268,
+      "mean_ms": 0.8511006666746349,
+      "speedup_vs_splineops": 1.8566858689741694,
+      "max_abs_diff": 0.35405130089668274,
+      "mean_abs_diff": 0.060597764855959704,
+      "p99_abs_diff": 0.2063863253899919,
+      "rel_l2_diff": 0.1487696549343924
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bicubic, align_corners=True, aa=True)",
+      "case": "2d_cubic_aa_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.2691160000031232,
+      "median_ms": 1.3544280000132858,
+      "mean_ms": 1.33469000002151,
+      "speedup_vs_splineops": 1.1531694560254686,
+      "max_abs_diff": 0.3953607227216196,
+      "mean_abs_diff": 0.07894467465431194,
+      "p99_abs_diff": 0.251745815649807,
+      "rel_l2_diff": 0.19161851022054868
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "3d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.4140910000387521,
+      "median_ms": 0.42036500008180155,
+      "mean_ms": 0.43791699999928824,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "3d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.2497749998819927,
+      "median_ms": 2.261773999862271,
+      "mean_ms": 2.2646963332893697,
+      "speedup_vs_splineops": 0.1858563234467278,
+      "max_abs_diff": 1.7881393432617188e-07,
+      "mean_abs_diff": 2.243592057816891e-08,
+      "p99_abs_diff": 1.1920928955078125e-07,
+      "rel_l2_diff": 6.69650088992285e-08
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "3d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.2019949999503297,
+      "median_ms": 2.215355000089403,
+      "mean_ms": 2.2287093333185717,
+      "speedup_vs_splineops": 0.18975062690396677,
+      "max_abs_diff": 0.5852640122175217,
+      "mean_abs_diff": 0.09626725177511414,
+      "p99_abs_diff": 0.3441052609682083,
+      "rel_l2_diff": 0.2373317457658694
+    },
+    {
+      "backend": "opencv",
+      "implementation": "",
+      "case": "3d_linear_down_random_f32",
+      "status": "skipped",
+      "reason": "OpenCV backend is limited to 2-D scalar arrays",
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": null,
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=trilinear, align_corners=True, aa=False)",
+      "case": "3d_linear_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.5825810001169884,
+      "median_ms": 0.6023749999712891,
+      "mean_ms": 0.6010189999869908,
+      "speedup_vs_splineops": 0.6978460263155631,
+      "max_abs_diff": 9.3802809715271e-06,
+      "mean_abs_diff": 9.821681790829946e-07,
+      "p99_abs_diff": 4.351139068603516e-06,
+      "rel_l2_diff": 2.5906641901999925e-06
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "3d_cubic_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.0369070000469947,
+      "median_ms": 2.04036700006327,
+      "mean_ms": 2.0636309999796745,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "3d_cubic_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 23.948613000129626,
+      "median_ms": 24.115821999885156,
+      "mean_ms": 26.389154999984992,
+      "speedup_vs_splineops": 0.08460698540870747,
+      "max_abs_diff": 5.960464477539062e-07,
+      "mean_abs_diff": 1.2567766651446396e-07,
+      "p99_abs_diff": 3.5762786865234375e-07,
+      "rel_l2_diff": 2.748080748199602e-07
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=False)",
+      "case": "3d_cubic_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 23.617030999957933,
+      "median_ms": 23.915216999967015,
+      "mean_ms": 24.196606666616088,
+      "speedup_vs_splineops": 0.08531668351853484,
+      "max_abs_diff": 0.7159723043441772,
+      "mean_abs_diff": 0.14450913352351927,
+      "p99_abs_diff": 0.48246841654181494,
+      "rel_l2_diff": 0.33036355213308427
+    },
+    {
+      "backend": "opencv",
+      "implementation": "",
+      "case": "3d_cubic_down_random_f32",
+      "status": "skipped",
+      "reason": "OpenCV backend is limited to 2-D scalar arrays",
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": null,
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    },
+    {
+      "backend": "torch",
+      "implementation": "",
+      "case": "3d_cubic_down_random_f32",
+      "status": "skipped",
+      "reason": "PyTorch unsupported 3-D method 'cubic'",
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": null,
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "3d_cubic_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        64,
+        64,
+        24
+      ],
+      "output_shape": [
+        32,
+        32,
+        12
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.3379570000324748,
+      "median_ms": 1.4129319999938161,
+      "mean_ms": 1.4218476666580198,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "3d_cubic_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        64,
+        64,
+        24
+      ],
+      "output_shape": [
+        32,
+        32,
+        12
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 8.0321749999257,
+      "median_ms": 8.127058000127363,
+      "mean_ms": 8.123290000033498,
+      "speedup_vs_splineops": 0.17385528686662177,
+      "max_abs_diff": 0.8041877150535583,
+      "mean_abs_diff": 0.15429866411672322,
+      "p99_abs_diff": 0.4852229583263397,
+      "rel_l2_diff": 0.37115371777075334
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=True)",
+      "case": "3d_cubic_aa_down_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        64,
+        64,
+        24
+      ],
+      "output_shape": [
+        32,
+        32,
+        12
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 10.233437000124468,
+      "median_ms": 11.682665000080306,
+      "mean_ms": 11.207871666708039,
+      "speedup_vs_splineops": 0.12094261026778597,
+      "max_abs_diff": 0.3899315595626831,
+      "mean_abs_diff": 0.07013368577342287,
+      "p99_abs_diff": 0.23336327522993083,
+      "rel_l2_diff": 0.1693464492648083
+    },
+    {
+      "backend": "opencv",
+      "implementation": "",
+      "case": "3d_cubic_aa_down_random_f32",
+      "status": "skipped",
+      "reason": "OpenCV backend is limited to 2-D scalar arrays",
+      "shape": [
+        64,
+        64,
+        24
+      ],
+      "output_shape": null,
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    },
+    {
+      "backend": "torch",
+      "implementation": "",
+      "case": "3d_cubic_aa_down_random_f32",
+      "status": "skipped",
+      "reason": "PyTorch antialias is not available for 3-D interpolate",
+      "shape": [
+        64,
+        64,
+        24
+      ],
+      "output_shape": null,
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_down_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.5456480000702868,
+      "median_ms": 0.5511549998118426,
+      "mean_ms": 0.5522496665738194,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_down_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 4.013709999981074,
+      "median_ms": 4.1193010001734365,
+      "mean_ms": 4.087796000021626,
+      "speedup_vs_splineops": 0.13379818561174264,
+      "max_abs_diff": 1.1920928955078125e-07,
+      "mean_abs_diff": 1.8501115434429912e-08,
+      "p99_abs_diff": 5.960464477539063e-08,
+      "rel_l2_diff": 5.791559655268166e-08
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_down_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 4.077180999956909,
+      "median_ms": 4.269092999948043,
+      "mean_ms": 4.332074333281828,
+      "speedup_vs_splineops": 0.12910353553285214,
+      "max_abs_diff": 0.8196342140436172,
+      "mean_abs_diff": 0.13788214451542397,
+      "p99_abs_diff": 0.5002049326896668,
+      "rel_l2_diff": 0.3356168916544861
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_down_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.5002049999802693,
+      "median_ms": 0.5039659999965806,
+      "mean_ms": 0.5040749999807304,
+      "speedup_vs_splineops": 1.0936352845540813,
+      "max_abs_diff": 0.8196341916918755,
+      "mean_abs_diff": 0.13788214415828978,
+      "p99_abs_diff": 0.5002049148082733,
+      "rel_l2_diff": 0.3356168906588002
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_down_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.5998300000555901,
+      "median_ms": 0.6159450001632649,
+      "mean_ms": 0.6225990000530146,
+      "speedup_vs_splineops": 0.8948120362463388,
+      "max_abs_diff": 7.176399230957031e-05,
+      "mean_abs_diff": 6.599543570491628e-06,
+      "p99_abs_diff": 3.181099891662602e-05,
+      "rel_l2_diff": 1.8126406685029137e-05
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_aniso_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1024,
+        379
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.6912050000664749,
+      "median_ms": 0.7164349999584374,
+      "mean_ms": 0.8386870000170651,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_aniso_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1024,
+        379
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 10.93556599994372,
+      "median_ms": 11.271218000047156,
+      "mean_ms": 11.238304333346605,
+      "speedup_vs_splineops": 0.06356322803404565,
+      "max_abs_diff": 1.1920928955078125e-07,
+      "mean_abs_diff": 1.1576354228777014e-08,
+      "p99_abs_diff": 5.960464477539063e-08,
+      "rel_l2_diff": 4.348174021126582e-08
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_aniso_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1024,
+        379
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 10.58394300002874,
+      "median_ms": 10.597524000104386,
+      "mean_ms": 10.59956333339566,
+      "speedup_vs_splineops": 0.06760399881626883,
+      "max_abs_diff": 0.8454718589782715,
+      "mean_abs_diff": 0.11746978691914366,
+      "p99_abs_diff": 0.5173645935952658,
+      "rel_l2_diff": 0.3002663673634599
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_aniso_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1024,
+        379
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.7007240001257742,
+      "median_ms": 0.7021859998985747,
+      "mean_ms": 0.7029496666746127,
+      "speedup_vs_splineops": 1.0202923442818868,
+      "max_abs_diff": 0.8454718589782715,
+      "mean_abs_diff": 0.11746978652683572,
+      "p99_abs_diff": 0.5173645928502077,
+      "rel_l2_diff": 0.30026636638142096
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_aniso_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1024,
+        379
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.2155670001448016,
+      "median_ms": 1.2175199999546749,
+      "mean_ms": 1.222994333375027,
+      "speedup_vs_splineops": 0.5884379722592716,
+      "max_abs_diff": 5.3554773330688477e-05,
+      "mean_abs_diff": 4.9518733059709615e-06,
+      "p99_abs_diff": 3.17692756652832e-05,
+      "rel_l2_diff": 1.5225502235650767e-05
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_linear_up_sinusoid_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1280,
+        1280
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.5715399999862711,
+      "median_ms": 1.5769550000186427,
+      "mean_ms": 1.7348929999722411,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=1, mode=mirror, no-aa)",
+      "case": "2d_linear_up_sinusoid_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1280,
+        1280
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 43.55046500018034,
+      "median_ms": 43.68540300015411,
+      "mean_ms": 44.47968833346749,
+      "speedup_vs_splineops": 0.036097984491823956,
+      "max_abs_diff": 1.1920928955078125e-07,
+      "mean_abs_diff": 1.2562511791259362e-08,
+      "p99_abs_diff": 5.960464477539063e-08,
+      "rel_l2_diff": 5.15270933658167e-08
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=1, aa=False)",
+      "case": "2d_linear_up_sinusoid_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1280,
+        1280
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 43.42505599993274,
+      "median_ms": 43.46856999995907,
+      "mean_ms": 43.77618533332376,
+      "speedup_vs_splineops": 0.03627805101525372,
+      "max_abs_diff": 0.07477613538503647,
+      "mean_abs_diff": 0.01818198822688065,
+      "p99_abs_diff": 0.05658197924494744,
+      "rel_l2_diff": 0.04815607064259603
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_LINEAR)",
+      "case": "2d_linear_up_sinusoid_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1280,
+        1280
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.4783229999011382,
+      "median_ms": 1.5069240000684658,
+      "mean_ms": 1.518533000004633,
+      "speedup_vs_splineops": 1.0464728147849494,
+      "max_abs_diff": 0.07477612048387527,
+      "mean_abs_diff": 0.01811145035644177,
+      "p99_abs_diff": 0.056399437338113784,
+      "rel_l2_diff": 0.04798259235686978
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bilinear, align_corners=True, aa=False)",
+      "case": "2d_linear_up_sinusoid_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        1280,
+        1280
+      ],
+      "zoom": [
+        1.25,
+        1.25
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "pattern": "sinusoid",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 3.359702999887304,
+      "median_ms": 6.243318000088038,
+      "mean_ms": 5.303512333284743,
+      "speedup_vs_splineops": 0.252582841366787,
+      "max_abs_diff": 3.812462091445923e-05,
+      "mean_abs_diff": 5.382622141589773e-06,
+      "p99_abs_diff": 2.2530555725097656e-05,
+      "rel_l2_diff": 1.590788606527348e-05
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_cubic_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 4.544867999811686,
+      "median_ms": 4.599894999955723,
+      "mean_ms": 4.591647333275735,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "2d_cubic_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 41.64905700008603,
+      "median_ms": 41.667273000030036,
+      "mean_ms": 41.85017700001481,
+      "speedup_vs_splineops": 0.11039587351810633,
+      "max_abs_diff": 1.5543122344752192e-15,
+      "mean_abs_diff": 2.86671742293927e-16,
+      "p99_abs_diff": 7.771561172376096e-16,
+      "rel_l2_diff": 5.965824201676658e-16
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=False)",
+      "case": "2d_cubic_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 41.40752199987219,
+      "median_ms": 41.41843100001097,
+      "mean_ms": 41.5244556666039,
+      "speedup_vs_splineops": 0.11105913210364014,
+      "max_abs_diff": 1.0832790817933955,
+      "mean_abs_diff": 0.1921217150024234,
+      "p99_abs_diff": 0.6714744401522633,
+      "rel_l2_diff": 0.44322284972380127
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_CUBIC)",
+      "case": "2d_cubic_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.4835990000392485,
+      "median_ms": 1.494507999950656,
+      "mean_ms": 1.502482333307853,
+      "speedup_vs_splineops": 3.0778657592382217,
+      "max_abs_diff": 1.0470584737816218,
+      "mean_abs_diff": 0.18961149035442987,
+      "p99_abs_diff": 0.6643827428290106,
+      "rel_l2_diff": 0.43736935785016745
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bicubic, align_corners=True, aa=False)",
+      "case": "2d_cubic_down_random_f64",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 2.25732900003095,
+      "median_ms": 2.2575299999516574,
+      "mean_ms": 2.316512666614775,
+      "speedup_vs_splineops": 2.0375786811489656,
+      "max_abs_diff": 0.10103392100408878,
+      "mean_abs_diff": 0.015706554448147038,
+      "p99_abs_diff": 0.05342158385827408,
+      "rel_l2_diff": 0.03574771107213796
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "2d_cubic_aa_down_random_f64_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 5.11770000002798,
+      "median_ms": 7.104525999920952,
+      "mean_ms": 6.59055033330939,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "2d_cubic_aa_down_random_f64_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 41.84697999994569,
+      "median_ms": 42.240582000204085,
+      "mean_ms": 43.01657666671114,
+      "speedup_vs_splineops": 0.16819195341310939,
+      "max_abs_diff": 0.7905682547123462,
+      "mean_abs_diff": 0.16807656830452436,
+      "p99_abs_diff": 0.4978940922615985,
+      "rel_l2_diff": 0.4002467166250786
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=True)",
+      "case": "2d_cubic_aa_down_random_f64_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 62.8188659998159,
+      "median_ms": 65.44028999996954,
+      "mean_ms": 64.62094933325109,
+      "speedup_vs_splineops": 0.10856501399862775,
+      "max_abs_diff": 0.4046733651342544,
+      "mean_abs_diff": 0.06094976958840112,
+      "p99_abs_diff": 0.203796732295888,
+      "rel_l2_diff": 0.1490545138429878
+    },
+    {
+      "backend": "opencv",
+      "implementation": "cv2.resize(INTER_AREA)",
+      "case": "2d_cubic_aa_down_random_f64_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 3.0939890000354353,
+      "median_ms": 3.1220690000282048,
+      "mean_ms": 3.1510266666524935,
+      "speedup_vs_splineops": 2.2755826344186403,
+      "max_abs_diff": 0.4065750767764365,
+      "mean_abs_diff": 0.06082538830718623,
+      "p99_abs_diff": 0.20307397174550823,
+      "rel_l2_diff": 0.14854709163830998
+    },
+    {
+      "backend": "torch",
+      "implementation": "torch.nn.functional.interpolate(mode=bicubic, align_corners=True, aa=True)",
+      "case": "2d_cubic_aa_down_random_f64_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        1024,
+        1024
+      ],
+      "output_shape": [
+        379,
+        379
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float64",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 4.35386499998458,
+      "median_ms": 4.370298000139883,
+      "mean_ms": 4.365036666740707,
+      "speedup_vs_splineops": 1.6256388007622256,
+      "max_abs_diff": 0.43132225064558055,
+      "mean_abs_diff": 0.07947074374609958,
+      "p99_abs_diff": 0.25256649327282366,
+      "rel_l2_diff": 0.192112335658921
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "3d_cubic_aniso_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        128,
+        128,
+        32
+      ],
+      "output_shape": [
+        128,
+        64,
+        32
+      ],
+      "zoom": [
+        1.0,
+        0.5,
+        1.0
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 0.9619069999189378,
+      "median_ms": 1.0273739999320242,
+      "mean_ms": 1.0269246665757237,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "3d_cubic_aniso_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        128,
+        128,
+        32
+      ],
+      "output_shape": [
+        128,
+        64,
+        32
+      ],
+      "zoom": [
+        1.0,
+        0.5,
+        1.0
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 121.42714400010846,
+      "median_ms": 121.52009600004021,
+      "mean_ms": 121.49345266667903,
+      "speedup_vs_splineops": 0.008454354742541383,
+      "max_abs_diff": 4.172325134277344e-07,
+      "mean_abs_diff": 4.435706489613889e-08,
+      "p99_abs_diff": 1.7881393432617188e-07,
+      "rel_l2_diff": 1.0836946788920805e-07
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=False)",
+      "case": "3d_cubic_aniso_random_f32",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        128,
+        128,
+        32
+      ],
+      "output_shape": [
+        128,
+        64,
+        32
+      ],
+      "zoom": [
+        1.0,
+        0.5,
+        1.0
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 121.7023600001994,
+      "median_ms": 121.81606300009662,
+      "mean_ms": 122.47046166680775,
+      "speedup_vs_splineops": 0.00843381385533047,
+      "max_abs_diff": 0.5749599020928144,
+      "mean_abs_diff": 0.09884908564643437,
+      "p99_abs_diff": 0.3855213531851769,
+      "rel_l2_diff": 0.23923378602095582
+    },
+    {
+      "backend": "opencv",
+      "implementation": "",
+      "case": "3d_cubic_aniso_random_f32",
+      "status": "skipped",
+      "reason": "OpenCV backend is limited to 2-D scalar arrays",
+      "shape": [
+        128,
+        128,
+        32
+      ],
+      "output_shape": null,
+      "zoom": [
+        1.0,
+        0.5,
+        1.0
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    },
+    {
+      "backend": "torch",
+      "implementation": "",
+      "case": "3d_cubic_aniso_random_f32",
+      "status": "skipped",
+      "reason": "PyTorch unsupported 3-D method 'cubic'",
+      "shape": [
+        128,
+        128,
+        32
+      ],
+      "output_shape": null,
+      "zoom": [
+        1.0,
+        0.5,
+        1.0
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    },
+    {
+      "backend": "splineops",
+      "implementation": "splineops.resize",
+      "case": "3d_cubic_aa_down_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 1.7687489998934325,
+      "median_ms": 1.9474050000098941,
+      "mean_ms": 1.9173496666553547,
+      "speedup_vs_splineops": 1.0,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "p99_abs_diff": 0.0,
+      "rel_l2_diff": 0.0
+    },
+    {
+      "backend": "scipy",
+      "implementation": "scipy.ndimage.zoom(order=3, mode=mirror, no-aa)",
+      "case": "3d_cubic_aa_down_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 23.590338000076372,
+      "median_ms": 23.61710799982575,
+      "mean_ms": 23.638842666665976,
+      "speedup_vs_splineops": 0.08245738640075079,
+      "max_abs_diff": 0.7874196767807007,
+      "mean_abs_diff": 0.1512153382526155,
+      "p99_abs_diff": 0.4772749274969105,
+      "rel_l2_diff": 0.3629607779024924
+    },
+    {
+      "backend": "skimage",
+      "implementation": "skimage.transform.resize(order=3, aa=True)",
+      "case": "3d_cubic_aa_down_random_f32_large",
+      "status": "ok",
+      "reason": null,
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": [
+        48,
+        48,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 3,
+      "warmups": 1,
+      "best_ms": 28.736739999885685,
+      "median_ms": 28.938412999877983,
+      "mean_ms": 28.949975666591854,
+      "speedup_vs_splineops": 0.06729480984386066,
+      "max_abs_diff": 0.3683237284421921,
+      "mean_abs_diff": 0.07004506523935561,
+      "p99_abs_diff": 0.2302893587946893,
+      "rel_l2_diff": 0.16979385751971107
+    },
+    {
+      "backend": "opencv",
+      "implementation": "",
+      "case": "3d_cubic_aa_down_random_f32_large",
+      "status": "skipped",
+      "reason": "OpenCV backend is limited to 2-D scalar arrays",
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": null,
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    },
+    {
+      "backend": "torch",
+      "implementation": "",
+      "case": "3d_cubic_aa_down_random_f32_large",
+      "status": "skipped",
+      "reason": "PyTorch antialias is not available for 3-D interpolate",
+      "shape": [
+        96,
+        96,
+        32
+      ],
+      "output_shape": null,
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "pattern": "random",
+      "repeats": 0,
+      "warmups": 0,
+      "best_ms": null,
+      "median_ms": null,
+      "mean_ms": null,
+      "speedup_vs_splineops": null,
+      "max_abs_diff": null,
+      "mean_abs_diff": null,
+      "p99_abs_diff": null,
+      "rel_l2_diff": null
+    }
+  ]
+}

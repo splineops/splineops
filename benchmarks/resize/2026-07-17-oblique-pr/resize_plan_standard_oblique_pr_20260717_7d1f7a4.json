@@ -1,0 +1,331 @@
+{
+  "metadata": {
+    "python": "3.12.3",
+    "numpy": "2.4.6",
+    "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.39",
+    "LSRESIZE_PRECISION": "<default:auto-f32-2d/3d-interp+3d-down-proj-else-float64>",
+    "LSRESIZE_BATCHED_AXIS": "<unset>"
+  },
+  "results": [
+    {
+      "case": "2d_cubic_down_f32",
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 0.778648375018065,
+      "oneshot_median_ms_per_frame": 0.8728497500101184,
+      "plan_best_ms_per_frame": 0.9546299999954044,
+      "plan_median_ms_per_frame": 1.0023022500149636,
+      "median_speedup": 0.8708448474470525,
+      "plan_into_best_ms_per_frame": 0.8320601249920401,
+      "plan_into_median_ms_per_frame": 0.9145822500045142,
+      "median_into_speedup": 0.9543698776198754,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "2d_cubic_aa_down_f32",
+      "shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        95,
+        95
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 3.2324972499964133,
+      "oneshot_median_ms_per_frame": 3.264191374995562,
+      "plan_best_ms_per_frame": 3.0386808749938155,
+      "plan_median_ms_per_frame": 3.096130000017183,
+      "median_speedup": 1.0542811106049959,
+      "plan_into_best_ms_per_frame": 3.0549807499937742,
+      "plan_into_median_ms_per_frame": 3.070164874998227,
+      "median_into_speedup": 1.0631974203005783,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "2d_linear_down_f32",
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 0.5934928749979917,
+      "oneshot_median_ms_per_frame": 0.6181031249923308,
+      "plan_best_ms_per_frame": 0.30069587498360306,
+      "plan_median_ms_per_frame": 0.3190882500234693,
+      "median_speedup": 1.9370914627751683,
+      "plan_into_best_ms_per_frame": 0.2624028749949048,
+      "plan_into_median_ms_per_frame": 0.26559024999528447,
+      "median_into_speedup": 2.3272809337063585,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "2d_linear_aniso_f32",
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 0.5005637499948534,
+      "oneshot_median_ms_per_frame": 0.5093021250104357,
+      "plan_best_ms_per_frame": 0.2408279999883689,
+      "plan_median_ms_per_frame": 0.24166662498714686,
+      "median_speedup": 2.107457432475515,
+      "plan_into_best_ms_per_frame": 0.22636837502432172,
+      "plan_into_median_ms_per_frame": 0.22861224999815022,
+      "median_into_speedup": 2.2277989259742497,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "2d_cubic_aniso_f32",
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        512,
+        189
+      ],
+      "zoom": [
+        1.0,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 0.5461050000121759,
+      "oneshot_median_ms_per_frame": 0.6125921250088595,
+      "plan_best_ms_per_frame": 0.4843924999988758,
+      "plan_median_ms_per_frame": 0.49118937502612425,
+      "median_speedup": 1.2471607818802644,
+      "plan_into_best_ms_per_frame": 0.45158062499695006,
+      "plan_into_median_ms_per_frame": 0.47932974999298494,
+      "median_into_speedup": 1.2780181597696052,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "2d_linear_aa_down_f32",
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "linear-antialiasing",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 2.5883956249970197,
+      "oneshot_median_ms_per_frame": 2.9156626250141926,
+      "plan_best_ms_per_frame": 2.3065729999984796,
+      "plan_median_ms_per_frame": 2.6556468749845408,
+      "median_speedup": 1.097910513810751,
+      "plan_into_best_ms_per_frame": 2.6127535000171065,
+      "plan_into_median_ms_per_frame": 2.7220851249865063,
+      "median_into_speedup": 1.071113683496083,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "2d_cubic_down_f64",
+      "shape": [
+        512,
+        512
+      ],
+      "output_shape": [
+        189,
+        189
+      ],
+      "zoom": [
+        0.37,
+        0.37
+      ],
+      "method": "cubic",
+      "dtype": "float64",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 2.3769243749995894,
+      "oneshot_median_ms_per_frame": 2.4093628749994878,
+      "plan_best_ms_per_frame": 2.226981749998913,
+      "plan_median_ms_per_frame": 2.2828013750029186,
+      "median_speedup": 1.055441310567989,
+      "plan_into_best_ms_per_frame": 2.485873374979519,
+      "plan_into_median_ms_per_frame": 2.6336745000037354,
+      "median_into_speedup": 0.914829404695254,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "3d_cubic_aniso_f32",
+      "shape": [
+        96,
+        96,
+        24
+      ],
+      "output_shape": [
+        96,
+        48,
+        24
+      ],
+      "zoom": [
+        1.0,
+        0.5,
+        1.0
+      ],
+      "method": "cubic",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 0.7663041250225433,
+      "oneshot_median_ms_per_frame": 0.7922297500044806,
+      "plan_best_ms_per_frame": 0.49008862501409567,
+      "plan_median_ms_per_frame": 0.7587163750031323,
+      "median_speedup": 1.0441711502552056,
+      "plan_into_best_ms_per_frame": 0.7413799999937964,
+      "plan_into_median_ms_per_frame": 0.7516851250102263,
+      "median_into_speedup": 1.0539383095996515,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "3d_linear_down_f32",
+      "shape": [
+        128,
+        128,
+        32
+      ],
+      "output_shape": [
+        64,
+        64,
+        16
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 0.5876738750032473,
+      "oneshot_median_ms_per_frame": 0.5967123749996972,
+      "plan_best_ms_per_frame": 0.46398587497265,
+      "plan_median_ms_per_frame": 0.4733780000094612,
+      "median_speedup": 1.2605409946971997,
+      "plan_into_best_ms_per_frame": 0.5773382499967283,
+      "plan_into_median_ms_per_frame": 0.7059812500074258,
+      "median_into_speedup": 0.8452241118208461,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "3d_linear_two_axis01_f32",
+      "shape": [
+        128,
+        128,
+        32
+      ],
+      "output_shape": [
+        64,
+        64,
+        32
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        1.0
+      ],
+      "method": "linear",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 0.9073479999983647,
+      "oneshot_median_ms_per_frame": 1.0158122499888123,
+      "plan_best_ms_per_frame": 0.8238043750168345,
+      "plan_median_ms_per_frame": 0.8458027500068965,
+      "median_speedup": 1.2010037209982227,
+      "plan_into_best_ms_per_frame": 0.8010817500121448,
+      "plan_into_median_ms_per_frame": 0.8054479999941577,
+      "median_into_speedup": 1.2611766991738516,
+      "max_abs_diff": 0.0
+    },
+    {
+      "case": "3d_cubic_aa_down_f32",
+      "shape": [
+        64,
+        64,
+        24
+      ],
+      "output_shape": [
+        32,
+        32,
+        12
+      ],
+      "zoom": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "method": "cubic-antialiasing",
+      "dtype": "float32",
+      "frames": 8,
+      "repeats": 5,
+      "oneshot_best_ms_per_frame": 1.6824367500021253,
+      "oneshot_median_ms_per_frame": 1.7154758749882149,
+      "plan_best_ms_per_frame": 1.3771422500212793,
+      "plan_median_ms_per_frame": 1.37943137499974,
+      "median_speedup": 1.243610886397693,
+      "plan_into_best_ms_per_frame": 0.9829976250159689,
+      "plan_into_median_ms_per_frame": 1.3108075000047847,
+      "median_into_speedup": 1.3087168596319085,
+      "max_abs_diff": 0.0
+    }
+  ]
+}

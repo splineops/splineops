@@ -29,6 +29,11 @@ require affine or differential batch orchestration to beat scalar dispatch on
 every runner. The standard matrix showed those ratios depend on the platform;
 their numerical-equivalence gates remain strict.
 
+`resize/` retains dated formal resize bundles, including raw CSV/JSON,
+environment metadata, exact reproduction commands, and the generated report.
+The current bundle documents both wins and losses after the v2 direct
+cross-Gram rewrite; pre-v2 handoff numbers must not be substituted for it.
+
 Run the checker after generating the named artifacts:
 
 ```shell
