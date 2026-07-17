@@ -66,6 +66,10 @@ selma3d-study = [
     "splineops[wavefield-study]",
     "nibabel >=5.2",
 ]
+minivess-study = [
+    "splineops[selma3d-study]",
+    "opencv-python-headless >=4.8",
+]
 tests = [
     "tox >=4.13",
     "pytest >=6.0",
