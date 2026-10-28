@@ -328,6 +328,52 @@ def test_projection_matches_arbitrary_precision_fixture(
     )
 
 
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("zoom", [(0.37, 0.37, 0.37), (1.0, 0.37, 1.0)])
+def test_automatic_3d_cubic_ls_matches_tensor_product_oracle(monkeypatch, dtype, zoom):
+    if importlib.util.find_spec("splineops._lsresize") is None:
+        pytest.skip("native resize extension is not available")
+    from splineops import _lsresize
+
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    monkeypatch.setenv("LSRESIZE_NUM_THREADS", "1")
+    # 256 neighboring lines enable automatic batching on the first pass.
+    # Separability gives an independent 3-D reference from the 100-digit
+    # spline inner-product fixtures, including unchanged axes.
+    values = np.einsum(
+        "i,j,k->ijk", _ORACLE_INPUT, _ORACLE_INPUT, _ORACLE_INPUT
+    ).astype(dtype)
+    factors = [
+        _ORACLE_INPUT if scale == 1.0 else _ORACLE_OUTPUTS[(3, 3, 3)] for scale in zoom
+    ]
+    expected = np.einsum("i,j,k->ijk", *factors)
+    actual = _lsresize.resize_nd(values, zoom, 3, 3, 3)
+
+    np.testing.assert_allclose(
+        actual, expected, rtol=0.0, atol=5e-6 if dtype == np.float32 else 3e-10
+    )
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("zoom", [(0.37, 1.3, 0.09), (1.0, 0.37, 1.0)])
+def test_automatic_3d_cubic_ls_matches_python_on_nonseparable_data(
+    monkeypatch, dtype, zoom
+):
+    if importlib.util.find_spec("splineops._lsresize") is None:
+        pytest.skip("native resize extension is not available")
+    from splineops import _lsresize
+
+    monkeypatch.setenv("LSRESIZE_BATCHED_AXIS", "auto")
+    monkeypatch.setenv("LSRESIZE_NUM_THREADS", "4")
+    values = np.random.default_rng(20261028).normal(size=(17, 19, 23)).astype(dtype)
+    expected = python_resize(
+        values, zoom, interp_degree=3, analy_degree=3, synthe_degree=3
+    )
+    actual = _lsresize.resize_nd(values, zoom, 3, 3, 3)
+    tolerance = 5e-7 if dtype == np.float32 else 3e-11
+    np.testing.assert_allclose(actual, expected, rtol=tolerance, atol=tolerance)
+
+
 _STRONG_REDUCTION_INPUT = np.array(
     [
         0.0,
