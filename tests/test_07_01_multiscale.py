@@ -325,7 +325,7 @@ def test_wavelet_large_plane_dispatch_preserves_noncanonical_axis_order():
 def test_wavelet_8x8(wavelet_class, ground_truth):
     """
     Parametrized test for HaarWavelets and Spline3Wavelets on an 8x8 input.
-    Checks final reconstruction vs ground truth.
+    Checks both the historical float32 snapshot and exact reconstruction.
     """
     ny, nx = 8, 8
     image = np.arange(ny * nx, dtype=np.float32).reshape(ny, nx) - 10.0
@@ -334,9 +334,14 @@ def test_wavelet_8x8(wavelet_class, ground_truth):
     coeffs = wavelet.analysis(image)
     recon = wavelet.synthesis(coeffs)
 
-    np.testing.assert_allclose(
-        recon, np.array(ground_truth, dtype=np.float32), rtol=RTOL, atol=ATOL
-    )
+    # NumPy 1.x and 2.x differ in array/scalar promotion, changing float32
+    # rounding in these multistage transforms. The snapshot is itself rounded,
+    # so double-precision tolerances test incidental rounding, not accuracy.
+    # Retain the snapshot comparison and independently check the mathematical
+    # reconstruction target with a float32 error budget.
+    reconstruction_rtol = 8 * np.finfo(image.dtype).eps
+    for expected in (np.array(ground_truth, dtype=image.dtype), image):
+        np.testing.assert_allclose(recon, expected, rtol=reconstruction_rtol, atol=2e-6)
 
 
 @pytest.mark.parametrize("centered", [False, True])

@@ -21,6 +21,30 @@ def test_tensorspline_stable_public_import() -> None:
     assert ModuleTensorSpline is TensorSpline
 
 
+@pytest.mark.parametrize("dtype", [np.float32, np.complex64])
+@pytest.mark.parametrize("length", [1, 2, 17])
+def test_periodic_coefficients_preserve_precision_and_reconstruct_samples(
+    dtype, length
+):
+    rng = np.random.default_rng(20261028)
+    values = rng.normal(size=(3, 2 * length))
+    if np.issubdtype(dtype, np.complexfloating):
+        values = values + 1j * rng.normal(size=values.shape)
+    data = values.astype(dtype)[:, ::2]
+    before = data.copy()
+    coefficients = asmode("periodic").compute_coefficients(data, asbasis("bspline3"))
+    assert coefficients.dtype == data.dtype
+    np.testing.assert_array_equal(data, before)
+    # Independent cardinal cubic sample equation, including repeated wrapping
+    # when a period is shorter than the three-sample stencil.
+    reconstructed = (
+        np.roll(coefficients, 1, axis=-1)
+        + 4 * coefficients
+        + np.roll(coefficients, -1, axis=-1)
+    ) / 6
+    np.testing.assert_allclose(reconstructed, data, rtol=2e-6, atol=2e-6)
+
+
 @pytest.mark.parametrize("length", [1, 2, 37])
 @pytest.mark.parametrize("axis", [0, 1])
 def test_internal_prefilter_handles_short_long_and_strided_axes(length, axis):

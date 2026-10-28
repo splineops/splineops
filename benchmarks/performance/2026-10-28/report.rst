@@ -222,7 +222,7 @@ and singleton axes, off-grid boundary knots and multiple extension periods,
 large-offset float32 coordinates, general affine matrices, explicit spatial
 and batch axes, reversed input strides, strided and aliased outputs, archive
 and field reuse across backends, fallback selection, and an analytic linear
-polynomial. Existing tolerances were not relaxed; tests specifically about
+polynomial. Existing LS and affine tolerances were not relaxed; tests about
 NumPy support caching explicitly select that backend.
 
 The full suite passed: 1,409 passed, six skipped. Skips concern one optional
@@ -234,6 +234,64 @@ source distribution builds passed; the source archive contains no Python
 cache files. A fresh wheel-only environment passed native-extension import,
 LS constant preservation, affine backend parity, packaged-resource, and
 demo-command help checks.
+
+Release-readiness follow-up
+---------------------------
+
+The candidate is ready for pull-request validation, with release work still
+remaining. Remote main was checked during this review and still points to
+``a148a9ecc9daaccc74939dbb52824fbe66294f5b``.
+
+Minimum-dependency testing found a pre-existing bug in periodic coefficient
+filtering: NumPy 1.26 FFTs promote float32/complex64 to double precision, and
+the shared prefilter rejects the changed dtype. The inverse FFT result now
+explicitly returns to the requested precision. Six regression cases cover
+real/complex single precision, short periods, strided data, non-mutation, and
+an independent cardinal cubic reconstruction equation. A dedicated minimum-
+dependency job was added to the test workflow.
+
+Two unrelated historical wavelet snapshot tests also demanded ``1e-9``
+relative agreement between rounded float32 arrays. NumPy 1.x/2.x scalar
+promotion changes those rounding patterns. Their comparisons now use a
+float32 error budget (eight machine epsilons relative plus ``2e-6`` absolute)
+and additionally check reconstruction of the exact input, not just the
+rounded snapshot. Wavelet algorithms and the other numerical gates were not
+changed.
+
+Local validation after the coefficient fix:
+
+* Python 3.12.14, NumPy 2.5.4, SciPy 1.18.1: 1,415 passed, six skipped.
+  The subsequently revised wavelet checks also passed in this environment.
+* Python 3.11.16, NumPy 1.26.0, SciPy 1.15.0, Matplotlib 3.8.0:
+  1,415 passed, six skipped with the revised checks.
+* Standard API soak: 12 cycles, 36 archive replacements, 108 threaded
+  applications, 36 spawned-process tasks, and 12 rejected corrupt archives.
+  All output differences were zero, and input/buffer contracts held. See
+  ``windows-stability-soak.json`` alongside this report.
+* Formatting, static typing, workflow YAML parsing, and diff checks passed.
+
+Before merging, run the actual branch through the GitHub Python 3.11--3.13
+matrix on Linux, macOS, and Windows, including the new minimum-version job.
+The local checks do not establish remote CI success.
+
+Before publishing, validate release wheels on Linux x86_64, Windows AMD64,
+macOS Intel, and macOS arm64. The current release workflow waits for wheel
+builds but does not depend on the full tests or quality workflow; publishing
+should be gated on those checks for the exact release revision. Installed
+wheels should execute small numerical LS/affine checks as well as import and
+resource checks. Bump the package version and finalize the changelog; 2.3.0
+is the proposed minor release because the affine backend selector is a new
+public capability.
+
+The new benchmark scripts are not yet included in remote benchmark jobs.
+Existing development benchmark and stability-soak push triggers still name
+``feature/publication``; connect them to the intended main/PR workflow and
+record the LS and affine comparisons on the supported platforms. This will
+make performance monitoring continue after the merge.
+
+Further optimization of repeated float32 zero-boundary affine calls and
+broader application benchmarks can follow this release. Their current
+limitations are disclosed; neither changes the established numerical gates.
 
 Reproduction
 ------------

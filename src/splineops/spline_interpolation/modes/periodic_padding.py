@@ -43,9 +43,14 @@ class PeriodicPadding(ExtensionMode):
 
         # Divide in Fourier space, then invert
         Fc = Ff / Fb
+        coefficients: np.ndarray
         if np.isrealobj(data):
-            return np.fft.irfft(Fc, n=n, axis=-1)
-        return np.fft.ifftn(Fc, axes=(-1,))
+            coefficients = np.fft.irfft(Fc, n=n, axis=-1)
+        else:
+            coefficients = np.fft.ifftn(Fc, axes=(-1,))
+        # NumPy 1.x FFTs promote float32/complex64 to double precision.
+        # Keep the requested coefficient dtype across supported NumPy versions.
+        return coefficients.astype(data.dtype, copy=False)
 
     @staticmethod
     def extend_signal(
