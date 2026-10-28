@@ -132,9 +132,9 @@ def test_rotate_is_invariant_to_coordinate_tile_size(monkeypatch):
     data = np.arange(63, dtype=np.float64).reshape(7, 9)
 
     monkeypatch.setattr(affine_module, "_AFFINE_TILE_SIZE", 10_000)
-    untiled = rotate(data, angle=23.0, degree=3, mode="mirror")
+    untiled = rotate(data, angle=23.0, degree=3, mode="mirror", backend="numpy")
     monkeypatch.setattr(affine_module, "_AFFINE_TILE_SIZE", 7)
-    tiled = rotate(data, angle=23.0, degree=3, mode="mirror")
+    tiled = rotate(data, angle=23.0, degree=3, mode="mirror", backend="numpy")
 
     np.testing.assert_allclose(tiled, untiled, rtol=1e-13, atol=1e-13)
 
@@ -188,6 +188,7 @@ def test_affine_plan_reuses_fixed_geometry_across_images():
         center - matrix @ center,
         degree=3,
         mode="mirror",
+        backend="numpy",
     )
     rng = np.random.default_rng(20260715)
 
@@ -200,6 +201,7 @@ def test_affine_plan_reuses_fixed_geometry_across_images():
             center - matrix @ center,
             degree=3,
             mode="mirror",
+            backend="numpy",
         )
         np.testing.assert_allclose(plan(data), expected, rtol=0.0, atol=0.0)
 
@@ -247,7 +249,12 @@ def test_affine_plan_prefilters_once_and_applies_precomputed_coefficients():
     matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
     center = (np.asarray((11, 13)) - 1.0) / 2.0
     plan = AffinePlan(
-        (11, 13), matrix, center - matrix @ center, degree=3, mode="mirror"
+        (11, 13),
+        matrix,
+        center - matrix @ center,
+        degree=3,
+        mode="mirror",
+        backend="numpy",
     )
 
     coefficient_out = np.empty_like(data)
@@ -453,4 +460,4 @@ def test_affine_coefficient_archive_can_be_loaded_concurrently_by_processes(tmp_
 
 def test_affine_plan_enforces_geometry_memory_limit():
     with pytest.raises(MemoryError, match="max_retained_bytes"):
-        AffinePlan((20, 20), np.eye(2), max_retained_bytes=1)
+        AffinePlan((20, 20), np.eye(2), backend="numpy", max_retained_bytes=1)

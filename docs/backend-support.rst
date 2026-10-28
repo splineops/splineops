@@ -34,6 +34,17 @@ Current matrix
      - No CuPy configuration is currently advertised as supported because no
        reliable GPU runner exercises it in CI.  Other modules require NumPy.
 
+Affine CPU evaluation
+---------------------
+
+The experimental affine module accepts NumPy arrays with an explicit
+``backend`` selector. ``auto`` uses SciPy evaluation for named zero, mirror,
+and periodic modes at degrees 1--5 in float32/float64. The maintained NumPy
+evaluator covers the remaining configurations and is available explicitly as
+``backend="numpy"``. Both share coefficient preparation and field/archive
+compatibility. This is a CPU execution choice, not support for non-NumPy input
+arrays. See :doc:`user-guide/03_affine` for boundaries and precision details.
+
 CuPy boundary
 -------------
 

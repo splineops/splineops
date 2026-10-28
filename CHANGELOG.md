@@ -4,6 +4,25 @@ All notable changes to SplineOps are documented here.
 
 ## Unreleased
 
+### Performance and numerical contracts
+
+- Route direct cubic least-squares projection through the existing batched
+  native kernel for 3-D axes with at least 128 independent lines. Smaller
+  workloads retain the scalar path; projection formulas and precision policy
+  are unchanged.
+- Add `backend="auto"`, `"numpy"`, and `"scipy"` to affine plans, transforms,
+  and rotations. Automatic evaluation uses SciPy for degrees 1--5 with
+  float32/float64 and named zero, mirror, or periodic boundaries. Coefficient
+  preparation and archive formats remain shared with the NumPy reference;
+  float32 evaluation preserves the reference's rounded coordinates. Degree 0,
+  degrees 6--7, custom modes, and other precisions retain the reference path.
+- Avoid unused spline templates and geometry caches in SciPy affine plans.
+  Their `geometry_cached` property is false and retained template/geometry
+  bytes are zero, even when `cache_geometry=True` is requested. Select the
+  NumPy backend explicitly to retain support caching.
+- Add reproducible LS and affine backend benchmarks with numerical parity
+  checks. Measure affine allocation tracing separately from execution latency.
+
 ## 2.2.0 - 2026-07-17
 
 ### Documentation

@@ -10,11 +10,15 @@ from typing import Optional, Sequence, Tuple
 import zipfile
 import numpy as np
 import numpy.typing as npt
+from scipy.ndimage import affine_transform as _scipy_affine_transform
+from scipy.ndimage import map_coordinates as _scipy_map_coordinates
 from splineops.spline_interpolation._prefilter import (
     prefilter_interpolation_coefficients,
 )
 from splineops.spline_interpolation.tensor_spline import TensorSpline
 from splineops.spline_interpolation.query_plan import TensorSplineGeometryPlan
+from splineops.spline_interpolation.bases.utils import asbasis
+from splineops.spline_interpolation.modes.utils import asmode
 
 _AFFINE_TILE_SIZE = 65_536
 _DEFAULT_PLAN_BYTES = 256 * 1024**2
@@ -129,7 +133,7 @@ class AffineCoefficientField:
 
         if not isinstance(plan, AffinePlan):
             return "The supplied object is not an AffinePlan."
-        if plan._template._geometry_signature() != self._signature:
+        if plan._coefficient_signature() != self._signature:
             return (
                 "Input shape, spline degree, boundary mode, or execution "
                 "precision differs from the coefficient field."
@@ -211,9 +215,14 @@ class AffinePlan:
     dtype : dtype, optional
         Floating execution precision.
     cache_geometry : bool, optional
-        Cache support indexes and weights.  Disable for one-shot transforms.
+        Cache support indexes and weights for the NumPy backend. The SciPy
+        backend does not retain these arrays. Disable for one-shot transforms.
     max_retained_bytes : int, optional
         Hard limit for cached geometry arrays.
+    backend : {"auto", "numpy", "scipy"}, optional
+        ``auto`` uses SciPy evaluation for degrees 1--5, float32/float64, and
+        the named zero, mirror, or periodic modes. Other configurations use
+        the NumPy reference. Coefficient preparation is identical for both.
     """
 
     def __init__(
@@ -228,6 +237,7 @@ class AffinePlan:
         dtype: npt.DTypeLike = np.float64,
         cache_geometry: bool = True,
         max_retained_bytes: int = _DEFAULT_PLAN_BYTES,
+        backend: str = "auto",
     ) -> None:
         try:
             input_shape = tuple(operator.index(length) for length in input_shape)
@@ -266,6 +276,28 @@ class AffinePlan:
             raise TypeError("'max_retained_bytes' must be a positive integer.") from exc
         if max_retained_bytes <= 0:
             raise ValueError("'max_retained_bytes' must be a positive integer.")
+        if backend not in ("auto", "numpy", "scipy"):
+            raise ValueError("'backend' must be 'auto', 'numpy', or 'scipy'.")
+
+        # Map coefficient extension, not sample-padding conventions. In
+        # particular, zero coefficients require grid-constant, not constant.
+        scipy_mode = (
+            {"zero": "grid-constant", "mirror": "mirror", "periodic": "grid-wrap"}.get(
+                mode
+            )
+            if isinstance(mode, str)
+            else None
+        )
+        scipy_supported = (
+            1 <= degree <= 5
+            and dtype in (np.dtype(np.float32), np.dtype(np.float64))
+            and scipy_mode is not None
+        )
+        if backend == "scipy" and not scipy_supported:
+            raise ValueError(
+                "The scipy backend requires degree 1--5, float32/float64, "
+                "and a named zero, mirror, or periodic mode."
+            )
 
         ndim = len(input_shape)
         matrix = np.asarray(matrix, dtype=dtype)
@@ -288,9 +320,19 @@ class AffinePlan:
         self.degree = degree
         self.mode = mode
         self.dtype = dtype
+        self._backend = "scipy" if backend != "numpy" and scipy_supported else "numpy"
+        self._scipy_mode = scipy_mode
         self._basis = f"bspline{degree}"
         self._geometry_plans: tuple[TensorSplineGeometryPlan, ...] = ()
         self._retained_bytes = 0
+        self._template: TensorSpline | None = None
+        if self.backend == "scipy":
+            # Evaluation needs only the affine matrix; avoid prefiltering a
+            # full zero-valued template or caching unused support tensors.
+            self._bases = tuple(asbasis(self._basis) for _ in input_shape)
+            self._modes = tuple(asmode(mode) for _ in input_shape)
+            return
+
         coordinates = tuple(
             np.arange(length, dtype=dtype) for length in self.input_shape
         )
@@ -300,6 +342,8 @@ class AffinePlan:
             bases=self._basis,
             modes=mode,
         )
+        self._bases = self._template.bases
+        self._modes = self._template.modes
 
         if cache_geometry:
             support_entries = sum(basis.support for basis in self._template.bases)
@@ -331,6 +375,12 @@ class AffinePlan:
             self._geometry_plans = tuple(plans)
 
     @property
+    def backend(self) -> str:
+        """Resolved evaluation backend; coefficient semantics are shared."""
+
+        return self._backend
+
+    @property
     def geometry_cached(self) -> bool:
         """Whether spline supports and weights are retained by this plan."""
 
@@ -352,6 +402,8 @@ class AffinePlan:
     def template_retained_bytes(self) -> int:
         """Bytes retained by template coefficients and construction coordinates."""
 
+        if self._template is None:
+            return 0
         return self._template._coefficients.nbytes + sum(
             coordinate.nbytes for coordinate in self._template._coordinates
         )
@@ -367,7 +419,18 @@ class AffinePlan:
             "mode": self.mode,
             "dtype": self.dtype.str,
             "geometry_cached": self.geometry_cached,
+            "backend": self.backend,
         }
+
+    def _coefficient_signature(self):
+        # Affine grids have unit spacing and zero origin. Evaluation geometry
+        # and backend are deliberately absent so fields remain reusable.
+        return (
+            self.input_shape,
+            self.degree,
+            self.dtype.str,
+            tuple(type(mode) for mode in self._modes),
+        )
 
     def _transformed_coordinates(self, start: int, stop: int) -> np.ndarray:
         flat_indices = np.arange(start, stop)
@@ -381,8 +444,8 @@ class AffinePlan:
         axes = tuple(range(data.ndim - spatial_ndim, data.ndim))
         return prefilter_interpolation_coefficients(
             data,
-            bases=self._template.bases,
-            modes=self._template.modes,
+            bases=self._bases,
+            modes=self._modes,
             axes=axes,
             dtype=self.dtype,
             backend="numpy",
@@ -390,8 +453,7 @@ class AffinePlan:
 
     def _coefficient_serialization_metadata(self, spatial_axes, *, schema_version=2):
         mode_types = [
-            f"{type(mode).__module__}.{type(mode).__qualname__}"
-            for mode in self._template.modes
+            f"{type(mode).__module__}.{type(mode).__qualname__}" for mode in self._modes
         ]
         metadata = {
             "schema": "splineops.affine-coefficients",
@@ -416,7 +478,7 @@ class AffinePlan:
         return AffineCoefficientField(
             values,
             axes,
-            self._template._geometry_signature(),
+            self._coefficient_signature(),
             {
                 "input_shape": self.input_shape,
                 "spatial_axes": axes,
@@ -429,6 +491,9 @@ class AffinePlan:
         )
 
     def _apply_canonical_coefficients(self, coefficients: np.ndarray) -> np.ndarray:
+        if self.backend == "scipy":
+            return self._apply_scipy_coefficients(coefficients)
+        assert self._template is not None
         spatial_ndim = len(self.input_shape)
         batch_shape = coefficients.shape[:-spatial_ndim]
         batch_count = int(np.prod(batch_shape, dtype=np.int64)) if batch_shape else 1
@@ -463,6 +528,47 @@ class AffinePlan:
                     )
                 )
         return result.reshape(batch_shape + self.output_shape)
+
+    def _apply_scipy_coefficients(self, coefficients: np.ndarray) -> np.ndarray:
+        spatial_ndim = len(self.input_shape)
+        batch_shape = coefficients.shape[:-spatial_ndim]
+        result = np.empty(batch_shape + self.output_shape, dtype=self.dtype)
+        if self.dtype == np.dtype(np.float32):
+            # Keep the reference's float32 matrix arithmetic. Letting SciPy
+            # construct coordinates would silently evaluate a different grid.
+            output_size = int(np.prod(self.output_shape, dtype=np.int64))
+            batch_count = (
+                int(np.prod(batch_shape, dtype=np.int64)) if batch_shape else 1
+            )
+            tile_size = max(1, _AFFINE_TILE_SIZE // max(1, batch_count))
+            flat_result = result.reshape(batch_shape + (output_size,))
+            for start in range(0, output_size, tile_size):
+                stop = min(start + tile_size, output_size)
+                coordinates = self._transformed_coordinates(start, stop)
+                for index in np.ndindex(batch_shape):
+                    _scipy_map_coordinates(
+                        coefficients[index],
+                        coordinates,
+                        output=flat_result[index][start:stop],
+                        order=self.degree,
+                        mode=self._scipy_mode,
+                        cval=0.0,
+                        prefilter=False,
+                    )
+        else:
+            for index in np.ndindex(batch_shape):
+                _scipy_affine_transform(
+                    coefficients[index],
+                    self.matrix,
+                    offset=self.offset,
+                    output_shape=self.output_shape,
+                    output=result[index],
+                    order=self.degree,
+                    mode=self._scipy_mode,
+                    cval=0.0,
+                    prefilter=False,
+                )
+        return result
 
     def _normalize_input(self, data, spatial_axes, *, coefficients):
         if not isinstance(data, np.ndarray):
@@ -679,6 +785,7 @@ def affine_transform(
     degree: int = 3,
     mode: str = "zero",
     out: npt.NDArray | None = None,
+    backend: str = "auto",
 ) -> np.ndarray:
     """Apply a one-shot two- or three-dimensional pull-back affine transform."""
 
@@ -704,6 +811,7 @@ def affine_transform(
         mode=mode,
         dtype=work_dtype,
         cache_geometry=False,
+        backend=backend,
     )
     return plan.apply(data, spatial_axes=axes, out=out)
 
@@ -718,6 +826,7 @@ def rotate(
     *,
     spatial_axes: Sequence[int] | None = None,
     out: npt.NDArray | None = None,
+    backend: str = "auto",
 ) -> npt.NDArray:
     """
     Rotate 2D or 3D data around a specified center using spline interpolation.
@@ -742,6 +851,8 @@ def rotate(
         independently.
     out : ndarray, optional
         Exact-shape and exact-dtype output buffer.
+    backend : {"auto", "numpy", "scipy"}, optional
+        Evaluation backend, as described by :class:`AffinePlan`.
 
     Returns
     -------
@@ -868,5 +979,6 @@ def rotate(
         mode=mode,
         dtype=work_dtype,
         cache_geometry=False,
+        backend=backend,
     )
     return plan.apply(data, spatial_axes=axes, out=out)
