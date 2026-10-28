@@ -44,7 +44,7 @@ nearest-neighbour rather than spline-projection semantics.
 Release status
 --------------
 
-.. list-table:: SplineOps 2.2 public maturity
+.. list-table:: SplineOps 2.3 public maturity
    :header-rows: 1
    :widths: 24 16 60
 

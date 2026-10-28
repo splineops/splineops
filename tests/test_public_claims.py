@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tomllib
 from importlib.resources import files
+from importlib.metadata import version
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,7 +68,7 @@ def test_distribution_metadata_exposes_the_installed_demo() -> None:
     with (ROOT / "pyproject.toml").open("rb") as handle:
         pyproject = tomllib.load(handle)
     project = pyproject["project"]
-    assert project["version"] == "2.2.0"
+    assert project["version"] == version("splineops")
     assert project["scripts"]["splineops-selma3d-demo"] == (
         "splineops.demos.selma3d:main"
     )

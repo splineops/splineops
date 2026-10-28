@@ -2,13 +2,25 @@ name: Development benchmarks
 
 on:
   push:
-    branches: [feature/publication]
+    branches: [main]
     paths:
       - ".github/workflows/tensorspline-benchmark.yml"
       - "benchmarks/consolidation-thresholds.json"
       - "scripts/benchmark_batch_scaling.py"
       - "scripts/benchmark_downstream_workflows.py"
       - "scripts/benchmark_workflows.py"
+      - "scripts/profile_affine_phases.py"
+      - "scripts/benchmark_affine_backends.py"
+      - "src/splineops/affine/**"
+      - "src/splineops/differentials/**"
+      - "src/splineops/multiscale/wavelets/**"
+      - "src/splineops/spline_interpolation/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/tensorspline-benchmark.yml"
+      - "benchmarks/consolidation-thresholds.json"
+      - "scripts/benchmark_*.py"
       - "scripts/profile_affine_phases.py"
       - "src/splineops/affine/**"
       - "src/splineops/differentials/**"
@@ -82,6 +94,13 @@ jobs:
           --output-json affine-phases.json
           --output-csv affine-phases.csv
 
+      - name: Compare affine evaluation backends
+        run: >-
+          python scripts/benchmark_affine_backends.py
+          --profile "${{ env.BENCHMARK_PROFILE }}"
+          --repeats 5
+          --output-json affine-backends.json
+
       - name: Benchmark vectorized differentials
         run: >-
           python scripts/benchmark_differentials.py
@@ -138,6 +157,7 @@ jobs:
             affine.csv
             affine-phases.json
             affine-phases.csv
+            affine-backends.json
             differentials.json
             differentials.csv
             multiscale.json
