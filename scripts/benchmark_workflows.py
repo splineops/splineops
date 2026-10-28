@@ -1,16 +1,19 @@
-"""Benchmark complete repeated-geometry and explicit-axis workflows."""
+"""Benchmark complete workflows with calibrated, alternating timing pairs."""
 
 from __future__ import annotations
 
 import argparse
 import csv
 import json
+import math
+import os
 import platform
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
+import scipy
 
 from splineops import __version__
 from splineops.adaptive_regression_splines import DenoisingPlan
@@ -19,17 +22,112 @@ from splineops.differentials import DifferentialPlan
 from splineops.multiscale.wavelets.haar import HaarWavelets
 from splineops.smoothing_splines import SmoothingSplinePlan
 
+_MAX_BATCH_ITERATIONS = 1_048_576
+_CALIBRATION_SAMPLES = 3
 
-def _measure(call, repeats, warmups):
-    for _ in range(warmups):
-        call()
-    timings = []
+
+def _timed_batch(call, iterations):
+    """Time complete calls, including disposal of intermediate outputs."""
+
     result = None
-    for _ in range(repeats):
-        started = time.perf_counter()
+    started = time.perf_counter()
+    for _ in range(iterations):
         result = call()
-        timings.append(time.perf_counter() - started)
-    return result, float(np.median(timings))
+    return result, time.perf_counter() - started
+
+
+def _calibrate(calls, order, min_sample_seconds):
+    """Choose one batch size for both methods, resisting isolated pauses."""
+
+    iterations = 1
+    history = []
+    while True:
+        blocks = {name: [] for name in calls}
+        for trial in range(_CALIBRATION_SAMPLES):
+            for name in order if trial % 2 == 0 else order[::-1]:
+                # Drop the returned output after the timer has stopped.
+                _, elapsed = _timed_batch(calls[name], iterations)
+                blocks[name].append(elapsed)
+        history.append({"iterations": iterations, "block_seconds": blocks})
+        # A single scheduling pause must not make a tiny batch look long enough.
+        if min(min(values) for values in blocks.values()) >= min_sample_seconds:
+            return iterations, history
+        if iterations == _MAX_BATCH_ITERATIONS:
+            raise RuntimeError("Unable to calibrate the requested timing duration.")
+        iterations = min(2 * iterations, _MAX_BATCH_ITERATIONS)
+
+
+def _relative_iqr(values):
+    """Interquartile range divided by the median; diagnostic, not a gate."""
+
+    lower, upper = np.percentile(values, [25, 75])
+    return float((upper - lower) / np.median(values))
+
+
+def _measure_workflow(
+    workflow,
+    reference_call,
+    optimized_call,
+    *,
+    retained_bytes,
+    repeats,
+    warmups,
+    min_sample_seconds,
+    rng,
+):
+    calls = {"reference": reference_call, "optimized": optimized_call}
+    # Alternate AB/BA pairs, with a seeded choice of the first method. A
+    # separate timing RNG leaves the benchmark's input data unchanged.
+    order = list(calls)
+    if rng.integers(2):
+        order.reverse()
+    for trial in range(warmups):
+        for name in order if trial % 2 == 0 else order[::-1]:
+            calls[name]()
+    iterations, calibration = _calibrate(calls, order, min_sample_seconds)
+    blocks = {name: [] for name in calls}
+    outputs = {}
+    orders = []
+    for trial in range(repeats):
+        trial_order = order if trial % 2 == 0 else order[::-1]
+        orders.append(trial_order)
+        for name in trial_order:
+            result, elapsed = _timed_batch(calls[name], iterations)
+            # Replacing a previous batch's last output is outside its timer.
+            outputs[name] = result
+            blocks[name].append(elapsed)
+    samples = {
+        name: [elapsed / iterations for elapsed in values]
+        for name, values in blocks.items()
+    }
+    medians = {name: float(np.median(values)) for name, values in samples.items()}
+    paired_speedups = [
+        reference / optimized
+        for reference, optimized in zip(samples["reference"], samples["optimized"])
+    ]
+    return {
+        "workflow": workflow,
+        "optimized_seconds": medians["optimized"],
+        "reference_seconds": medians["reference"],
+        # Preserve the existing ratio-of-medians contract used by the policy.
+        "speedup": medians["reference"] / medians["optimized"],
+        "max_abs_difference": _max_difference(
+            outputs["optimized"], outputs["reference"]
+        ),
+        "retained_bytes": retained_bytes,
+        "iterations_per_sample": iterations,
+        "reference_relative_iqr": _relative_iqr(samples["reference"]),
+        "optimized_relative_iqr": _relative_iqr(samples["optimized"]),
+        "paired_speedup_median": float(np.median(paired_speedups)),
+        "paired_speedup_relative_iqr": _relative_iqr(paired_speedups),
+        "timing": {
+            "order": orders,
+            "block_seconds": blocks,
+            "seconds_per_call": samples,
+            "paired_speedups": paired_speedups,
+            "calibration": calibration,
+        },
+    }
 
 
 def _rotation(shape, degrees):
@@ -53,18 +151,34 @@ def _max_difference(first, second):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=("smoke", "standard"), default="smoke")
-    parser.add_argument("--repeats", type=int, default=3)
-    parser.add_argument("--warmups", type=int, default=1)
+    parser.add_argument(
+        "--repeats", type=int, default=10, help="Paired timing samples."
+    )
+    parser.add_argument("--warmups", type=int, default=3)
+    parser.add_argument(
+        "--min-sample-seconds",
+        type=float,
+        default=0.05,
+        help="Calibration target for each method's timing batch (default: 0.05).",
+    )
     parser.add_argument("--seed", type=int, default=20260716)
     parser.add_argument("--output-json", type=Path)
     parser.add_argument("--output-csv", type=Path)
     args = parser.parse_args()
     if args.repeats <= 0 or args.warmups < 0:
         parser.error("repeats must be positive and warmups non-negative")
+    if not math.isfinite(args.min_sample_seconds) or args.min_sample_seconds <= 0:
+        parser.error("min-sample-seconds must be finite and positive")
 
     spatial_shape = (64, 80) if args.profile == "smoke" else (256, 320)
     batch_shape = (2, spatial_shape[0], spatial_shape[1], 2)
     rng = np.random.default_rng(args.seed)
+    timing_options = {
+        "repeats": args.repeats,
+        "warmups": args.warmups,
+        "min_sample_seconds": args.min_sample_seconds,
+        "rng": np.random.default_rng(args.seed),
+    }
     rows = []
 
     image = rng.standard_normal(spatial_shape)
@@ -87,17 +201,14 @@ def main() -> int:
             second_plan.apply_coefficients(coefficients),
         )
 
-    reference, reference_seconds = _measure(ordinary_affine, args.repeats, args.warmups)
-    optimized, optimized_seconds = _measure(prepared_affine, args.repeats, args.warmups)
     rows.append(
-        {
-            "workflow": "affine_two_geometries_one_prefilter",
-            "optimized_seconds": optimized_seconds,
-            "reference_seconds": reference_seconds,
-            "speedup": reference_seconds / optimized_seconds,
-            "max_abs_difference": _max_difference(optimized, reference),
-            "retained_bytes": first_plan.retained_bytes + second_plan.retained_bytes,
-        }
+        _measure_workflow(
+            "affine_two_geometries_one_prefilter",
+            ordinary_affine,
+            prepared_affine,
+            retained_bytes=first_plan.retained_bytes + second_plan.retained_bytes,
+            **timing_options,
+        )
     )
 
     batch = rng.standard_normal(batch_shape)
@@ -114,17 +225,14 @@ def main() -> int:
                 )
         return result
 
-    reference, reference_seconds = _measure(looped_affine, args.repeats, args.warmups)
-    optimized, optimized_seconds = _measure(batched_affine, args.repeats, args.warmups)
     rows.append(
-        {
-            "workflow": "affine_explicit_axes",
-            "optimized_seconds": optimized_seconds,
-            "reference_seconds": reference_seconds,
-            "speedup": reference_seconds / optimized_seconds,
-            "max_abs_difference": _max_difference(optimized, reference),
-            "retained_bytes": first_plan.retained_bytes,
-        }
+        _measure_workflow(
+            "affine_explicit_axes",
+            looped_affine,
+            batched_affine,
+            retained_bytes=first_plan.retained_bytes,
+            **timing_options,
+        )
     )
 
     smoothing_plan = SmoothingSplinePlan(spatial_shape, lamb=0.2, gamma=1.3)
@@ -141,21 +249,14 @@ def main() -> int:
                 )
         return result
 
-    reference, reference_seconds = _measure(
-        looped_smoothing, args.repeats, args.warmups
-    )
-    optimized, optimized_seconds = _measure(
-        batched_smoothing, args.repeats, args.warmups
-    )
     rows.append(
-        {
-            "workflow": "smoothing_explicit_axes",
-            "optimized_seconds": optimized_seconds,
-            "reference_seconds": reference_seconds,
-            "speedup": reference_seconds / optimized_seconds,
-            "max_abs_difference": _max_difference(optimized, reference),
-            "retained_bytes": smoothing_plan.retained_bytes,
-        }
+        _measure_workflow(
+            "smoothing_explicit_axes",
+            looped_smoothing,
+            batched_smoothing,
+            retained_bytes=smoothing_plan.retained_bytes,
+            **timing_options,
+        )
     )
 
     differential_plan = DifferentialPlan(spatial_shape, spacing=(0.7, 1.3))
@@ -175,21 +276,14 @@ def main() -> int:
                     components[index][batch_index, :, :, channel] = component
         return tuple(components)
 
-    reference, reference_seconds = _measure(
-        looped_differentials, args.repeats, args.warmups
-    )
-    optimized, optimized_seconds = _measure(
-        batched_differentials, args.repeats, args.warmups
-    )
     rows.append(
-        {
-            "workflow": "differentials_explicit_axes",
-            "optimized_seconds": optimized_seconds,
-            "reference_seconds": reference_seconds,
-            "speedup": reference_seconds / optimized_seconds,
-            "max_abs_difference": _max_difference(optimized, reference),
-            "retained_bytes": differential_plan.retained_bytes,
-        }
+        _measure_workflow(
+            "differentials_explicit_axes",
+            looped_differentials,
+            batched_differentials,
+            retained_bytes=differential_plan.retained_bytes,
+            **timing_options,
+        )
     )
 
     sample_count = 96 if args.profile == "smoke" else 384
@@ -197,25 +291,16 @@ def main() -> int:
     signal = np.sin(0.08 * x) + 0.05 * np.cos(0.73 * x)
     lambdas = (0.01, 0.02, 0.05, 0.1)
     denoising_plan = DenoisingPlan(x, rho=0.5)
-    reference, reference_seconds = _measure(
-        lambda: np.stack([denoising_plan.solve(signal, value) for value in lambdas]),
-        args.repeats,
-        args.warmups,
-    )
-    optimized, optimized_seconds = _measure(
-        lambda: denoising_plan.solve_path(signal, lambdas),
-        args.repeats,
-        args.warmups,
-    )
     rows.append(
-        {
-            "workflow": "denoising_lambda_path",
-            "optimized_seconds": optimized_seconds,
-            "reference_seconds": reference_seconds,
-            "speedup": reference_seconds / optimized_seconds,
-            "max_abs_difference": _max_difference(optimized, reference),
-            "retained_bytes": denoising_plan.retained_array_bytes,
-        }
+        _measure_workflow(
+            "denoising_lambda_path",
+            lambda: np.stack(
+                [denoising_plan.solve(signal, value) for value in lambdas]
+            ),
+            lambda: denoising_plan.solve_path(signal, lambdas),
+            retained_bytes=denoising_plan.retained_array_bytes,
+            **timing_options,
+        )
     )
 
     wavelet = HaarWavelets(scales=2)
@@ -235,17 +320,14 @@ def main() -> int:
                 )
         return result
 
-    reference, reference_seconds = _measure(looped_wavelet, args.repeats, args.warmups)
-    optimized, optimized_seconds = _measure(batched_wavelet, args.repeats, args.warmups)
     rows.append(
-        {
-            "workflow": "wavelet_roundtrip_explicit_axes",
-            "optimized_seconds": optimized_seconds,
-            "reference_seconds": reference_seconds,
-            "speedup": reference_seconds / optimized_seconds,
-            "max_abs_difference": _max_difference(optimized, reference),
-            "retained_bytes": 0,
-        }
+        _measure_workflow(
+            "wavelet_roundtrip_explicit_axes",
+            looped_wavelet,
+            batched_wavelet,
+            retained_bytes=0,
+            **timing_options,
+        )
     )
 
     for row in rows:
@@ -253,6 +335,7 @@ def main() -> int:
             f"{row['workflow']:38s} optimized={row['optimized_seconds']:.6f}s "
             f"reference={row['reference_seconds']:.6f}s "
             f"speedup={row['speedup']:.2f}x "
+            f"paired-IQR={row['paired_speedup_relative_iqr']:.1%} "
             f"max-error={row['max_abs_difference']:.3e}"
         )
 
@@ -262,9 +345,34 @@ def main() -> int:
             "python": sys.version.split()[0],
             "platform": platform.platform(),
             "numpy": np.__version__,
+            "scipy": scipy.__version__,
             "splineops": __version__,
+            "processor": platform.processor(),
+            "cpu_count": os.cpu_count(),
+            "revision": os.environ.get("GITHUB_SHA"),
+            "thread_environment": {
+                name: os.environ.get(name)
+                for name in (
+                    "OMP_NUM_THREADS",
+                    "OPENBLAS_NUM_THREADS",
+                    "MKL_NUM_THREADS",
+                    "NUMEXPR_NUM_THREADS",
+                )
+            },
         },
         "profile": args.profile,
+        "timing": {
+            "repeats": args.repeats,
+            "warmups": args.warmups,
+            "min_sample_seconds": args.min_sample_seconds,
+            "calibration_samples": _CALIBRATION_SAMPLES,
+            "seed": args.seed,
+            "order": "alternating AB/BA pairs with seeded first method",
+            "batching": "equal iteration counts for both methods",
+            "clock": "perf_counter",
+            "speedup": "ratio of median seconds per call",
+            "variability": "IQR divided by median; diagnostic only",
+        },
         "results": rows,
         "speedups_by_workflow": {row["workflow"]: row["speedup"] for row in rows},
     }
@@ -276,7 +384,11 @@ def main() -> int:
     if args.output_csv:
         args.output_csv.parent.mkdir(parents=True, exist_ok=True)
         with args.output_csv.open("w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=rows[0].keys())
+            writer = csv.DictWriter(
+                handle,
+                fieldnames=[key for key in rows[0] if key != "timing"],
+                extrasaction="ignore",
+            )
             writer.writeheader()
             writer.writerows(rows)
     return 0

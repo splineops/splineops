@@ -16,6 +16,12 @@ Python versions. Hardware-dependent timing ratios are recorded as evidence;
 the new LS/affine comparisons fail on numerical disagreement rather than
 requiring a universal speedup.
 
+Combined workflow timings use calibrated batches and alternating paired
+samples; their artifacts include raw measurements and variability. Check
+these diagnostics when a timing threshold fails. Numerical failures remain
+blocking, and a passing timing rerun alone does not resolve the original
+failure. The measurement protocol is described in :doc:`performance`.
+
 Every wheel is installed outside the checkout before
 ``scripts/check_installed_wheel.py`` runs. This imports the actual native
 extension, compares cubic LS with the independent Python projection,

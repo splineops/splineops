@@ -119,6 +119,7 @@ jobs:
         run: >-
           python scripts/benchmark_workflows.py
           --profile "${{ env.BENCHMARK_PROFILE }}"
+          --repeats 10 --warmups 3 --min-sample-seconds 0.05
           --output-json workflows.json
           --output-csv workflows.csv
 

@@ -415,6 +415,8 @@ def test_consolidated_workflow_benchmark_smoke(tmp_path):
             "1",
             "--warmups",
             "0",
+            "--min-sample-seconds",
+            "0.001",
             "--output-json",
             str(output_json),
             "--output-csv",
@@ -442,6 +444,18 @@ def test_consolidated_workflow_benchmark_smoke(tmp_path):
     }
     assert all(row["speedup"] > 0 for row in payload["results"])
     assert all(row["max_abs_difference"] < 2e-4 for row in payload["results"])
+    assert payload["timing"]["repeats"] == 1
+    assert payload["timing"]["min_sample_seconds"] == 0.001
+    for row in payload["results"]:
+        assert row["iterations_per_sample"] >= 1
+        assert len(row["timing"]["paired_speedups"]) == 1
+        assert row["reference_relative_iqr"] == 0
+        assert row["optimized_relative_iqr"] == 0
+    with output_csv.open(newline="", encoding="utf-8") as handle:
+        csv_rows = list(csv.DictReader(handle))
+    assert len(csv_rows) == len(payload["results"])
+    assert "timing" not in csv_rows[0]
+    assert all(float(row["paired_speedup_median"]) > 0 for row in csv_rows)
     assert output_csv.exists()
 
 
