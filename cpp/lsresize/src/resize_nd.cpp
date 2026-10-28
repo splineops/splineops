@@ -564,6 +564,15 @@ static inline bool should_use_batched_axis(
     return true;
   }
 
+  // Stable cubic least-squares uses the same direct projection kernel, but
+  // previously fell back to a separate workspace for every 3-D line. Reuse
+  // the batched double-precision path after the nlines gate above, including
+  // short output axes. Tiny volumes retain the conservative scalar path.
+  if (in_shape.size() == 3 && plan.direct_projection &&
+      p.interp_degree == 3 && p.analy_degree == 3 && p.synthe_degree == 3) {
+    return true;
+  }
+
   if (plan.N < 64 || plan.out_total < 64) {
     return false;
   }
