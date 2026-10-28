@@ -121,6 +121,45 @@ Set ``OPENBLAS_NUM_THREADS``, ``OMP_NUM_THREADS``, and ``MKL_NUM_THREADS`` to
 ``1`` before starting Python to match these runs. The LS script separately
 sets its native thread count to one and then automatic selection.
 
+Combined workflow timing
+------------------------
+
+``scripts/benchmark_workflows.py`` compares complete repeated-geometry and
+explicit-axis workflows. Short workloads previously used one warmup and three
+individual timings per method, with all reference timings before all optimized
+timings. Hosted macOS runs exposed large changes in those short timing ratios
+without code changes.
+
+The benchmark now uses three warmups and ten paired samples by default. It
+calibrates a common iteration count until three calibration batches of each
+method reach a 50 ms target. The minimum calibration duration is used so an
+isolated scheduling pause cannot prematurely end calibration. Both methods
+perform the same number of calls per sample. Their order alternates AB/BA,
+with a seeded choice of the first method and equal first-position counts for
+an even number of samples. Timing uses a separate random generator so the
+numerical inputs remain unchanged.
+
+JSON records retain every calibration batch, timed batch, per-call sample,
+execution order, and paired speedup. JSON and CSV include the interquartile
+range divided by the median as a measure of variability. The 50 ms value is
+a calibration target; actual batch durations are retained because machine
+speed and scheduling may change later. Timed calls include disposal of
+intermediate outputs, while replacement of each batch's last retained output
+occurs outside its timer. Allocation tracing is disabled.
+
+The existing performance gates still use the ratio of median per-call times.
+Numerical checks, workloads, and threshold values are unchanged. No samples
+are removed and variability does not turn a failed threshold into a pass.
+Large variability warrants investigation; a successful rerun alone is not
+evidence that a timing problem was fixed. Earlier recorded workflow timings
+retain their original measurement protocol.
+
+.. code-block:: shell
+
+   python scripts/benchmark_workflows.py --profile standard \
+     --repeats 10 --warmups 3 --min-sample-seconds 0.05 \
+     --output-json workflows.json --output-csv workflows.csv
+
 TensorSpline baseline
 ---------------------
 

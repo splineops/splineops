@@ -355,6 +355,25 @@ Further work should target repeated affine evaluation, macOS batched wavelet
 roundtrips, and broader application benchmarks. Review is still required
 before merging, and a reviewed version tag is required before publication.
 
+Workflow measurement follow-up
+------------------------------
+
+The combined workflow benchmark now replaces three fixed-order individual
+timings with ten alternating pairs of calibrated batches. Both methods use
+the same iteration count, selected using the minimum of three calibration
+durations per method against a 50 ms target. Raw calibration and measured
+durations, method order, per-call samples, and relative interquartile ranges
+are retained. Timing randomness is separate from input generation.
+
+The threshold policy still uses the ratio of medians. Numerical comparisons,
+workloads, and timing floors are unchanged; no measured samples are discarded.
+This improves measurement resolution and exposes variability without claiming
+to fix the underlying wavelet slowdown or guarantee stable hosted timings.
+The hosted records above predate this protocol change and remain historical
+evidence for their explicitly identified revision. Current measurements can
+be reproduced with ``scripts/benchmark_workflows.py``; see
+``docs/performance.rst`` for the complete protocol and command.
+
 Reproduction
 ------------
 

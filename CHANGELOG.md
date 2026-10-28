@@ -19,6 +19,9 @@ workload-specific, with numerical reference checks covering both fast paths.
   and source archive contents before publishing.
 - Run development benchmarks and stability checks for main and relevant PRs,
   including the new LS batching and affine backend comparisons.
+- Calibrate combined workflow benchmarks to longer timing batches, alternate
+  paired methods, and preserve raw samples and variability. Numerical checks
+  and performance thresholds are unchanged.
 
 ### Fixes
 
