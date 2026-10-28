@@ -238,9 +238,11 @@ demo-command help checks.
 Release-readiness follow-up
 ---------------------------
 
-The candidate is ready for pull-request validation, with release work still
-remaining. Remote main was checked during this review and still points to
-``a148a9ecc9daaccc74939dbb52824fbe66294f5b``.
+The candidate is prepared as ``2.3.0rc1`` in
+`PR 41 <https://github.com/splineops/splineops/pull/41>`_. The initial local
+audit below was followed by hosted validation and benchmarks, recorded in
+the next section. Main remained at
+``a148a9ecc9daaccc74939dbb52824fbe66294f5b`` during these measurements.
 
 Minimum-dependency testing found a pre-existing bug in periodic coefficient
 filtering: NumPy 1.26 FFTs promote float32/complex64 to double precision, and
@@ -270,28 +272,88 @@ Local validation after the coefficient fix:
   ``windows-stability-soak.json`` alongside this report.
 * Formatting, static typing, workflow YAML parsing, and diff checks passed.
 
-Before merging, run the actual branch through the GitHub Python 3.11--3.13
-matrix on Linux, macOS, and Windows, including the new minimum-version job.
-The local checks do not establish remote CI success.
+Hosted release validation and benchmarks
+----------------------------------------
 
-Before publishing, validate release wheels on Linux x86_64, Windows AMD64,
-macOS Intel, and macOS arm64. The current release workflow waits for wheel
-builds but does not depend on the full tests or quality workflow; publishing
-should be gated on those checks for the exact release revision. Installed
-wheels should execute small numerical LS/affine checks as well as import and
-resource checks. Bump the package version and finalize the changelog; 2.3.0
-is the proposed minor release because the affine backend selector is a new
-public capability.
+Revision ``7b32c872c78f35cc929ce4e1c7aee2254fa0e140`` passed the
+`manual release validation
+<https://github.com/splineops/splineops/actions/runs/40705137128>`_:
+20 jobs succeeded and the publication job was skipped as intended. This
+covered the complete Python 3.11--3.13 test matrix on Linux, macOS, and
+Windows; minimum dependencies; quality checks; standard API stability soaks;
+and twelve numerical wheel builds for Linux x86_64, Windows AMD64, macOS
+Intel, and macOS arm64. The downloaded wheels and source distribution also
+passed the complete local artifact audit. The hosted Windows Python 3.11
+wheel passed an additional clean install with minimum runtime dependencies.
 
-The new benchmark scripts are not yet included in remote benchmark jobs.
-Existing development benchmark and stability-soak push triggers still name
-``feature/publication``; connect them to the intended main/PR workflow and
-record the LS and affine comparisons on the supported platforms. This will
-make performance monitoring continue after the merge.
+Release publication now depends on these checks and an artifact audit from
+the same revision. Manual validation cannot publish. Benchmark and soak
+triggers cover main and relevant pull requests. See ``docs/releasing.rst``
+for the release procedure; a passing validation run is not a publication.
 
-Further optimization of repeated float32 zero-boundary affine calls and
-broader application benchmarks can follow this release. Their current
-limitations are disclosed; neither changes the established numerical gates.
+The hosted LS comparison used five repeats, three warmups, and the standard
+geometries above. The cubic affine standard comparison used five repeats,
+two warmups, and both shapes, dtypes, and all three named modes. All use
+randomized method order without allocation tracing. Environments, raw
+samples, numerical differences, revisions, and run links are preserved in
+``hosted/linux.json``, ``hosted/macos.json``, and ``hosted/windows.json``.
+
+.. list-table:: Hosted speedup ranges
+   :header-rows: 1
+
+   * - Runner
+     - LS, one thread, non-tiny cases
+     - LS, automatic threads, non-tiny cases
+     - Affine, one-shot
+     - Affine, reused plan
+   * - Linux
+     - 2.52x--4.76x
+     - 1.68x--2.61x
+     - 1.07x--2.18x
+     - 0.61x--1.24x
+   * - macOS arm64
+     - 3.90x--7.86x
+     - 2.56x--5.52x
+     - 1.30x--3.43x
+     - 0.89x--1.39x
+   * - Windows
+     - 2.62x--4.47x
+     - 1.31x--2.45x
+     - 1.96x--7.71x
+     - 0.78x--1.55x
+
+One-shot affine execution improved in every hosted standard case, but a
+compiled plan is not always faster for repeated geometry. On the Linux
+runner, the 2-D float32 zero-boundary case took 26.15 ms with SciPy versus
+15.93 ms with the cached NumPy plan (0.61x speedup, or 64% longer runtime).
+Shared-coefficient evaluation took 21.13 versus 11.07 ms (0.52x). Users who
+reuse geometry should compare ``backend="numpy"`` and ``backend="scipy"``
+on their workload; ``auto`` selects by supported semantics, not a runtime
+autotuner. The compiled plan's lower retained geometry memory remains a
+separate benefit.
+
+All hosted LS and affine numerical comparisons passed. LS maximum absolute
+difference was zero on Linux and Windows and below ``4.0e-15`` on macOS.
+Across the standard cubic affine cases, maximum absolute differences were
+below ``1.5e-6`` for float32 and ``7.5e-13`` for float64. These are observed
+differences, not input-independent accuracy bounds.
+
+The optional `standard development benchmark run
+<https://github.com/splineops/splineops/actions/runs/40706781807>`_ passed
+on Linux and Windows but failed the existing macOS batched Haar timing
+floor: 0.7296x against a required 0.75x. A `control run on unchanged main
+<https://github.com/splineops/splineops/actions/runs/40707676755>`_ failed
+the same floor at 0.7323x. Both produced zero numerical difference. The
+wavelet implementation, benchmark method, and threshold policy are identical
+between the two revisions. This supports treating the timing failure as an
+existing limitation; separate hosted machines do not establish a precise
+before/after regression estimate. The floor was not weakened. The standard
+development suite therefore remains a documented failing performance check,
+separate from the successful release validation.
+
+Further work should target repeated affine evaluation, macOS batched wavelet
+roundtrips, and broader application benchmarks. Review is still required
+before merging, and a reviewed version tag is required before publication.
 
 Reproduction
 ------------
@@ -304,7 +366,7 @@ environment variables listed above, then run::
     python scripts/benchmark_affine_backends.py --profile smoke --repeats 5 --degrees 1,5 --batch-size 3 --output-json affine-additional.json
     python -m pytest -q
 
-These results establish faster execution of the existing operators on one
-Windows machine. Linux/macOS timing remains unmeasured. They do not establish
+These results establish workload-dependent acceleration of the existing
+operators on the recorded local and hosted machines. They do not establish
 better reconstruction quality than other filters or application-specific
 methods. No public resize presets or mathematical accuracy targets changed.
