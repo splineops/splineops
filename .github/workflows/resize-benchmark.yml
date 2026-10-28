@@ -1,6 +1,20 @@
 name: Resize benchmark
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/resize-benchmark.yml"
+      - "cpp/**"
+      - "src/splineops/resize/**"
+      - "scripts/benchmark_resize_*.py"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/resize-benchmark.yml"
+      - "cpp/**"
+      - "src/splineops/resize/**"
+      - "scripts/benchmark_resize_*.py"
   workflow_dispatch:
     inputs:
       profile:
@@ -26,6 +40,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
+      BENCHMARK_PROFILE: ${{ inputs.profile || 'smoke' }}
+      BENCHMARK_REPEATS: ${{ inputs.repeats || '5' }}
       SPLINEOPS_ACCEL: always
       OMP_NUM_THREADS: 1
       OPENBLAS_NUM_THREADS: 1
@@ -51,10 +67,10 @@ jobs:
         shell: bash
         run: |
           python scripts/benchmark_resize_native.py \
-            --profile "${{ inputs.profile }}" \
+            --profile "${{ env.BENCHMARK_PROFILE }}" \
             --backend native \
             --threads 1,default \
-            --repeats "${{ inputs.repeats }}" \
+            --repeats "${{ env.BENCHMARK_REPEATS }}" \
             --warmups 2 \
             --batched-axis auto \
             --skip-checks \
@@ -73,15 +89,22 @@ jobs:
         shell: bash
         run: |
           python scripts/benchmark_resize_plan.py \
-            --profile "${{ inputs.profile }}" \
+            --profile "${{ env.BENCHMARK_PROFILE }}" \
             --frames 8 \
-            --repeats "${{ inputs.repeats }}" \
+            --repeats "${{ env.BENCHMARK_REPEATS }}" \
             --warmups 2 \
             --output-json resize-plan.json \
             --output-csv resize-plan.csv
 
+      - name: Compare cubic least-squares batching
+        run: >-
+          python scripts/benchmark_resize_ls_batching.py
+          --repeats "${{ env.BENCHMARK_REPEATS }}"
+          --output-json resize-ls-batching.json
+
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v6
+        if: ${{ always() }}
         with:
           name: resize-benchmark-${{ runner.os }}-${{ github.sha }}
           path: |
@@ -91,4 +114,5 @@ jobs:
             resize-quality.csv
             resize-plan.json
             resize-plan.csv
+            resize-ls-batching.json
           if-no-files-found: error

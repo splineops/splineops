@@ -1,13 +1,30 @@
 name: API stability soak
 
 on:
+  workflow_call:
+    inputs:
+      profile:
+        type: string
+        default: standard
   push:
-    branches: [feature/publication]
+    branches: [main]
     paths:
       - ".github/workflows/stability-soak.yml"
       - "scripts/run_api_stability_soak.py"
       - "src/splineops/affine/**"
       - "src/splineops/differentials/**"
+      - "src/splineops/spline_interpolation/**"
+      - "tests/fixtures/affine_coefficients/**"
+      - "tests/test_03_02_affine_archive_compatibility.py"
+      - "tests/test_09_01_property_contracts.py"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/stability-soak.yml"
+      - "scripts/run_api_stability_soak.py"
+      - "src/splineops/affine/**"
+      - "src/splineops/differentials/**"
+      - "src/splineops/spline_interpolation/**"
       - "tests/fixtures/affine_coefficients/**"
       - "tests/test_03_02_affine_archive_compatibility.py"
       - "tests/test_09_01_property_contracts.py"

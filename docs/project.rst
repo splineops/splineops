@@ -35,4 +35,5 @@ work, and remaining graduation gates alongside the user-facing package.
    stability-soak
    graduation-audits
    internal-contracts
+   releasing
 

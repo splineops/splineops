@@ -1,28 +1,25 @@
-# splineops/.github/workflows/release.yml
-name: Build & publish to PyPI
+name: Validate and publish release
 
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write  # OIDC for PyPI
 
 jobs:
   validate_release:
-    name: Validate release tag
     runs-on: ubuntu-latest
-
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
-      - name: Match tag to package version
+      - name: Check release version and tag
+        id: version
         shell: bash
         run: |
           python - <<'PY'
@@ -30,141 +27,71 @@ jobs:
           import pathlib
           import tomllib
 
-          with pathlib.Path("pyproject.toml").open("rb") as handle:
-              version = tomllib.load(handle)["project"]["version"]
-          tag = os.environ["GITHUB_REF_NAME"]
-          assert tag == f"v{version}", (tag, version)
+          version = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]
+          if os.environ["GITHUB_REF_TYPE"] == "tag":
+              assert os.environ["GITHUB_REF_NAME"] == f"v{version}"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              print(f"version={version}", file=output)
           PY
 
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    needs: [validate_release]
-    runs-on: ${{ matrix.os }}
+  tests:
+    needs: validate_release
+    uses: ./.github/workflows/test.yml
 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux + Windows
-          - os: ubuntu-latest
-            mac_arch: x86_64   # unused on Linux, but keeps env simple
-          - os: windows-latest
-            mac_arch: x86_64   # unused on Windows, but keeps env simple
+  quality:
+    needs: validate_release
+    uses: ./.github/workflows/quality.yml
 
-          # macOS Intel (x86_64) and Apple Silicon (arm64)
-          - os: macos-15-intel
-            mac_arch: x86_64
-          - os: macos-15   # or macos-latest
-            mac_arch: arm64
+  stability:
+    needs: validate_release
+    uses: ./.github/workflows/stability-soak.yml
+    with:
+      profile: standard
 
+  wheels:
+    needs: validate_release
+    uses: ./.github/workflows/wheels.yml
+
+  validate_artifacts:
+    needs: [validate_release, wheels]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
-      - name: Install build tools
-        run: python -m pip install -U pip cibuildwheel build
-
-      - name: Build wheels
-        run: python -m cibuildwheel --output-dir dist
-        env:
-          # CPython only, for versions we support
-          CIBW_BUILD: "cp311-* cp312-* cp313-*"
-
-          # Avoid unsupported/undesired targets
-          CIBW_SKIP: "*musllinux*"
-
-          # Architectures
-          CIBW_ARCHS_LINUX: "x86_64"
-          CIBW_ARCHS_WINDOWS: "AMD64"
-          CIBW_ARCHS_MACOS: ${{ matrix.mac_arch }}
-
-          # macOS: ensure wheels target a realistic minimum for C++17
-          # (Intel: 10.13+ matches cp312 minimum; arm64 will still be 11.0+)
-          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=10.13
-
-          # Smoke-test the native module, packaged demo evidence, and command.
-          CIBW_TEST_COMMAND: >
-            python -c "import importlib.resources, importlib.util, subprocess,
-            splineops; assert importlib.util.find_spec('splineops._lsresize');
-            assert importlib.resources.files('splineops.demos.data').joinpath('selma3d_vessels_summary.json').is_file();
-            subprocess.run(['splineops-selma3d-demo', '--help'], check=True)"
-
-      - name: Build sdist (once on Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: python -m build -s -o dist
-
-      - name: Audit sdist (once on Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          python - <<'PY'
-          import pathlib
-          import tarfile
-
-          archive = next(pathlib.Path("dist").glob("*.tar.gz"))
-          with tarfile.open(archive) as source:
-              names = source.getnames()
-          leaks = [
-              name
-              for name in names
-              if "__pycache__" in name or name.endswith(".pyc")
-          ]
-          assert not leaks, leaks
-          assert any(
-              name.endswith("src/splineops/demos/data/selma3d_vessels_summary.json")
-              for name in names
-          )
-          PY
-
-      - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v6
+      - run: python -m pip install packaging
+      - uses: actions/download-artifact@v7
         with:
-          name: wheels-${{ matrix.os }}-${{ matrix.mac_arch }}
-          path: dist/*.whl
-          if-no-files-found: error
-
-      - name: Upload sdist artifact
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v6
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+      - uses: actions/download-artifact@v7
         with:
           name: sdist
-          path: dist/*.tar.gz
-          if-no-files-found: error
+          path: dist
+      - name: Check complete wheel matrix and archive contents
+        env:
+          RELEASE_VERSION: ${{ needs.validate_release.outputs.version }}
+        run: python scripts/audit_release_artifacts.py --complete --version "$RELEASE_VERSION"
 
   publish:
-    needs: [build_wheels]
+    # Local workflow references use this exact commit. Manual dispatch validates
+    # everything but cannot publish; only an explicit matching version tag can.
+    needs: [tests, quality, stability, validate_artifacts]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           merge-multiple: true
           path: dist
-
       - uses: actions/download-artifact@v7
         with:
           name: sdist
           path: dist
-
-      - name: Validate release artifacts
-        shell: bash
-        run: |
-          python - <<'PY'
-          import os
-          import pathlib
-
-          expected = os.environ["GITHUB_REF_NAME"].removeprefix("v")
-          artifacts = list(pathlib.Path("dist").iterdir())
-          wheels = [path for path in artifacts if path.suffix == ".whl"]
-          sdists = [path for path in artifacts if path.name.endswith(".tar.gz")]
-          assert len(wheels) == 12, [path.name for path in wheels]
-          assert len(sdists) == 1, [path.name for path in sdists]
-          assert all(path.name.startswith(f"splineops-{expected}-") for path in wheels)
-          assert sdists[0].name == f"splineops-{expected}.tar.gz"
-          PY
-
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

@@ -2,7 +2,23 @@
 
 All notable changes to SplineOps are documented here.
 
-## Unreleased
+## 2.3.0rc1 - 2026-10-28
+
+This release candidate retains the existing module maturity labels. Affine
+remains experimental; resize remains stable. Performance measurements are
+workload-specific, with numerical reference checks covering both fast paths.
+
+### Release validation
+
+- Gate publishing on the complete Python/OS tests, minimum dependencies,
+  formatting, typing, documentation, stability soak, and release artifacts
+  from the same commit. Manual release validation does not publish.
+- Test installed wheels with native LS and affine numerical comparisons,
+  shared coefficient preparation, packaged resources, and the demo command.
+- Validate the complete 12-wheel matrix, package metadata, native binaries,
+  and source archive contents before publishing.
+- Run development benchmarks and stability checks for main and relevant PRs,
+  including the new LS batching and affine backend comparisons.
 
 ### Fixes
 

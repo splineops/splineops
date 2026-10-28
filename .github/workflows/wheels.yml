@@ -1,0 +1,112 @@
+name: Build release wheels
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/release.yml"
+      - ".github/workflows/wheels.yml"
+      - "scripts/check_installed_wheel.py"
+      - "scripts/audit_release_artifacts.py"
+      - "pyproject.toml"
+      - "CMakeLists.txt"
+      - "cpp/**"
+      - "src/**"
+
+permissions:
+  contents: read
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux + Windows
+          - os: ubuntu-latest
+            mac_arch: x86_64   # unused on Linux, but keeps env simple
+          - os: windows-latest
+            mac_arch: x86_64   # unused on Windows, but keeps env simple
+
+          # macOS Intel (x86_64) and Apple Silicon (arm64)
+          - os: macos-15-intel
+            mac_arch: x86_64
+          - os: macos-15   # or macos-latest
+            mac_arch: arm64
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: python -m pip install -U pip cibuildwheel build
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir dist
+        env:
+          # CPython only, for versions we support
+          CIBW_BUILD: "cp311-* cp312-* cp313-*"
+
+          # Avoid unsupported/undesired targets
+          CIBW_SKIP: "*musllinux*"
+
+          # Architectures
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+          CIBW_ARCHS_MACOS: ${{ matrix.mac_arch }}
+
+          # macOS: ensure wheels target a realistic minimum for C++17
+          # (Intel: 10.13+ matches cp312 minimum; arm64 will still be 11.0+)
+          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=10.13
+
+          # Execute the installed wheel against independent numerical references.
+          CIBW_TEST_COMMAND: python "{project}/scripts/check_installed_wheel.py"
+
+      - name: Build sdist (once on Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: python -m build -s -o dist
+
+      - name: Audit sdist (once on Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python - <<'PY'
+          import pathlib
+          import tarfile
+
+          archive = next(pathlib.Path("dist").glob("*.tar.gz"))
+          with tarfile.open(archive) as source:
+              names = source.getnames()
+          leaks = [
+              name
+              for name in names
+              if "__pycache__" in name or name.endswith(".pyc")
+          ]
+          assert not leaks, leaks
+          assert any(
+              name.endswith("src/splineops/demos/data/selma3d_vessels_summary.json")
+              for name in names
+          )
+          PY
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.mac_arch }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+      - name: Upload sdist artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v6
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
