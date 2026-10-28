@@ -141,6 +141,11 @@ polynomial evaluation and accumulation order differ. Use ``backend="numpy"``
 for direct comparison with the reference. Coefficient fields and saved
 archives remain compatible across backends with matching numerical contracts.
 
+Automatic selection follows this compatibility policy; it does not benchmark
+the available backends. For repeated geometry, compare both backends on your
+workload. Cached NumPy evaluation can be faster, while SciPy plans retain no
+support-geometry cache. See :doc:`../performance` for measured wins and losses.
+
 General and repeated transforms
 --------------------------------
 
@@ -245,12 +250,10 @@ batch/channel orchestration so the module boundaries stay clear.
 
 .. note::
 
-   This module favors a clear spline contract and integration with
-   ``TensorSpline``.  It is currently substantially slower than SciPy's
-   specialized affine kernels on the matched benchmark, even though cached
-   geometry materially improves repeated SplineOps execution; see
-   :doc:`../performance`.  SplineOps does not present affine transforms as a
-   universal speed advantage.
+   This module preserves SplineOps coefficient and boundary conventions while
+   using compiled SciPy evaluation where supported. One-shot calls improved
+   in the recorded backend comparisons, but repeated calls can favor cached
+   NumPy evaluation. See :doc:`../performance` for workload-specific evidence.
 
 The following figure from
 :ref:`sphx_glr_auto_examples_03_affine_01_rotate_image.py`

@@ -86,6 +86,23 @@ and evaluation of already prepared coefficients about 5% slower. Explicit
 three-channel sweep also passed parity checks; its largest float32 difference
 was 1.6e-5 for degree 5. No cross-platform speed guarantee is implied.
 
+Subsequent GitHub-hosted standard runs used five repeats on Linux, macOS
+arm64, and Windows. Non-tiny LS cases improved 2.52x--7.86x with one thread
+and 1.31x--5.52x with automatic threading. One-shot cubic affine improved
+1.07x--7.71x, while reused plans ranged from 0.61x--1.55x. In the slowest
+relative repeated case, Linux float32 2-D zero-boundary evaluation took
+26.15 ms with SciPy versus 15.93 ms with cached NumPy. ``auto`` selects a
+compatible backend, not the fastest backend measured on each machine;
+benchmark both explicit backends when geometry is reused. Hosted maximum
+absolute differences were below 4.0e-15 for LS, 1.5e-6 for float32 cubic
+affine, and 7.5e-13 for float64 cubic affine.
+
+The larger development suite exposed an existing macOS batched Haar timing
+failure: both the candidate and an unchanged-main control measured about
+0.73x against the 0.75x floor, with exact numerical agreement. The threshold
+is unchanged. The implementation report records this remaining performance
+issue separately from the successful release tests and numerical wheel checks.
+
 Raw samples and the implementation report are under
 ``benchmarks/resize/2026-10-28-ls-batching/``,
 ``benchmarks/affine/2026-10-28-backends/``, and
