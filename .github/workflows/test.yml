@@ -7,6 +7,27 @@ on:
     branches: [main]
 
 jobs:
+  minimum-dependencies:
+    name: Minimum dependencies (Python 3.11)
+    runs-on: ubuntu-latest
+    env:
+      SPLINEOPS_ACCEL: always
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install declared minimum runtime dependencies
+        run: >-
+          python -m pip install -e . pytest hypothesis
+          "numpy==1.26.0" "scipy==1.15.0" "matplotlib==3.8.0"
+      - name: Check minimum-version numerical contracts
+        run: python -m pytest -q
+
   test:
     strategy:
       fail-fast: false

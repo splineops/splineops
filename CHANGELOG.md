@@ -4,6 +4,14 @@ All notable changes to SplineOps are documented here.
 
 ## Unreleased
 
+### Fixes
+
+- Preserve float32 and complex64 periodic interpolation coefficients with
+  NumPy 1.26, whose FFT promotes these types to double precision. Add a
+  minimum-dependency CI job alongside the current-version platform matrix.
+- Check legacy wavelet reconstruction snapshots with a float32 error budget
+  across NumPy versions and independently verify reconstruction of the input.
+
 ### Performance and numerical contracts
 
 - Route direct cubic least-squares projection through the existing batched

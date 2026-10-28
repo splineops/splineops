@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "python": "3.12.14",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "numpy": "2.5.4",
+    "splineops": "2.2.0",
+    "process_start_method": "spawn"
+  },
+  "profile": "standard",
+  "configuration": {
+    "cycles": 12,
+    "frames": 3,
+    "image_shape": [
+      64,
+      80
+    ],
+    "volume_shape": [
+      12,
+      16,
+      20
+    ],
+    "threads": 3,
+    "processes": 2
+  },
+  "semantics": {
+    "timing": "complete correctness soak; not a performance benchmark",
+    "persistence": "atomic schema-2 replacement and checked restoration",
+    "concurrency": "shared thread fields and independent spawned-process loads",
+    "buffers": "caller-owned affine and differential output reuse"
+  },
+  "results": {
+    "cycles_completed": 12,
+    "archive_replacements": 36,
+    "thread_applications": 108,
+    "spawned_process_tasks": 36,
+    "corrupt_archives_rejected": 12,
+    "buffer_reuses": 12,
+    "elapsed_seconds": 17.328825899998265,
+    "tracemalloc_peak_bytes": 1483164,
+    "retained_plan_bytes": 0,
+    "unique_archive_digests": 3,
+    "archive_size_min_bytes": 40421,
+    "archive_size_max_bytes": 40444,
+    "max_abs_difference": {
+      "thread_fanout": 0.0,
+      "spawned_process_fanout": 0.0,
+      "buffered_volume_features": 0.0
+    },
+    "source_arrays_unchanged": true,
+    "caller_buffer_identities_preserved": true
+  }
+}
