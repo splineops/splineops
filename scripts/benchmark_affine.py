@@ -80,13 +80,18 @@ def _measure(call, repeats: int, warmups: int):
     timings = []
     peak = 0
     for _ in range(repeats):
-        tracemalloc.start()
         started = time.perf_counter()
         output = call()
         timings.append(time.perf_counter() - started)
+    # Allocation tracing disproportionately penalizes the Python reference.
+    # Measure memory separately so the reported latency is uninstrumented.
+    tracemalloc.start()
+    try:
+        call()
         _, current_peak = tracemalloc.get_traced_memory()
+        peak = current_peak
+    finally:
         tracemalloc.stop()
-        peak = max(peak, current_peak)
     return output, float(np.median(timings)), peak
 
 
@@ -155,6 +160,7 @@ def main() -> int:
             "splineops_plan_median_seconds": planned_seconds,
             "plan_speedup_over_one_shot": spline_seconds / planned_seconds,
             "plan_retained_bytes": plan.retained_bytes,
+            "backend": plan.backend,
             "scipy_median_seconds": scipy_seconds,
             "scipy_speedup_over_splineops": spline_seconds / scipy_seconds,
             "splineops_tracemalloc_peak_bytes": spline_peak,

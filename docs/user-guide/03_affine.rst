@@ -114,8 +114,32 @@ is ``"zero"``; pass ``mode="mirror"`` for whole-sample mirror extension.
 Degrees 0 through 7 are supported.  Degrees 0 through 5 in two and three
 dimensions are tested against equivalently configured
 ``scipy.ndimage.affine_transform`` (SciPy's maximum spline order is 5).
-One-shot coordinates are generated in bounded tiles rather than as a complete
-stacked volume.
+The NumPy reference and float32 SciPy path generate coordinates in bounded
+tiles; float64 SciPy evaluation computes them in its native affine kernel.
+
+Evaluation backends
+-------------------
+
+``AffinePlan``, ``affine_transform``, and ``rotate`` accept ``backend="auto"``
+(default), ``"numpy"``, or ``"scipy"``. Automatic selection uses compiled
+SciPy evaluation for degrees 1--5, float32/float64, and the named ``zero``,
+``mirror``, and ``periodic`` modes. Degree 0 retains the reference's rounding
+at boundary ties; degrees 6--7, custom mode objects, and other precisions also
+use the NumPy reference. Explicit ``backend="scipy"`` rejects unsupported
+configurations. ``plan.backend`` reports the selected evaluator.
+
+Both backends use the same SplineOps coefficient prefilter. Evaluation passes
+those coefficients to SciPy with ``prefilter=False``. Zero coefficient
+extension maps to SciPy's ``grid-constant`` with zero fill, whole-sample mirror
+maps to ``mirror``, and periodic extension maps to ``grid-wrap``. These are
+not interchangeable with SciPy's ``constant`` or ``wrap`` conventions.
+
+Float32 evaluation keeps the reference's rounded affine coordinates and uses
+tiled ``map_coordinates``; float64 uses ``affine_transform`` directly. Results
+are numerically equivalent rather than promised bitwise identical, since
+polynomial evaluation and accumulation order differ. Use ``backend="numpy"``
+for direct comparison with the reference. Coefficient fields and saved
+archives remain compatible across backends with matching numerical contracts.
 
 General and repeated transforms
 --------------------------------
@@ -148,8 +172,11 @@ Use the function for one transform and a plan when geometry is reused:
    output = np.empty(image.shape, dtype=np.float64)
    plan.apply(next_image, out=output)
 
-The ordinary plan call retains support indexes and weights but still performs
-the spline coefficient prefilter required by each new frame.  If one frame is
+NumPy plans can retain support indexes and weights. SciPy plans use the affine
+matrix without retaining support arrays or a zero-valued spline template;
+``geometry_cached`` is false and geometry/template retained bytes are zero.
+``cache_geometry`` and its memory budget apply to the NumPy cache.
+Both paths still perform the coefficient prefilter for each new frame. If one frame is
 sent through several compatible affine geometries, call
 ``prepare_coefficients`` once and pass its result to each plan's
 ``apply_coefficients`` method:

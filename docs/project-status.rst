@@ -63,9 +63,10 @@ Current capability matrix
        field reuse and corruption rejection, and
        equivalent SciPy parity for degrees 0--5; SplineOps also accepts its
        higher-order degrees 6 and 7.
-     - Improve performance only with profile-backed changes.  SciPy remains
-       8.96x--19.54x faster than the SplineOps one-shot path in the current
-       standard matched benchmark, despite useful gains from cached geometry.
+     - Validate the new optional SciPy evaluator across platforms and SciPy
+       versions. It shares coefficient preparation with the reference and
+       avoids unused geometry caches; dated NumPy-only timing deficits below
+       describe the implementation before this fast path. See :doc:`performance`.
    * - Differentials
      - Experimental
      - Raw repeatable outputs, preserved source arrays, vectorized coefficient

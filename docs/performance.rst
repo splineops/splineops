@@ -40,6 +40,70 @@ Numerical difference from SplineOps is not an accuracy metric unless an
 independent ground truth is available.  All dated values below are development
 snapshots rather than portable guarantees.
 
+October 2026 LS and affine acceleration
+---------------------------------------
+
+On Windows 11 with an Intel Core Ultra 9 275HX, Python 3.12.14, NumPy 2.5.4,
+and SciPy 1.18.1, the native cubic least-squares dispatcher and compiled affine
+evaluator produced the following results. These compare implementations of
+the same SplineOps operators; they do not establish superior application
+quality against different resampling algorithms.
+
+.. list-table:: Matched-operator speedups, 28 October 2026
+   :header-rows: 1
+   :widths: 40 20 40
+
+   * - Workload
+     - Speedup
+     - Numerical comparison
+   * - 3-D cubic LS, one thread, five non-tiny geometries
+     - 4.06x--5.44x
+     - Identical outputs in all 24 timed LS comparisons.
+   * - 3-D cubic LS, automatic threads, three larger geometries
+     - 1.58x--1.86x
+     - Same projection formulas and conservative precision policy.
+   * - 2-D/3-D cubic affine, one-shot, both dtypes and all named modes
+     - 2.76x--9.71x
+     - Maximum absolute difference below 1.7e-6 (float32) and 6.8e-13
+       (float64), against the independent NumPy evaluator.
+   * - Same affine workloads, reused plan
+     - 0.96x--2.47x
+     - Identical coefficient preparation; evaluation differs by rounding.
+
+LS measurements use 11 repeats, three warmups, and randomized execution order
+with warmed plans. Disabling batching supplies the scalar kernel used by the
+parent revision's automatic 3-D cubic LS path. Dispatch overhead differs:
+the unchanged tiny-volume scalar control measured 0.82x--0.89x, so no tiny-case
+benefit is claimed. With automatic threading, the smaller anisotropic volume
+was approximately flat and upsampling improved 1.10x--1.17x.
+
+Affine measurements use nine repeats and two warmups, with randomized method
+order and allocation tracing disabled during timing. Reference plans cache
+support geometry; SciPy plans need no support cache or zero-valued spline
+template. The float32 2-D zero-boundary repeated case was about 4% slower,
+and evaluation of already prepared coefficients about 5% slower. Explicit
+``backend="numpy"`` remains available. A supplementary degree-1/degree-5,
+three-channel sweep also passed parity checks; its largest float32 difference
+was 1.6e-5 for degree 5. No cross-platform speed guarantee is implied.
+
+Raw samples and the implementation report are under
+``benchmarks/resize/2026-10-28-ls-batching/``,
+``benchmarks/affine/2026-10-28-backends/``, and
+``benchmarks/performance/2026-10-28/report.rst``. Reproduce with:
+
+.. code-block:: shell
+
+   python scripts/benchmark_resize_ls_batching.py --repeats 11 \
+     --output-json ls.json
+   python scripts/benchmark_affine_backends.py --profile standard --repeats 9 \
+     --output-json affine.json
+   python scripts/benchmark_affine_backends.py --profile smoke --repeats 5 \
+     --degrees 1,5 --batch-size 3 --output-json affine-additional.json
+
+Set ``OPENBLAS_NUM_THREADS``, ``OMP_NUM_THREADS``, and ``MKL_NUM_THREADS`` to
+``1`` before starting Python to match these runs. The LS script separately
+sets its native thread count to one and then automatic selection.
+
 TensorSpline baseline
 ---------------------
 
@@ -131,8 +195,8 @@ Reproduce it with:
    python scripts/benchmark_tensorspline_query_plan.py \
      --output-json tensorspline-plan.json
 
-Affine comparison
------------------
+Historical affine comparison (July 2026)
+----------------------------------------
 
 ``scripts/benchmark_affine.py`` compares exactly matched pull-back geometry,
 whole-sample mirror boundaries, prefiltering, output shape, and spline degree
@@ -169,26 +233,28 @@ maximum differences near ``1e-13``, but SciPy was materially faster:
      - 54.3 ms
      - 8.41x
 
-Affine's current achievements are exact spline semantics and bounded
+At that time, affine's achievements were exact spline semantics and bounded
 coordinate memory.  Direct NumPy support contraction materially improves the
 cached plan, especially in 3-D, but it still does not beat SciPy's specialized
 kernels on these cases.  Maximum absolute differences were between ``7e-14``
 and ``6e-13``.  CuPy deliberately retains the previously tested contraction
 until dedicated GPU evidence is available.
 
-Reproduce the profile with:
+These historical timings predate the compiled affine backend and were measured
+with allocation tracing enabled. Current timing measurements exclude tracing
+and must not be compared directly with this table. Run the current profile with:
 
 .. code-block:: shell
 
    python scripts/benchmark_affine.py --profile standard \
      --output-json affine.json --output-csv affine.csv
 
-Affine phase profile
---------------------
+Historical affine phase profile (July 2026)
+-------------------------------------------
 
 ``scripts/profile_affine_phases.py`` instruments prefilter and coefficient
 evaluation inside complete cached-plan calls and reports construction
-separately.  On the current standard run, evaluation accounted for 63%--91% of
+separately.  On the July standard run, evaluation accounted for 63%--91% of
 the measured in-call phase time across 2-D/3-D linear/cubic rows.  Cached-plan
 construction ranged from 57 ms to 326 ms and is therefore justified only by
 reuse.  The profile motivated sequential support-axis contraction for NumPy

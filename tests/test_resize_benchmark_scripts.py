@@ -314,7 +314,8 @@ def test_affine_benchmark_smoke(tmp_path):
         "3d_cubic",
     }
     assert all(row["max_abs_difference"] < 1e-10 for row in payload["results"])
-    assert all(row["plan_retained_bytes"] > 0 for row in payload["results"])
+    assert all(row["backend"] == "scipy" for row in payload["results"])
+    assert all(row["plan_retained_bytes"] == 0 for row in payload["results"])
     assert output_csv.exists()
 
 

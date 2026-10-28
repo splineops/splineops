@@ -9,8 +9,11 @@ Spline-interpolated pull-back affine transforms on 2-D or 3-D spatial data.
 The module provides a general matrix-and-offset function, a rotation
 convenience function, and a reusable geometry plan.  Explicit spatial axes
 allow remaining dimensions to act as independent batch or channel axes.
-One-shot execution uses bounded coordinate tiles; cached plans retain geometry
-behind a caller-controlled memory cap.  ``AffinePlan.prepare_coefficients``
+``backend="auto"`` selects compiled SciPy evaluation for degrees 1--5 with
+float32/float64 and named boundaries; ``backend="numpy"`` keeps the independent
+reference evaluator. SciPy plans avoid retaining geometry; NumPy plans can
+cache geometry behind a caller-controlled memory cap. Both paths use the same
+coefficient preparation. ``AffinePlan.prepare_coefficients``
 returns an immutable, compatibility-checked ``AffineCoefficientField`` for
 deliberate sharing when one sampled field is transformed through several
 geometries.  The raw-array ``prefilter`` path remains available for explicit
