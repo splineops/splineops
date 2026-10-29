@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import operator
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+from splineops._validation import as_index
 
 if TYPE_CHECKING:
     from .tensor_spline import TensorSpline
@@ -33,10 +34,10 @@ class TensorSplineGeometryPlan:
         max_retained_bytes: int,
     ) -> None:
         try:
-            max_retained_bytes = operator.index(max_retained_bytes)
+            max_retained_bytes = as_index(max_retained_bytes)
         except TypeError as exc:
             raise TypeError("'max_retained_bytes' must be a positive integer.") from exc
-        if isinstance(max_retained_bytes, (bool, np.bool_)) or max_retained_bytes <= 0:
+        if max_retained_bytes <= 0:
             raise ValueError("'max_retained_bytes' must be a positive integer.")
 
         coordinates = spline._prepare_evaluation_coordinates(coordinates, grid=grid)

@@ -10,6 +10,9 @@ from typing import Sequence, Union, Tuple, cast
 from .bases.spline_basis import SplineBasis
 from .bases.utils import asbasis
 from .modes.extension_mode import ExtensionMode
+from .modes.finite_support_coefficients import FiniteSupportCoefficients
+from .modes.narrow_mirroring import NarrowMirroring
+from .modes.periodic_padding import PeriodicPadding
 from .modes.utils import asmode
 from .utils import is_cupy_type, is_ndarray
 from ._prefilter import prefilter_interpolation_coefficients
@@ -650,26 +653,8 @@ class TensorSpline:
         ndim = self._ndim
         indexes_bc = []
         weights_bc = []
-        for axis, (coords, basis, mode, data_lim, dx, data_len) in enumerate(
-            zip(
-                coordinates,
-                self._bases,
-                self._modes,
-                self._bounds,
-                self._steps,
-                self._lengths,
-            )
-        ):
-            rat_indexes = (coords - data_lim[0]) / dx
-            indexes = basis.compute_support_indexes(x=rat_indexes)
-            shifted = xp.subtract(
-                rat_indexes[np.newaxis], indexes, dtype=self._real_dtype
-            )
-            indexes, weights = mode.extend_signal(
-                indexes=indexes,
-                weights=basis(x=shifted),
-                length=data_len,
-            )
+        for axis, coords in enumerate(coordinates):
+            indexes, weights = self._compute_support(axis, coords)
             shape = [1] * (2 * ndim)
             shape[axis] = indexes.shape[0]
             shape[ndim + axis] = coords.size
@@ -710,7 +695,55 @@ class TensorSpline:
         basis = self._bases[axis]
         mode = self._modes[axis]
         x_min, _ = self._bounds[axis]
-        rat_indexes = (coordinates - x_min) / self._steps[axis]
+        step = self._steps[axis]
+        with np.errstate(over="ignore"):
+            rat_indexes = (coordinates - x_min) / step
+        # Fold distant queries before converting indexes to integers. Otherwise
+        # conversion can overflow, and low-precision subtraction can lose the
+        # small offsets within a stencil. Ordinary queries keep their arithmetic.
+        if type(mode) in (FiniteSupportCoefficients, NarrowMirroring, PeriodicPadding):
+            limit = 2 ** (
+                min(np.finfo(rat_indexes.dtype).nmant, np.finfo(self._real_dtype).nmant)
+                - 2
+            )
+            distant = (rat_indexes < -limit) | (rat_indexes > limit)
+            if bool(xp.any(distant)):
+                length = self._lengths[axis]
+                rat_indexes = rat_indexes.copy()
+                if type(mode) is FiniteSupportCoefficients:
+                    rat_indexes[distant] = xp.clip(
+                        rat_indexes[distant], -basis.support, length + basis.support
+                    )
+                else:
+                    period = (
+                        length
+                        if type(mode) is PeriodicPadding
+                        else max(1, 2 * (length - 1))
+                    )
+                    relative = rat_indexes[distant].astype(np.float64)
+                    nonfinite = ~xp.isfinite(relative)
+                    if bool(xp.any(nonfinite)):
+                        # A finite physical coordinate can overflow after division
+                        # by a tiny step. Reduce in physical units in that case.
+                        physical_period = float(step) * period
+                        physical = coordinates[distant][nonfinite].astype(np.float64)
+                        if np.isfinite(physical_period):
+                            # fmod does not form the overflowing quotient used by
+                            # NumPy's remainder; normalize its signed result next.
+                            physical = xp.remainder(
+                                xp.fmod(physical, physical_period), physical_period
+                            )
+                            origin = np.remainder(
+                                np.fmod(float(x_min), physical_period), physical_period
+                            )
+                            relative[nonfinite] = xp.remainder(
+                                physical - origin, physical_period
+                            ) / float(step)
+                        else:
+                            relative[nonfinite] = physical / float(step) - float(
+                                x_min
+                            ) / float(step)
+                    rat_indexes[distant] = xp.remainder(relative, period)
         indexes = basis.compute_support_indexes(x=rat_indexes)
         shifted = xp.subtract(rat_indexes[np.newaxis], indexes, dtype=self._real_dtype)
         return mode.extend_signal(

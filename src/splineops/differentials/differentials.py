@@ -1,10 +1,10 @@
 # splineops/src/splineops/differentials/differentials.py
 
 from dataclasses import dataclass
-import operator
 
 import numpy as np
 
+from splineops._validation import as_index
 from splineops.spline_interpolation._prefilter import (
     prefilter_interpolation_coefficients,
 )
@@ -39,7 +39,7 @@ def _validate_spacing(spacing, ndim):
 
 def _validate_shape(shape):
     try:
-        shape = tuple(operator.index(length) for length in shape)
+        shape = tuple(as_index(length) for length in shape)
     except TypeError as exc:
         raise TypeError("'shape' must contain two or three integer lengths.") from exc
     if len(shape) not in (2, 3) or any(length <= 0 for length in shape):
@@ -57,7 +57,7 @@ def _normalize_spatial_axes(image, spatial_shape, spatial_axes):
         axes = tuple(range(image.ndim))
     else:
         try:
-            axes = tuple(operator.index(axis) for axis in spatial_axes)
+            axes = tuple(as_index(axis) for axis in spatial_axes)
         except TypeError as exc:
             raise TypeError(
                 "'spatial_axes' must be a sequence of integer axes."

@@ -7,7 +7,7 @@ Defines a base class for wavelet analysis & synthesis on 2D (or 3D) signals.
 """
 
 import numpy as np
-import operator
+from splineops._validation import as_index
 
 _BATCH_WORKING_SET_BYTES = 1024**2
 
@@ -44,10 +44,10 @@ class AbstractWavelets:
             New scale value.
         """
         try:
-            scale = operator.index(scale)
+            scale = as_index(scale)
         except TypeError as exc:
             raise TypeError("'scales' must be a positive integer.") from exc
-        if isinstance(scale, (bool, np.bool_)) or scale < 1:
+        if scale < 1:
             raise ValueError("'scales' must be a positive integer.")
         self.scales = scale
 
@@ -89,7 +89,7 @@ class AbstractWavelets:
             axes = (0, 1)
         else:
             try:
-                axes = tuple(operator.index(axis) for axis in spatial_axes)
+                axes = tuple(as_index(axis) for axis in spatial_axes)
             except TypeError as exc:
                 raise TypeError(
                     "'spatial_axes' must be a sequence of integer axes."

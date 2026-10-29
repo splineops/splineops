@@ -2,7 +2,6 @@
 
 import json
 import numbers
-import operator
 import os
 from pathlib import Path
 import tempfile
@@ -12,6 +11,7 @@ import numpy as np
 import numpy.typing as npt
 from scipy.ndimage import affine_transform as _scipy_affine_transform
 from scipy.ndimage import map_coordinates as _scipy_map_coordinates
+from splineops._validation import as_index
 from splineops.spline_interpolation._prefilter import (
     prefilter_interpolation_coefficients,
 )
@@ -37,7 +37,7 @@ def _normalize_spatial_axes(
             )
         return tuple(range(spatial_ndim))
     try:
-        axes = tuple(operator.index(axis) for axis in spatial_axes)
+        axes = tuple(as_index(axis) for axis in spatial_axes)
     except TypeError as exc:
         raise TypeError("'spatial_axes' must be a sequence of integer axes.") from exc
     if len(axes) != spatial_ndim:
@@ -253,7 +253,7 @@ class AffinePlan:
         backend: str = "auto",
     ) -> None:
         try:
-            input_shape = tuple(operator.index(length) for length in input_shape)
+            input_shape = tuple(as_index(length) for length in input_shape)
         except TypeError as exc:
             raise TypeError("'input_shape' must be a sequence of integers.") from exc
         if len(input_shape) not in (2, 3) or any(length <= 0 for length in input_shape):
@@ -263,7 +263,7 @@ class AffinePlan:
         if output_shape is None:
             output_shape = input_shape
         try:
-            output_shape = tuple(operator.index(length) for length in output_shape)
+            output_shape = tuple(as_index(length) for length in output_shape)
         except TypeError as exc:
             raise TypeError("'output_shape' must be a sequence of integers.") from exc
         if len(output_shape) != len(input_shape) or any(
@@ -273,10 +273,10 @@ class AffinePlan:
                 "'output_shape' must contain positive lengths matching input dimensionality."
             )
         try:
-            degree = operator.index(degree)
+            degree = as_index(degree)
         except TypeError as exc:
             raise TypeError("'degree' must be an integer from 0 through 7.") from exc
-        if isinstance(degree, (bool, np.bool_)) or not 0 <= degree <= 7:
+        if not 0 <= degree <= 7:
             raise ValueError("'degree' must be an integer from 0 through 7.")
         dtype = np.dtype(dtype)
         if not np.issubdtype(dtype, np.floating):
@@ -284,7 +284,7 @@ class AffinePlan:
         if not isinstance(cache_geometry, (bool, np.bool_)):
             raise TypeError("'cache_geometry' must be a boolean.")
         try:
-            max_retained_bytes = operator.index(max_retained_bytes)
+            max_retained_bytes = as_index(max_retained_bytes)
         except TypeError as exc:
             raise TypeError("'max_retained_bytes' must be a positive integer.") from exc
         if max_retained_bytes <= 0:
@@ -339,6 +339,15 @@ class AffinePlan:
         self.dtype = dtype
         self._backend = "scipy" if backend != "numpy" and scipy_supported else "numpy"
         self._scipy_mode = scipy_mode
+        # SciPy's native boundary mapping loses range for distant coordinates.
+        # Keep ordinary double-precision transforms on affine_transform; only
+        # extreme geometries need explicit, folded coordinate tiles.
+        with np.errstate(over="ignore"):
+            extent = np.abs(matrix.astype(np.float64)) @ (
+                np.asarray(output_shape, dtype=np.float64) - 1
+            ) + np.abs(offset.astype(np.float64))
+        self._coordinate_limit = 2 ** (np.finfo(dtype).nmant - 2)
+        self._scipy_needs_folding = bool(np.any(extent > self._coordinate_limit))
         self._basis = f"bspline{degree}"
         self._geometry_plans: tuple[TensorSplineGeometryPlan, ...] = ()
         self._retained_bytes = 0
@@ -550,7 +559,7 @@ class AffinePlan:
         spatial_ndim = len(self.input_shape)
         batch_shape = coefficients.shape[:-spatial_ndim]
         result = np.empty(batch_shape + self.output_shape, dtype=self.dtype)
-        if self.dtype == np.dtype(np.float32):
+        if self.dtype == np.dtype(np.float32) or self._scipy_needs_folding:
             # Keep the reference's float32 matrix arithmetic. Letting SciPy
             # construct coordinates would silently evaluate a different grid.
             output_size = int(np.prod(self.output_shape, dtype=np.int64))
@@ -562,6 +571,24 @@ class AffinePlan:
             for start in range(0, output_size, tile_size):
                 stop = min(start + tile_size, output_size)
                 coordinates = self._transformed_coordinates(start, stop)
+                if self._scipy_needs_folding:
+                    for axis, length in enumerate(self.input_shape):
+                        distant = np.abs(coordinates[axis]) > self._coordinate_limit
+                        if not np.any(distant):
+                            continue
+                        relative = coordinates[axis, distant].astype(np.float64)
+                        if self.mode == "zero":
+                            relative = np.clip(
+                                relative, -self.degree - 1, length + self.degree + 1
+                            )
+                        else:
+                            period = (
+                                length
+                                if self.mode == "periodic"
+                                else max(1, 2 * (length - 1))
+                            )
+                            relative = np.remainder(relative, period)
+                        coordinates[axis, distant] = relative
                 for index in np.ndindex(batch_shape):
                     _scipy_map_coordinates(
                         coefficients[index],
@@ -699,7 +726,7 @@ class AffinePlan:
         if not isinstance(metadata, dict):
             raise ValueError("Coefficient archive metadata must be a JSON object.")
         try:
-            axes = tuple(operator.index(axis) for axis in metadata["spatial_axes"])
+            axes = tuple(as_index(axis) for axis in metadata["spatial_axes"])
         except (KeyError, TypeError) as exc:
             raise ValueError(
                 "Coefficient archive is missing valid spatial-axis metadata."

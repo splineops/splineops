@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          make -C docs html 2>&1 | tee docs-build.log
+          make -C docs html SPHINXOPTS="-W --keep-going" 2>&1 | tee docs-build.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             {
