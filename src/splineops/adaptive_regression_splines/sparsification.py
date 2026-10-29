@@ -174,7 +174,7 @@ def linear_spline(
         raise ValueError("'knots' and 'amplitudes' must contain only finite values.")
     if not np.all(np.isfinite(polynomial)) or not np.all(np.isfinite(t)):
         raise ValueError("'t' and 'polynomial' must contain only finite values.")
-    if not np.all(np.diff(knots) >= 0):
+    if not np.all(knots[1:] >= knots[:-1]):
         raise ValueError("'knots' must be sorted in non-decreasing order.")
 
     dtype = np.result_type(t, knots, amplitudes, polynomial, np.float64)
