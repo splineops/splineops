@@ -66,7 +66,7 @@ existing lambda semantics do not change. Corrected numerical edge cases are
 listed in the changelog.
 
 Follow-up repository review
---------------------------
+---------------------------
 
 A second pass covered the Python modules, native buffer and concurrency
 contracts, fallback dispatch, package contents, examples, and release and
