@@ -59,6 +59,22 @@ script rejects source imports and verifies the version against this checkout.
 An audit without ``--complete`` validates a local build; it does not claim
 coverage of the full release wheel matrix.
 
+Visual documentation checks
+---------------------------
+
+Build the complete gallery when reviewing thumbnails, figures, or branding::
+
+   python -m pip install -e ".[docs]"
+   python -m sphinx -b html docs docs/_build/html -W --keep-going
+
+Open ``examples.html`` and the module gallery pages in both themes and at a
+narrow viewport. Every example should have its own generated preview. The
+quality workflow's parse-only build (``plot_gallery=0``) checks documentation
+structure but creates placeholder thumbnails; a build that executes only a
+subset of examples is also not a complete visual preview.
+Use a fresh checkout for release screenshots: generated thumbnails under
+``docs/auto_examples`` can retain placeholders from a previous parse-only run.
+
 Publishing
 ----------
 

@@ -8,12 +8,17 @@ explicit while Affine and Differentials remain independent modules.
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from splineops.affine import AffinePlan
 from splineops.differentials import DifferentialPlan, DifferentialResult
 
 shape = (24, 28, 32)
-volume = np.random.default_rng(20260719).standard_normal(shape).astype(np.float32)
+z, y, x = np.meshgrid(
+    *(np.linspace(-1, 1, size, dtype=np.float32) for size in shape), indexing="ij"
+)
+volume = np.exp(-9 * ((x + 0.25) ** 2 + (y - 0.15) ** 2 + z**2))
+volume += 0.7 * np.exp(-20 * ((x - 0.4) ** 2 + (y + 0.35) ** 2 + z**2))
 radians = np.radians(-6.0)
 matrix = np.array(
     [
@@ -53,3 +58,34 @@ print("gradient components:", len(features.gradient))
 print(
     "Laplacian range:", float(features.laplacian.min()), float(features.laplacian.max())
 )
+
+# %%
+# Follow the volume through the workflow
+# ---------------------------------------------
+# A central slice shows the synthetic input, affine result, and the two
+# requested feature types. All feature arrays come from the supplied buffers.
+
+middle = shape[0] // 2
+gradient_magnitude = np.sqrt(sum(component**2 for component in features.gradient))
+laplacian_limit = np.max(np.abs(features.laplacian[middle]))
+fig, axes = plt.subplots(1, 4, figsize=(12, 3.5), layout="constrained")
+for axis, image, title, cmap in zip(
+    axes,
+    (
+        volume[middle],
+        warped[middle],
+        gradient_magnitude[middle],
+        features.laplacian[middle],
+    ),
+    ("Input slice", "Warped slice", "Gradient magnitude", "Laplacian"),
+    ("viridis", "viridis", "magma", "RdBu_r"),
+):
+    limits = (
+        {"vmin": -laplacian_limit, "vmax": laplacian_limit}
+        if title == "Laplacian"
+        else {}
+    )
+    axis.imshow(image, cmap=cmap, **limits)
+    axis.set_title(title)
+    axis.set_axis_off()
+plt.show()
