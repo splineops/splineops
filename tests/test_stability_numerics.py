@@ -180,6 +180,17 @@ def test_linear_spline_promotes_integer_products_before_evaluation():
     np.testing.assert_equal(result, [float(2**80)])
 
 
+def test_linear_spline_rejects_descending_unsigned_knots():
+    with pytest.raises(ValueError, match="sorted"):
+        linear_spline(0.0, np.array([250, 10], dtype=np.uint8), [1, 1], [0, 0])
+
+
+def test_linear_spline_accepts_sorted_knots_across_the_int64_range():
+    knots = np.array([-(2**63), 2**63 - 1], dtype=np.int64)
+    actual = linear_spline(0.0, knots, [1.0, 0.0], [0.0, 0.0])
+    np.testing.assert_equal(actual, float(2**63))
+
+
 @pytest.mark.parametrize("backend", ["numpy", "scipy"])
 def test_affine_rejects_empty_batches_consistently(backend):
     plan = AffinePlan((3, 4), np.eye(2), backend=backend)

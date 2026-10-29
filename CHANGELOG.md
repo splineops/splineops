@@ -46,7 +46,8 @@ reconstruction contract. Performance results remain workload-specific.
   boundary mode, short signal, and mixed-axis complex interpolation.
 - Center adaptive regression's linear-limit fit and dual expression to avoid
   cancellation for offset coordinates. Promote integer sample arithmetic
-  before denoising, sparse slope calculation, and spline evaluation; reject
+  before denoising, sparse slope calculation, and spline evaluation; check
+  integer knot ordering without overflowing differences; reject
   complex regression inputs explicitly. Document the existing 0.5 objective
   normalization and convergence/parameter guidance.
 - Reduce fractional autocorrelation frequencies into one period and normalize
