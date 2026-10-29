@@ -30,7 +30,7 @@ From a repository checkout, `python demos/selma3d_napari.py` remains a thin
 compatibility launcher for the same packaged implementation.
 
 The first run downloads only patch 013's WGA channel and expert vessel mask
-from [BioImage Archive accession S-BIAD1196](https://www.ebi.ac.uk/bioimage-archive/galleries/ai/analysed-dataset/S-BIAD1196/),
+from [BioImage Archive accession S-BIAD1196](https://doi.org/10.6019/S-BIAD1196),
 verifies their pinned SHA-256 digests, and caches them under
 `~/.cache/splineops/selma3d`. Source data are not redistributed by SplineOps.
 Patch 013 is a post-study presentation choice with clear visual separation,
