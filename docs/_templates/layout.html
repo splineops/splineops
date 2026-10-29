@@ -1,0 +1,6 @@
+{% extends "!layout.html" %}
+
+{# Keep the browser tab focused on the current page, without the site/version suffix. #}
+{% block htmltitle %}
+  <title>{{ title|striptags|e }}</title>
+{% endblock %}
