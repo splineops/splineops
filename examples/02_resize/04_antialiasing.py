@@ -14,8 +14,8 @@ We shrink the image with either:
 - plain cubic interpolation (no explicit low-pass),
 - cubic antialiasing (oblique projection low-pass) via ``"cubic-antialiasing"``,
 
-then up-sample both back to the original size using standard cubic
-interpolation. SNR and MSE are computed only on a central region to
+then up-sample both back to the original size using each pipeline's same
+resize preset. SNR and MSE are computed only on a central region to
 exclude boundary artifacts.
 """
 
@@ -153,7 +153,7 @@ snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
 # Antialiasing
 # ------------
 #
-# Repeat the roundtrip with antialiasing during shrinking, keeping the enlargement
+# Use the antialiasing preset for both resize passes, keeping the output dimensions
 # and metric region unchanged.
 
 t0 = time.perf_counter()
@@ -318,8 +318,7 @@ _ = show_roi_zoom(
 # Antialiasing Pipeline
 # ~~~~~~~~~~~~~~~~~~~~~
 #
-# Inspect the recovered image after antialiased shrinking and standard cubic
-# enlargement.
+# Inspect the recovered image after projection-based shrinking and enlargement.
 
 _ = show_roi_zoom(
     recovered_2d_aa,
@@ -397,7 +396,7 @@ plot_difference_image(
 
 methods = [
     ("Standard Interpolation (cubic)", snr_2d_std, mse_2d_std, time_2d_std),
-    ("Antialiasing (cubic shrink, cubic up)", snr_2d_aa, mse_2d_aa, time_2d_aa),
+    ("Cubic antialiasing (shrink + up)", snr_2d_aa, mse_2d_aa, time_2d_aa),
 ]
 
 header_line = f"{'Method':<40} {'SNR (dB)':>10} {'MSE':>16} {'Time (s)':>12}"
@@ -411,18 +410,10 @@ for name, snr_val, mse_val, t in methods:
 # Least-Squares vs Antialiasing
 # -----------------------------
 #
-# We can also compare the antialiasing pipeline
-# against a full **Least-Squares** projection of degree 3 using the low-level
-# :func:`resize_degrees` API. We don't change any of the figures above; we only
-# print SNR / MSE / time numbers here.
-#
-# In this particular example, the Least-Squares variant often achieves very
-# good metrics (SNR/MSE) and can even look slightly “cleaner” numerically.
-# However, in practice we generally recommend the **Antialiasing** preset:
-#
-# - it is extremely stable and robust across a wide range of zooms and images,
-# - it is faster than full Least-Squares,
-# - and the visual quality is usually very close.
+# Compare the oblique antialiasing preset with a full cubic **Least-Squares**
+# projection through :func:`resize_degrees`. Both use projection for shrinking
+# and enlargement. The table reports SNR, MSE, and total roundtrip time; their
+# trade-off depends on image content, shape, and zoom factor.
 
 t0 = time.perf_counter()
 resized_2d_ls = resize_degrees(
@@ -453,7 +444,7 @@ snr_2d_ls, mse_2d_ls = compute_snr_and_mse_region(
 )
 
 methods_ls_vs_aa = [
-    ("Antialiasing (cubic shrink, cubic up)", snr_2d_aa, mse_2d_aa, time_2d_aa),
+    ("Cubic antialiasing (shrink + up)", snr_2d_aa, mse_2d_aa, time_2d_aa),
     ("Least-Squares (cubic) shrink+up", snr_2d_ls, mse_2d_ls, time_2d_ls),
 ]
 
