@@ -16,6 +16,8 @@ differential operations on an image.
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+# sphinx_gallery_thumbnail_number = 2
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from urllib.request import urlopen
 from PIL import Image

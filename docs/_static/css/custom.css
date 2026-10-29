@@ -42,6 +42,19 @@ html[data-theme="dark"] {
   border: none;
 }
 
+/* Module previews on the Examples landing page. Keep the complete scientific
+   figure visible, and avoid stretched word spacing in narrow card bodies. */
+.example-preview .sd-card-img-top {
+  aspect-ratio: 10 / 7;
+  object-fit: contain;
+  background: #fff;
+  border-bottom: 1px solid var(--pst-color-border);
+}
+
+.example-preview .sd-card-body p {
+  text-align: left;
+}
+
 /* Background image
 .bd-container {
   background-image: url("../background.svg");

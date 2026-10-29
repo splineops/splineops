@@ -8,6 +8,13 @@ This release retains the existing module maturity labels. Affine
 remains experimental; resize remains stable. Performance measurements are
 workload-specific, with numerical reference checks covering both fast paths.
 
+### Documentation
+
+- Add real example previews to every module card on the Examples page, with
+  accessible image descriptions and a responsive layout. Illustrate the
+  shared-coefficient registration workflow and show gradient magnitude in
+  the Differentials gallery preview.
+
 ### Release validation
 
 - Gate publishing on the complete Python/OS tests, minimum dependencies,

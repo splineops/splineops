@@ -219,6 +219,9 @@ html_context = {
 html_logo = "_static/logo.png"
 html_favicon = "_static/logo.ico"
 
+# Give the visual Examples index the same space as the gallery indexes.
+html_theme_options["secondary_sidebar_items"]["examples"] = []
+
 # Hide secondary sidebar for sphinx-gallery index pages
 html_theme_options["secondary_sidebar_items"][f"{sg_gallery_dir}/index"] = []
 try:
