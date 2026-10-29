@@ -91,7 +91,7 @@ explore all seven numerical modules and the workflows that combine them.
 
 .. toctree::
    :hidden:
-   :maxdepth: 2
+   :maxdepth: 3
 
-   auto_examples/index
+   All examples <auto_examples/index>
 

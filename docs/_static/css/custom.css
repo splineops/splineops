@@ -60,7 +60,7 @@ html[data-theme="dark"] {
   border: none;
 }
 
-/* Module previews on the Examples landing page. Keep the complete scientific
+/* Previews on the Modules and Examples landing pages. Keep the complete scientific
    figure visible, and avoid stretched word spacing in narrow card bodies. */
 .example-preview .sd-card-img-top {
   aspect-ratio: 10 / 7;
