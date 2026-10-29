@@ -1,5 +1,5 @@
 API stability and support
-=========================
+=============================
 
 SplineOps 2.3 provides stable CPU APIs for all seven numerical modules,
 including ``TensorSpline`` and its reusable geometry plans. Stability is a
@@ -8,7 +8,7 @@ and operators below. It does not imply that different spline methods are
 interchangeable or that a benchmark speedup applies to every machine.
 
 Supported numerical APIs
------------------------
+----------------------------
 
 .. list-table:: Stable CPU contracts
    :header-rows: 1
@@ -68,7 +68,7 @@ Integer promotion and result precision are specified in each module guide.
 Half and extended precision are not covered by the stability promise.
 
 Compatibility policy
---------------------
+------------------------
 
 * Public imports, argument meanings, shapes, dtype rules, boundary conventions,
   and documented return types are maintained within the 2.x series.
@@ -86,7 +86,7 @@ Compatibility policy
   legacy name is deprecated in 2.3.
 
 Scope that remains experimental
-------------------------------
+-----------------------------------
 
 CuPy interoperability is limited to parts of ``TensorSpline`` and lacks a
 dedicated GPU CI runner. It remains experimental independently of the stable
@@ -99,7 +99,7 @@ depends on signal magnitude, shape, and scale count; the fixture bounds in the
 guide are measured cases rather than universal absolute bounds.
 
 How stability is checked
-------------------------
+----------------------------
 
 The test matrix covers Python 3.11--3.13 on Linux, macOS, and Windows, plus the
 declared minimum NumPy/SciPy versions. Release validation also installs the
