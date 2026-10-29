@@ -3,6 +3,45 @@ SplineOps
 
 **Projection-based antialiased resizing for N-D scientific arrays.**
 
+.. container:: landing-illustration
+
+   .. rubric:: From samples to continuous operations
+
+   .. grid:: 1 1 3 3
+      :gutter: 0
+
+      .. grid-item-card:: 01 · Reconstruct
+         :link: user-guide/01_spline_interpolation
+         :link-type: doc
+         :class-card: landing-illustration-panel
+         :img-top: /_static/landing/reconstruct.webp
+         :img-alt: White input samples on a smooth turquoise spline surface with a golden peak.
+
+         Build a continuous cubic spline from discrete samples.
+
+      .. grid-item-card:: 02 · Resample
+         :link: user-guide/02_resize
+         :link-type: doc
+         :class-card: landing-illustration-panel
+         :img-top: /_static/landing/resample.webp
+         :img-alt: The same field after antialiased downsampling and rotation, shown on a coarser mesh.
+
+         Resize with antialiasing, then apply an affine rotation.
+
+      .. grid-item-card:: 03 · Differentiate
+         :link: user-guide/06_differentials
+         :link-type: doc
+         :class-card: landing-illustration-panel
+         :img-top: /_static/landing/differentiate.webp
+         :img-alt: A purple and peach gradient surface highlighting the slopes of the transformed field.
+
+         Measure local changes with spline-derived gradients.
+
+   .. container:: landing-illustration-caption
+
+      One synthetic 2-D field, shown as height maps from actual SplineOps outputs.
+      White dots mark input samples; gradient magnitude uses its own display scale.
+
 SplineOps is designed for precise, repeatable downsampling of regular-grid
 2-D images and 3-D volumes.  It combines explicit coordinate semantics, a
 readable Python reference implementation, a native CPU backend, and reusable

@@ -161,6 +161,97 @@ h2 code {
 
 /* -------------------- HOMEPAGE -------------------- */
 
+/* A single visual workflow, with real computed surfaces and readable HTML
+   labels. Stack the stages on small screens instead of shrinking their text. */
+.landing-illustration {
+  margin: 1.75rem 0 2rem;
+  padding: 1.25rem 1rem 1rem;
+  overflow: hidden;
+  border: 1px solid #31445e;
+  border-radius: 1rem;
+  background: #0c1729;
+  color: #f1f6ff;
+}
+
+.landing-illustration .rubric {
+  margin: 0 0 0.25rem;
+  padding: 0 0.75rem;
+  border: 0;
+  color: #f1f6ff;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.landing-illustration .landing-illustration-panel {
+  height: 100%;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #f1f6ff;
+  box-shadow: none !important;
+}
+
+.landing-illustration .landing-illustration-panel .sd-card-img-top {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 25 / 17;
+  object-fit: contain;
+  border-radius: 0;
+  background: #0c1729;
+  /* The scientific colour maps must remain the same in both site themes. */
+  filter: none !important;
+}
+
+.landing-illustration .landing-illustration-panel .sd-card-body {
+  padding: 0.25rem 0.75rem 0.75rem;
+  background: transparent;
+}
+
+.landing-illustration-panel .sd-card-title {
+  color: #94ede0;
+  font-size: 1rem;
+}
+
+.landing-illustration-panel .sd-card-text {
+  color: #d4dfed;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.landing-illustration-panel:hover {
+  background: #14233a;
+}
+
+.landing-illustration-panel:focus-within {
+  outline: 2px solid #94ede0;
+  outline-offset: -2px;
+}
+
+.landing-illustration-caption p {
+  margin: 0.75rem 0.75rem 0;
+  color: #b0bfd2;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+@media (max-width: 767.98px) {
+  .landing-illustration {
+    padding: 1rem 0.5rem;
+  }
+
+  .landing-illustration .landing-illustration-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 42%) minmax(0, 58%);
+    align-items: center;
+  }
+
+  .landing-illustration .landing-illustration-panel .sd-card-body {
+    padding: 0.75rem 0.5rem;
+  }
+}
+
 /* Hero */
 #hero {
   display: flex;
