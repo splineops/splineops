@@ -276,3 +276,64 @@ def test_nd_smoothing_supports_explicit_batch_and_channel_axes():
         plan(data)
     with pytest.raises(ValueError, match="distinct"):
         plan(data, axes=(1, 1))
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.int16])
+@pytest.mark.parametrize("layout", ["ordinary", "reordered", "reversed"])
+def test_batched_smoothing_layouts_match_independent_full_fft(dtype, layout):
+    data = np.random.default_rng(42).normal(size=(2, 7, 8, 3)).astype(dtype)
+    axes = (1, 2)
+    if layout == "reordered":
+        data = data.transpose(2, 0, 3, 1)
+        axes = (-1, 0)
+    elif layout == "reversed":
+        data = data[::-1, ::-1, :, ::-1]
+    before = data.copy()
+    data.flags.writeable = False
+    plan = SmoothingSplinePlan((7, 8), lamb=0.25, gamma=1.3)
+
+    # Independent full complex FFT and frequency grid, including arbitrary
+    # spatial-axis order. The implementation uses a cached real half spectrum.
+    frequencies = [2 * np.pi * np.fft.fftfreq(size) for size in plan.shape]
+    response = 1 / (
+        1 + 0.25 * (frequencies[0][:, None] ** 2 + frequencies[1][None, :] ** 2) ** 1.3
+    )
+    spatial = np.moveaxis(data.astype(np.float64), axes, (-2, -1))
+    expected = np.fft.ifftn(
+        np.fft.fftn(spatial, axes=(-2, -1)) * response, axes=(-2, -1)
+    ).real
+    expected = np.moveaxis(expected, (-2, -1), axes)
+
+    result = plan(data, axes=axes)
+    assert result.dtype == np.float64
+    assert result.flags.c_contiguous
+    tolerance = 2e-7 if dtype == np.float32 else 2e-14
+    np.testing.assert_allclose(result, expected, rtol=0, atol=tolerance)
+    np.testing.assert_array_equal(data, before)
+
+
+@pytest.mark.parametrize("axes", [(1, 2), (2, 0), (-1, -2)])
+def test_batched_smoothing_allows_output_aliasing_input(axes):
+    data = np.random.default_rng(42).normal(size=(7, 8, 9))
+    plan = SmoothingSplinePlan(tuple(data.shape[axis] for axis in axes), 0.2, 1.3)
+    expected = plan(data, axes=axes)
+    returned = plan(data, axes=axes, out=data)
+    assert returned is data
+    np.testing.assert_array_equal(returned, expected)
+
+
+def test_batched_smoothing_bounds_fft_workspace_by_spatial_frame():
+    import tracemalloc
+
+    data = np.random.default_rng(42).normal(size=(32, 63, 80))
+    plan = SmoothingSplinePlan(data.shape[1:], 0.2, 1.3)
+    # Warm FFT internals before measuring temporary storage. The output scales
+    # with the batch; spectra should fit within a few spatial frames.
+    plan(data[:1], axes=(1, 2))
+    tracemalloc.start()
+    try:
+        result = plan(data, axes=(1, 2))
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < result.nbytes + 12 * data[0].nbytes

@@ -25,6 +25,10 @@ workload-specific, with numerical reference checks covering both fast paths.
 
 ### Fixes
 
+- Bound batched smoothing FFT workspace to one spatial frame and write into
+  the requested axis layout directly. This removes large temporary arrays
+  behind a Linux standard-benchmark regression while preserving numerical
+  results and output-buffer aliasing.
 - Preserve float32 results from degree-8 and degree-9 B-spline basis
   evaluation under NumPy 1.26. Retain the intermediate polynomial arithmetic
   and fractional results for integer coordinates. Add independent basis

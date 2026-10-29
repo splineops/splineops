@@ -333,15 +333,23 @@ class SmoothingSplinePlan:
         )
         permutation = nonspatial_axes + spatial_axes
         canonical = np.transpose(data, permutation)
-        fft_axes = tuple(range(canonical.ndim - len(self.shape), canonical.ndim))
-        response = self.frequency_response.reshape(
-            (1,) * len(nonspatial_axes) + self.frequency_response.shape
-        )
-        spectrum = rfftn(canonical, axes=fft_axes)
-        canonical_result = irfftn(response * spectrum, s=self.shape, axes=fft_axes)
-        result = np.ascontiguousarray(
-            np.transpose(canonical_result, tuple(np.argsort(permutation)))
-        )
+        if nonspatial_axes:
+            # Independent frames share the response, but not FFT work arrays.
+            # Keep temporary spectra bounded by one spatial frame and write
+            # directly into the original layout to avoid a batch-sized copy.
+            result = np.empty(data.shape, dtype=np.result_type(data.dtype, np.float64))
+            canonical_result = np.transpose(result, permutation)
+            for index in np.ndindex(canonical.shape[: len(nonspatial_axes)]):
+                spectrum = rfftn(canonical[index])
+                canonical_result[index] = irfftn(
+                    self.frequency_response * spectrum, s=self.shape
+                )
+        else:
+            spectrum = rfftn(canonical)
+            canonical_result = irfftn(self.frequency_response * spectrum, s=self.shape)
+            result = np.ascontiguousarray(
+                np.transpose(canonical_result, tuple(np.argsort(permutation)))
+            )
         if out is None:
             return result
         if not isinstance(out, np.ndarray):
