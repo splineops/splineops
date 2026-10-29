@@ -13,6 +13,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from splineops.affine import AffinePlan
 
@@ -30,7 +31,11 @@ def rotation(shape, angle):
 
 
 shape = (96, 112)
-frame = np.random.default_rng(20260719).standard_normal(shape)
+rows, columns = np.mgrid[-1 : 1 : complex(shape[0]), -1 : 1 : complex(shape[1])]
+# A deterministic synthetic frame makes the two rotations easy to compare.
+frame = np.exp(-18 * ((columns + 0.35) ** 2 + (rows + 0.2) ** 2))
+frame += 0.7 * np.exp(-35 * ((columns - 0.3) ** 2 + (rows - 0.35) ** 2))
+frame += 0.25 * (np.abs(rows + 0.4 * columns) < 0.06)
 matrix_a, offset_a = rotation(shape, 8.0)
 matrix_b, offset_b = rotation(shape, -13.0)
 plans = (
@@ -55,3 +60,18 @@ for actual, reference in zip(transformed, references):
 
 print("shared coefficient bytes:", restored.nbytes)
 print("geometry outputs:", tuple(result.shape for result in transformed))
+
+# %%
+# One prepared frame, two output geometries
+# -------------------------------------------
+# The same saved coefficient field produces both rotated views. Their values
+# match the direct evaluation checked above.
+
+fig, axes = plt.subplots(1, 3, figsize=(10, 3.5), layout="constrained")
+for axis, image, title in zip(
+    axes, (frame, *transformed), ("Input frame", "Rotation +8°", "Rotation −13°")
+):
+    axis.imshow(image, cmap="viridis", vmin=0, vmax=frame.max())
+    axis.set_title(title)
+    axis.set_axis_off()
+plt.show()
