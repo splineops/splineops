@@ -216,8 +216,8 @@ html_context = {
     "doc_path": "docs",
 }
 
-html_logo = "_static/logo.png"
-html_favicon = "_static/logo.ico"
+html_logo = "_static/logo.svg"
+html_favicon = "_static/favicon.svg"
 
 # Give the visual Examples index the same space as the gallery indexes.
 html_theme_options["secondary_sidebar_items"]["examples"] = []

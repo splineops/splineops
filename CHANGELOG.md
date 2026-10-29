@@ -14,6 +14,9 @@ workload-specific, with numerical reference checks covering both fast paths.
   accessible image descriptions and a responsive layout. Illustrate the
   shared-coefficient registration workflow and show gradient magnitude in
   the Differentials gallery preview.
+- Refresh the logo and favicon with scalable SVG artwork. Improve gallery
+  card sizing, keyboard navigation, and light/dark-theme readability, and
+  illustrate the volume-feature workflow with actual output slices.
 
 ### Release validation
 

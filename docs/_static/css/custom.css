@@ -15,7 +15,25 @@
 }
 
 .navbar-brand {
-  display: inline-block !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.navbar-brand .logo__image {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.navbar-brand .logo__title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+
+html[data-theme="dark"] .navbar-brand .logo__image {
+  filter: brightness(1.2);
 }
 
 /* -------------------- THEME OVERRIDES -------------------- */
@@ -27,8 +45,8 @@ html[data-theme="light"] {
 }
 
 html[data-theme="dark"] {
-  --pst-color-primary: rgb(56, 99, 235); /* Cool blue */
-  --pst-color-secondary: rgb(71, 188, 245); /* Lighter blue */
+  --pst-color-primary: rgb(139, 180, 255);
+  --pst-color-secondary: rgb(94, 224, 210);
   --pst-color-plot-background: rgb(220, 221, 225); /* Lighter grey */
 }
 
@@ -55,22 +73,67 @@ html[data-theme="dark"] {
   text-align: left;
 }
 
+/* The executable galleries use the same generous visual rhythm as the
+   module cards. Images retain their full bounds, including animated plots. */
+.bd-article .sphx-glr-thumbnails {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: 1rem;
+}
+
+.bd-article .sphx-glr-thumbcontainer {
+  padding: 0;
+  gap: 0;
+  border: 1px solid var(--pst-color-border);
+  border-radius: 0.65rem;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 6%);
+}
+
+.bd-article .sphx-glr-thumbcontainer img {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: 10 / 7;
+  object-fit: contain;
+  background: #fff;
+}
+
+.bd-article .sphx-glr-thumbnail-title {
+  padding: 0.85rem 1rem;
+  align-self: stretch;
+  text-align: left;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.sphx-glr-thumbcontainer:focus-within {
+  outline: 3px solid var(--pst-color-primary);
+  outline-offset: 2px;
+}
+
+/* Preserve the accessible link name instead of hiding it with display:none. */
+.bd-article .sphx-glr-thumbcontainer a.internal span {
+  display: block;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Background image
 .bd-container {
   background-image: url("../background.svg");
 }*/
 
 /* Titles */
-h1 {
-  background: linear-gradient(to right, var(--pst-color-primary), rgb(71, 188, 245));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: bold;
-}
+h1,
 h2 {
-  background: linear-gradient(to right, var(--pst-color-primary), rgb(71, 188, 245));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--pst-color-primary);
+}
+h1 {
+  font-weight: bold;
 }
 h2 code {
   -webkit-background-clip: initial;
@@ -192,10 +255,10 @@ h2 code {
   color: var(--pst-color-primary);
 }
 
-/* -------------------- JUSTIFY TEXT -------------------- */
+/* -------------------- BODY COPY -------------------- */
 
 p {
-  text-align: justify;
+  text-align: left;
 }
 
 

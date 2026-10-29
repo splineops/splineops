@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">SplineOps</title>
+  <desc id="desc">Flowing blue spline ribbons wrap around an open sphere.</desc>
+  <defs>
+    <linearGradient id="outer" x1="21" y1="12" x2="76" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#72b9d2"/>
+      <stop offset="1" stop-color="#245d86"/>
+    </linearGradient>
+    <linearGradient id="ribbon" x1="43" y1="13" x2="56" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b4e1ec"/>
+      <stop offset="0.55" stop-color="#4b9fc3"/>
+      <stop offset="1" stop-color="#25618b"/>
+    </linearGradient>
+  </defs>
+  <path d="M62 9C82 12 93 31 92 51C91 75 72 91 49 91C26 91 9 76 7 55C5 34 19 16 40 10C23 24 17 43 24 60C31 78 49 85 66 77C84 69 88 49 81 31C77 20 71 13 62 9Z" fill="url(#outer)"/>
+  <path d="M67 11C46 5 27 21 28 38C29 56 53 68 53 82C53 89 47 92 40 90C59 95 74 83 79 69C67 78 63 74 58 66C49 52 36 39 37 27C38 17 51 9 67 11Z" fill="url(#ribbon)"/>
+  <path d="M70 35C84 47 82 67 72 79C64 88 52 92 40 90C54 87 60 80 59 70C58 57 73 49 70 35Z" fill="#22557c"/>
+  <path d="M12 72C30 83 60 76 79 61C69 82 33 92 12 72Z" fill="#80c2d7"/>
+</svg>
