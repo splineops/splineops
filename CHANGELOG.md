@@ -62,6 +62,9 @@ reconstruction contract. Performance results remain workload-specific.
   zero-reference limits; reject empty selections and non-finite inputs.
 - Reject boolean values consistently in integer shapes, axes, orders, scale
   counts, and memory budgets across the numerical APIs.
+- Load utility submodules on demand so importing image metrics does not
+  initialize Matplotlib or import gallery dependencies. Preserve existing
+  package-level access to those submodules.
 - Return zero-regularization denoising directly, avoiding an unnecessary
   regression that could overflow for large finite observations. Cover the
   function, reusable plan, and all-zero parameter paths.

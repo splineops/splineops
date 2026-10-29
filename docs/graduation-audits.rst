@@ -88,6 +88,8 @@ new regressions:
   float64's range; this no longer corrupts SNR.
 * Integer configuration rejects booleans before conversion, consistently
   across supported NumPy versions.
+* Numerical utility imports do not initialize the plotting stack; a fresh
+  interpreter checks this separation with warnings treated as errors.
 
 The documentation deployment now treats Sphinx warnings as failures. These
 checks complement the independent algorithm references; they do not imply
