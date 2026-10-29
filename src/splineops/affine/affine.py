@@ -225,6 +225,19 @@ class AffinePlan:
         the NumPy reference. Coefficient preparation is identical for both.
     """
 
+    def __setattr__(self, name, value):
+        if name in {
+            "input_shape",
+            "output_shape",
+            "matrix",
+            "offset",
+            "degree",
+            "mode",
+            "dtype",
+        } and hasattr(self, name):
+            raise AttributeError(f"'{name}' is fixed; construct another AffinePlan.")
+        object.__setattr__(self, name, value)
+
     def __init__(
         self,
         input_shape: tuple[int, ...],
@@ -300,6 +313,8 @@ class AffinePlan:
             )
 
         ndim = len(input_shape)
+        if np.iscomplexobj(matrix) or (offset is not None and np.iscomplexobj(offset)):
+            raise TypeError("'matrix' and 'offset' must be real-valued.")
         matrix = np.asarray(matrix, dtype=dtype)
         if matrix.shape != (ndim, ndim):
             raise ValueError(f"'matrix' must have shape {(ndim, ndim)}.")
@@ -313,10 +328,12 @@ class AffinePlan:
 
         self.input_shape = input_shape
         self.output_shape = output_shape
-        self.matrix = np.array(matrix, copy=True)
-        self.offset = np.array(offset, copy=True)
-        self.matrix.flags.writeable = False
-        self.offset.flags.writeable = False
+        matrix_storage = np.array(matrix, copy=True)
+        offset_storage = np.array(offset, copy=True)
+        matrix_storage.flags.writeable = False
+        offset_storage.flags.writeable = False
+        self.matrix = matrix_storage.view()
+        self.offset = offset_storage.view()
         self.degree = degree
         self.mode = mode
         self.dtype = dtype
@@ -573,6 +590,8 @@ class AffinePlan:
     def _normalize_input(self, data, spatial_axes, *, coefficients):
         if not isinstance(data, np.ndarray):
             raise TypeError("'data' must be a NumPy array.")
+        if data.size == 0:
+            raise ValueError("'data' must be non-empty.")
         if not np.issubdtype(data.dtype, np.number) or np.iscomplexobj(data):
             raise TypeError("'data' must have a real numeric dtype.")
         if coefficients and data.dtype != self.dtype:
@@ -660,6 +679,8 @@ class AffinePlan:
                 archive = np.load(source, allow_pickle=False)
             except (OSError, ValueError, zipfile.BadZipFile) as exc:
                 raise ValueError("Invalid affine coefficient archive.") from exc
+            if not isinstance(archive, np.lib.npyio.NpzFile):
+                raise ValueError("Invalid affine coefficient archive; expected NPZ.")
             with archive:
                 if set(archive.files) != {"values", "metadata"}:
                     raise ValueError(

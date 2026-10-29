@@ -356,9 +356,9 @@ With ``grid=True``, the final dimension of each coordinate array defines one
 tensor-grid axis; any leading batch shape must agree across axes.  With
 ``grid=False``, coordinate arrays must have identical shapes, or may be passed
 as one stacked array whose leading dimension is ``data.ndim``.  Large queries
-are evaluated in bounded internal tiles; the public result is still allocated
-at its requested shape unless an exact-shape and exact-dtype ``out`` array is
-provided.  Unbatched one-dimensional coordinate arrays form a separable tensor
+are evaluated in bounded internal tiles. An exact-shape, exact-dtype ``out``
+array receives the result, but evaluation still allocates internal result and
+workspace arrays. Unbatched one-dimensional coordinate arrays form a separable tensor
 grid and are contracted one axis at a time, avoiding a full coordinate
 meshgrid.
 

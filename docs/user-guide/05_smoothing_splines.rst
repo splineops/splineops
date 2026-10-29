@@ -196,6 +196,10 @@ cost linear in the number of samples.  It is not identical to circular FFT
 filtering on finite signals because their boundary assumptions differ.  A
 detailed derivation appears in [4]_, Sections II-B and II-D.
 
+The implementation applies the normalization during each pass. This is
+algebraically equivalent to the equations above and preserves constants even
+when a large finite lambda makes the pole round to one in floating point.
+
 Current contract
 ----------------
 
@@ -203,8 +207,8 @@ The public smoothing functions accept finite, real-valued arrays.  The 1D
 fractional and N-D FFT methods assume periodic extension; the N-D path and its
 plan use ``rfftn``/``irfftn`` because the public contract is real-valued.  The
 recursive method uses steady-state causal and anticausal initialization.  These
-routines remain experimental because the three formulations intentionally
-implement different operators.  Current independent checks cover identity at
+stable CPU APIs implement three distinct operators; choose the formulation
+that matches your mathematical model.  Current independent checks cover identity at
 zero regularization, the analytical response of periodic N-D cosine modes, a
 dense linear-system reference for the recursive boundary equations, and
 constant preservation.  A fixed multitone fixture now evaluates the published

@@ -19,6 +19,7 @@
 
 from typing import Tuple
 import numpy as np
+from .denoising import _real_vector
 
 
 def sparsest_interpolant(
@@ -52,8 +53,10 @@ def sparsest_interpolant(
         Coefficients (b, a) of the linear component p(t) = at + b.
     """
 
-    x = np.asarray(x)
-    y = np.asarray(y)
+    # Promote before subtraction: unsigned and narrow integer sample arrays
+    # otherwise wrap while computing slopes and knot amplitudes.
+    x = _real_vector(x, "x").astype(np.float64)
+    y = _real_vector(y, "y").astype(np.float64)
     if x.ndim != 1 or y.ndim != 1:
         raise ValueError("'x' and 'y' must be one-dimensional arrays.")
     if x.size != y.size:
@@ -153,6 +156,14 @@ def linear_spline(
     knots = np.asarray(knots)
     amplitudes = np.asarray(amplitudes)
     polynomial = np.asarray(polynomial)
+    for name, values in (
+        ("t", t),
+        ("knots", knots),
+        ("amplitudes", amplitudes),
+        ("polynomial", polynomial),
+    ):
+        if not np.issubdtype(values.dtype, np.number) or np.iscomplexobj(values):
+            raise TypeError(f"'{name}' must have a real numeric dtype.")
     if knots.ndim != 1 or amplitudes.ndim != 1:
         raise ValueError("'knots' and 'amplitudes' must be one-dimensional arrays.")
     if knots.size != amplitudes.size:
@@ -166,7 +177,10 @@ def linear_spline(
     if not np.all(np.diff(knots) >= 0):
         raise ValueError("'knots' must be sorted in non-decreasing order.")
 
-    dtype = np.result_type(t, knots, amplitudes, polynomial)
+    dtype = np.result_type(t, knots, amplitudes, polynomial, np.float64)
+    amplitudes = amplitudes.astype(dtype, copy=False)
+    knots = knots.astype(dtype, copy=False)
+    polynomial = polynomial.astype(dtype, copy=False)
     t = t.astype(dtype, copy=False)
     prefix_amplitudes = np.concatenate(
         (np.zeros(1, dtype=dtype), np.cumsum(amplitudes, dtype=dtype))

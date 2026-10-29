@@ -57,12 +57,13 @@ Another tool may be a better fit when:
 | Module | Status | Public position |
 | --- | --- | --- |
 | `resize`, `ResizePlan` | Stable | Native N-D interpolation and projection antialiasing with a Python reference path |
-| `TensorSpline` | Stabilizing | Continuous tensor-product models evaluated at arbitrary coordinates |
-| Affine, differentials, smoothing, regression, pyramids, wavelets | Experimental | Available for research while their contracts and reference coverage mature |
+| `TensorSpline` | Stable CPU | Continuous tensor-product models evaluated at arbitrary coordinates |
+| Affine, differentials, smoothing, regression, pyramids, wavelets | Stable CPU | Documented numerical operators, independent references, and cross-platform tests |
 
-Experimental describes API and validation maturity, not the importance of the
-underlying methods. See the [project status](https://splineops.github.io/project-status.html)
-for exact evidence and remaining graduation work.
+Stability covers the documented CPU contracts and precision. CuPy remains
+experimental, and order-5 wavelets retain their approximate reconstruction
+contract. See [API stability and support](https://splineops.github.io/project-status.html)
+for the compatibility policy and exact boundaries.
 
 ## Numerical and performance position
 

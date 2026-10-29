@@ -56,12 +56,12 @@ Release status
      - Native N-D interpolation and projection antialiasing with a Python
        reference path.
    * - ``TensorSpline``
-     - Stabilizing
+     - Stable CPU
      - Continuous tensor-product models evaluated at arbitrary coordinates.
-   * - Other spline modules
-     - Experimental
-     - Available for research while their contracts and independent reference
-       coverage mature.
+   * - Affine, differentials, smoothing, regression, and multiscale
+     - Stable CPU
+     - Documented operators with independent numerical references and
+       cross-platform tests. See :doc:`project-status` for exact support.
 
 SplineOps does not claim to be the fastest generic 2-D resizer.  Its strongest
 position is explicit spline semantics, N-D projection antialiasing,
@@ -84,7 +84,7 @@ Explore the package
       :link: modules
       :link-type: doc
 
-      See every stable, stabilizing, and research module in one place.
+      Choose interpolation, geometry, derivatives, smoothing, or multiscale tools.
 
    .. grid-item-card:: Examples
       :link: examples
@@ -92,11 +92,11 @@ Explore the package
 
       Browse the executable gallery by module or complete workflow.
 
-   .. grid-item-card:: Claims and evidence
+   .. grid-item-card:: Benchmarks
       :link: evidence
       :link-type: doc
 
-      Read the approved wording, limitations, studies, and interactive demo.
+      Compare accuracy, speed, and memory on reproducible scientific workloads.
 
 Research lineage
 ----------------

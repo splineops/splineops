@@ -112,7 +112,7 @@ Haar and the cubic spline-wavelet implementation.  The order-1 spline filter
 reconstructs the audited float64 cases within ``2e-7``.  The inherited order-5
 filter coefficients contain only roughly five to six significant digits and
 produce errors up to about ``2e-3`` in the current randomized rectangular
-audit.  Order 5 is therefore an approximate research implementation, not a
+audit.  Order 5 therefore has a stable approximate-transform contract; it is not a
 perfect-reconstruction transform.  The test suite records that limitation so
 it cannot silently become a stronger claim.  The upstream DeconvolutionLab2
 source contains the same table; because no authoritative higher-precision taps

@@ -37,7 +37,7 @@ Current matrix
 Affine CPU evaluation
 ---------------------
 
-The experimental affine module accepts NumPy arrays with an explicit
+The stable affine module accepts NumPy arrays with an explicit
 ``backend`` selector. ``auto`` uses SciPy evaluation for named zero, mirror,
 and periodic modes at degrees 1--5 in float32/float64. The maintained NumPy
 evaluator covers the remaining configurations and is available explicitly as

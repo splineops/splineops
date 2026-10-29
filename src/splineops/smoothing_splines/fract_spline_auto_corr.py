@@ -50,8 +50,14 @@ def fractsplineautocorr(alpha: float, nu: npt.NDArray) -> npt.NDArray:
     nu = np.asarray(nu)
     if nu.ndim != 1:
         raise ValueError("'nu' must be a one-dimensional array.")
+    if not np.issubdtype(nu.dtype, np.number) or np.iscomplexobj(nu):
+        raise TypeError("'nu' must have a real numeric dtype.")
     if not np.all(np.isfinite(nu)):
         raise ValueError("'nu' must contain only finite values.")
+    # The infinite alias sum is periodic. Reduce before truncation so distant
+    # frequencies have the same accuracy as those in the fundamental period.
+    nu = np.remainder(nu.astype(np.float64), 1.0)
+    nu = np.where(nu > 0.5, nu - 1.0, nu)
 
     # Sum several shifts at once.  The bounded chunk keeps temporary memory
     # independent of the 201-term truncation while avoiding 201 Python-level

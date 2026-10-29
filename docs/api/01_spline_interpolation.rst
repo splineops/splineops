@@ -27,8 +27,8 @@ published-formula references in the stability-soak suite.
    :special-members: __init__, __call__, eval
    :member-order: bysource
 
-Experimental query plans
-------------------------
+Reusable query plans
+--------------------
 
 .. automodule:: splineops.spline_interpolation.query_plan
    :members:

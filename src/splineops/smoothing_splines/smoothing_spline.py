@@ -212,31 +212,27 @@ def recursive_smoothing_spline(signal: npt.NDArray, lamb: float = 1.0) -> npt.ND
     if lamb == 0:
         return x.copy()
 
-    # --- Legacy (kept for reference; not consistent with the paper) ---
-    # z1 = -lamb / (1 + np.sqrt(1 + 4 * lamb))
-
-    # Paper-consistent pole for first-order smoothing spline:
-    r = np.sqrt(1.0 + 4.0 * lamb)
-    z1 = (r - 1.0) / (r + 1.0)  # in (0, 1)
-
-    # DC normalization (preserves constants): (1 - z1)^2 == z1 / lamb
-    scale = (1.0 - z1) ** 2
+    # Normalize each pass rather than dividing by 1-z and multiplying back
+    # afterwards. The latter becomes singular when the pole rounds to one.
+    # hypot also avoids overflow in 1 + 4*lambda for large finite lambda.
+    root = np.hypot(1.0, 2.0 * np.sqrt(lamb))
+    complement = 2.0 / (root + 1.0)
 
     K = x.size
 
     # Causal pass (steady-state init)
     c = np.zeros(K, dtype=dtype)
-    c[0] = x[0] / (1.0 - z1)
+    c[0] = x[0]
     for k in range(1, K):
-        c[k] = x[k] + z1 * c[k - 1]
+        c[k] = c[k - 1] + complement * (x[k] - c[k - 1])
 
     # Anticausal pass (steady-state init)
     y = np.zeros(K, dtype=dtype)
-    y[-1] = c[-1] / (1.0 - z1)
+    y[-1] = c[-1]
     for k in range(K - 2, -1, -1):
-        y[k] = c[k] + z1 * y[k + 1]
+        y[k] = y[k + 1] + complement * (c[k] - y[k + 1])
 
-    return scale * y
+    return y
 
 
 class SmoothingSplinePlan:
@@ -273,9 +269,9 @@ class SmoothingSplinePlan:
         if not np.isfinite(gamma) or gamma <= 0:
             raise ValueError("'gamma' must be finite and positive.")
 
-        self.shape = shape
-        self.lamb = float(lamb)
-        self.gamma = float(gamma)
+        self._shape = shape
+        self._lamb = float(lamb)
+        self._gamma = float(gamma)
         spectrum_shape = shape[:-1] + (shape[-1] // 2 + 1,)
         omega_squared = np.zeros(spectrum_shape, dtype=np.float64)
         for axis, length in enumerate(shape):
@@ -289,8 +285,27 @@ class SmoothingSplinePlan:
             angular_frequencies = 2.0 * np.pi * frequencies.reshape(broadcast_shape)
             omega_squared += angular_frequencies**2
 
-        self.frequency_response = 1.0 / (1.0 + self.lamb * omega_squared**self.gamma)
-        self.frequency_response.flags.writeable = False
+        self._frequency_response = 1.0 / (1.0 + self.lamb * omega_squared**self.gamma)
+        self._frequency_response.flags.writeable = False
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def lamb(self):
+        return self._lamb
+
+    @property
+    def gamma(self):
+        return self._gamma
+
+    @property
+    def frequency_response(self):
+        """Read-only view of the fixed filter response."""
+        view = self._frequency_response.view()
+        view.flags.writeable = False
+        return view
 
     @property
     def retained_bytes(self) -> int:
