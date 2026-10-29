@@ -99,11 +99,24 @@ html[data-theme="dark"] {
 }
 
 .bd-article .sphx-glr-thumbnail-title {
-  padding: 0.85rem 1rem;
+  padding: 0.85rem 1rem 0.4rem;
   align-self: stretch;
   text-align: left;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.bd-article .sphx-glr-thumbnail-description {
+  position: static;
+  height: auto;
+  width: auto;
+  pointer-events: none;
+  margin: 0;
+  padding: 0 1rem 1rem;
+  color: var(--pst-color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: left;
 }
 
 .sphx-glr-thumbcontainer:focus-within {

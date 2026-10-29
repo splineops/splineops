@@ -6,14 +6,16 @@
 Recursive Smoothing Spline
 ==========================
 
-We plot a recursive smoothing spline with different parameters.
+Compare regularization strengths in a recursive first-order smoother for noisy 1-D
+data.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import the smoothing functions and tools for generating or displaying the data.
 
-import math
 import numpy as np
 import matplotlib.pyplot as plt
 from splineops.smoothing_splines.smoothing_spline import smoothing_spline
@@ -22,6 +24,9 @@ from splineops.smoothing_splines.smoothing_spline import recursive_smoothing_spl
 # %%
 # Recursive Smoothing Spline
 # --------------------------
+#
+# Compare regularization strengths on a noisy 1-D signal to see how the recursive
+# filter trades detail for smoothness.
 
 # Example signal: A noisy sine wave
 x = np.linspace(0, np.pi, 100)

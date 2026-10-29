@@ -2,6 +2,8 @@
 Persist one frame and evaluate several affine geometries
 =========================================================
 
+Save one frame's spline coefficients and reuse them for several affine geometries.
+
 An affine coefficient field depends on the sampled frame, spline degree,
 boundary mode, precision, and input grid.  It does not depend on the output
 geometry, so registration or augmentation pipelines can prepare it once and

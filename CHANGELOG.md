@@ -11,6 +11,9 @@ reconstruction contract. Performance results remain workload-specific.
 
 ### Documentation
 
+- Add concise descriptions to every example section, all eight category
+  introductions, and the 27 visible gallery cards. Reuse each example's
+  introduction as its caption so the descriptions stay in sync.
 - Replace outdated maturity checklists with a concise support matrix and
   compatibility policy. Rework Evidence as graphical Benchmarks and Project
   as About, keeping research reports and historical links available.
@@ -40,6 +43,9 @@ reconstruction contract. Performance results remain workload-specific.
 
 ### Fixes
 
+- Return zero-regularization denoising directly, avoiding an unnecessary
+  regression that could overflow for large finite observations. Cover the
+  function, reusable plan, and all-zero parameter paths.
 - Make TensorSpline construction-grid validation independent of physical
   units and correct the symmetric degree-4 O-MOMS metadata. Add independent
   basis and dense-system references across every B-spline/O-MOMS degree,
@@ -76,6 +82,11 @@ reconstruction contract. Performance results remain workload-specific.
 
 ### Performance and numerical contracts
 
+- Avoid a redundant full input copy before the zero-boundary banded solve,
+  preserving input immutability and output precision for real, complex, and
+  strided arrays. Consolidate regression validation and document prefilter
+  ownership, stencil layout, and boundary choices; remove stale prototypes
+  and unused imports.
 - Keep batched wavelet coefficients in contiguous spatial planes while
   exposing the original axis order. Avoid an intermediate interleaving copy
   before synthesis, reducing the cost exposed by the macOS roundtrip benchmark.

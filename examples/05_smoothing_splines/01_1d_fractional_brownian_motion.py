@@ -6,12 +6,15 @@
 1D Fractional Brownian Motion
 =============================
 
-We use the smooth module to smooth a 1D fractional Brownian motion signal.
+Generate a noisy fractional Brownian signal and recover its trend with a fractional
+smoothing spline.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import the smoothing functions and tools for generating or displaying the data.
 
 import math
 import numpy as np

@@ -6,13 +6,14 @@
 Wavelet Decomposition
 =====================
 
-This example demonstrates how to use the
-Haar wavelet decomposition (analysis & synthesis) in 2D.
+Inspect Haar detail bands at several scales and reconstruct the original image.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import the multiscale transforms together with array and plotting utilities.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -186,6 +187,9 @@ def pyramid_with_quadrant_embedding_levels(wavelet, inp, num_levels):
 # %%
 # 1-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
+#
+# Apply one wavelet level, inspect the detail bands, and compare the reconstructed
+# image with the original.
 
 wavelet1 = HaarWavelets(scales=1)
 coeffs1 = pyramid_with_quadrant_embedding_levels(wavelet1, image_gray, 1)
@@ -206,6 +210,9 @@ plt.show()
 # %%
 # 2-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
+#
+# Apply 2 wavelet levels, inspect the detail bands, and compare the reconstructed
+# image with the original.
 
 wavelet2 = HaarWavelets(scales=2)
 coeffs2 = pyramid_with_quadrant_embedding_levels(wavelet2, image_gray, 2)
@@ -226,6 +233,9 @@ plt.show()
 # %%
 # 3-Level Decomposition
 # ~~~~~~~~~~~~~~~~~~~~~
+#
+# Apply 3 wavelet levels, inspect the detail bands, and compare the reconstructed
+# image with the original.
 
 wavelet3 = HaarWavelets(scales=3)
 coeffs3 = pyramid_with_quadrant_embedding_levels(wavelet3, image_gray, 3)

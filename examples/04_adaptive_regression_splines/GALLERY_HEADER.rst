@@ -3,4 +3,5 @@
 Adaptive Regression Splines Examples
 ====================================
 
-Examples using the Adaptive regression splines module.
+Fit sparse piecewise-linear models to noisy observations. Compare fixed
+regularization strengths or watch the fit and knot count change in an animation.

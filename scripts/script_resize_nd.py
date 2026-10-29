@@ -102,7 +102,6 @@ def _make_4d_volume(shape=(8, 48, 64, 40), seed: int = 1) -> np.ndarray:
     Synthetic 4D volume (T, Z, Y, X). Think of T as time or batch.
     Each time slice is a slightly different 3D field.
     """
-    rng = np.random.default_rng(seed)
     t, z, y, x = shape
     vol = np.empty(shape, dtype=np.float64)
 

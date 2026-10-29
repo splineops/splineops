@@ -6,8 +6,8 @@
 Lambda Sweep Animation
 ======================
 
-This example animates the fidelity–sparsity trade-off of the adaptive regression
-splines module by sweeping the regularization parameter :math:`\\lambda`.
+Animate the trade-off between data fidelity and knot sparsity while increasing
+regularization.
 
 Each frame shows:
     - Original samples (fixed).
@@ -19,9 +19,10 @@ Each frame shows:
 # %%
 # Imports
 # -------
+#
+# Import the regression solver and helpers for fitting and visualizing sparse
+# splines.
 
-import os
-from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -109,6 +110,9 @@ plt.show()
 # %%
 # Animation Helper
 # ----------------
+#
+# Update the fitted spline and knot markers together as the regularization parameter
+# changes.
 
 
 def _solve_for_lambda(lamb: float):
@@ -218,6 +222,9 @@ ani = create_lambda_sweep_animation(lambda_values, interval=INTERVAL_MS)
 # %%
 # Export the Animation
 # --------------------
+#
+# Save the animation for the documentation build; normal interactive runs keep the
+# preview without exporting it.
 
 from splineops.utils.sphinx import export_animation_mp4_and_html
 

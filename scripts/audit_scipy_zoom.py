@@ -20,7 +20,6 @@ import os
 import platform
 import statistics
 import subprocess
-import sys
 import time
 import warnings
 import zlib

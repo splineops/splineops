@@ -3,4 +3,5 @@
 Affine Examples
 ===============
 
-Examples using the Affine module for data rotation transformations.
+Rotate images with spline interpolation. Start with a single transform, then use the
+animation to explore a full rotation and different spline degrees.

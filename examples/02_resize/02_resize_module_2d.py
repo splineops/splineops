@@ -6,7 +6,7 @@
 Resize Module 2D
 ================
 
-Shrink and re-expand a 2-D RGB image with splineops, then discuss aliasing.
+Resize an RGB image and use detail views and an animation to inspect aliasing.
 
 We start with a minimal example that calls :func:`splineops.resize.resize`
 directly on a single channel of the image, then move on to an RGB example
@@ -26,6 +26,9 @@ matched low-pass step to suppress these artefacts.
 # %%
 # Imports and Helpers
 # -------------------
+#
+# Load the resize and plotting tools, then define shared helpers for image
+# comparisons and animations.
 
 # sphinx_gallery_thumbnail_number = 4
 import numpy as np
@@ -34,7 +37,6 @@ from matplotlib import patches
 from urllib.request import urlopen
 from PIL import Image
 
-from scipy.ndimage import zoom as ndi_zoom  # kept for reference, not used in 2D plots
 from splineops.resize import resize  # core N-D spline resizer
 
 plt.rcParams.update(

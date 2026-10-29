@@ -55,16 +55,12 @@ def sparsest_interpolant(
 
     # Promote before subtraction: unsigned and narrow integer sample arrays
     # otherwise wrap while computing slopes and knot amplitudes.
-    x = _real_vector(x, "x").astype(np.float64)
-    y = _real_vector(y, "y").astype(np.float64)
-    if x.ndim != 1 or y.ndim != 1:
-        raise ValueError("'x' and 'y' must be one-dimensional arrays.")
+    x = _real_vector(x, "x", dtype=np.float64)
+    y = _real_vector(y, "y", dtype=np.float64)
     if x.size != y.size:
         raise ValueError("'x' and 'y' must have the same size.")
     if x.size < 2:
         raise ValueError("At least two samples are required.")
-    if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
-        raise ValueError("'x' and 'y' must contain only finite values.")
     if not np.all(np.diff(x) > 0):
         raise ValueError("'x' must be strictly increasing.")
     if not np.isfinite(sparsity_tol) or sparsity_tol < 0:
@@ -90,7 +86,6 @@ def sparsest_interpolant(
     amplitudes_sparsest = []
     knots_sparsest = []
     i = 0
-    last_nz_idx = 0
     num_saturations = (
         0  # Number of consecutive saturation intervals after knots_pruned[i]
     )
@@ -112,7 +107,6 @@ def sparsest_interpolant(
             knots_sparsest.append(knots_pruned[i + num_saturations])
 
         i += num_saturations + 1
-        last_nz_idx += 1
         num_saturations = 0
 
     knots_array = np.asarray(knots_sparsest)

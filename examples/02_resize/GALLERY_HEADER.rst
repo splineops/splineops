@@ -3,5 +3,6 @@
 Resize Examples
 ===============
 
-Examples using the Resize module on multidimensional samples, specially 1D and 2D.
-We also show the equivalence with the Spline Interpolation module methods where relevant.
+Resize signals and images with standard interpolation or projection antialiasing.
+Inspect fine detail, compare numerical quality, and measure runtime across zoom
+factors.

@@ -53,7 +53,6 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from splineops.resize._pycore.bspline import beta  # noqa: E402
-from splineops.resize._pycore.diff_integ import do_diff, do_integ  # noqa: E402
 from splineops.resize._pycore.filters import (  # noqa: E402
     get_interpolation_coefficients,
     get_samples,

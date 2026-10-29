@@ -6,7 +6,8 @@
 Extension Modes
 ===============
 
-Plotting different extension modes of signals.
+Compare zero, mirror, and periodic coefficient boundaries when evaluating a signal
+beyond its sampled interval.
 """
 
 # %%
@@ -56,6 +57,9 @@ def plot_extension_modes_for_bump_function(mode_name, x_values, title):
 # %%
 # Finite-Support Coefficients
 # ---------------------------
+#
+# Set coefficients outside the sampled interval to zero and inspect the resulting
+# boundary behavior.
 
 plot_extension_modes_for_bump_function(
     mode_name="zero",
@@ -66,6 +70,9 @@ plot_extension_modes_for_bump_function(
 # %%
 # Narrow Mirroring
 # ----------------
+#
+# Reflect coefficients at the endpoint samples to extend the signal without
+# introducing an abrupt cutoff.
 
 plot_extension_modes_for_bump_function(
     mode_name="mirror",
@@ -76,6 +83,8 @@ plot_extension_modes_for_bump_function(
 # %%
 # Periodic Padding
 # ----------------
+#
+# Wrap coefficients around the interval to model a repeating signal.
 
 plot_extension_modes_for_bump_function(
     mode_name="periodic",

@@ -26,11 +26,11 @@ class FiniteSupportCoefficients(ExtensionMode):
         bc_r = indexes > data_len - 1
         bc_lr = np.logical_or(bc_l, bc_r)
 
-        # Update indexes and weights
-        indexes_ext = np.copy(indexes)  # TODO(dperdios): in-place update?
-        weights_ext = np.copy(weights)  # TODO(dperdios): in-place update?
-        indexes_ext[bc_lr] = 0  # dumb index
-        # TODO(dperdios): why not use something else as dumb index?
+        # Preserve the caller's stencil. Zero weights still need valid indexes
+        # because evaluation gathers coefficients before multiplying by weights.
+        indexes_ext = np.copy(indexes)
+        weights_ext = np.copy(weights)
+        indexes_ext[bc_lr] = 0
         weights_ext[bc_lr] = 0
 
         return indexes_ext, weights_ext
@@ -38,19 +38,15 @@ class FiniteSupportCoefficients(ExtensionMode):
     @staticmethod
     def compute_coefficients(data: npt.NDArray, basis: SplineBasis) -> npt.NDArray:
 
-        # Local copy
-        # TODO(dperdios): local copy could be used to accelerate banded solver
-        coeffs = np.copy(data)
-
-        # Check whether `basis` has no `poles` (i.e., no computation needed)
+        # Even the identity case returns independent coefficient storage.
         if basis.poles is None:
-            return coeffs
+            return np.copy(data)
 
-        # CuPy compatibility
-        # TODO(dperdios): could use a CuPy-compatible solver
-        # TODO(dperdios): could use dedicated filters
-        #  Note: this would depend on the degree of the bspline
+        # The banded solver pads into owned storage, so NumPy inputs need no
+        # preliminary copy. CuPy uses a host solve and an owned device buffer
+        # for the result; this path is not a device-native solver.
         need_cupy_compat = is_cupy_type(data)
+        coeffs = np.copy(data) if need_cupy_compat else data
 
         # Reshape for batch-processing
         coeffs_shape = coeffs.shape
@@ -60,8 +56,6 @@ class FiniteSupportCoefficients(ExtensionMode):
         # CuPy compatibility
         if need_cupy_compat:
             # Get as NumPy array
-            # TODO(dperdios): type should be handled more properly than
-            #  just silencing the CuPy type
             coeffs_rs_cp = coeffs_rs
             coeffs_rs = coeffs_rs_cp.get()  # type: ignore
 

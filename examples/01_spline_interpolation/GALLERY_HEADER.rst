@@ -3,5 +3,5 @@
 Spline Interpolation Examples
 =============================
 
-Examples showing the basic functionality of the Spline interpolation module.
-We also show the equivalence with Resize module methods where relevant.
+Build continuous models from sampled data. Explore spline bases and boundary modes,
+then compare interpolation and resampling choices.

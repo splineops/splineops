@@ -19,6 +19,8 @@ class ExtensionMode(metaclass=ABCMeta):
     @staticmethod
     @abstractmethod
     def compute_coefficients(data: npt.NDArray, basis: SplineBasis) -> npt.NDArray:
-        # TODO(dperdios): add `axis` argument? Currently computations need to
-        #  be compatible with N-D arrays along the last axis
+        """Return independent coefficients, filtering along the last axis.
+
+        The prefilter adapter moves each requested axis into this position.
+        """
         pass

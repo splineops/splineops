@@ -3,4 +3,5 @@
 Smoothing Splines Examples
 ==========================
 
-Examples using the Smoothing splines module.
+Reduce noise in signals, images, and volumes. Compare fractional, periodic N-D, and
+recursive smoothers while keeping their different operators and boundaries explicit.

@@ -6,12 +6,15 @@
 3D Volume Smoothing
 ===================
 
-We use the smooth module to smooth N-dimensional data.
+Smooth a noisy synthetic 3-D volume and compare central slices against its known
+clean signal.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import the smoothing functions and tools for generating or displaying the data.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,6 +23,9 @@ from splineops.smoothing_splines.smoothing_spline import smoothing_spline_nd
 # %%
 # Sinusoid 3D Data
 # ----------------
+#
+# Smooth a noisy synthetic sinusoidal volume and compare matching central slices
+# against its known clean signal.
 
 
 def demo_3d_sinusoid():

@@ -2,7 +2,6 @@
 
 import numpy as np
 
-# TODO(dperdios): use scipy-stubs (https://github.com/microsoft/python-type-stubs)
 import scipy  # type: ignore
 from functools import lru_cache
 from numpy import typing as npt
@@ -12,10 +11,14 @@ from typing import Optional, Tuple
 def _compute_ck_zero_matrix_banded_v1(
     bk: npt.ArrayLike, fk: npt.ArrayLike
 ) -> npt.NDArray:
-    # Note: fk must be of shape (M,) or (M, K)
+    """Solve the zero-boundary cardinal system for one or several signals.
+
+    ``fk`` has shape ``(M,)`` or ``(M, K)``. Padding owns the right-hand side,
+    allowing the banded solver to overwrite it without changing caller data.
+    """
     fk = np.asarray(fk)
     dtype = fk.dtype
-    bk = np.asarray(bk)  # TODO(dperdios): case in fk.dtype?
+    bk = np.asarray(bk)
 
     # Extract sizes
     # m: (support - 1) // 2
@@ -46,7 +49,6 @@ def _compute_ck_zero_matrix_banded_v1(
         a[m : m + n] = b
 
     # Solve banded system
-    # cc = scipy.linalg.solve_banded((m, m), ab, data_pad)
     ck = scipy.linalg.solve_banded(
         l_and_u=(m, m),
         ab=ab,
@@ -65,9 +67,13 @@ def _data_to_coeffs(
     boundary: str,
     tol: Optional[float] = None,
 ) -> np.ndarray:
-    """In-place pre-filtering"""
+    """Apply the recursive mirror prefilter in place along the last axis.
 
-    # TODO: this one is only va
+    Callers provide owned storage with at least two samples on the final axis.
+    The same recursion handles real and complex data; the stopping tolerance
+    follows the real component's precision. Other boundary modes use separate
+    banded or Fourier solvers.
+    """
 
     # Tolerance (if not provided, defaults to data-type tolerance)
     if tol is None:
@@ -102,8 +108,7 @@ def _data_to_coeffs(
 
         # Anti-causal recursion
         for n in reversed(range(0, data_len - 1)):
-            data_it[:, n] = pole * (data_it[:, n + 1] - data_it[:, n])  # w/ gain
-            # data_it[:, n] = pole * data_it[:, n + 1] + (1 - pole) ** 2 * data_it[:, n]  # w/o gain
+            data_it[:, n] = pole * (data_it[:, n + 1] - data_it[:, n])
 
     return data
 
@@ -120,7 +125,7 @@ def _init_causal_coeff(
         horizon = int(np.ceil(np.log(tol)) / np.log(np.abs(pole)))
 
     if boundary.lower() == "mirror":
-        zn = float(pole)  # copy to hold power (not sure float() is required)
+        zn = float(pole)  # Running power, independent of the original pole.
         if horizon < data_len:
             # Approximation (accelerated loop)
             c0 = data[:, 0]
@@ -133,32 +138,11 @@ def _init_causal_coeff(
             z2n = pole ** (data_len - 1)
             c0 = data[:, 0] + z2n * data[:, -1]
             z2n *= z2n * iz
-            # for n in range(1, data_len):  # TODO: may have been wrong
             for n in range(1, data_len - 1):
                 c0 += (zn + z2n) * data[:, n]
                 zn *= pole
                 z2n *= iz
             c0 /= 1 - zn**2
-    elif boundary.lower() == "zero":
-        # TODO(dperdios): not independent of pole number...
-        # # zn = 1  # TODO(dperdios): needs attention
-        # zn = pole
-        # mul = pole * pole / (1 - pole * pole)
-        # if horizon < data_len:
-        #     # Approximation (accelerated loop)
-        #     c0 = data[:, 0]
-        #     for n in range(1, horizon):
-        #         c0 -= mul * zn * data[:, n]
-        #         zn *= pole
-        # else:
-        #     # Exact expression (full loop)
-        #     zN = pole ** (data_len + 1)
-        #     c0 = data[:, 0] - data[:, -1] * zN
-        #     for n in range(1, data_len - 1):
-        #         c0 -= mul * zn * (data[:, n] - zN * data[:, -1 - n])
-        #         zn *= pole
-        # c0 *= (1 - pole * pole) / (1 - pole ** (2 * data_len + 2))
-        raise NotImplementedError("Unknown boundary condition")
     else:
         raise NotImplementedError("Unknown boundary condition")
 
@@ -168,13 +152,8 @@ def _init_causal_coeff(
 def _init_anticausal_coeff(data: np.ndarray, pole: float, boundary: str):
     """Last coefficient of the anticausal filter"""
     if boundary.lower() == "mirror":
-        cn = (pole / (pole * pole - 1)) * (pole * data[:, -2] + data[:, -1])  #  w/ gain
+        cn = (pole / (pole * pole - 1)) * (pole * data[:, -2] + data[:, -1])
         return cn
-    elif boundary.lower() == "zero":
-        # TODO(dperdios): not independent of pole number...
-        # return -pole * data[:, -1]  # w/ gain
-        # # return (1 - pole) ** 2 * data[:, -1]  # w/o gain
-        raise NotImplementedError("Unknown boundary condition")
     else:
         raise NotImplementedError("Unknown boundary condition")
 

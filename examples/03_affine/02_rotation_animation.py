@@ -6,12 +6,14 @@
 Rotation Animation
 ==================
 
-We use the rotate module to rotate a 2D image.
+Animate a full image rotation and explore how spline degree affects interpolation.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import image-loading, plotting, and affine-rotation tools.
 
 import numpy as np
 import matplotlib.pyplot as plt

@@ -6,7 +6,8 @@
 Spline Bases
 ============
 
-Plotting the spline bases of the library and several transformations and operations.
+Explore B-spline, O-MOMS, and Keys bases, then combine shifted and weighted copies
+into continuous models.
 """
 
 # %%
@@ -95,6 +96,9 @@ def plot_bases(names, x_values, title, show_legend=True):
 # %%
 # Bases
 # -----
+#
+# Compare the supported basis families before combining their shifted and weighted
+# copies into splines.
 
 # %%
 # B-Spline Bases
@@ -136,10 +140,15 @@ plot_bases(
 # %%
 # Transforming Cubic B-Splines
 # ----------------------------
+#
+# See how shifting, scaling, and weighting change one cubic basis function.
 
 # %%
 # Helper for Cubic B-Spline
 # ~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Define a reusable evaluator for the centered cubic basis used in the following
+# plots.
 
 beta3_basis = create_basis("bspline3")
 
@@ -289,6 +298,9 @@ plot_lines_1d(
 # %%
 # Building Splines
 # ----------------
+#
+# Combine shifted basis functions, sample the resulting spline, and connect those
+# samples back to its coefficients.
 
 # %%
 # Helpers for Spline Decomposition

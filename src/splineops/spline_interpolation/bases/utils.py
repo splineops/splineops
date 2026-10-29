@@ -1,6 +1,6 @@
 # splineops/src/splineops/spline_interpolation/bases/utils.py
 
-from typing import Union, Mapping, Type
+from typing import Callable, Union, Mapping
 
 from .spline_basis import SplineBasis
 from .bspline0_basis import BSpline0Basis, BSpline0SymBasis
@@ -23,7 +23,8 @@ from .nearest_neighbor_basis import NearestNeighborBasis, NearestNeighborSymBasi
 from .linear_basis import LinearBasis
 from .keys_basis import KeysBasis
 
-basis_map: Mapping[str, Type[SplineBasis]] = {
+# Concrete bases supply their own support and poles through zero-argument factories.
+basis_map: Mapping[str, Callable[[], SplineBasis]] = {
     "bspline0": BSpline0Basis,
     "bspline0-sym": BSpline0SymBasis,
     "bspline1": BSpline1Basis,
@@ -60,14 +61,7 @@ def create_basis(name: str) -> SplineBasis:
             f"Unsupported basis '{name}'. " f"Supported: {valid_name_str}."
         )
 
-    basis = basis_map[name]()  # type: ignore
-    # TODO(dperdios): not easy to get this mapping to work with mypy.
-    #  The type annotation `basis_map: Mapping[str, Type[SplineBasis]]` helps
-    #  (as in https://stackoverflow.com/a/54243383) but the combination with
-    #  mandatory inputs (e.g., `support`) in the constructor may not be
-    #  straightforward.
-
-    return basis
+    return basis_map[name]()
 
 
 def asbasis(basis: Union[str, SplineBasis]) -> SplineBasis:

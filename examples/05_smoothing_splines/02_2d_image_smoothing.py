@@ -6,13 +6,15 @@
 2D Image Smoothing
 ==================
 
-We use the smooth module to smooth a 2D grayscale image,
-with strong visible noise.
+Denoise a grayscale image with periodic smoothing and compare image detail and
+signal-to-noise ratio.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import the smoothing functions and tools for generating or displaying the data.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,6 +23,9 @@ from splineops.smoothing_splines.smoothing_spline import smoothing_spline_nd
 # %%
 # 2D Image Smoothing
 # ------------------
+#
+# Add visible noise to a grayscale image, apply periodic smoothing, and compare
+# detail and SNR before and after filtering.
 
 from urllib.request import urlopen
 from PIL import Image

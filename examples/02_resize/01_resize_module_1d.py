@@ -6,8 +6,7 @@
 Resize Module 1D
 ================
 
-Starting from a 1D signal :math:`f[k]` on a unit grid, we perform a 1D resize
-directly on the samples and compare:
+Compare standard cubic resizing and projection antialiasing on a 1-D signal.
 
 - a coarse spline built from ``resize(..., method="cubic")``,
 - a coarse spline built from ``resize(..., method="cubic-antialiasing")``,
@@ -25,6 +24,8 @@ We build up the visualization step-by-step:
 # %%
 # Imports
 # -------
+#
+# Import the resize, array, and plotting tools used in the comparison.
 
 # sphinx_gallery_thumbnail_number = 5  # show the final combined plot as thumbnail
 import numpy as np
