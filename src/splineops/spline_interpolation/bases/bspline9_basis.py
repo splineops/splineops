@@ -166,4 +166,8 @@ class BSpline9Basis(SplineBasis):
             y,
         )
 
+        # NumPy 1.x promotes float32 with large integer coefficients. Preserve
+        # the intermediate arithmetic, then restore the requested precision.
+        if x_abs.dtype == np.dtype(np.float32):
+            y = y.astype(np.float32, copy=False)
         return y

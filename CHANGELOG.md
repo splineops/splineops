@@ -2,9 +2,9 @@
 
 All notable changes to SplineOps are documented here.
 
-## 2.3.0rc1 - 2026-10-28
+## 2.3.0 - 2026-10-29
 
-This release candidate retains the existing module maturity labels. Affine
+This release retains the existing module maturity labels. Affine
 remains experimental; resize remains stable. Performance measurements are
 workload-specific, with numerical reference checks covering both fast paths.
 
@@ -25,6 +25,10 @@ workload-specific, with numerical reference checks covering both fast paths.
 
 ### Fixes
 
+- Preserve float32 results from degree-8 and degree-9 B-spline basis
+  evaluation under NumPy 1.26. Retain the intermediate polynomial arithmetic
+  and fractional results for integer coordinates. Add independent basis
+  reference tests and installed-wheel precision checks.
 - Preserve float32 and complex64 periodic interpolation coefficients with
   NumPy 1.26, whose FFT promotes these types to double precision. Add a
   minimum-dependency CI job alongside the current-version platform matrix.

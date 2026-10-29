@@ -21,11 +21,13 @@ os.environ["LSRESIZE_NUM_THREADS"] = "1"
 
 import numpy as np
 import scipy
+from scipy.interpolate import BSpline
 import splineops
 from splineops import _lsresize
 from splineops.affine import AffinePlan
 from splineops.resize import resize_degrees
 from splineops.resize._pycore.engine import python_resize
+from splineops.spline_interpolation.bases.utils import asbasis
 
 
 def main():
@@ -43,7 +45,30 @@ def main():
     rng = np.random.default_rng(20261028)
     maximum_ls_error = 0.0
     maximum_affine_error = {"float32": 0.0, "float64": 0.0}
+    maximum_basis_error = {"float32": 0.0, "float64": 0.0}
     for dtype in (np.float32, np.float64):
+        coordinates = np.concatenate(
+            [
+                np.linspace(-5.5, 5.5, 257, dtype=dtype),
+                np.arange(-5, 5.5, 0.5, dtype=dtype),
+            ]
+        )
+        for degree in (8, 9):
+            knots = np.arange(degree + 2, dtype=np.float64) - (degree + 1) / 2
+            expected = np.nan_to_num(
+                BSpline.basis_element(knots, extrapolate=False)(
+                    coordinates.astype(np.float64)
+                ),
+                nan=0.0,
+            )
+            actual = asbasis(f"bspline{degree}")(coordinates)
+            assert actual.dtype == coordinates.dtype
+            tolerance = 8e-5 if dtype == np.float32 else 2e-12
+            np.testing.assert_allclose(actual, expected, rtol=0, atol=tolerance)
+            key = np.dtype(dtype).name
+            maximum_basis_error[key] = max(
+                maximum_basis_error[key], float(np.max(abs(actual - expected)))
+            )
         data = rng.normal(size=(16, 17, 18)).astype(dtype)
         zoom = (0.37, 0.8, 0.61)
         degrees = dict(interp_degree=3, analy_degree=3, synthe_degree=3)
@@ -104,6 +129,7 @@ def main():
                 "native_extension": _lsresize.__file__,
                 "max_ls_difference": maximum_ls_error,
                 "max_affine_difference": maximum_affine_error,
+                "max_basis_difference": maximum_basis_error,
                 "result": "passed",
             },
             indent=2,
