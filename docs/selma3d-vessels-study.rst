@@ -162,7 +162,7 @@ quality rule passed but its predeclared 10-times speed rule failed.  Keeping
 that negative decision visible prevents the vascular geometry from looking
 like the only case attempted.
 
-.. _SELMA3D S-BIAD1196: https://www.ebi.ac.uk/bioimage-archive/galleries/ai/analysed-dataset/S-BIAD1196/
+.. _SELMA3D S-BIAD1196: https://doi.org/10.6019/S-BIAD1196
 .. _SELMA3D data page: https://selma3d.grand-challenge.org/data/
 .. _VesSAP whole-brain vasculature study: https://doi.org/10.1038/s41592-020-0792-1
 .. _frozen protocol: https://github.com/splineops/splineops/blob/main/benchmarks/selma3d-vessels/PROTOCOL.md
