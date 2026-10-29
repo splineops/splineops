@@ -191,7 +191,7 @@ h2 code {
   box-shadow: none !important;
 }
 
-.landing-illustration .landing-illustration-panel .sd-card-img-top {
+.bd-content .landing-illustration .landing-illustration-panel .sd-card-img-top {
   width: 100%;
   height: auto;
   aspect-ratio: 25 / 17;
