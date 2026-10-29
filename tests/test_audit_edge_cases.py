@@ -1,6 +1,8 @@
 """Independent references for numerical ranges and boundary-domain contracts."""
 
 from decimal import Decimal, localcontext
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -17,6 +19,31 @@ from splineops.smoothing_splines import (
 )
 from splineops.smoothing_splines.fBm_per import fBmper
 from splineops.utils.metrics import compute_snr_and_mse_region
+
+
+def test_numerical_utilities_do_not_load_the_plotting_stack():
+    # A fresh interpreter catches import side effects regardless of test order.
+    code = """
+import sys
+from splineops.utils.metrics import compute_snr_and_mse_region
+from splineops.utils import image, metrics
+import splineops.utils as utilities
+assert utilities.metrics is metrics
+assert utilities.image is image
+assert utilities.specs is utilities.specs
+assert set(utilities.__all__) <= set(dir(utilities))
+assert 'matplotlib' not in sys.modules
+assert 'PIL' not in sys.modules
+try:
+    utilities.missing_submodule
+except AttributeError:
+    pass
+else:
+    raise AssertionError('Unknown attributes must raise AttributeError')
+"""
+    subprocess.run(
+        [sys.executable, "-Werror", "-c", code], check=True, capture_output=True
+    )
 
 
 @pytest.mark.parametrize("scale", [1e-200, 1e-18, 1.0, 1e150, 1e200])
