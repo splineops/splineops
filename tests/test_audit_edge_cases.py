@@ -91,7 +91,7 @@ def test_radial_smoothing_response_avoids_intermediate_overflow(lamb, gamma):
 def test_distant_spline_queries_follow_their_boundary_mode(mode, dtype, grid):
     samples = np.array([2, -1, 3, 5, 1], dtype=dtype)
     spline = TensorSpline(samples, np.arange(5, dtype=dtype), "bspline3", mode)
-    distant = np.array([-1e20, 1e20, -1e30, 1e30], dtype=dtype)
+    distant = np.array([-1e10, 1e10, -1e20, 1e20, -1e30, 1e30], dtype=dtype)
     if mode == "zero":
         expected = np.zeros_like(distant)
     else:
