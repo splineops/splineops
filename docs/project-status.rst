@@ -84,6 +84,9 @@ Compatibility policy
 * ``TensorSplineQueryPlan`` remains an alias of ``TensorSplineGeometryPlan``.
   ``Differentials`` remains available alongside ``DifferentialPlan``; neither
   legacy name is deprecated in 2.3.
+* Wavelet coefficient arrays preserve axis order and dtype; batched results
+  may use non-contiguous views over contiguous spatial planes. C-contiguity
+  is not part of the coefficient-array contract.
 
 Scope that remains experimental
 -----------------------------------
