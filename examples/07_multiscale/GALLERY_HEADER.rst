@@ -3,4 +3,5 @@
 Multiscale Examples
 ===================
 
-Examples using the Multiscale module.
+Explore coarse-to-fine image representations. Build spline pyramids, inspect wavelet
+detail bands, and compare reconstruction across several levels.

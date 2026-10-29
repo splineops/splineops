@@ -12,7 +12,7 @@ class KeysBasis(SplineBasis):
         # Support and degree (no poles)
         support = 4
         degree = 2
-        # TODO(dperdios): degree = 2 only for a=-1/2 (fixed for now)
+        # The fixed a=-1/2 kernel reproduces quadratic polynomials.
 
         # Call super constructor
         super(KeysBasis, self).__init__(support=support, degree=degree)

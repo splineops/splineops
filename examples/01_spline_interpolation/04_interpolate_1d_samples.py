@@ -6,7 +6,8 @@
 Interpolate 1D Samples
 ======================
 
-Interpolate 1D samples with standard interpolation.
+Reconstruct a 1-D signal with cubic and linear splines, and compare TensorSpline with
+Resize.
 
 1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid.
 
@@ -16,6 +17,8 @@ Interpolate 1D samples with standard interpolation.
 # %%
 # Imports
 # -------
+#
+# Import the array, plotting, and spline tools used in the steps below.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -264,6 +267,9 @@ print(f"MSE between TensorSpline result and resize result = {mse_diff:.6e}")
 # %%
 # Plot of the Spline f
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Overlay the two interpolants to check that TensorSpline and Resize evaluate the
+# same continuous model.
 
 plt.figure(figsize=(10, 4))
 plt.title("f[k] samples with interpolated f spline")

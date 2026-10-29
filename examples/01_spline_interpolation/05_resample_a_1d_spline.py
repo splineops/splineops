@@ -6,7 +6,8 @@
 Resample a 1D Spline
 ====================
 
-Resample a 1D spline with different sampling rate.
+Move a continuous spline to a coarser sampling grid and inspect how its
+representation changes.
 
 1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid.
 
@@ -20,6 +21,8 @@ Resample a 1D spline with different sampling rate.
 # %%
 # Imports
 # -------
+#
+# Import the array, plotting, and spline tools used in the steps below.
 
 import numpy as np
 import matplotlib.pyplot as plt

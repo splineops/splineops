@@ -6,13 +6,15 @@
 Pyramid Decomposition
 =====================
 
-This example demonstrates how to use the
-pyramid decomposition (reduce & expand) in 1D and 2D.
+Reduce and expand 1-D signals and images, then compare several levels of a spline
+pyramid.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import the multiscale transforms together with array and plotting utilities.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -150,6 +152,9 @@ original_shape = image_gray.shape  # (ny, nx)
 # %%
 # Inverted-Pyramid Helpers
 # ------------------------
+#
+# Arrange the progressively reduced images so their resolution changes are easy to
+# compare.
 
 
 def embed_center(small: np.ndarray, big_shape, fill=1.0) -> np.ndarray:
@@ -199,6 +204,9 @@ def show_inverted_pyramid(
 # %%
 # 1-Level Decomposition
 # ---------------------
+#
+# Apply one reduction level and compare the image resolutions in the resulting
+# pyramid.
 
 show_inverted_pyramid(
     levels, depth=1, fill=1.0, width=base_width, title="1-Level Decomposition"
@@ -208,6 +216,9 @@ plt.show()
 # %%
 # 2-Level Decomposition
 # ---------------------
+#
+# Apply 2 reduction levels and compare the image resolutions in the resulting
+# pyramid.
 
 show_inverted_pyramid(
     levels, depth=2, fill=1.0, width=base_width, title="2-Level Decomposition"
@@ -217,6 +228,9 @@ plt.show()
 # %%
 # 3-Level Decomposition
 # ---------------------
+#
+# Apply 3 reduction levels and compare the image resolutions in the resulting
+# pyramid.
 
 show_inverted_pyramid(
     levels, depth=3, fill=1.0, width=base_width, title="3-Level Decomposition"

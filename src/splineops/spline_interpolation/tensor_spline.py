@@ -193,10 +193,8 @@ class TensorSpline:
             )
         self._coordinates = tuple(c.copy() for c in coordinates)
 
-        # Pre-computation based on coordinates
-        # TODO(dperdios): convert to Python float?
+        # Retain coordinate precision when converting queries to sample indexes.
         bounds = tuple([(c[0], c[-1]) for c in coordinates])
-        # TODO(dperdios): `bounds` as a public property?
         self._bounds = bounds
         lengths = valid_data_shape
         self._lengths = lengths
@@ -208,9 +206,8 @@ class TensorSpline:
                 # Special case for single-sample signal
                 step = 1
             step_seq.append(step)
-        steps = tuple(step_seq)  # TODO: convert dtype? (can be promoted)
+        steps = tuple(step_seq)
         self._steps = steps
-        # TODO(dperdios): cast scalars to real_dtype?
 
         # DTypes
         dtype = data.dtype
@@ -229,7 +226,7 @@ class TensorSpline:
             )
         coords_dtype = coords_dtype_seq[0]
         if coords_dtype.itemsize != real_dtype.itemsize:
-            # TODO(dperdios): maybe automatic cast in the future?
+            # Explicit matching avoids silently changing interpolation precision.
             raise ValueError("Coordinates and data have different floating precisions.")
         self._dtype = dtype
         self._real_dtype = real_dtype
@@ -421,7 +418,6 @@ class TensorSpline:
         grid: bool = True,
         *,
         out: npt.NDArray | None = None,
-        # TODO(dperdios): extrapolate?
     ) -> npt.NDArray:
         return self.eval(coordinates=coordinates, grid=grid, out=out)
 

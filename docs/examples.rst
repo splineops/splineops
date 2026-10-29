@@ -2,8 +2,8 @@ Examples
 ========
 
 Explore the plots below, then open a module to find its executable examples.
-Start with Resize for stable antialiased resizing, or browse the full gallery
-to explore the broader research package.
+Start with Resize for antialiased resizing, or browse the full gallery to
+explore all seven numerical modules and the workflows that combine them.
 
 .. grid:: 1 2 2 3
    :gutter: 2

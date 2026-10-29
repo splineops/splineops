@@ -132,6 +132,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx_gallery.gen_gallery",
+    "gallery_descriptions",
     "sphinx-prompt",
     "sphinx_copybutton",
     "sphinx_remove_toctrees",

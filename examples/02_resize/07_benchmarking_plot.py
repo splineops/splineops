@@ -6,8 +6,10 @@
 Benchmarking Plot
 =================
 
-This example performs a 1D sweep of zoom factors and evaluates how different
-2D interpolation / downsampling methods behave in terms of
+Sweep zoom factors and compare the speed and reconstruction quality of linear and
+cubic resize methods.
+
+The plots report:
 
 * **round-trip runtime** (downsample then upsample back to the original size),
 * **round-trip SNR** between the original and the recovered image,
@@ -170,6 +172,11 @@ VERBOSE_PROGRESS = False  # set to True if you want CLI progress printing
 # ------------------------
 # Small helpers
 # ------------------------
+#
+# Define compact utilities for formatting measurements and handling the shared image
+# geometry.
+
+
 def fmt_ms(seconds: float) -> str:
     """Format seconds as a short 'X.X ms' or 'X.XXX s' string."""
     return f"{seconds * 1000.0:.1f} ms" if seconds < 1.0 else f"{seconds:.3f} s"
@@ -540,6 +547,9 @@ print(
 # %%
 # Method Construction
 # -------------------
+#
+# Group the available implementations by interpolation degree and antialiasing
+# choice.
 
 
 def build_methods_for_degree(
@@ -675,6 +685,9 @@ def run_sweep_for_degree(degree: str) -> Tuple[Dict[str, Dict[str, List[float]]]
 # %%
 # Plotting Helpers
 # ----------------
+#
+# Create consistent timing and quality plots from the measurements collected across
+# zoom factors.
 
 
 def _plot_timing(
@@ -874,12 +887,18 @@ def _filter_results_z_range(
 # %%
 # Benchmark for Cubic Degree
 # --------------------------
+#
+# Run the zoom sweep with cubic methods before comparing their runtime and
+# reconstruction quality.
 
 results_cubic, degree_label_cubic = run_sweep_for_degree("cubic")
 
 # %%
 # Time Comparison (Downsampling Only)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare roundtrip runtimes for zoom factors below one, where the first resize
+# shrinks the image.
 
 results_cubic_down = _filter_results_z_range(results_cubic, z_min=0.0, z_max=1.0)
 _plot_timing(results_cubic_down, degree_label_cubic, zoom_label="0 < z < 1")
@@ -887,42 +906,62 @@ _plot_timing(results_cubic_down, degree_label_cubic, zoom_label="0 < z < 1")
 # %%
 # Time Comparison (Full)
 # ~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare roundtrip runtimes across the full zoom range, including shrinking and
+# enlargement.
 
 _plot_timing(results_cubic, degree_label_cubic)
 
 # %%
 # SNR Comparison (Downsampling Only)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstruction SNR for zoom factors below one, where aliasing is a
+# particular concern.
 
 _plot_snr(results_cubic_down, degree_label_cubic, zoom_label="0 < z < 1")
 
 # %%
 # SNR Comparison (Full)
 # ~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstruction SNR across the full zoom range; higher values mean less
+# error relative to the reference.
 
 _plot_snr(results_cubic, degree_label_cubic)
 
 # %%
 # SSIM Comparison (Downsampling Only)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare structural similarity after shrink-and-reconstruct roundtrips.
 
 _plot_ssim(results_cubic_down, degree_label_cubic, zoom_label="0 < z < 1")
 
 # %%
 # SSIM Comparison (Full)
 # ~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare structural similarity across all tested zoom factors; values closer to one
+# indicate greater similarity.
 
 _plot_ssim(results_cubic, degree_label_cubic)
 
 # %%
 # Benchmark for Linear Degree
 # ---------------------------
+#
+# Repeat the zoom sweep with linear methods to show the effect of interpolation
+# degree.
 
 results_linear, degree_label_linear = run_sweep_for_degree("linear")
 
 # %%
 # Time Comparison (Downsampling Only)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare roundtrip runtimes for zoom factors below one, where the first resize
+# shrinks the image.
 
 results_linear_down = _filter_results_z_range(results_linear, z_min=0.0, z_max=1.0)
 _plot_timing(results_linear_down, degree_label_linear, zoom_label="0 < z < 1")
@@ -930,30 +969,44 @@ _plot_timing(results_linear_down, degree_label_linear, zoom_label="0 < z < 1")
 # %%
 # Time Comparison (Full)
 # ~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare roundtrip runtimes across the full zoom range, including shrinking and
+# enlargement.
 
 _plot_timing(results_linear, degree_label_linear)
 
 # %%
 # SNR Comparison (Downsampling Only)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstruction SNR for zoom factors below one, where aliasing is a
+# particular concern.
 
 _plot_snr(results_linear_down, degree_label_linear, zoom_label="0 < z < 1")
 
 # %%
 # SNR Comparison (Full)
 # ~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstruction SNR across the full zoom range; higher values mean less
+# error relative to the reference.
 
 _plot_snr(results_linear, degree_label_linear)
 
 # %%
 # SSIM Comparison (Downsampling Only)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare structural similarity after shrink-and-reconstruct roundtrips.
 
 _plot_ssim(results_linear_down, degree_label_linear, zoom_label="0 < z < 1")
 
 # %%
 # SSIM Comparison (Full)
 # ~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare structural similarity across all tested zoom factors; values closer to one
+# indicate greater similarity.
 
 _plot_ssim(results_linear, degree_label_linear)
 

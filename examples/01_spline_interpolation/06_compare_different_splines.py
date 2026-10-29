@@ -6,7 +6,8 @@
 Compare Different Splines
 =========================
 
-Obtain a spline through different methods and compare the results.
+Compare spline reconstruction methods by expanding coarse samples and measuring error
+against the original model.
 
 1. Assume that a user-provided 1D list of samples :math:`f[k]` has been obtained by sampling a spline on a unit grid.
 
@@ -24,6 +25,8 @@ Obtain a spline through different methods and compare the results.
 # %%
 # Imports
 # -------
+#
+# Import the array, plotting, and spline tools used in the steps below.
 
 import numpy as np
 import matplotlib.pyplot as plt

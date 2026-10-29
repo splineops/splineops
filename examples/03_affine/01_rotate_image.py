@@ -6,16 +6,17 @@
 Rotate Image
 ============
 
-We use the rotate module to rotate a 2D image.
+Rotate a grayscale image around its center using spline interpolation.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import image-loading, plotting, and affine-rotation tools.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import animation
 from splineops.affine.affine import rotate
 from splineops.resize import resize
 from urllib.request import urlopen

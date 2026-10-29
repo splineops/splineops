@@ -6,8 +6,10 @@
 Benchmarking
 ============
 
-This example benchmarks several 2D downsampling methods over a *set* of test
-images. For each image we:
+Compare resize methods across several Kodak images using detail views, reconstruction
+quality, and runtime.
+
+For each image, we:
 
 1. Downsample by an image-specific zoom factor, then upsample back (round-trip).
 2. Measure the runtime of the round-trip (forward + backward).
@@ -39,12 +41,14 @@ Notes
 # %%
 # Imports and Configuration
 # -------------------------
+#
+# Load the available comparison libraries and set shared precision and timing
+# options.
 
 from __future__ import annotations
 
 import math
 import os
-import sys
 import time
 from typing import Dict, List, Tuple, Optional
 
@@ -149,6 +153,9 @@ except Exception:
 # %%
 # Kodak Test Set Configuration
 # ----------------------------
+#
+# Choose test images, zoom factors, and regions of interest so every method sees the
+# same data.
 
 KODAK_BASE = "https://r0k.us/graphics/kodak/kodak"
 KODAK_IMAGES = [
@@ -233,6 +240,9 @@ def _load_kodak_rgb(url: str) -> np.ndarray:
 # %%
 # Utilities (Metrics, ROI, Plotting)
 # ----------------------------------
+#
+# Define common quality metrics, image crops, and displays used throughout the
+# benchmark.
 
 
 def _snr_db(x: np.ndarray, y: np.ndarray) -> float:
@@ -644,6 +654,9 @@ def _highlight_tile(ax, *, color: str, lw: float = 3.0) -> None:
 # %%
 # Round-Trip Backends and Time
 # ----------------------------
+#
+# Wrap each library in the same downsample-and-reconstruct experiment and measure
+# its complete runtime.
 
 
 def _rt_splineops(
@@ -1000,6 +1013,9 @@ AA_METHOD_LABELS = [
 # %%
 # Benchmarking Helpers
 # --------------------
+#
+# Collect timings and quality scores, then assemble comparable plots for one image
+# at a time.
 
 
 def benchmark_image(
@@ -1664,6 +1680,9 @@ def show_snr_ssim_plot_from_bench(bench: Dict[str, object]) -> None:
 # %%
 # Color ROI Montage Helpers
 # -------------------------
+#
+# Build RGB detail views so color artifacts can be compared alongside grayscale
+# metrics.
 
 
 def _first_pass_color_for_backend(
@@ -1971,6 +1990,9 @@ def show_roi_montage_color_aa_from_bench(
 # %%
 # Load All Images
 # ---------------
+#
+# Fetch the configured images once and prepare shared grayscale and RGB arrays for
+# all methods.
 
 orig_images: Dict[str, np.ndarray] = {}
 orig_images_rgb: Dict[str, np.ndarray] = {}
@@ -2028,6 +2050,9 @@ def _color_intro_for_image(
 # %%
 # Image: kodim05
 # --------------
+#
+# Run the configured comparison on kodim05, then inspect its image detail, errors,
+# runtime, and quality scores.
 
 img_name = "kodim05"
 img_orig = orig_images[img_name]
@@ -2048,60 +2073,88 @@ bench_kodim05 = benchmark_image(
 # %%
 # Original and Resized
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# View the original color image, its selected detail, and the downsampled result
+# before comparing methods.
 
 _color_intro_for_image(img_name, bench_kodim05)
 
 # %%
 # ROI Comparison
 # ~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from the standard interpolation methods at the same
+# display scale.
 
 show_roi_montage_main_from_bench(bench_kodim05)
 
 # %%
 # ROI Comparison Error
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the standard methods' difference images against the original detail.
 
 show_error_montage_main_from_bench(bench_kodim05)
 
 # %%
 # ROI Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from methods that apply antialiasing during
+# downsampling.
 
 show_roi_montage_aa_from_bench(bench_kodim05)
 
 # %%
 # ROI Comparison Error (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the antialiased methods' reconstruction errors on the same region of
+# interest.
 
 show_error_montage_aa_from_bench(bench_kodim05)
 
 # %%
 # ROI Color Comparison
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail from standard interpolation methods to reveal color and edge
+# artifacts.
 
 show_roi_montage_color_main_from_bench(bench_kodim05, orig_images_rgb[img_name])
 
 # %%
 # ROI Color Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail after antialiased downsampling and reconstruction.
 
 show_roi_montage_color_aa_from_bench(bench_kodim05, orig_images_rgb[img_name])
 
 # %%
 # Timing Comparison
 # ~~~~~~~~~~~~~~~~~
+#
+# Compare measured roundtrip runtimes; these timings describe this workload and
+# machine.
 
 show_timing_plot_from_bench(bench_kodim05)
 
 # %%
 # SNR/SSIM Comparison
 # ~~~~~~~~~~~~~~~~~~~
+#
+# Compare signal-to-noise ratio and structural similarity against the original
+# image; higher scores indicate closer reconstruction.
 
 show_snr_ssim_plot_from_bench(bench_kodim05)
 
 # %%
 # Image: kodim07
 # --------------
+#
+# Run the configured comparison on kodim07, then inspect its image detail, errors,
+# runtime, and quality scores.
 
 img_name = "kodim07"
 img_orig = orig_images[img_name]
@@ -2122,60 +2175,88 @@ bench_kodim07 = benchmark_image(
 # %%
 # Original and Resized
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# View the original color image, its selected detail, and the downsampled result
+# before comparing methods.
 
 _color_intro_for_image(img_name, bench_kodim07)
 
 # %%
 # ROI Comparison
 # ~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from the standard interpolation methods at the same
+# display scale.
 
 show_roi_montage_main_from_bench(bench_kodim07)
 
 # %%
 # ROI Comparison Error
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the standard methods' difference images against the original detail.
 
 show_error_montage_main_from_bench(bench_kodim07)
 
 # %%
 # ROI Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from methods that apply antialiasing during
+# downsampling.
 
 show_roi_montage_aa_from_bench(bench_kodim07)
 
 # %%
 # ROI Comparison Error (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the antialiased methods' reconstruction errors on the same region of
+# interest.
 
 show_error_montage_aa_from_bench(bench_kodim07)
 
 # %%
 # ROI Color Comparison
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail from standard interpolation methods to reveal color and edge
+# artifacts.
 
 show_roi_montage_color_main_from_bench(bench_kodim07, orig_images_rgb[img_name])
 
 # %%
 # ROI Color Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail after antialiased downsampling and reconstruction.
 
 show_roi_montage_color_aa_from_bench(bench_kodim07, orig_images_rgb[img_name])
 
 # %%
 # Timing Comparison
 # ~~~~~~~~~~~~~~~~~
+#
+# Compare measured roundtrip runtimes; these timings describe this workload and
+# machine.
 
 show_timing_plot_from_bench(bench_kodim07)
 
 # %%
 # SNR/SSIM Comparison
 # ~~~~~~~~~~~~~~~~~~~
+#
+# Compare signal-to-noise ratio and structural similarity against the original
+# image; higher scores indicate closer reconstruction.
 
 show_snr_ssim_plot_from_bench(bench_kodim07)
 
 # %%
 # Image: kodim14
 # --------------
+#
+# Run the configured comparison on kodim14, then inspect its image detail, errors,
+# runtime, and quality scores.
 
 img_name = "kodim14"
 img_orig = orig_images[img_name]
@@ -2196,60 +2277,88 @@ bench_kodim14 = benchmark_image(
 # %%
 # Original and Resized
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# View the original color image, its selected detail, and the downsampled result
+# before comparing methods.
 
 _color_intro_for_image(img_name, bench_kodim14)
 
 # %%
 # ROI Comparison
 # ~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from the standard interpolation methods at the same
+# display scale.
 
 show_roi_montage_main_from_bench(bench_kodim14)
 
 # %%
 # ROI Comparison Error
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the standard methods' difference images against the original detail.
 
 show_error_montage_main_from_bench(bench_kodim14)
 
 # %%
 # ROI Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from methods that apply antialiasing during
+# downsampling.
 
 show_roi_montage_aa_from_bench(bench_kodim14)
 
 # %%
 # ROI Comparison Error (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the antialiased methods' reconstruction errors on the same region of
+# interest.
 
 show_error_montage_aa_from_bench(bench_kodim14)
 
 # %%
 # ROI Color Comparison
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail from standard interpolation methods to reveal color and edge
+# artifacts.
 
 show_roi_montage_color_main_from_bench(bench_kodim14, orig_images_rgb[img_name])
 
 # %%
 # ROI Color Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail after antialiased downsampling and reconstruction.
 
 show_roi_montage_color_aa_from_bench(bench_kodim14, orig_images_rgb[img_name])
 
 # %%
 # Time Comparison
 # ~~~~~~~~~~~~~~~
+#
+# Compare measured roundtrip runtimes; these timings describe this workload and
+# machine.
 
 show_timing_plot_from_bench(bench_kodim14)
 
 # %%
 # SNR/SSIM Comparison
 # ~~~~~~~~~~~~~~~~~~~
+#
+# Compare signal-to-noise ratio and structural similarity against the original
+# image; higher scores indicate closer reconstruction.
 
 show_snr_ssim_plot_from_bench(bench_kodim14)
 
 # %%
 # Image: kodim15
 # --------------
+#
+# Run the configured comparison on kodim15, then inspect its image detail, errors,
+# runtime, and quality scores.
 
 img_name = "kodim15"
 img_orig = orig_images[img_name]
@@ -2270,60 +2379,88 @@ bench_kodim15 = benchmark_image(
 # %%
 # Original and Resized
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# View the original color image, its selected detail, and the downsampled result
+# before comparing methods.
 
 _color_intro_for_image(img_name, bench_kodim15)
 
 # %%
 # ROI Comparison
 # ~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from the standard interpolation methods at the same
+# display scale.
 
 show_roi_montage_main_from_bench(bench_kodim15)
 
 # %%
 # ROI Comparison Error
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the standard methods' difference images against the original detail.
 
 show_error_montage_main_from_bench(bench_kodim15)
 
 # %%
 # ROI Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from methods that apply antialiasing during
+# downsampling.
 
 show_roi_montage_aa_from_bench(bench_kodim15)
 
 # %%
 # ROI Comparison Error (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the antialiased methods' reconstruction errors on the same region of
+# interest.
 
 show_error_montage_aa_from_bench(bench_kodim15)
 
 # %%
 # ROI Color Comparison
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail from standard interpolation methods to reveal color and edge
+# artifacts.
 
 show_roi_montage_color_main_from_bench(bench_kodim15, orig_images_rgb[img_name])
 
 # %%
 # ROI Color Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail after antialiased downsampling and reconstruction.
 
 show_roi_montage_color_aa_from_bench(bench_kodim15, orig_images_rgb[img_name])
 
 # %%
 # Time Comparison
 # ~~~~~~~~~~~~~~~
+#
+# Compare measured roundtrip runtimes; these timings describe this workload and
+# machine.
 
 show_timing_plot_from_bench(bench_kodim15)
 
 # %%
 # SNR/SSIM Comparison
 # ~~~~~~~~~~~~~~~~~~~
+#
+# Compare signal-to-noise ratio and structural similarity against the original
+# image; higher scores indicate closer reconstruction.
 
 show_snr_ssim_plot_from_bench(bench_kodim15)
 
 # %%
 # Image: kodim19
 # --------------
+#
+# Run the configured comparison on kodim19, then inspect its image detail, errors,
+# runtime, and quality scores.
 
 img_name = "kodim19"
 img_orig = orig_images[img_name]
@@ -2344,60 +2481,88 @@ bench_kodim19 = benchmark_image(
 # %%
 # Original and Resized
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# View the original color image, its selected detail, and the downsampled result
+# before comparing methods.
 
 _color_intro_for_image(img_name, bench_kodim19)
 
 # %%
 # ROI Comparison
 # ~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from the standard interpolation methods at the same
+# display scale.
 
 show_roi_montage_main_from_bench(bench_kodim19)
 
 # %%
 # ROI Comparison Error
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the standard methods' difference images against the original detail.
 
 show_error_montage_main_from_bench(bench_kodim19)
 
 # %%
 # ROI Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from methods that apply antialiasing during
+# downsampling.
 
 show_roi_montage_aa_from_bench(bench_kodim19)
 
 # %%
 # ROI Comparison Error (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the antialiased methods' reconstruction errors on the same region of
+# interest.
 
 show_error_montage_aa_from_bench(bench_kodim19)
 
 # %%
 # ROI Color Comparison
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail from standard interpolation methods to reveal color and edge
+# artifacts.
 
 show_roi_montage_color_main_from_bench(bench_kodim19, orig_images_rgb[img_name])
 
 # %%
 # ROI Color Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail after antialiased downsampling and reconstruction.
 
 show_roi_montage_color_aa_from_bench(bench_kodim19, orig_images_rgb[img_name])
 
 # %%
 # Time Comparison
 # ~~~~~~~~~~~~~~~
+#
+# Compare measured roundtrip runtimes; these timings describe this workload and
+# machine.
 
 show_timing_plot_from_bench(bench_kodim19)
 
 # %%
 # SNR/SSIM Comparison
 # ~~~~~~~~~~~~~~~~~~~
+#
+# Compare signal-to-noise ratio and structural similarity against the original
+# image; higher scores indicate closer reconstruction.
 
 show_snr_ssim_plot_from_bench(bench_kodim19)
 
 # %%
 # Image: kodim22
 # --------------
+#
+# Run the configured comparison on kodim22, then inspect its image detail, errors,
+# runtime, and quality scores.
 
 img_name = "kodim22"
 img_orig = orig_images[img_name]
@@ -2418,54 +2583,79 @@ bench_kodim22 = benchmark_image(
 # %%
 # Original and Resized
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# View the original color image, its selected detail, and the downsampled result
+# before comparing methods.
 
 _color_intro_for_image(img_name, bench_kodim22)
 
 # %%
 # ROI Comparison
 # ~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from the standard interpolation methods at the same
+# display scale.
 
 show_roi_montage_main_from_bench(bench_kodim22)
 
 # %%
 # ROI Comparison Error
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the standard methods' difference images against the original detail.
 
 show_error_montage_main_from_bench(bench_kodim22)
 
 # %%
 # ROI Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from methods that apply antialiasing during
+# downsampling.
 
 show_roi_montage_aa_from_bench(bench_kodim22)
 
 # %%
 # ROI Comparison Error (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the antialiased methods' reconstruction errors on the same region of
+# interest.
 
 show_error_montage_aa_from_bench(bench_kodim22)
 
 # %%
 # ROI Color Comparison
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail from standard interpolation methods to reveal color and edge
+# artifacts.
 
 show_roi_montage_color_main_from_bench(bench_kodim22, orig_images_rgb[img_name])
 
 # %%
 # ROI Color Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail after antialiased downsampling and reconstruction.
 
 show_roi_montage_color_aa_from_bench(bench_kodim22, orig_images_rgb[img_name])
 
 # %%
 # Time Comparison
 # ~~~~~~~~~~~~~~~
+#
+# Compare measured roundtrip runtimes; these timings describe this workload and
+# machine.
 
 show_timing_plot_from_bench(bench_kodim22)
 
 # %%
 # SNR/SSIM Comparison
 # ~~~~~~~~~~~~~~~~~~~
+#
+# Compare signal-to-noise ratio and structural similarity against the original
+# image; higher scores indicate closer reconstruction.
 
 show_snr_ssim_plot_from_bench(bench_kodim22)
 
@@ -2473,6 +2663,9 @@ show_snr_ssim_plot_from_bench(bench_kodim22)
 # %%
 # Image: kodim23
 # --------------
+#
+# Run the configured comparison on kodim23, then inspect its image detail, errors,
+# runtime, and quality scores.
 
 img_name = "kodim23"
 img_orig = orig_images[img_name]
@@ -2493,54 +2686,79 @@ bench_kodim23 = benchmark_image(
 # %%
 # Original and Resized
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# View the original color image, its selected detail, and the downsampled result
+# before comparing methods.
 
 _color_intro_for_image(img_name, bench_kodim23)
 
 # %%
 # ROI Comparison
 # ~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from the standard interpolation methods at the same
+# display scale.
 
 show_roi_montage_main_from_bench(bench_kodim23)
 
 # %%
 # ROI Comparison Error
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the standard methods' difference images against the original detail.
 
 show_error_montage_main_from_bench(bench_kodim23)
 
 # %%
 # ROI Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare reconstructed details from methods that apply antialiasing during
+# downsampling.
 
 show_roi_montage_aa_from_bench(bench_kodim23)
 
 # %%
 # ROI Comparison Error (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the antialiased methods' reconstruction errors on the same region of
+# interest.
 
 show_error_montage_aa_from_bench(bench_kodim23)
 
 # %%
 # ROI Color Comparison
 # ~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail from standard interpolation methods to reveal color and edge
+# artifacts.
 
 show_roi_montage_color_main_from_bench(bench_kodim23, orig_images_rgb[img_name])
 
 # %%
 # ROI Color Comparison (Antialiased)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Compare RGB detail after antialiased downsampling and reconstruction.
 
 show_roi_montage_color_aa_from_bench(bench_kodim23, orig_images_rgb[img_name])
 
 # %%
 # Time Comparison
 # ~~~~~~~~~~~~~~~
+#
+# Compare measured roundtrip runtimes; these timings describe this workload and
+# machine.
 
 show_timing_plot_from_bench(bench_kodim23)
 
 # %%
 # SNR/SSIM Comparison
 # ~~~~~~~~~~~~~~~~~~~
+#
+# Compare signal-to-noise ratio and structural similarity against the original
+# image; higher scores indicate closer reconstruction.
 
 show_snr_ssim_plot_from_bench(bench_kodim23)
 

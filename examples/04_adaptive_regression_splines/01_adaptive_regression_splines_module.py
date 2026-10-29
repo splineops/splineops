@@ -6,8 +6,8 @@ r"""
 Adaptive Regression Splines Module
 ==================================
 
-This example shows how to fit a piecewise-linear, knot-sparse model to 1-D data
-using the adaptive regression splines module.
+Fit sparse piecewise-linear models and compare how regularization changes the fit and
+knot count.
 
 What we do
 ----------
@@ -34,6 +34,9 @@ Notes
 # %%
 # Imports
 # -------
+#
+# Import the regression solver and helpers for fitting and visualizing sparse
+# splines.
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -155,24 +158,43 @@ def _run_lambda(lamb: float):
 # %%
 # Smallest Lambda
 # ---------------
+#
+# Use very weak regularization to retain most of the observed detail and knots.
+
 _run_lambda(1e-4)
 
 # %%
 # Small Lambda
 # ------------
+#
+# Increase regularization slightly and inspect the first reductions in noise and
+# knot count.
+
 _run_lambda(1e-3)
 
 # %%
 # Medium Lambda
 # -------------
+#
+# Inspect an intermediate balance between fidelity to the observations and model
+# sparsity.
+
 _run_lambda(1e-2)
 
 # %%
 # Big Lambda
 # ----------
+#
+# Apply stronger regularization to remove smaller bends and emphasize the broad
+# trend.
+
 _run_lambda(5e-2)
 
 # %%
 # Biggest Lambda
 # --------------
+#
+# Inspect the strongest regularization in this comparison, approaching the least-
+# squares straight-line fit.
+
 _run_lambda(2e-1)

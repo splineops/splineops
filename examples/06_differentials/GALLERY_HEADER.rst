@@ -3,4 +3,5 @@
 Differentials Examples
 ======================
 
-Examples using the Differentials module.
+Turn image intensities into gradients, curvature, and orientation maps. Compare the
+meaning and appearance of each spline-based differential feature.

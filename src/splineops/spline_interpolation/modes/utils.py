@@ -20,14 +20,7 @@ def create_mode(name: str) -> ExtensionMode:
         valid_name_str = ", ".join([f"'{b}'" for b in valid_names])
         raise ValueError(f"Unsupported mode '{name}'. " f"Supported: {valid_name_str}.")
 
-    mode = mode_map[name]()  # type: ignore
-    # TODO(dperdios): not easy go get this mapping to work with mypy.
-    #  The type annotation `basis_map: Mapping[str, Type[SplineBasis]]` helps
-    #  (as in https://stackoverflow.com/a/54243383) but the combination with
-    #  mandatory inputs (e.g., `support`) in the constructor may not be
-    #  straightforward.
-
-    return mode
+    return mode_map[name]()
 
 
 def asmode(mode: Union[str, ExtensionMode]) -> ExtensionMode:

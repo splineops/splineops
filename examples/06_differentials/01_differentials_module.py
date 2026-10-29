@@ -6,13 +6,15 @@
 Differentials Module
 ====================
 
-In this example, we demonstrate how to use the differentiate module to compute different
-differential operations on an image.
+Visualize image gradients, the Laplacian, and Hessian features using spline-based
+derivatives.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import image-loading helpers and the differential operators used below.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -50,6 +52,9 @@ image_gray = (
 # %%
 # Helper Visualization Functions
 # ------------------------------
+#
+# Use consistent color scales and colorbars when displaying scalar responses and
+# angular maps.
 
 
 def show_result_with_colorbar(title, result, units="Value", percentile_range=(5, 95)):
@@ -142,6 +147,9 @@ show_result_with_colorbar("Original Image", image_gray, units="Intensity")
 # %%
 # Gradient Magnitude
 # ------------------
+#
+# Measure the strength of local intensity changes to highlight image edges.
+
 diff = differentials(image_gray.copy())
 grad_magnitude_result = diff.run(differentials.GRADIENT_MAGNITUDE)
 
@@ -150,6 +158,9 @@ show_result_with_colorbar("Gradient Magnitude", grad_magnitude_result, units="Va
 # %%
 # Gradient Direction
 # ------------------
+#
+# Display the direction of increasing intensity as an angle, using a cyclic color
+# scale.
 
 diff = differentials(image_gray.copy())
 grad_direction_result = diff.run(differentials.GRADIENT_DIRECTION)
@@ -169,6 +180,9 @@ show_angle_result(
 # %%
 # Laplacian
 # ---------
+#
+# Sum the second derivatives to highlight local curvature and changes across edges.
+
 diff = differentials(image_gray.copy())
 laplacian_result = diff.run(differentials.LAPLACIAN)
 
@@ -177,6 +191,10 @@ show_result_with_colorbar("Laplacian", laplacian_result, units="Value")
 # %%
 # Largest Hessian
 # ---------------
+#
+# Display the larger Hessian eigenvalue, which describes curvature along one
+# principal direction.
+
 diff = differentials(image_gray.copy())
 largest_hessian_result = diff.run(differentials.LARGEST_HESSIAN)
 
@@ -187,6 +205,10 @@ show_result_with_colorbar(
 # %%
 # Smallest Hessian
 # ----------------
+#
+# Display the smaller Hessian eigenvalue to complement the other principal-curvature
+# response.
+
 diff = differentials(image_gray.copy())
 smallest_hessian_result = diff.run(differentials.SMALLEST_HESSIAN)
 
@@ -197,6 +219,9 @@ show_result_with_colorbar(
 # %%
 # Hessian Orientation
 # -------------------
+#
+# Map the principal-curvature orientation as an angle; weak or isotropic responses
+# need cautious interpretation.
 
 diff = differentials(image_gray.copy())
 hessian_orientation_result = diff.run(differentials.HESSIAN_ORIENTATION)

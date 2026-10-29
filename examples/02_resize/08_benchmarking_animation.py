@@ -6,7 +6,8 @@
 Benchmarking Animation
 ======================
 
-This example builds a short animation for a set of images.
+Animate image detail and reconstruction errors as the zoom factor changes across
+several test images.
 
 For a sequence of zoom factors, we do a round-trip resize: original → downsampled → recovered.
 
@@ -24,11 +25,13 @@ The animations are displayed in the docs (no files are exported here).
 # %%
 # Imports
 # -------
+#
+# Import the resize, array, and plotting tools used in the comparison.
 
 from __future__ import annotations
 
 import os
-from typing import Callable, Tuple
+from typing import Callable
 from urllib.request import urlopen
 
 import numpy as np
@@ -71,6 +74,9 @@ except Exception:
 # %%
 # Configuration
 # -------------
+#
+# Choose the image set, zoom sweep, frame rate, and comparison settings for the
+# animations.
 
 DTYPE = np.float32
 
@@ -138,6 +144,8 @@ MAX_IMAGES = int(os.environ.get("SPLINEOPS_MAX_IMAGES", "0"))
 # %%
 # Small Helpers
 # -------------
+#
+# Define shared image, metric, and formatting utilities used by the animation.
 
 
 def _load_kodak_rgb01(url: str) -> np.ndarray:
@@ -199,6 +207,9 @@ def _match_shape_center(a: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
 # %%
 # Backends (round-trip)
 # ---------------------
+#
+# Give each interpolation backend the same resize-and-reconstruct interface for the
+# animation frames.
 
 
 def rt_splineops_aa(orig01: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
@@ -307,6 +318,9 @@ def get_competitor_rt() -> (
 # %%
 # Animation Builder (Single Image)
 # --------------------------------
+#
+# Assemble synchronized image details and error displays while sweeping the zoom
+# factor.
 
 
 def make_benchmark_animation(
@@ -586,11 +600,17 @@ def make_benchmark_animation(
 # %%
 # Image: kodim05
 # --------------
+#
+# Animate the changing image detail for kodim05 across the same zoom sweep.
+
 ani_kodim05 = make_benchmark_animation("kodim05", KODAK_IMAGES["kodim05"])
 
 # %%
 # Image: kodim07
 # --------------
+#
+# Animate the changing image detail for kodim07 across the same zoom sweep.
+
 ani_kodim07 = make_benchmark_animation("kodim07", KODAK_IMAGES["kodim07"])
 
 # %%
@@ -613,26 +633,41 @@ export_animation_mp4_and_html(
 # %%
 # Image: kodim14
 # --------------
+#
+# Animate the changing image detail for kodim14 across the same zoom sweep.
+
 ani_kodim14 = make_benchmark_animation("kodim14", KODAK_IMAGES["kodim14"])
 
 # %%
 # Image: kodim15
 # --------------
+#
+# Animate the changing image detail for kodim15 across the same zoom sweep.
+
 ani_kodim15 = make_benchmark_animation("kodim15", KODAK_IMAGES["kodim15"])
 
 # %%
 # Image: kodim19
 # --------------
+#
+# Animate the changing image detail for kodim19 across the same zoom sweep.
+
 ani_kodim19 = make_benchmark_animation("kodim19", KODAK_IMAGES["kodim19"])
 
 # %%
 # Image: kodim22
 # --------------
+#
+# Animate the changing image detail for kodim22 across the same zoom sweep.
+
 ani_kodim22 = make_benchmark_animation("kodim22", KODAK_IMAGES["kodim22"])
 
 # %%
 # Image: kodim23
 # --------------
+#
+# Animate the changing image detail for kodim23 across the same zoom sweep.
+
 ani_kodim23 = make_benchmark_animation("kodim23", KODAK_IMAGES["kodim23"])
 
 # %%

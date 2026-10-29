@@ -2,6 +2,9 @@
 Warp a volume and write selected differential features
 =======================================================
 
+Warp a synthetic 3-D volume and compute selected differential features into reusable
+output buffers.
+
 This pipeline applies one 3-D affine transform and then requests only gradient
 and Laplacian outputs.  Exact structured buffers make allocation ownership
 explicit while Affine and Differentials remain independent modules.

@@ -6,9 +6,8 @@
 How Bad Aliasing Can Be
 =======================
 
-We construct an A/B corner mix image where, in each 2×2 tile, the
-top-left pixel comes from image A and the other three come from B.
-We then:
+Use a deliberately mixed image to reveal how unfiltered downsampling can select
+misleading visual content.
 
 1. Look at the A/B mix at full resolution.
 2. Downsample by 0.5 with standard cubic interpolation (no explicit
@@ -23,6 +22,8 @@ This illustrates why anti-aliasing is essential for faithful downsampling.
 # %%
 # Imports
 # -------
+#
+# Import the resize, array, and plotting tools used in the comparison.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -236,12 +237,17 @@ plt.show()
 # %%
 # Image A
 # ~~~~~~~
+#
+# Show the source that contributes one pixel to each 2-by-2 tile in the synthetic
+# mixture.
 
 _ = show_roi_zoom(A, ax_titles=("Image A (with ROI)", None), **roi_kwargs_orig)
 
 # %%
 # Image B
 # ~~~~~~~
+#
+# Show the source that contributes the other three pixels to each 2-by-2 tile.
 
 _ = show_roi_zoom(B, ax_titles=("Image B (with ROI)", None), **roi_kwargs_orig)
 

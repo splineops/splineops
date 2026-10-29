@@ -26,12 +26,18 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
 
-def _real_vector(values, name):
+def _real_vector(values, name, *, dtype=None, copy=False):
+    """Validate one real vector, including representability after conversion."""
     values = np.asarray(values)
     if values.ndim != 1:
         raise ValueError(f"'{name}' must be a one-dimensional array.")
     if not np.issubdtype(values.dtype, np.number) or np.iscomplexobj(values):
         raise TypeError(f"'{name}' must have a real numeric dtype.")
+    if dtype is not None:
+        # Wider floating types can be finite before conversion but overflow the
+        # solver's precision. Report that as an input error, not a NumPy warning.
+        with np.errstate(over="ignore", invalid="ignore"):
+            values = values.astype(dtype, copy=copy)
     if not np.all(np.isfinite(values)):
         raise ValueError(f"'{name}' must contain only finite values.")
     return values
@@ -68,19 +74,16 @@ class DenoisingPlan:
     """
 
     def __init__(self, x: np.ndarray, rho: float = 1.0) -> None:
-        x = _real_vector(x, "x").astype(np.float64)
-        if x.ndim != 1:
-            raise ValueError("'x' must be a one-dimensional array.")
+        # The plan owns this copy so later caller edits cannot stale its factors.
+        x = _real_vector(x, "x", dtype=np.float64, copy=True)
         if x.size < 3:
             raise ValueError("At least three samples are required for TV denoising.")
-        if not np.all(np.isfinite(x)):
-            raise ValueError("'x' must contain only finite values.")
         if not np.all(np.diff(x) > 0):
             raise ValueError("'x' must be strictly increasing.")
         if not np.isfinite(rho) or rho <= 0:
             raise ValueError("'rho' must be finite and positive.")
 
-        self._x = np.array(x, copy=True)
+        self._x = x
         self._x.flags.writeable = False
         self._rho = float(rho)
         self._regularizer = _regularization_matrix(self.x, fmt="csc")
@@ -136,27 +139,25 @@ class DenoisingPlan:
         """Denoise one signal while reusing this plan's factorization."""
 
         y = _real_vector(y, "y")
-        if y.ndim != 1:
-            raise ValueError("'y' must be a one-dimensional array.")
         if y.size != self.x.size:
             raise ValueError("'x' and 'y' must have the same size.")
-        if not np.all(np.isfinite(y)):
-            raise ValueError("'y' must contain only finite values.")
         _validate_solver_parameters(lamb, max_iter, relative_tol, return_diagnostics)
 
-        lamb_max, _, linear_fit = _linear_limit(self.x, y)
         diagnostics = DenoisingDiagnostics(0, True, 0.0, 0.0)
         if lamb == 0:
+            # Identity needs no regression, even for very large finite values.
             result = y.copy()
-        elif lamb >= lamb_max:
-            result = linear_fit
         else:
-            result, diagnostics = self._solve_admm(
-                y,
-                float(lamb),
-                max_iter=int(max_iter),
-                relative_tol=float(relative_tol),
-            )
+            lamb_max, _, linear_fit = _linear_limit(self.x, y)
+            if lamb >= lamb_max:
+                result = linear_fit
+            else:
+                result, diagnostics = self._solve_admm(
+                    y,
+                    float(lamb),
+                    max_iter=int(max_iter),
+                    relative_tol=float(relative_tol),
+                )
         if return_diagnostics:
             return result, diagnostics
         return result
@@ -178,12 +179,8 @@ class DenoisingPlan:
         """
 
         y = _real_vector(y, "y")
-        if y.ndim != 1:
-            raise ValueError("'y' must be a one-dimensional array.")
         if y.size != self.x.size:
             raise ValueError("'x' and 'y' must have the same size.")
-        if not np.all(np.isfinite(y)):
-            raise ValueError("'y' must contain only finite values.")
         try:
             lambda_values = np.asarray(tuple(lambdas), dtype=np.float64)
         except (TypeError, ValueError) as exc:
@@ -196,8 +193,16 @@ class DenoisingPlan:
             float(lambda_values[0]), max_iter, relative_tol, return_diagnostics
         )
 
-        lamb_max, _, linear_fit = _linear_limit(self.x, y)
         signal = np.result_type(y.dtype, np.float64).type(1) * y
+        # An all-zero path needs neither the linear limit nor ADMM warm starts.
+        if not np.any(lambda_values):
+            stacked = np.repeat(signal[np.newaxis, :], lambda_values.size, axis=0)
+            if return_diagnostics:
+                diagnostics = DenoisingDiagnostics(0, True, 0.0, 0.0)
+                return stacked, (diagnostics,) * lambda_values.size
+            return stacked
+
+        lamb_max, _, linear_fit = _linear_limit(self.x, y)
         state = None
         solutions = []
         diagnostics_sequence = []
@@ -364,38 +369,34 @@ def denoise_y(
         diagnostics.
     """
 
-    x = _real_vector(x, "x").astype(np.float64)
+    x = _real_vector(x, "x", dtype=np.float64)
     y = _real_vector(y, "y")
-    if x.ndim != 1 or y.ndim != 1:
-        raise ValueError("'x' and 'y' must be one-dimensional arrays.")
     if x.size != y.size:
         raise ValueError("'x' and 'y' must have the same size.")
     if x.size < 3:
         raise ValueError("At least three samples are required for TV denoising.")
-    if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
-        raise ValueError("'x' and 'y' must contain only finite values.")
     if not np.all(np.diff(x) > 0):
         raise ValueError("'x' must be strictly increasing.")
     _validate_solver_parameters(lamb, max_iter, relative_tol, return_diagnostics)
     if lamb > 0 and (not np.isfinite(rho) or rho <= 0):
         raise ValueError("'rho' must be finite and positive when 'lamb' is positive.")
-    lamb_max, _, linear_fit = _linear_limit(x, y)
     diagnostics = DenoisingDiagnostics(0, True, 0.0, 0.0)
     if lamb == 0:
-        # Zero regularization is the identity, including for exactly linear
-        # input where ``lamb_max`` is also zero up to floating-point noise.
+        # Avoid computing a regression for this exact identity, both to save
+        # work and to prevent unnecessary overflow for large finite samples.
         y_denoised = y.copy()
-    elif lamb >= lamb_max:
-        # If lamb is too high, the problem amounts to linear regression
-        y_denoised = linear_fit
     else:
-        plan = DenoisingPlan(x, rho=rho)
-        y_denoised, diagnostics = plan._solve_admm(
-            y,
-            float(lamb),
-            max_iter=int(max_iter),
-            relative_tol=float(relative_tol),
-        )
+        lamb_max, _, linear_fit = _linear_limit(x, y)
+        if lamb >= lamb_max:
+            y_denoised = linear_fit
+        else:
+            plan = DenoisingPlan(x, rho=rho)
+            y_denoised, diagnostics = plan._solve_admm(
+                y,
+                float(lamb),
+                max_iter=int(max_iter),
+                relative_tol=float(relative_tol),
+            )
     if return_diagnostics:
         return y_denoised, diagnostics
     return y_denoised

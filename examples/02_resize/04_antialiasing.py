@@ -6,8 +6,8 @@
 Antialiasing
 ============
 
-Interpolate 2D images with an **antialiased** down-sampling step and compare
-the result to standard interpolation.
+Compare image detail and reconstruction error after shrinking with and without
+projection antialiasing.
 
 We shrink the image with either:
 
@@ -22,6 +22,8 @@ exclude boundary artifacts.
 # %%
 # Imports
 # -------
+#
+# Import the resize, array, and plotting tools used in the comparison.
 
 import numpy as np
 import time
@@ -31,7 +33,6 @@ from urllib.request import urlopen
 from PIL import Image
 import matplotlib.pyplot as plt
 
-from scipy.ndimage import zoom as _scipy_zoom  # only if you want extra comparisons
 from splineops.resize import resize, resize_degrees
 from splineops.utils.metrics import compute_snr_and_mse_region
 from splineops.utils.plotting import plot_difference_image, show_roi_zoom
@@ -50,6 +51,9 @@ DTYPE = np.float32
 # %%
 # Pipeline Diagram
 # ----------------
+#
+# Compare the two shrink-and-reconstruct pipelines before examining their images and
+# errors.
 
 _ = draw_two_method_comparisons(
     "Standard Interpolation",
@@ -63,6 +67,9 @@ _ = draw_two_method_comparisons(
 # %%
 # Load and Normalize an Image
 # ---------------------------
+#
+# Load a Kodak image, convert it to grayscale, and select a shared region of
+# interest for visual comparisons.
 
 url = "https://r0k.us/graphics/kodak/kodak/kodim14.png"
 with urlopen(url, timeout=10) as resp:
@@ -113,6 +120,9 @@ roi_w_res = max(1, int(round(ROI_SIZE_PX * zoom_c)))
 # %%
 # Standard Interpolation
 # ----------------------
+#
+# Shrink with standard cubic interpolation, enlarge back to the original size, and
+# measure error on a central crop.
 
 t0 = time.perf_counter()
 resized_2d_std = resize(
@@ -142,6 +152,9 @@ snr_2d_std, mse_2d_std = compute_snr_and_mse_region(
 # %%
 # Antialiasing
 # ------------
+#
+# Repeat the roundtrip with antialiasing during shrinking, keeping the enlargement
+# and metric region unchanged.
 
 t0 = time.perf_counter()
 resized_2d_aa = resize(
@@ -220,6 +233,8 @@ plt.show()
 # %%
 # Original with ROI
 # -----------------
+#
+# Locate the selected region of interest in the full-resolution reference image.
 
 _ = show_roi_zoom(
     input_image_normalized, ax_titles=("Original Image", None), **roi_kwargs
@@ -228,10 +243,15 @@ _ = show_roi_zoom(
 # %%
 # Resized Images
 # --------------
+#
+# Compare the smaller images produced by the two downsampling methods.
 
 # %%
 # Antialiasing
 # ~~~~~~~~~~~~
+#
+# Inspect the projection-based antialiasing result and compare the retained image
+# detail.
 
 h_res_aa, w_res_aa = resized_2d_aa.shape
 
@@ -261,6 +281,8 @@ _ = show_roi_zoom(
 # %%
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the cubic-interpolation result without an antialiasing prefilter.
 
 h_res_std, w_res_std = resized_2d_std.shape
 
@@ -288,10 +310,16 @@ _ = show_roi_zoom(
 # %%
 # Recovered Images
 # ----------------
+#
+# Resize both small images back to the original dimensions to compare their
+# reconstruction quality.
 
 # %%
 # Antialiasing Pipeline
 # ~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the recovered image after antialiased shrinking and standard cubic
+# enlargement.
 
 _ = show_roi_zoom(
     recovered_2d_aa,
@@ -305,6 +333,8 @@ _ = show_roi_zoom(
 # %%
 # Standard Interpolation
 # ~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the cubic-interpolation result without an antialiasing prefilter.
 
 _ = show_roi_zoom(
     recovered_2d_std,
@@ -318,6 +348,9 @@ _ = show_roi_zoom(
 # %%
 # Difference Images
 # -----------------
+#
+# Visualize reconstruction errors to reveal details that are harder to distinguish
+# in the recovered images.
 
 # %%
 # Antialiasing

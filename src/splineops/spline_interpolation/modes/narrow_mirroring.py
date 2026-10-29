@@ -20,8 +20,9 @@ class NarrowMirroring(ExtensionMode):
         # Pre-computation
         data_len = length
         len_2 = 2 * data_len - 2
-        indexes_ext = np.zeros_like(indexes)  # TODO(dperdios): in-place update?
-        weights_ext = np.copy(weights)  # TODO(dperdios): in-place update?
+        # Keep the caller's stencil unchanged while reflecting its indexes.
+        indexes_ext = np.zeros_like(indexes)
+        weights_ext = np.copy(weights)
 
         # Sawtooth function (with special case for K = 0)
         if data_len == 1:
@@ -54,9 +55,5 @@ class NarrowMirroring(ExtensionMode):
 
         # Compute coefficients (in-place)
         _data_to_coeffs(data=coeffs, poles=poles, boundary="mirror")
-        # TODO(dperdios): the batched version has an issue for
-        #  a single-sample signal (anti-causal init). There is also
-        #  an issue for the boundary condition with single-sample
-        #  signals for the mirror case.
 
         return coeffs

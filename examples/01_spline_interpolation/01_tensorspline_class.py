@@ -6,12 +6,14 @@
 Class TensorSpline
 ==================
 
-Showcase TensorSpline class basic functionality.
+Build a continuous spline from 2-D samples and evaluate it on a finer grid.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import the array, plotting, and spline tools used in the steps below.
 
 import numpy as np
 import matplotlib.pyplot as plt

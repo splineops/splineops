@@ -6,14 +6,15 @@
 Standard Interpolation
 ======================
 
-Interpolate 2D images with standard interpolation. Compare them to SciPy zoom.
-We compute SNR and MSE on a *face ROI* (not the whole frame) to focus on detail
-and avoid boundary artifacts.
+Compare SplineOps cubic interpolation with SciPy using matched image roundtrips and
+detail regions.
 """
 
 # %%
 # Imports
 # -------
+#
+# Import the resize, array, and plotting tools used in the comparison.
 
 import numpy as np
 import time
@@ -228,6 +229,9 @@ snr_2d_scipy, mse_2d_scipy = compute_snr_and_mse_region(
 # %%
 # Recovered Image (SciPy)
 # ~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Inspect the image after the SciPy resize roundtrip using the same region of
+# interest as the SplineOps result.
 
 _ = show_roi_zoom(
     recovered_2d_scipy,
@@ -238,6 +242,9 @@ _ = show_roi_zoom(
 # %%
 # Difference Images
 # -----------------
+#
+# Visualize reconstruction errors to reveal details that are harder to distinguish
+# in the recovered images.
 
 # %%
 # Standard vs SciPy

@@ -75,7 +75,7 @@ def export_animation_mp4_and_html(
     try:
         if force or not mp4_path.exists():
             ani.save(str(mp4_path), writer=writer, fps=fps, dpi=dpi)
-    except Exception as e:
+    except Exception:
         # Don’t kill doc builds if ffmpeg isn’t usable on some platform.
         # (Optionally write a tiny HTML placeholder.)
         html_path.write_text(
