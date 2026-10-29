@@ -1,8 +1,11 @@
 # splineops/src/splineops/resize/_pycore/engine.py
 from __future__ import annotations
-import operator
-import numpy as np
+
 from typing import Sequence
+
+import numpy as np
+
+from splineops._validation import as_index
 from .params import LSParams
 from .resize_nd import resize_along_axis
 from .utils import calculate_output_size_1d
@@ -14,10 +17,8 @@ def _normalize_axes(axes: Sequence[int] | None, ndim: int) -> tuple[int, ...]:
     normalized: list[int] = []
     seen: set[int] = set()
     for value in axes:
-        if isinstance(value, (bool, np.bool_)):
-            raise TypeError("axes entries must be integers")
         try:
-            axis = operator.index(value)
+            axis = as_index(value)
         except TypeError as exc:
             raise TypeError("axes entries must be integers") from exc
         if axis < 0:

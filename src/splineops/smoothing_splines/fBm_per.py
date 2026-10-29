@@ -29,9 +29,9 @@ def fBmper(epsH: float, H: float, m: int, N: int) -> Tuple[npt.NDArray, npt.NDAr
     Returns
     -------
     t : ndarray
-        Time vector of length ~ `N`.
+        Time vector of length ``m * N``, with spacing ``1 / m``.
     y : ndarray
-        Generated fractional Brownian motion samples of length ~ `m * N`.
+        Generated fractional Brownian motion samples of length ``m * N``.
 
     Notes
     -----
@@ -51,7 +51,7 @@ def fBmper(epsH: float, H: float, m: int, N: int) -> Tuple[npt.NDArray, npt.NDAr
     >>> N = 128
     >>> t, y = fBmper(epsH, H, m, N)
     >>> t.shape, y.shape
-    ((128,), (512,))  # Example: depends on how you interpret the lengths.
+    ((512,), (512,))
 
     """
     # Generate random Fourier coefficients of length m*N
@@ -75,7 +75,7 @@ def fBmper(epsH: float, H: float, m: int, N: int) -> Tuple[npt.NDArray, npt.NDAr
     # Inverse FFT to get time-domain signal
     y = np.real(np.fft.ifft(Y))
 
-    # Create time vector of length N, spaced by 1/m
-    t = np.arange(0, N, 1 / m)
+    # Count samples with integers; a floating arange step can add an endpoint.
+    t = np.arange(m * N, dtype=np.float64) / m
 
     return t, y

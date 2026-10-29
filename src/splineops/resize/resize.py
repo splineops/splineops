@@ -17,12 +17,12 @@ from __future__ import annotations
 
 from typing import Optional, Sequence, Tuple, Union, Dict
 import numbers
-import operator
 import os
 
 import numpy as np
 import numpy.typing as npt
 
+from splineops._validation import as_index
 from splineops.resize._pycore.engine import python_resize as _python_fallback_resize
 from splineops.resize._pycore.utils import (
     calculate_output_size_1d as _calculate_output_size_1d,
@@ -107,10 +107,8 @@ def _validate_degrees(
         ("analy_degree", analy_degree),
         ("synthe_degree", synthe_degree),
     ):
-        if isinstance(value, (bool, np.bool_)):
-            raise TypeError(f"{name} must be an integer")
         try:
-            normalized.append(int(operator.index(value)))
+            normalized.append(int(as_index(value)))
         except TypeError as exc:
             raise TypeError(f"{name} must be an integer") from exc
 
@@ -141,10 +139,8 @@ def _validate_degrees(
 
 
 def _positive_index(value: object, argument: str) -> int:
-    if isinstance(value, (bool, np.bool_)):
-        raise TypeError(f"'{argument}' entries must be integers")
     try:
-        result = operator.index(value)
+        result = as_index(value)
     except TypeError as exc:
         raise TypeError(f"'{argument}' entries must be integers") from exc
     if result <= 0:
@@ -216,10 +212,8 @@ def _normalize_axes(axes: Optional[Sequence[int]], ndim: int) -> tuple[int, ...]
     normalized = []
     seen = set()
     for value in values:
-        if isinstance(value, (bool, np.bool_)):
-            raise TypeError("'axes' entries must be integers")
         try:
-            axis = operator.index(value)
+            axis = as_index(value)
         except TypeError as exc:
             raise TypeError("'axes' entries must be integers") from exc
         if axis < 0:

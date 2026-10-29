@@ -37,9 +37,9 @@ Usage Example
     arr_expanded = expand_2d(arr_reduced, h, is_centered)
 """
 
-import operator
-
 import numpy as np
+
+from splineops._validation import as_index
 
 # -------------------------------------------------------------------------
 # 1) Retrieve Filter Coefficients
@@ -333,7 +333,7 @@ def _validate_spatial_input(array, filter_, spatial_axes):
         axes = (0, 1)
     else:
         try:
-            axes = tuple(operator.index(axis) for axis in spatial_axes)
+            axes = tuple(as_index(axis) for axis in spatial_axes)
         except TypeError as exc:
             raise TypeError(
                 "'spatial_axes' must be a sequence of integer axes."

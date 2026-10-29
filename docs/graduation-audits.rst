@@ -65,6 +65,34 @@ objective is documented with the implemented ``0.5`` squared-error factor;
 existing lambda semantics do not change. Corrected numerical edge cases are
 listed in the changelog.
 
+Follow-up repository review
+--------------------------
+
+A second pass covered the Python modules, native buffer and concurrency
+contracts, fallback dispatch, package contents, examples, and release and
+documentation workflows. It found additional numerical-range gaps despite
+the existing suite passing. ``tests/test_audit_edge_cases.py`` records the
+new regressions:
+
+* Distant TensorSpline queries follow their named boundary mode without
+  overflowing integer stencil conversion. Exact integer arithmetic checks
+  queries whose physical-to-sample conversion exceeds float64's range.
+  Large affine translations also agree across the SciPy and NumPy backends,
+  including reuse of prepared coefficients.
+* Independent decimal arithmetic checks radial smoothing responses when
+  intermediate powers or products overflow or underflow.
+* Upsampled time axes contain exactly one coordinate per output sample,
+  including factors for which a floating-point step adds an extra endpoint.
+* Image SNR remains unchanged when both signals are rescaled. MSE can still
+  underflow to zero or overflow to infinity when its true value is outside
+  float64's range; this no longer corrupts SNR.
+* Integer configuration rejects booleans before conversion, consistently
+  across supported NumPy versions.
+
+The documentation deployment now treats Sphinx warnings as failures. These
+checks complement the independent algorithm references; they do not imply
+that every finite floating-point input or every optional backend is supported.
+
 Limits of the decision
 --------------------------
 

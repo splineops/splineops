@@ -28,6 +28,8 @@ reconstruction contract. Performance results remain workload-specific.
 
 ### Release validation
 
+- Treat documentation warnings as deployment failures, including warnings
+  from executed examples and missing figures.
 - Gate publishing on the complete Python/OS tests, minimum dependencies,
   formatting, typing, documentation, stability soak, and release artifacts
   from the same commit. Manual release validation does not publish.
@@ -43,6 +45,23 @@ reconstruction contract. Performance results remain workload-specific.
 
 ### Fixes
 
+- Fold distant TensorSpline queries before integer stencil conversion, so
+  zero, mirror, and periodic boundaries work beyond the integer index range
+  and retain fractional offsets with float32 coefficients. Handle finite
+  physical queries whose conversion to sample indexes overflows.
+- Apply the same distant-coordinate boundary handling to the affine SciPy
+  fast path, preserving agreement with the NumPy reference for very large
+  translations and reusing the existing coefficient fields.
+- Preserve radial smoothing responses at extreme finite regularization and
+  order values, using logarithmic evaluation only where intermediate powers
+  or products lose range. Zero regularization avoids unnecessary powers.
+- Generate upsampled time axes by counting samples, preventing occasional
+  extra endpoints in fractional smoothing and Brownian-motion examples.
+- Make image SNR independent of signal units, removing the absolute error
+  floor and avoiding intermediate power overflow. Define exact-match and
+  zero-reference limits; reject empty selections and non-finite inputs.
+- Reject boolean values consistently in integer shapes, axes, orders, scale
+  counts, and memory budgets across the numerical APIs.
 - Return zero-regularization denoising directly, avoiding an unnecessary
   regression that could overflow for large finite observations. Cover the
   function, reusable plan, and all-zero parameter paths.

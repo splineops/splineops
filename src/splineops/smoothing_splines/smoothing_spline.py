@@ -1,11 +1,13 @@
 # splineops/src/splineops/smoothing_splines/smoothing_spline.py
 
-import operator
 from typing import Sequence, Tuple
+
 import numpy as np
 import numpy.typing as npt
-from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
 from scipy.fft import irfftn, rfftn
+
+from splineops._validation import as_index
+from splineops.smoothing_splines.fract_spline_auto_corr import fractsplineautocorr
 
 
 def _normalize_spatial_axes(data, spatial_shape, axes):
@@ -18,7 +20,7 @@ def _normalize_spatial_axes(data, spatial_shape, axes):
         normalized = tuple(range(data.ndim))
     else:
         try:
-            normalized = tuple(operator.index(axis) for axis in axes)
+            normalized = tuple(as_index(axis) for axis in axes)
         except TypeError as exc:
             raise TypeError("'axes' must be a sequence of integer axes.") from exc
         if len(normalized) != spatial_ndim:
@@ -70,10 +72,10 @@ def periodize(x: npt.NDArray, m: int) -> npt.NDArray:
     if x.ndim == 0 or x.size == 0:
         raise ValueError("'x' must be a non-empty array.")
     try:
-        repetitions = operator.index(m)
+        repetitions = as_index(m)
     except TypeError as exc:
         raise TypeError("'m' must be a positive integer.") from exc
-    if isinstance(m, (bool, np.bool_)) or repetitions <= 0:
+    if repetitions <= 0:
         raise ValueError("'m' must be a positive integer.")
     return np.tile(x, repetitions)
 
@@ -130,10 +132,10 @@ def smoothing_spline(
     if not np.isfinite(gamma) or gamma <= 0.5:
         raise ValueError("'gamma' must be finite and greater than 0.5.")
     try:
-        m = operator.index(m)
+        m = as_index(m)
     except TypeError as exc:
         raise TypeError("'m' must be a positive integer.") from exc
-    if isinstance(m, (bool, np.bool_)) or m <= 0:
+    if m <= 0:
         raise ValueError("'m' must be a positive integer.")
     y = y.flatten()
     N = len(y)
@@ -167,7 +169,8 @@ def smoothing_spline(
 
     # Generate outputs
     ys = np.real(np.fft.ifft(Hm * Ym))
-    t = np.arange(0, N, 1 / m)
+    # Integer counting avoids an extra endpoint when floating division rounds up.
+    t = np.arange(N * m, dtype=np.float64) / m
     return t, ys
 
 
@@ -258,14 +261,12 @@ class SmoothingSplinePlan:
 
     def __init__(self, shape: tuple[int, ...], lamb: float, gamma: float) -> None:
         try:
-            shape = tuple(operator.index(length) for length in shape)
+            shape = tuple(as_index(length) for length in shape)
         except (TypeError, ValueError) as exc:
             raise TypeError(
                 "'shape' must be a non-empty sequence of integers."
             ) from exc
-        if not shape or any(
-            isinstance(length, (bool, np.bool_)) or length <= 0 for length in shape
-        ):
+        if not shape or any(length <= 0 for length in shape):
             raise ValueError("'shape' must contain only positive integers.")
         if not np.isfinite(lamb) or lamb < 0:
             raise ValueError("'lamb' must be finite and non-negative.")
@@ -288,7 +289,26 @@ class SmoothingSplinePlan:
             angular_frequencies = 2.0 * np.pi * frequencies.reshape(broadcast_shape)
             omega_squared += angular_frequencies**2
 
-        self._frequency_response = 1.0 / (1.0 + self.lamb * omega_squared**self.gamma)
+        if self.lamb == 0:
+            self._frequency_response = np.ones_like(omega_squared)
+        else:
+            # Keep the ordinary arithmetic unchanged. Extreme powers can overflow
+            # before a small lambda rescales them, or underflow before a large
+            # lambda amplifies them; evaluate only those bins in the log domain.
+            with np.errstate(over="ignore", under="ignore"):
+                power = omega_squared**self.gamma
+                strength = self.lamb * power
+                self._frequency_response = 1.0 / (1.0 + strength)
+                unstable = (omega_squared > 0) & (
+                    ~np.isfinite(strength) | (power < np.finfo(np.float64).tiny)
+                )
+                if np.any(unstable):
+                    log_strength = np.log(self.lamb) + self.gamma * np.log(
+                        omega_squared[unstable]
+                    )
+                    self._frequency_response[unstable] = np.exp(
+                        -np.logaddexp(0.0, log_strength)
+                    )
         self._frequency_response.flags.writeable = False
 
     @property
@@ -444,7 +464,7 @@ def smoothing_spline_nd(
         spatial_shape = data.shape
     else:
         try:
-            normalized_axes = tuple(operator.index(axis) for axis in axes)
+            normalized_axes = tuple(as_index(axis) for axis in axes)
         except TypeError as exc:
             raise TypeError("'axes' must be a sequence of integer axes.") from exc
         normalized_axes = tuple(

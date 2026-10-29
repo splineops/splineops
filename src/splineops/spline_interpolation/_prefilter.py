@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import operator
 from collections.abc import Sequence
 
 import numpy as np
 import numpy.typing as npt
+
+from splineops._validation import as_index
 
 from .bases.spline_basis import SplineBasis
 from .modes.extension_mode import ExtensionMode
@@ -55,7 +56,7 @@ def prefilter_interpolation_coefficients(
     if axes is None:
         axes = tuple(range(data.ndim))
     try:
-        axes = tuple(operator.index(axis) for axis in axes)
+        axes = tuple(as_index(axis) for axis in axes)
     except TypeError as exc:
         raise TypeError("'axes' must be a sequence of integer axes.") from exc
     axes = tuple(axis + data.ndim if axis < 0 else axis for axis in axes)
