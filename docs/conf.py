@@ -219,8 +219,9 @@ html_context = {
 html_logo = "_static/logo.svg"
 html_favicon = "_static/favicon.svg"
 
-# Give the visual Examples index the same space as the gallery indexes.
-html_theme_options["secondary_sidebar_items"]["examples"] = []
+# Give landing-page cards the same space as the gallery indexes.
+for landing_page in ("examples", "modules", "evidence", "project"):
+    html_theme_options["secondary_sidebar_items"][landing_page] = []
 
 # Hide secondary sidebar for sphinx-gallery index pages
 html_theme_options["secondary_sidebar_items"][f"{sg_gallery_dir}/index"] = []

@@ -142,6 +142,24 @@ def test_recursive_smoothing_preserves_constants_at_extreme_regularization(lamb)
     )
 
 
+def test_recursive_smoothing_retains_small_tail_of_high_dynamic_range_signal():
+    # At lambda=1e-20 the pole is 1e-20 to float64 precision. Each causal
+    # step attenuates the impulse by that factor; the reverse correction is
+    # smaller than float64 precision at all three positions.
+    actual = recursive_smoothing_spline(np.array([1e30, 0.0, 0.0]), 1e-20)
+    np.testing.assert_allclose(actual, [1e30, 1e10, 1e-10], rtol=1e-15, atol=0)
+
+
+def test_recursive_smoothing_avoids_overflow_in_opposite_signed_samples():
+    # Scaling commutes with this linear operator, including near the largest
+    # finite input. Subtracting neighbors before averaging would overflow.
+    signal = np.array([-1.0, 1.0, -0.5, 0.25])
+    expected = recursive_smoothing_spline(signal, 0.5)
+    with np.errstate(over="raise", invalid="raise"):
+        actual = recursive_smoothing_spline(signal * 1e308, 0.5) / 1e308
+    np.testing.assert_allclose(actual, expected, rtol=1e-15, atol=1e-15)
+
+
 def test_sparse_interpolant_does_not_wrap_unsigned_sample_differences():
     x = np.arange(6, dtype=np.uint8)
     y = np.array([200, 50, 100, 10, 250, 150], dtype=np.uint8)

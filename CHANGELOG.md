@@ -51,6 +51,8 @@ reconstruction contract. Performance results remain workload-specific.
   normalization and convergence/parameter guidance.
 - Reduce fractional autocorrelation frequencies into one period and normalize
   recursive smoothing during each pass to avoid large-lambda overflow.
+  Retain small filter tails and avoid overflowing differences between
+  large opposite-signed samples.
 - Reject empty affine batches, complex transform geometry, and non-NPZ
   coefficient files consistently. Keep cached affine, smoothing, and denoising
   parameters fixed: construct a new plan to change their operator.
@@ -93,10 +95,6 @@ reconstruction contract. Performance results remain workload-specific.
 ## 2.2.0 - 2026-07-17
 
 ### Documentation
-
-- Replace outdated maturity checklists with a concise support matrix and
-  compatibility policy. Rework Evidence as graphical Benchmarks and Project
-  as About, keeping research reports and historical links available.
 
 - Added an installable `splineops-selma3d-demo` napari comparison with a
   checksum-pinned single-patch workflow, grid-aware expert masks, local versus
@@ -143,10 +141,6 @@ Version 2.1 makes the stable resize path easier to evaluate and adopt while
 keeping the broader research modules explicit about their maturity.
 
 ### Documentation
-
-- Replace outdated maturity checklists with a concise support matrix and
-  compatibility policy. Rework Evidence as graphical Benchmarks and Project
-  as About, keeping research reports and historical links available.
 
 - Reworked the README and documentation home page around one clear use case:
   projection-based antialiased resizing of N-D scientific arrays.

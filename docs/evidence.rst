@@ -1,5 +1,5 @@
 Benchmarks
-==========
+==============
 
 Compare accuracy, speed, and memory on reproducible workloads. Start with
 the performance report for practical trade-offs, or choose a study below to
@@ -49,7 +49,7 @@ see how the methods behave on a particular kind of data.
       not meet its predeclared quality-superiority criterion.
 
 Microvessel case study
----------------------
+--------------------------
 
 The :doc:`selma3d-vessels-study` compares named downsampling pipelines on
 18 held-out labelled 3-D patches. It reports a specific quality-and-speed
@@ -57,7 +57,7 @@ result for voxel ranking; it does not establish segmentation superiority.
 Use the :doc:`selma3d-demo` to explore one patch interactively in napari.
 
 Reproduce and interpret the results
-----------------------------------
+---------------------------------------
 
 Each report records its data, geometry, methods, environment, and limitations.
 Timings are machine-dependent. Coordinate and boundary conventions must match

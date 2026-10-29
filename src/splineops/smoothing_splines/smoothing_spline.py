@@ -217,6 +217,9 @@ def recursive_smoothing_spline(signal: npt.NDArray, lamb: float = 1.0) -> npt.ND
     # hypot also avoids overflow in 1 + 4*lambda for large finite lambda.
     root = np.hypot(1.0, 2.0 * np.sqrt(lamb))
     complement = 2.0 / (root + 1.0)
+    # Compute the pole independently: 1-complement loses small lambda, while
+    # subtracting adjacent samples inside the recurrence can overflow.
+    pole = (2.0 * np.sqrt(lamb) / (root + 1.0)) ** 2
 
     K = x.size
 
@@ -224,13 +227,13 @@ def recursive_smoothing_spline(signal: npt.NDArray, lamb: float = 1.0) -> npt.ND
     c = np.zeros(K, dtype=dtype)
     c[0] = x[0]
     for k in range(1, K):
-        c[k] = c[k - 1] + complement * (x[k] - c[k - 1])
+        c[k] = pole * c[k - 1] + complement * x[k]
 
     # Anticausal pass (steady-state init)
     y = np.zeros(K, dtype=dtype)
     y[-1] = c[-1]
     for k in range(K - 2, -1, -1):
-        y[k] = y[k + 1] + complement * (c[k] - y[k + 1])
+        y[k] = pole * y[k + 1] + complement * c[k]
 
     return y
 

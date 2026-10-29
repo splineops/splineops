@@ -1,12 +1,12 @@
 2.3 numerical API review
-========================
+============================
 
 Review date: 2026-10-29. This review promotes the documented NumPy/CPU APIs in
 :doc:`project-status`. It supersedes July's open graduation checklist;
 :doc:`progress` retains that historical snapshot.
 
 What changed in this review
---------------------------
+-------------------------------
 
 The review covered construction and query validation, coefficient filtering,
 reference and accelerated dispatch, shape/dtype/boundary behavior, persistent
@@ -24,7 +24,7 @@ New regressions exposed and corrected these issues:
 * Fractional autocorrelation did not reduce distant frequencies into one
   period before truncating its alias sum.
 * Recursive smoothing could overflow or lose normalization at large finite
-  regularization parameters.
+  regularization parameters, or lose small tails across large sample ranges.
 * Affine validation treated empty batches differently across evaluators,
   could discard imaginary geometry, and did not report a plain NPY file as
   an invalid coefficient archive.
@@ -32,7 +32,7 @@ New regressions exposed and corrected these issues:
   frequency response, or interpolation geometry active.
 
 Independent numerical references
--------------------------------
+------------------------------------
 
 ``tests/test_tensorspline_independent_reference.py`` builds basis functions
 from SciPy B-splines and finite differences of lower-degree splines. It forms
@@ -50,7 +50,7 @@ complement the existing dense smoothing references, projection quadrature,
 affine SciPy comparisons, property tests, archive fixtures, and workflow soaks.
 
 Compatibility evidence
-----------------------
+--------------------------
 
 The affine persistence and differential buffer APIs have passed repeated
 registration and volume-feature workflows since July, including cross-platform
@@ -66,7 +66,7 @@ existing lambda semantics do not change. Corrected numerical edge cases are
 listed in the changelog.
 
 Limits of the decision
----------------------
+--------------------------
 
 CPU API stability is independent of experimental CuPy support. The three
 smoothing formulations remain distinct, differential angular maps remain

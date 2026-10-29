@@ -114,12 +114,13 @@ Affine phase evidence
 ``scripts/profile_affine_phases.py`` times plan construction and instruments
 prefilter and coefficient-evaluation time inside complete plan calls.  This
 avoids treating separately warmed microbenchmarks as an exact decomposition.
-The current standard run found coefficient evaluation dominant in all four
+The July standard run found coefficient evaluation dominant in all four
 rows, accounting for 63%--91% of measured in-call phase time; cached-plan
 construction is reported separately and remains substantial.  The NumPy 3-D
 evaluator therefore contracts one support axis at a time, reducing intermediate
 work where the measured support block is largest; 1-D/2-D and CuPy retain their
-prior paths.  SciPy remains faster for matched one-shot affine execution.
+prior paths. SplineOps 2.3 subsequently added optional SciPy evaluation for
+the matching affine configurations; see :doc:`performance` for current results.
 
 Evidence and graduation
 -----------------------
@@ -139,11 +140,8 @@ The calibrated `standard run 29429054363
 <https://github.com/splineops/splineops/actions/runs/29429054363>`_ then passed on
 all three platforms and published a complete artifact bundle for each runner.
 
-The standard artifacts and both workloads have now been reviewed.  Promotion
-is still not automatic:
-Affine and Differentials remain experimental until their soak period reveals no
-contract changes, and ``TensorSpline`` remains stabilizing until dedicated CuPy
-CI and broader backend evidence exist.
-The per-module open and closed gates are recorded in
-:doc:`graduation-audits`, and the exact backend boundary in
-:doc:`backend-support`.
+The repeated workflows and cross-platform artifacts now contribute to the
+2.3 CPU stability decision in :doc:`graduation-audits`. TensorSpline's stable
+NumPy contract is reviewed independently of its experimental CuPy path.
+The current compatibility commitments are in :doc:`project-status` and the
+exact backend boundary is in :doc:`backend-support`.
