@@ -703,7 +703,11 @@ class TensorSpline:
         # small offsets within a stencil. Ordinary queries keep their arithmetic.
         if type(mode) in (FiniteSupportCoefficients, NarrowMirroring, PeriodicPadding):
             limit = 2 ** (
-                min(np.finfo(rat_indexes.dtype).nmant, np.finfo(self._real_dtype).nmant)
+                min(
+                    np.finfo(rat_indexes.dtype).nmant,
+                    np.finfo(self._real_dtype).nmant,
+                    np.iinfo(np.int_).bits - 1,
+                )
                 - 2
             )
             distant = (rat_indexes < -limit) | (rat_indexes > limit)
