@@ -76,6 +76,12 @@ reconstruction contract. Performance results remain workload-specific.
 
 ### Performance and numerical contracts
 
+- Keep batched wavelet coefficients in contiguous spatial planes while
+  exposing the original axis order. Avoid an intermediate interleaving copy
+  before synthesis, reducing the cost exposed by the macOS roundtrip benchmark.
+  Coefficient arrays may now be non-contiguous; use `np.ascontiguousarray`
+  when required by an external consumer. Values, precision, and input
+  immutability are preserved.
 - Route direct cubic least-squares projection through the existing batched
   native kernel for 3-D axes with at least 128 independent lines. Smaller
   workloads retain the scalar path; projection formulas and precision policy

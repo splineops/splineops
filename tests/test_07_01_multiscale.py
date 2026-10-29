@@ -316,6 +316,37 @@ def test_wavelet_large_plane_dispatch_preserves_noncanonical_axis_order():
 
 
 @pytest.mark.parametrize(
+    "wavelet_class", [HaarWavelets, Spline1Wavelets, Spline3Wavelets, Spline5Wavelets]
+)
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("shape", [(16, 24), (256, 320)])
+def test_batched_wavelet_coefficients_preserve_axes_without_aliasing(
+    wavelet_class, dtype, shape
+):
+    data = np.random.default_rng(41).normal(size=(shape[1], 2, shape[0])).astype(dtype)
+    original = data.copy()
+    wavelet = wavelet_class(scales=2)
+    coefficients = wavelet.analysis(data, spatial_axes=(2, 0))
+    saved_coefficients = coefficients.copy()
+    reconstructed = wavelet.synthesis(coefficients, spatial_axes=(2, 0))
+    assert coefficients.shape == data.shape
+    assert coefficients.dtype == dtype
+    assert not np.shares_memory(coefficients, data)
+    assert not np.shares_memory(reconstructed, coefficients)
+    np.testing.assert_array_equal(data, original)
+    np.testing.assert_array_equal(coefficients, saved_coefficients)
+    for batch in range(data.shape[1]):
+        expected = wavelet.analysis(data[:, batch, :].T)
+        np.testing.assert_array_equal(coefficients[:, batch, :].T, expected)
+        np.testing.assert_array_equal(
+            reconstructed[:, batch, :].T, wavelet.synthesis(expected)
+        )
+    if wavelet_class in (HaarWavelets, Spline3Wavelets):
+        tolerance = 3e-6 if dtype is np.float32 else 2e-10
+        np.testing.assert_allclose(reconstructed, data, rtol=0, atol=tolerance)
+
+
+@pytest.mark.parametrize(
     "wavelet_class,ground_truth",
     [
         (HaarWavelets, ground_truth_recon_haar_8x8),

@@ -124,6 +124,11 @@ These APIs never infer batch or channel dimensions.  ``reduce_2d``,
 explicit ``spatial_axes`` and transform every remaining slice independently.
 Execution adapts to the selected plane working set, while the divisibility and
 reconstruction contracts apply only to selected axes.
+Wavelet coefficients preserve the input's axis order and result dtype, but
+batched coefficient arrays may be non-contiguous. Their storage keeps spatial
+planes together so synthesis can reuse that layout without rearranging a full
+batch. Use ``np.ascontiguousarray(coefficients)`` when an external consumer
+requires C-contiguous storage. Analysis and synthesis never modify their inputs.
 See :doc:`../performance` for the reproducible row/column-oracle comparison and
 :doc:`../consolidation-recipes` for a batched example.
 

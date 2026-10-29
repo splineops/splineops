@@ -120,10 +120,9 @@ class AbstractWavelets:
         return axes, spatial_shape, dtype, nonspatial_axes, permutation
 
     @staticmethod
-    def _restore_spatial_output(canonical, permutation):
-        return np.ascontiguousarray(
-            np.transpose(canonical, tuple(np.argsort(permutation)))
-        )
+    def _restore_spatial_output(canonical, permutation, *, contiguous=True):
+        restored = np.transpose(canonical, tuple(np.argsort(permutation)))
+        return np.ascontiguousarray(restored) if contiguous else restored
 
     @staticmethod
     def _spatial_chunks(canonical, spatial_shape):
@@ -165,15 +164,29 @@ class AbstractWavelets:
             ny = min(ny_full, ny * 2)
 
     def _dispatch_planes(
-        self, inp, axes, spatial_shape, dtype, nonspatial_axes, transform
+        self,
+        inp,
+        axes,
+        spatial_shape,
+        dtype,
+        nonspatial_axes,
+        transform,
+        *,
+        canonical_output=False,
     ):
         """Transform large independent planes without full-array transposes."""
 
-        result = np.empty(inp.shape, dtype=dtype)
+        batch_shape = tuple(inp.shape[axis] for axis in nonspatial_axes)
+        if canonical_output:
+            storage = np.empty(batch_shape + spatial_shape, dtype=dtype)
+            result = self._restore_spatial_output(
+                storage, nonspatial_axes + axes, contiguous=False
+            )
+        else:
+            result = np.empty(inp.shape, dtype=dtype)
         natural_spatial_axes = tuple(axis for axis in range(inp.ndim) if axis in axes)
         to_selected = tuple(natural_spatial_axes.index(axis) for axis in axes)
         from_selected = tuple(np.argsort(to_selected))
-        batch_shape = tuple(inp.shape[axis] for axis in nonspatial_axes)
         for batch_index in np.ndindex(batch_shape):
             selector = [slice(None)] * inp.ndim
             for axis, index in zip(nonspatial_axes, batch_index):
@@ -182,11 +195,16 @@ class AbstractWavelets:
             plane = inp[selector]
             if to_selected != (0, 1):
                 plane = np.transpose(plane, to_selected)
-            transformed = np.array(plane, dtype=dtype, copy=True, order="C")
+            if canonical_output:
+                transformed = storage[batch_index]
+                transformed[...] = plane
+            else:
+                transformed = np.array(plane, dtype=dtype, copy=True, order="C")
             transform(transformed, spatial_shape)
-            if to_selected != (0, 1):
-                transformed = np.transpose(transformed, from_selected)
-            result[selector] = transformed
+            if not canonical_output:
+                if to_selected != (0, 1):
+                    transformed = np.transpose(transformed, from_selected)
+                result[selector] = transformed
         return result
 
     def analysis1(self, inp: np.ndarray) -> np.ndarray:
@@ -237,7 +255,9 @@ class AbstractWavelets:
         Returns
         -------
         np.ndarray
-            Full wavelet decomposition (in-place layout).
+            Full wavelet decomposition in the original axis order. Batched
+            coefficients may be non-contiguous; storage keeps spatial planes
+            together to avoid rearranging them before synthesis.
         """
         axes, spatial_shape, dtype, nonspatial_axes, permutation = (
             self._spatial_input_contract(inp, spatial_axes)
@@ -250,13 +270,16 @@ class AbstractWavelets:
                 dtype,
                 nonspatial_axes,
                 self._analysis_chunk,
+                canonical_output=True,
             )
         out = np.array(
             np.transpose(inp, permutation), dtype=dtype, copy=True, order="C"
         )
         for chunk in self._spatial_chunks(out, spatial_shape):
             self._analysis_chunk(chunk, spatial_shape)
-        return self._restore_spatial_output(out, permutation)
+        return self._restore_spatial_output(
+            out, permutation, contiguous=not nonspatial_axes
+        )
 
     def synthesis(self, inp: np.ndarray, *, spatial_axes=None) -> np.ndarray:
         """
