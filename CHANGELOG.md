@@ -11,6 +11,11 @@ reconstruction contract. Performance results remain workload-specific.
 
 ### Documentation
 
+- Expand the Examples sidebar into all eight categories and 27 examples,
+  highlighting the selected page. Correct the gallery heading hierarchy so
+  its nested navigation remains available on landing and individual pages.
+- Add distinct illustrated previews and descriptive alternative text to all
+  seven Modules cards, using figures from the executable examples.
 - Add concise descriptions to every example section, all eight category
   introductions, and the 27 visible gallery cards. Reuse each example's
   introduction as its caption so the descriptions stay in sync.

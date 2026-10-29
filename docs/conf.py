@@ -259,6 +259,14 @@ def make_sphinx_gallery_conf_picklable(app, config):
 def setup(app):
     app.connect("config-inited", make_sphinx_gallery_conf_picklable)
 
+    def _expand_example_navigation(app, pagename, templatename, context, doctree):
+        # Show the gallery, its categories, and every example on all gallery
+        # pages. The theme marks the current page and keeps its ancestors open.
+        if pagename == "examples" or pagename.startswith(f"{sg_gallery_dir}/"):
+            context["theme_show_nav_level"] = 3
+
+    app.connect("html-page-context", _expand_example_navigation)
+
     # Optional clean: only when building HTML, and only if the env var is set.
     def _maybe_clean_generated_anims(app):
         try:
