@@ -1,6 +1,11 @@
 Progress so far
 ===============
 
+.. note::
+
+   Historical July 2026 record. For the 2.3 support contract, see
+   :doc:`project-status`; for the current review, see :doc:`graduation-audits`.
+
 Snapshot: 2026-07-16, commit ``df94733`` on ``feature/publication``.
 
 SplineOps completed seven repository-wide improvement passes before the 2.1

@@ -78,7 +78,7 @@ class OMOMS4SymBasis(SplineBasis):
 
         # Support, degree and poles
         support = 6
-        degree = support - 1
+        degree = 4
         poles = (
             -0.41054918579562752416839060105906234069704122255321,
             -0.031684909102441435136285669435572248017432995194835,

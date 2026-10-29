@@ -71,11 +71,6 @@ class FiniteSupportCoefficients(ExtensionMode):
 
         # Compute coefficients (banded solver to be generic)
         coeffs_rs = _compute_ck_zero_matrix_banded_v1(bk=bk, fk=coeffs_rs.T)
-        # TODO(dperdios): the v2 only has an issue for
-        #  a single-sample signal.
-        #  Note: v2 is probably slightly faster as it does not need
-        #  to create the sub-matrices.
-        # coeffs = _compute_ck_zero_matrix_banded_v2(bk=bk, fk=data)
         #   Transpose back
         coeffs_rs = coeffs_rs.T
 

@@ -4,7 +4,7 @@ User guide
 Start with resize
 -----------------
 
-The stable product surface is regular-grid N-D resizing with explicit
+Regular-grid N-D resizing provides explicit
 coordinates and projection antialiasing.
 
 .. grid:: 2
@@ -25,7 +25,7 @@ coordinates and projection antialiasing.
 Continuous models
 -----------------
 
-``TensorSpline`` is a separate, stabilizing abstraction for evaluating a
+``TensorSpline`` is a stable NumPy/CPU abstraction for evaluating a
 continuous tensor-product spline at arbitrary coordinates.
 
 .. grid:: 1
@@ -37,11 +37,11 @@ continuous tensor-product spline at arbitrary coordinates.
       Construct and query continuous spline models with multiple bases and
       extension modes.
 
-Research modules
-----------------
+More spline tools
+-----------------
 
-The following modules are experimental.  Their APIs and validation contracts
-may still change.
+These stable CPU modules keep their own numerical operators and support
+contracts. See :doc:`../project-status` for the complete support matrix.
 
 .. grid:: 3
    :gutter: 2

@@ -1,6 +1,11 @@
 Development roadmap
 ===================
 
+.. note::
+
+   Historical July 2026 record. For the 2.3 support contract, see
+   :doc:`project-status`; for the current review, see :doc:`graduation-audits`.
+
 Execution status (2026-07-16)
 -----------------------------
 

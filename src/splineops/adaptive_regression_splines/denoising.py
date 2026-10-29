@@ -26,6 +26,17 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
 
+def _real_vector(values, name):
+    values = np.asarray(values)
+    if values.ndim != 1:
+        raise ValueError(f"'{name}' must be a one-dimensional array.")
+    if not np.issubdtype(values.dtype, np.number) or np.iscomplexobj(values):
+        raise TypeError(f"'{name}' must have a real numeric dtype.")
+    if not np.all(np.isfinite(values)):
+        raise ValueError(f"'{name}' must contain only finite values.")
+    return values
+
+
 @dataclass(frozen=True)
 class DenoisingDiagnostics:
     """Convergence information for :func:`denoise_y`.
@@ -57,7 +68,7 @@ class DenoisingPlan:
     """
 
     def __init__(self, x: np.ndarray, rho: float = 1.0) -> None:
-        x = np.asarray(x)
+        x = _real_vector(x, "x").astype(np.float64)
         if x.ndim != 1:
             raise ValueError("'x' must be a one-dimensional array.")
         if x.size < 3:
@@ -69,14 +80,26 @@ class DenoisingPlan:
         if not np.isfinite(rho) or rho <= 0:
             raise ValueError("'rho' must be finite and positive.")
 
-        self.x = np.array(x, copy=True)
-        self.x.flags.writeable = False
-        self.rho = float(rho)
+        self._x = np.array(x, copy=True)
+        self._x.flags.writeable = False
+        self._rho = float(rho)
         self._regularizer = _regularization_matrix(self.x, fmt="csc")
         self._regularizer_transpose = self._regularizer.transpose().tocsr()
         normal_matrix = self._regularizer_transpose @ self._regularizer
         system = sp.eye(self.x.size, format="csc") + self.rho * normal_matrix.tocsc()
         self._solve_system = spla.factorized(system)
+
+    @property
+    def x(self) -> np.ndarray:
+        """Read-only sample coordinates used by the fixed factorization."""
+        view = self._x.view()
+        view.flags.writeable = False
+        return view
+
+    @property
+    def rho(self) -> float:
+        """Fixed ADMM penalty; construct another plan to change it."""
+        return self._rho
 
     @property
     def retained_array_bytes(self) -> int:
@@ -112,7 +135,7 @@ class DenoisingPlan:
     ) -> np.ndarray | tuple[np.ndarray, DenoisingDiagnostics]:
         """Denoise one signal while reusing this plan's factorization."""
 
-        y = np.asarray(y)
+        y = _real_vector(y, "y")
         if y.ndim != 1:
             raise ValueError("'y' must be a one-dimensional array.")
         if y.size != self.x.size:
@@ -121,12 +144,12 @@ class DenoisingPlan:
             raise ValueError("'y' must contain only finite values.")
         _validate_solver_parameters(lamb, max_iter, relative_tol, return_diagnostics)
 
-        lamb_max, polynomial = _lambda_max(self.x, y)
+        lamb_max, _, linear_fit = _linear_limit(self.x, y)
         diagnostics = DenoisingDiagnostics(0, True, 0.0, 0.0)
         if lamb == 0:
             result = y.copy()
         elif lamb >= lamb_max:
-            result = polynomial[0] * np.ones_like(self.x) + polynomial[1] * self.x
+            result = linear_fit
         else:
             result, diagnostics = self._solve_admm(
                 y,
@@ -154,7 +177,7 @@ class DenoisingPlan:
         hidden mutable warm-start state and independent calls are repeatable.
         """
 
-        y = np.asarray(y)
+        y = _real_vector(y, "y")
         if y.ndim != 1:
             raise ValueError("'y' must be a one-dimensional array.")
         if y.size != self.x.size:
@@ -173,7 +196,7 @@ class DenoisingPlan:
             float(lambda_values[0]), max_iter, relative_tol, return_diagnostics
         )
 
-        lamb_max, polynomial = _lambda_max(self.x, y)
+        lamb_max, _, linear_fit = _linear_limit(self.x, y)
         signal = np.result_type(y.dtype, np.float64).type(1) * y
         state = None
         solutions = []
@@ -184,7 +207,7 @@ class DenoisingPlan:
                 result = signal.copy()
                 state = self._state_from_solution(result)
             elif lamb >= lamb_max:
-                result = polynomial[0] + polynomial[1] * self.x
+                result = linear_fit.copy()
                 state = self._state_from_solution(result)
             else:
                 result, diagnostics, state = self._solve_admm_stateful(
@@ -312,7 +335,7 @@ def denoise_y(
 
     The optimization problem solved is:
 
-        minimize  || y - y_lambda ||_2^2 + λ || Dy ||_1
+        minimize  0.5 * || y - y_lambda ||_2^2 + λ || D y_lambda ||_1
 
     where `D` is a discrete difference operator, enforcing piecewise smoothness.
 
@@ -341,8 +364,8 @@ def denoise_y(
         diagnostics.
     """
 
-    x = np.asarray(x)
-    y = np.asarray(y)
+    x = _real_vector(x, "x").astype(np.float64)
+    y = _real_vector(y, "y")
     if x.ndim != 1 or y.ndim != 1:
         raise ValueError("'x' and 'y' must be one-dimensional arrays.")
     if x.size != y.size:
@@ -356,7 +379,7 @@ def denoise_y(
     _validate_solver_parameters(lamb, max_iter, relative_tol, return_diagnostics)
     if lamb > 0 and (not np.isfinite(rho) or rho <= 0):
         raise ValueError("'rho' must be finite and positive when 'lamb' is positive.")
-    lamb_max, polynomial = _lambda_max(x, y)
+    lamb_max, _, linear_fit = _linear_limit(x, y)
     diagnostics = DenoisingDiagnostics(0, True, 0.0, 0.0)
     if lamb == 0:
         # Zero regularization is the identity, including for exactly linear
@@ -364,7 +387,7 @@ def denoise_y(
         y_denoised = y.copy()
     elif lamb >= lamb_max:
         # If lamb is too high, the problem amounts to linear regression
-        y_denoised = polynomial[0] * np.ones_like(x) + polynomial[1] * x
+        y_denoised = linear_fit
     else:
         plan = DenoisingPlan(x, rho=rho)
         y_denoised, diagnostics = plan._solve_admm(
@@ -400,19 +423,32 @@ def _lambda_max(x: np.ndarray, y: np.ndarray) -> Tuple[float, np.ndarray]:
         Coefficients (b, a) of the optimal linear regression.
     """
 
+    lamb_max, polynomial, _ = _linear_limit(x, y)
+    return lamb_max, polynomial
+
+
+def _linear_limit(x, y):
+    """Compute the linear limit without normal-equation cancellation.
+
+    Translation of the abscissae leaves slope differences and the objective
+    unchanged. Center before both the fit and the cumulative dual expression;
+    never reconstruct fitted values from a large global intercept.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
     if x.size != y.size:
         raise ValueError("'x' and 'y' must have the same size.")
-    m = len(x)
-
-    # Compute parameters of polynomial (solution of a 2x2 system)
-    det = m * np.sum(x**2) - np.sum(x) ** 2
-    polynomial = (1 / det) * np.array(
-        [[np.sum(x**2), -np.sum(x)], [-np.sum(x), m]]
-    ).dot(np.array([np.sum(y), np.dot(x, y)]))
-
-    h = y - (polynomial[0] * np.ones_like(x) + polynomial[1] * x)
-    lamb_max = max(np.abs(x[1:-1] * np.cumsum(h)[:-2] - np.cumsum(h * x)[:-2]))
-    return lamb_max, polynomial
+    shifted = x - x[0]
+    center = np.mean(shifted)
+    centered = shifted - center
+    mean_y = np.mean(y)
+    slope = np.dot(centered, y - mean_y) / np.dot(centered, centered)
+    fitted = mean_y + slope * centered
+    polynomial = np.array([mean_y - slope * (x[0] + center), slope])
+    residual = y - fitted
+    dual = centered[1:-1] * np.cumsum(residual)[:-2]
+    dual -= np.cumsum(residual * centered)[:-2]
+    return float(np.max(np.abs(dual))), polynomial, fitted
 
 
 def _regularization_matrix(x: np.ndarray, fmt: str = "csc") -> sp.sparray:

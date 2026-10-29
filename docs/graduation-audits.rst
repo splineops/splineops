@@ -1,118 +1,75 @@
-Affine and Differentials graduation audits
-===========================================
+2.3 numerical API review
+========================
 
-These audits record evidence as of 2026-07-16.  They are deliberately stricter
-than an implementation checklist: a module can be capable and well tested
-without yet carrying a stable compatibility promise.  Neither module is
-promoted by this review.
+Review date: 2026-10-29. This review promotes the documented NumPy/CPU APIs in
+:doc:`project-status`. It supersedes July's open graduation checklist;
+:doc:`progress` retains that historical snapshot.
 
-Affine audit
-------------
+What changed in this review
+--------------------------
 
-.. list-table:: ``AffinePlan`` graduation gates
-   :header-rows: 1
-   :widths: 24 14 42 20
+The review covered construction and query validation, coefficient filtering,
+reference and accelerated dispatch, shape/dtype/boundary behavior, persistent
+plans, buffers, reconstruction, convergence, and the existing release gates.
 
-   * - Gate
-     - State
-     - Evidence
-     - Remaining work
-   * - Geometry and numerical contract
-     - Pass
-     - 2-D/3-D pull-back matrices, output geometry, degrees 0--7, mirror/zero
-       modes, analytical cases, and SciPy parity for matched degrees 0--5.
-     - Keep higher-degree claims SplineOps-specific.
-   * - Axes, dtype, mutation, and buffers
-     - Pass
-     - Explicit batch/channel axes, float32/float64 execution, source
-       preservation, exact and strided output buffers, and randomized scalar
-       dispatch parity.
-     - None for the documented surface.
-   * - Bounded resources
-     - Pass
-     - Cached plans enforce ``max_retained_bytes``; one-shot tiled execution
-       and retained-byte inspection are tested and benchmarked.
-     - Continue platform monitoring.
-   * - Coefficient reuse and persistence
-     - Pass
-     - Immutable compatibility fields, atomic schema-2 archives, permanent
-       schema-1/schema-2 byte fixtures, checked migration, corruption rejection,
-       and endian/metadata validation.
-     - Preserve every historical fixture when a future schema is added.
-   * - Concurrency and restart behavior
-     - Evidence collecting
-     - Thread reuse and spawned-process loads pass unit tests and the repeated
-       public-API soak; the cross-platform soak workflow publishes JSON.
-     - Accumulate real workflow runs without contract changes.
-   * - Performance claims
-     - Pass, narrowly scoped
-     - Complete-workflow gains exist for coefficient sharing, but matched
-       one-shot SciPy affine execution remains faster.  Profile evidence, not
-       a universal speed claim, governs implementation changes.
-     - Re-profile before any further optimization.
-   * - Compatibility duration and migration
-     - Open
-     - The public contract and failure modes are documented.
-     - Complete an API-soak period and prepare migration guidance if names or
-       buffer rules change.
+New regressions exposed and corrected these issues:
 
-Decision: ``AffinePlan`` is technically strong but remains **experimental**.
-The open gate is compatibility evidence over time, not a missing attempt to
-win every one-shot timing comparison.
+* TensorSpline's absolute grid tolerance could accept nonuniform construction
+  coordinates expressed in very small physical units.
+* Symmetric degree-4 O-MOMS reported the wrong polynomial degree.
+* Adaptive regression's normal equations lost accuracy for large coordinate
+  offsets; integer sample arithmetic could overflow before conversion.
+* Sparse interpolation could wrap unsigned sample differences, and its
+  evaluator could overflow integer products.
+* Fractional autocorrelation did not reduce distant frequencies into one
+  period before truncating its alias sum.
+* Recursive smoothing could overflow or lose normalization at large finite
+  regularization parameters.
+* Affine validation treated empty batches differently across evaluators,
+  could discard imaginary geometry, and did not report a plain NPY file as
+  an invalid coefficient archive.
+* Changing cached plan settings could leave the original factorization,
+  frequency response, or interpolation geometry active.
 
-Differentials audit
--------------------
+Independent numerical references
+-------------------------------
 
-.. list-table:: ``DifferentialPlan`` graduation gates
-   :header-rows: 1
-   :widths: 24 14 42 20
+``tests/test_tensorspline_independent_reference.py`` builds basis functions
+from SciPy B-splines and finite differences of lower-degree splines. It forms
+dense cardinal systems with explicit boundary extension, independently of
+SplineOps' support indexing and recursive/FFT/banded coefficient filters.
+It covers B-spline degrees 0--9, O-MOMS degrees 0--5, symmetric discontinuity
+conventions, all three boundaries, lengths 1/2/9, and mixed 3-D complex models.
+The derivative construction follows Blu, Thevenaz and Unser's
+`MOMS formulation <https://bigwww.epfl.ch/publications/blu0101.pdf>`_.
 
-   * - Gate
-     - State
-     - Evidence
-     - Remaining work
-   * - Derivative convention
-     - Pass for current scope
-     - Increasing-coordinate gradients, packed upper-triangular Hessians,
-       Laplacians, physical spacing, analytical polynomial/trigonometric
-       invariants, and whole-sample mirror boundary fixtures.
-     - Do not imply boundaries other than the documented cubic mirror model.
-   * - Axes, dtype, mutation, and buffers
-     - Pass
-     - 2-D/3-D explicit spatial axes, integer promotion, float32/float64
-       preservation, selective families, prevalidated exact/strided structured
-       buffers, non-aliasing, and randomized scalar dispatch parity.
-     - None for the planned API's documented surface.
-   * - Resource behavior
-     - Pass
-     - One lazy workspace shares coefficient and derivative intermediates;
-       Laplacian-only calls skip mixed Hessians and the plan retains no arrays.
-     - Continue batch-size monitoring.
-   * - Concurrency and repeated buffers
-     - Evidence collecting
-     - The repeated volume-feature soak preserves source data and destination
-       identities with exact scalar parity.
-     - Accumulate cross-platform soak artifacts without contract changes.
-   * - Legacy relationship
-     - Open
-     - ``DifferentialPlan`` provides the general planned numerical API while
-       ``Differentials`` preserves scalar convenience and 2-D angular maps.
-     - Publish migration guidance before changing or deprecating either name.
-   * - Compatibility duration
-     - Open
-     - Errors and output selection are explicit and covered.
-     - Complete the API-soak period; keep angular behavior outside a general
-       N-D claim unless it receives its own contract.
+``tests/test_stability_numerics.py`` adds an independent box-constrained dual
+optimizer for denoising, clamped cubic piecewise-polynomial derivatives for
+Differentials, and a direct block-transform and energy check for Haar. These
+complement the existing dense smoothing references, projection quadrature,
+affine SciPy comparisons, property tests, archive fixtures, and workflow soaks.
 
-Decision: ``DifferentialPlan`` also remains **experimental**.  It is ready for
-serious evaluation, but stabilizing it today would turn a short, internally
-reviewed history into a compatibility promise prematurely.
+Compatibility evidence
+----------------------
 
-Next review trigger
--------------------
+The affine persistence and differential buffer APIs have passed repeated
+registration and volume-feature workflows since July, including cross-platform
+standard soaks and benchmark runs. The 2.3 release preparation added minimum
+dependency checks and installed-wheel numerical checks. The current workflows
+rerun this evidence for the proposed release revision; a historical green run
+does not replace checks on the final commit.
 
-Review these tables after a meaningful period of unchanged downstream use and
-cross-platform soak artifacts—not merely after another green unit-test run.
-Promotion can then happen module by module.  ``TensorSpline``, affine,
-differentials, resize, and the research modules remain independent APIs
-throughout that process.
+The review keeps existing imports and archive schemas. Plan settings now reject
+reassignment: construct a new plan to change a fixed operator. The regression
+objective is documented with the implemented ``0.5`` squared-error factor;
+existing lambda semantics do not change. Corrected numerical edge cases are
+listed in the changelog.
+
+Limits of the decision
+---------------------
+
+CPU API stability is independent of experimental CuPy support. The three
+smoothing formulations remain distinct, differential angular maps remain
+2-D, and order-5 wavelets keep approximate source taps. Stability does not add
+new boundaries, unsupported shapes, GPU guarantees, or universal speed claims.
+Future extensions need their own contract and independent numerical checks.

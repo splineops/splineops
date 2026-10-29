@@ -176,7 +176,10 @@ class TensorSpline:
             real_dtype = c.real.dtype
             eps = np.finfo(real_dtype).eps
             step = diffs[0]
-            atol = 32 * eps * max(1.0, float(abs(step)))
+            # Tolerance follows the coordinate units and their representable
+            # precision. A unit-sized absolute floor accepts nonuniform grids
+            # expressed in micrometres or smaller units, especially in float32.
+            atol = 8 * eps * max(float(np.max(np.abs(c))), float(abs(step)))
             if not bool(np.allclose(diffs, step, rtol=32 * eps, atol=atol)):
                 raise ValueError(
                     "TensorSpline requires a uniform construction grid; "
@@ -493,6 +496,8 @@ class TensorSpline:
         grid: bool,
     ) -> Tuple[npt.NDArray, ...]:
         """Validate and normalize coordinates for evaluation or query plans."""
+        if not isinstance(grid, (bool, np.bool_)):
+            raise TypeError("'grid' must be a boolean.")
         # Grid queries may have shared leading batch
         # dimensions; their last dimension contains the coordinates for one
         # spline axis. Point queries use same-shape arrays, one per spline axis.
@@ -540,7 +545,7 @@ class TensorSpline:
     ):
         """Precompute support geometry for repeated fixed-coordinate queries.
 
-        Query plans are experimental geometry objects compatible with any
+        Query plans are reusable geometry objects compatible with any
         spline created through :meth:`with_data` or :meth:`with_coefficients`.
         They trade explicit, capped retained memory for faster repeated
         evaluation.  Ordinary calls remain the right choice for coordinates

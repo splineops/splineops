@@ -53,7 +53,6 @@ class NarrowMirroring(ExtensionMode):
         poles = basis.poles
 
         # Compute coefficients (in-place)
-        # _compute_coeffs_narrow_mirror_wg(data=coeffs, poles=poles)
         _data_to_coeffs(data=coeffs, poles=poles, boundary="mirror")
         # TODO(dperdios): the batched version has an issue for
         #  a single-sample signal (anti-causal init). There is also

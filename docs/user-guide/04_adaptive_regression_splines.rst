@@ -24,7 +24,7 @@ Key Features
 These properties are valuable in machine learning (where sparsity improves
 generalisation) and in signal processing (where interpretability matters).
 In 1D, the method is closely related to rectified linear unit (ReLU) neural networks, which also
-create piecewise-linar functions, but here we obtain the sparsest possible representation
+create piecewise-linear functions, but here we obtain the sparsest possible representation
 directly.
 
 Mathematical Background
@@ -38,7 +38,7 @@ Problem Formulation
 
    f^\star = \operatorname*{arg\,min}_{f}\;
    \Biggl(
-     \sum_{m=1}^{M} (f(x_m)-y_m)^2
+     \frac{1}{2}\sum_{m=1}^{M} (f(x_m)-y_m)^2
      \;+\; \lambda\,\|\mathrm{D}^2 f\|_{\mathcal{M}}
    \Biggr).
 
@@ -74,9 +74,9 @@ Uniqueness and Sparsity
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 The g-BLASSO may admit multiple solutions.  The method in [1]_ characterizes a
-sparsest solution; this implementation follows that construction and is kept
-experimental while its numerical behavior is validated beyond the current
-deterministic synthetic cases.
+sparsest solution. The stable CPU implementation is checked against sparse
+hinge models and independent primal and dual convex optimizers. The finite
+ADMM iteration budget still needs a convergence check for each fitted signal.
 
 Algorithm
 ---------
@@ -84,10 +84,11 @@ Algorithm
 The solver uses two stages\*:
 
 1. Data fitting: solve a discrete :math:`L^1`-regularised problem to obtain
-   :math:`y_\lambda` (each ADMM iteration costs :math:`\mathcal{O}(M)` and the
-   residual decreases like :math:`\mathcal{O}(1/n)`).
-2. Sparsification: in exactly :math:`\mathcal{O}(M)` time, extract the
-   spline with the fewest knots.
+   :math:`y_\lambda`. A fixed banded system is factorized once; each ADMM
+   iteration uses sparse matrix products and a solve.
+2. Sparsification: combine compatible slope changes into a sparse
+   piecewise-linear representation. ``sparsity_tol`` controls numerical
+   pruning; nonzero tolerance can change the reconstructed samples slightly.
 
 \*Stage 2 is linear-time; stage 1 is linear per iteration.
 
@@ -96,12 +97,11 @@ Advantages and Applications
 
 * Compact representation: redundant numerical knots are pruned while the
   reconstructed piecewise-linear function is checked at the samples.
-* Exact interpolation: with :math:`\lambda=0`, the method finds the least
-  angular spline through every point.
-* Segmented regression: ideal for interpretable fits in finance,
-  epidemiology, etc.
-* ReLU connection: in 1-D this outperforms naïve ReLU networks in terms of
-  parameter count.
+* Interpolation: :math:`\lambda=0` preserves the observations before optional
+  sparsification; use zero pruning tolerance when numerical knots must stay.
+* Segmented regression: slope changes give an interpretable fit.
+* ReLU connection: the hinge representation is a one-dimensional ReLU model
+  with explicitly fitted knot locations and amplitudes.
 
 Regularisation Parameter
 ------------------------
@@ -170,6 +170,24 @@ The record makes an exhausted iteration budget visible instead of implying
 convergence.  Zero regularization and the linear-regression limit are solved
 without ADMM and report zero iterations.  ``rho`` affects convergence speed;
 for difficult cases it should be tuned together with :math:`\lambda`.
+
+Treat ``diagnostics.converged=False`` as an unfinished optimization. Increase
+``max_iter`` or adjust ``rho`` and solve again before accepting the fit.
+Changing ``rho`` changes convergence, not the target objective; construct a
+new plan when changing it. A practical check is that two converged solves
+with different positive ``rho`` values agree within the requested tolerance.
+
+Coordinate units matter for regularization. Translating ``x`` does not change
+the fit. Scaling ``x`` by a positive factor ``s`` requires scaling ``lambda``
+by ``s`` to preserve the same fit; scaling ``rho`` by ``s**2`` also preserves
+the ADMM linear system. Scaling observations by ``a`` requires scaling
+``lambda`` by ``abs(a)``. Center and scale very large or tightly spaced
+coordinates before fitting, and choose lambda using residuals or held-out
+observations rather than copying an example's value.
+
+Inputs must be finite and real. Solver and sparse-interpolant calculations
+use float64, including for integer observations. The zero-regularization
+``denoise_y``/``solve`` shortcut preserves the input dtype and returns a copy.
 
 The figure below, taken from
 :ref:`sphx_glr_auto_examples_04_adaptive_regression_splines_01_adaptive_regression_splines_module.py`,

@@ -4,11 +4,16 @@ All notable changes to SplineOps are documented here.
 
 ## 2.3.0 - 2026-10-29
 
-This release retains the existing module maturity labels. Affine
-remains experimental; resize remains stable. Performance measurements are
-workload-specific, with numerical reference checks covering both fast paths.
+This release stabilizes the documented NumPy/CPU APIs across all seven
+numerical modules, including TensorSpline and its reusable geometry plans.
+CuPy remains experimental, and order-5 wavelets retain their approximate
+reconstruction contract. Performance results remain workload-specific.
 
 ### Documentation
+
+- Replace outdated maturity checklists with a concise support matrix and
+  compatibility policy. Rework Evidence as graphical Benchmarks and Project
+  as About, keeping research reports and historical links available.
 
 - Add real example previews to every module card on the Examples page, with
   accessible image descriptions and a responsive layout. Illustrate the
@@ -34,6 +39,23 @@ workload-specific, with numerical reference checks covering both fast paths.
   and performance thresholds are unchanged.
 
 ### Fixes
+
+- Make TensorSpline construction-grid validation independent of physical
+  units and correct the symmetric degree-4 O-MOMS metadata. Add independent
+  basis and dense-system references across every B-spline/O-MOMS degree,
+  boundary mode, short signal, and mixed-axis complex interpolation.
+- Center adaptive regression's linear-limit fit and dual expression to avoid
+  cancellation for offset coordinates. Promote integer sample arithmetic
+  before denoising, sparse slope calculation, and spline evaluation; reject
+  complex regression inputs explicitly. Document the existing 0.5 objective
+  normalization and convergence/parameter guidance.
+- Reduce fractional autocorrelation frequencies into one period and normalize
+  recursive smoothing during each pass to avoid large-lambda overflow.
+- Reject empty affine batches, complex transform geometry, and non-NPZ
+  coefficient files consistently. Keep cached affine, smoothing, and denoising
+  parameters fixed: construct a new plan to change their operator.
+- Add independent dual-optimizer, cubic-derivative, Haar coefficient/energy,
+  coordinate-invariance, and concurrent TensorSpline geometry checks.
 
 - Bound batched smoothing FFT workspace to one spatial frame and write into
   the requested axis layout directly. This removes large temporary arrays
@@ -71,6 +93,10 @@ workload-specific, with numerical reference checks covering both fast paths.
 ## 2.2.0 - 2026-07-17
 
 ### Documentation
+
+- Replace outdated maturity checklists with a concise support matrix and
+  compatibility policy. Rework Evidence as graphical Benchmarks and Project
+  as About, keeping research reports and historical links available.
 
 - Added an installable `splineops-selma3d-demo` napari comparison with a
   checksum-pinned single-patch workflow, grid-aware expert masks, local versus
@@ -117,6 +143,10 @@ Version 2.1 makes the stable resize path easier to evaluate and adopt while
 keeping the broader research modules explicit about their maturity.
 
 ### Documentation
+
+- Replace outdated maturity checklists with a concise support matrix and
+  compatibility policy. Rework Evidence as graphical Benchmarks and Project
+  as About, keeping research reports and historical links available.
 
 - Reworked the README and documentation home page around one clear use case:
   projection-based antialiased resizing of N-D scientific arrays.
