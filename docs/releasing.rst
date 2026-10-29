@@ -51,7 +51,7 @@ Local validation can supplement the hosted checks:
 
    python -m pytest -q
    python -m build
-   python scripts/audit_release_artifacts.py --version 2.3.0rc1
+   python scripts/audit_release_artifacts.py --version 2.3.0
 
 Install the resulting wheel into a fresh virtual environment and run
 ``scripts/check_installed_wheel.py`` with that environment's Python. The
