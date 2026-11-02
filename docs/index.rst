@@ -159,7 +159,7 @@ These two artworks from the original SplineOps homepage celebrate those roots.
          :class: lab-artwork
          :target: https://bigwww.epfl.ch/art/splines/index.html
 
-         **Wavelet Bird** — Annette Unser, 1999.
+         **Wavelet Bird**
 
    .. grid-item::
 
@@ -168,7 +168,7 @@ These two artworks from the original SplineOps homepage celebrate those roots.
          :class: lab-artwork
          :target: https://bigwww.epfl.ch/art/splines/index.html
 
-         **SIAM Cover Page** — Annette Unser, 1999.
+         **SIAM Cover Page**
 
 Explore the `Biomedical Imaging Group's art gallery
 <https://bigwww.epfl.ch/art/splines/index.html>`_ for the original collection.
