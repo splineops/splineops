@@ -45,7 +45,7 @@ def main():
         <text x="56" y="562" fill="#80d6e4" font-size="22">splineops.github.io</text>
         <image x="600" y="44" width="550" height="508" preserveAspectRatio="xMidYMid meet"
                href="data:image/jpeg;base64,{artwork}"/>
-        <text x="875" y="589" text-anchor="middle" fill="#a9bed3" font-size="16">SIAM Cover Page · 1999</text>
+        <text x="875" y="589" text-anchor="middle" fill="#a9bed3" font-size="16">SIAM Cover Page 1999</text>
       </g>
     </svg>"""
     fonts = Path(get_data_path()) / "fonts" / "ttf"
