@@ -44,6 +44,9 @@ jobs:
             -D sphinx_gallery_conf.plot_gallery=0 \
             -D suppress_warnings=image.not_readable
 
+      - name: Validate documentation share previews
+        run: python scripts/check_docs_social_metadata.py /tmp/splineops-docs
+
       - name: Build wheel and source distribution
         run: python -m build
 
