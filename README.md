@@ -146,6 +146,9 @@ and source provenance are recorded explicitly.
 
 ## Development
 
+See the [contributor guide](CONTRIBUTING.md) for environment setup with pip or
+uv, the docstring standard, and documentation checks.
+
 ```shell
 git clone https://github.com/splineops/splineops.git
 cd splineops
