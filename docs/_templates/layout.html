@@ -4,3 +4,27 @@
 {% block htmltitle %}
   <title>{{ title|striptags|e }}</title>
 {% endblock %}
+
+{# Static head tags let sharing crawlers build cards without running JavaScript. #}
+{% block extrahead %}
+  {{ super() }}
+  {% if not has_meta_description %}
+  <meta name="description" content="{{ social_description|e }}" />
+  {% endif %}
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="SplineOps" />
+  <meta property="og:title" content="{{ social_title|striptags|e }}" />
+  <meta property="og:description" content="{{ social_description|e }}" />
+  <meta property="og:url" content="{{ pageurl|e }}" />
+  <meta property="og:image" content="{{ social_image|e }}" />
+  <meta property="og:image:secure_url" content="{{ social_image|e }}" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="{{ social_image_alt|e }}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ social_title|striptags|e }}" />
+  <meta name="twitter:description" content="{{ social_description|e }}" />
+  <meta name="twitter:image" content="{{ social_image|e }}" />
+  <meta name="twitter:image:alt" content="{{ social_image_alt|e }}" />
+{% endblock %}

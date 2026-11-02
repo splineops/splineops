@@ -141,6 +141,7 @@ extensions = [
     "sphinx_design",
     "myst_parser",
     "move_gallery_links",
+    "social_metadata",
 ]
 
 templates_path = ["_templates"]
@@ -157,6 +158,7 @@ exclude_patterns = [
 # -----------------------------------------------------------------------------
 html_theme = "pydata_sphinx_theme"
 html_title = f"{project} {release} documentation"
+html_baseurl = "https://splineops.github.io/"
 
 # IMPORTANT: include GENERATED_STATIC_DIR so its contents get copied to final _static/
 html_static_path = ["_static", str(GENERATED_STATIC_DIR)]
