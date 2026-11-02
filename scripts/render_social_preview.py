@@ -1,11 +1,13 @@
-"""Render the documentation's share card from its existing scientific illustrations.
+"""Render the share card with the historical SIAM Cover Page artwork.
 
 Run with Pillow, Matplotlib (for its bundled fonts), and resvg-py installed:
     python scripts/render_social_preview.py
 
-The surfaces come from render_landing_illustration.py, which evaluates real
-SplineOps operators. This script lays them out with the existing vector logo.
-The checked-in PNG needs no renderer or extra dependencies during a docs build.
+The existing feature_01.jpg is Annette Unser's SIAM Cover Page (1999), listed at
+https://bigwww.epfl.ch/art/splines/index.html. Preserve its complete composition
+and credit while laying it out with the vector logo. The checked-in JPEG needs
+no renderer or extra dependencies during a docs build. The previous PNG remains
+available so cached cards using its old URL do not lose their image.
 """
 
 import base64
@@ -20,52 +22,32 @@ import resvg_py
 STATIC = Path(__file__).resolve().parents[1] / "docs" / "_static"
 
 
-def embedded_panel(name):
-    """Use PNG inside the SVG so raster decoding is portable across renderers."""
-    buffer = BytesIO()
-    with Image.open(STATIC / "landing" / f"{name}.webp") as panel:
-        panel.save(buffer, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
-
-
 def main():
     logo = ET.parse(STATIC / "logo.svg").getroot()
     logo.set("x", "52")
-    logo.set("y", "34")
+    logo.set("y", "44")
     logo.set("width", "76")
     logo.set("height", "76")
-    panels = []
-    for index, (name, label, color) in enumerate(
-        [
-            ("reconstruct", "Reconstruct", "#71dfcf"),
-            ("resample", "Resample", "#f3d698"),
-            ("differentiate", "Differentiate", "#d9a3e5"),
-        ]
-    ):
-        x = 34 + index * 386
-        panels.append(
-            f'<image x="{x}" y="242" width="360" height="245" '
-            f'href="{embedded_panel(name)}"/>'
-            f'<text x="{x + 22}" y="528" fill="{color}" font-size="17">'
-            f"0{index + 1}</text>"
-            f'<text x="{x + 59}" y="528" fill="#f1f5fa" font-size="25" '
-            f'font-weight="bold">{label}</text>'
-        )
+    artwork = base64.b64encode((STATIC / "feature_01.jpg").read_bytes()).decode()
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"
                    viewBox="0 0 1200 630">
       <rect width="1200" height="630" fill="#0c1729"/>
       {ET.tostring(logo, encoding="unicode")}
       <g font-family="DejaVu Sans">
-        <text x="145" y="91" fill="#f4f7fb" font-size="51" font-weight="bold">SplineOps</text>
-        <text x="1144" y="80" text-anchor="end" fill="#9eb6cc" font-size="17"
-              letter-spacing="1.5">SCIENTIFIC COMPUTING IN PYTHON</text>
-        <text x="56" y="183" fill="#f4f7fb" font-size="43" font-weight="bold"
-              letter-spacing="-1">From samples to continuous operations.</text>
-        <text x="56" y="225" fill="#a9bed3" font-size="23">Interpolation · Antialiased resizing · Derivatives</text>
-        {''.join(panels)}
-        <path d="M56 571H1144" stroke="#29405b"/>
-        <text x="56" y="609" fill="#80d6e4" font-size="20">splineops.github.io</text>
-        <text x="1144" y="609" text-anchor="end" fill="#a9bed3" font-size="18">Open source. Built for N-D data.</text>
+        <text x="145" y="101" fill="#f4f7fb" font-size="51" font-weight="bold">SplineOps</text>
+        <text x="56" y="176" fill="#80d6e4" font-size="17"
+              letter-spacing="1.2">SAMPLED DATA. CONTINUOUS MODELS.</text>
+        <text x="56" y="267" fill="#f4f7fb" font-size="41" font-weight="bold"
+              letter-spacing="-1">From samples to</text>
+        <text x="56" y="322" fill="#f4f7fb" font-size="41" font-weight="bold"
+              letter-spacing="-1">continuous models.</text>
+        <text x="56" y="386" fill="#a9bed3" font-size="23">Interpolate. Resize with antialiasing.</text>
+        <text x="56" y="421" fill="#a9bed3" font-size="23">Transform. Differentiate. In N-D.</text>
+        <path d="M56 521H536" stroke="#29405b"/>
+        <text x="56" y="562" fill="#80d6e4" font-size="22">splineops.github.io</text>
+        <image x="600" y="44" width="550" height="508" preserveAspectRatio="xMidYMid meet"
+               href="data:image/jpeg;base64,{artwork}"/>
+        <text x="875" y="589" text-anchor="middle" fill="#a9bed3" font-size="16">SIAM Cover Page · Annette Unser, 1999</text>
       </g>
     </svg>"""
     fonts = Path(get_data_path()) / "fonts" / "ttf"
@@ -76,10 +58,12 @@ def main():
             str(fonts / name) for name in ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf")
         ],
     )
-    destination = STATIC / "social" / "splineops-preview.png"
+    destination = STATIC / "social" / "splineops-spline-art.jpg"
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(png)
-    print(f"Rendered {destination} ({len(png):,} bytes)")
+    # JPEG suits the watercolor texture; full chroma keeps text and curves crisp.
+    with Image.open(BytesIO(png)) as card:
+        card.convert("RGB").save(destination, quality=93, subsampling=0, optimize=True)
+    print(f"Rendered {destination} ({destination.stat().st_size:,} bytes)")
 
 
 if __name__ == "__main__":

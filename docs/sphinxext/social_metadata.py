@@ -6,13 +6,13 @@ from urllib.parse import urljoin
 from docutils import nodes
 
 SITE_DESCRIPTION = (
-    "Explore SplineOps: precise spline interpolation, antialiased resizing, "
-    "affine transforms, and derivatives for N-D scientific data in Python."
+    "Turn sampled data into continuous spline models. Interpolate, resize with "
+    "projection-based antialiasing, transform, and differentiate in N dimensions."
 )
 PAGE_DESCRIPTIONS = {
     "index": SITE_DESCRIPTION,
     "examples": (
-        "Explore runnable Python examples of spline interpolation, antialiased "
+        "Explore runnable examples of spline interpolation, antialiased "
         "resizing, affine transforms, smoothing, derivatives, and multiscale analysis."
     ),
     "modules": (
@@ -20,7 +20,7 @@ PAGE_DESCRIPTIONS = {
         "resizing, geometry, derivatives, smoothing, regression, and multiscale analysis."
     ),
     "api/index": (
-        "Explore the SplineOps Python API: interpolation, resizing, affine transforms, "
+        "Explore the SplineOps API: interpolation, resizing, affine transforms, "
         "derivatives, smoothing, regression, and multiscale analysis."
     ),
 }
@@ -62,17 +62,19 @@ def add_social_metadata(app, pagename, templatename, context, doctree):
         base_url, "" if pagename == "index" else app.builder.get_target_uri(pagename)
     )
     context["social_title"] = (
-        "SplineOps | Scientific computing with splines"
+        "SplineOps | From samples to continuous models"
         if pagename == "index"
         else f"{title} | SplineOps"
     )
     context["social_description"] = PAGE_DESCRIPTIONS.get(
         pagename, page_description(doctree)
     )
-    context["social_image"] = urljoin(base_url, "_static/social/splineops-preview.png")
+    context["social_image"] = urljoin(
+        base_url, "_static/social/splineops-spline-art.jpg"
+    )
     context["social_image_alt"] = (
-        "SplineOps: reconstruct, resample, and differentiate. Three surfaces show "
-        "actual spline reconstruction, antialiased resampling, and gradient outputs."
+        "SplineOps with Annette Unser's SIAM Cover Page artwork: spline curves "
+        "and a fractional-spline formula on a blue watercolor background."
     )
     # A document's own .. meta:: description is already emitted by Sphinx.
     context["has_meta_description"] = doctree is not None and any(

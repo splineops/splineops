@@ -1,14 +1,15 @@
 """Check the rendered share cards, including nested pages and generated indexes.
 
 Usage: python scripts/check_docs_social_metadata.py docs/_build/html
-Only the Python standard library is needed; run after a Sphinx HTML build.
+Uses Pillow, included in the documentation dependencies; run after an HTML build.
 """
 
 import argparse
 from html.parser import HTMLParser
 from pathlib import Path
-import struct
 from urllib.parse import urljoin, urlsplit
+
+from PIL import Image
 
 
 class HeadMetadata(HTMLParser):
@@ -47,7 +48,7 @@ class HeadMetadata(HTMLParser):
 
 def check(build, base_url="https://splineops.github.io/"):
     count = 0
-    images = set()
+    images = {}
     for page in sorted(build.rglob("*.html")):
         relative = page.relative_to(build)
         # Media wrappers and theme assets are not documentation pages.
@@ -91,21 +92,22 @@ def check(build, base_url="https://splineops.github.io/"):
         assert meta["description"] == meta["og:description"], relative
         assert meta["og:image"] == meta["og:image:secure_url"], relative
         assert meta["og:image"].startswith(base_url), relative
-        assert meta["og:image:type"] == "image/png", relative
+        assert meta["og:image:type"] in ("image/png", "image/jpeg"), relative
         assert (meta["og:image:width"], meta["og:image:height"]) == ("1200", "630")
         assert head.title and " | SplineOps" not in head.title, relative
         assert "splineops 2.3.0 documentation" not in head.title, relative
         if relative.as_posix() != "index.html":
             assert meta["og:title"] == f"{head.title} | SplineOps", relative
-        images.add(meta["og:image"])
+        images[meta["og:image"]] = meta["og:image:type"]
         count += 1
     assert count, "No documentation pages found"
-    for url in images:
+    for url, mime_type in images.items():
         image = build / urlsplit(url).path.lstrip("/")
-        data = image.read_bytes()
-        assert data[:8] == b"\x89PNG\r\n\x1a\n", image
-        assert struct.unpack(">II", data[16:24]) == (1200, 630), image
-        assert len(data) < 300_000, (image, len(data))
+        with Image.open(image) as decoded:
+            assert decoded.size == (1200, 630), image
+            assert Image.MIME[decoded.format] == mime_type, image
+            decoded.verify()
+        assert image.stat().st_size < 300_000, (image, image.stat().st_size)
     print(
         f"Verified share metadata on {count} pages and {len(images)} preview image(s)."
     )

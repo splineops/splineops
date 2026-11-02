@@ -1,11 +1,11 @@
 SplineOps
 =========
 
-**Projection-based antialiased resizing for N-D scientific arrays.**
+**Continuous spline models for precise interpolation, antialiased resizing, and derivatives.**
 
 .. container:: landing-illustration
 
-   .. rubric:: From samples to continuous operations
+   .. rubric:: From samples to continuous models
 
    .. grid:: 1 1 3 3
       :gutter: 0
@@ -42,10 +42,11 @@ SplineOps
       One synthetic 2-D field, shown as height maps from actual SplineOps outputs.
       White dots mark input samples; gradient magnitude uses its own display scale.
 
-SplineOps is designed for precise, repeatable downsampling of regular-grid
-2-D images and 3-D volumes.  It combines explicit coordinate semantics, a
-readable Python reference implementation, a native CPU backend, and reusable
-plans for fixed-geometry workloads.
+SplineOps turns samples on regular grids into continuous spline models.
+Evaluate between samples, resize with projection-based antialiasing, apply
+geometric transforms, and compute derivatives in N dimensions.  Explicit
+coordinate and boundary conventions make results reproducible; reusable
+plans accelerate repeated resizing with the same geometry.
 
 Start here
 ----------
@@ -103,8 +104,8 @@ Release status
        cross-platform tests. See :doc:`project-status` for exact support.
 
 SplineOps does not claim to be the fastest generic 2-D resizer.  Its strongest
-position is explicit spline semantics, N-D projection antialiasing,
-native/reference parity, and reusable fixed-geometry execution.  See
+position is continuous spline models, N-D projection antialiasing,
+explicit coordinate conventions, and reusable fixed-geometry execution.  See
 :doc:`performance` for measured wins, losses, and limitations.
 
 The current flagship is the :doc:`selma3d-vessels-study`: on 18 held-out
@@ -144,6 +145,33 @@ SplineOps modernizes spline methods developed across the `Biomedical Imaging
 Group at EPFL <https://bigwww.epfl.ch/>`_ and its collaborators.  Method
 citations, implementation history, and source provenance are recorded in
 :doc:`provenance`.
+
+These two artworks from the original SplineOps homepage celebrate those roots.
+
+.. grid:: 1 1 2 2
+   :gutter: 3
+   :class-container: lab-art-gallery
+
+   .. grid-item::
+
+      .. figure:: /_static/waveletbird_full.jpeg
+         :alt: White spline and wavelet curves form a bird-like shape over a blue watercolor background.
+         :class: lab-artwork
+         :target: https://bigwww.epfl.ch/art/splines/index.html
+
+         **Wavelet Bird** — Annette Unser, 1999.
+
+   .. grid-item::
+
+      .. figure:: /_static/feature_01.jpg
+         :alt: Overlapping spline curves and a fractional-spline formula on a blue watercolor background.
+         :class: lab-artwork
+         :target: https://bigwww.epfl.ch/art/splines/index.html
+
+         **SIAM Cover Page** — Annette Unser, 1999.
+
+Explore the `Biomedical Imaging Group's art gallery
+<https://bigwww.epfl.ch/art/splines/index.html>`_ for the original collection.
 
 .. toctree::
    :hidden:
