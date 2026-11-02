@@ -73,7 +73,7 @@ def add_social_metadata(app, pagename, templatename, context, doctree):
         base_url, "_static/social/splineops-spline-art.jpg"
     )
     context["social_image_alt"] = (
-        "SplineOps with Annette Unser's SIAM Cover Page artwork: spline curves "
+        "SplineOps with the SIAM Cover Page artwork: spline curves "
         "and a fractional-spline formula on a blue watercolor background."
     )
     # A document's own .. meta:: description is already emitted by Sphinx.

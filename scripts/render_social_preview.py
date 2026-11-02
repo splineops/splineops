@@ -5,7 +5,7 @@ Run with Pillow, Matplotlib (for its bundled fonts), and resvg-py installed:
 
 The existing feature_01.jpg is Annette Unser's SIAM Cover Page (1999), listed at
 https://bigwww.epfl.ch/art/splines/index.html. Preserve its complete composition
-and credit while laying it out with the vector logo. The checked-in JPEG needs
+while laying it out with the vector logo. The checked-in JPEG needs
 no renderer or extra dependencies during a docs build. The previous PNG remains
 available so cached cards using its old URL do not lose their image.
 """
@@ -35,8 +35,6 @@ def main():
       {ET.tostring(logo, encoding="unicode")}
       <g font-family="DejaVu Sans">
         <text x="145" y="101" fill="#f4f7fb" font-size="51" font-weight="bold">SplineOps</text>
-        <text x="56" y="176" fill="#80d6e4" font-size="17"
-              letter-spacing="1.2">SAMPLED DATA. CONTINUOUS MODELS.</text>
         <text x="56" y="267" fill="#f4f7fb" font-size="41" font-weight="bold"
               letter-spacing="-1">From samples to</text>
         <text x="56" y="322" fill="#f4f7fb" font-size="41" font-weight="bold"
@@ -47,7 +45,7 @@ def main():
         <text x="56" y="562" fill="#80d6e4" font-size="22">splineops.github.io</text>
         <image x="600" y="44" width="550" height="508" preserveAspectRatio="xMidYMid meet"
                href="data:image/jpeg;base64,{artwork}"/>
-        <text x="875" y="589" text-anchor="middle" fill="#a9bed3" font-size="16">SIAM Cover Page · Annette Unser, 1999</text>
+        <text x="875" y="589" text-anchor="middle" fill="#a9bed3" font-size="16">SIAM Cover Page</text>
       </g>
     </svg>"""
     fonts = Path(get_data_path()) / "fonts" / "ttf"
