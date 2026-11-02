@@ -38,7 +38,8 @@ expected result, and your Python, NumPy, SciPy, and SplineOps versions.
 
 To work on the library, clone the
 `repository <https://github.com/splineops/splineops>`_ and install its
-development dependencies:
+development dependencies. The :doc:`contributing` guide covers environment
+setup with pip or uv, the docstring standard, and example contributions:
 
 .. code-block:: shell
 
@@ -66,6 +67,7 @@ records; the current support contract is :doc:`project-status`.
    project-status
    backend-support
    provenance
+   contributing
    releasing
    graduation-audits
    internal-contracts
